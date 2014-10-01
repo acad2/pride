@@ -4,7 +4,6 @@ from sys import modules
 import functools
 import defaults
 
-import ctypes
 
 class Docstring(object):
     
@@ -94,11 +93,11 @@ class Base(object):
         # defaults dictionary and should be set in the __init__, like so
         self.objects = {}        
     
-    def __getattribute__(self, attribute):  
-        value = super(Base, self).__getattribute__(attribute)
-        if "__" not in attribute and callable(value):
-            value = Runtime_Decorator(value)
-        return value
+    #def __getattribute__(self, attribute):  
+    #    value = super(Base, self).__getattribute__(attribute)
+    #    if "__" not in attribute and callable(value):
+    #        value = Runtime_Decorator(value)
+    #    return value
         
     def attribute_setter(self, *args, **kwargs):
         """usage: object.attribute_setter((name, value_pairs), attrs=values)
@@ -302,14 +301,8 @@ class Process(Base):
  
  
 class Thread(Base):
-    
-    defaults = defaults.Thread
-    
-    type_map = {int : ctypes.c_int,
-                long : ctypes.c_int,
-                float : ctypes.c_float,
-                str : ctypes.c_char_p,
-                unicode : ctypes.c_wchar_p}  
+    """does not run in psuedo-parallel like threading.thread"""
+    defaults = defaults.Thread 
                 
     def __init__(self, *args, **kwargs):
         self.args = tuple()
@@ -321,24 +314,8 @@ class Thread(Base):
         self.run()
     
     def run(self): 
-        function = self._compile(self.target, self.args, self.kwargs)
-        return function(*self.args, **self.kwargs)
-    
-    # experimenting, ctypes callbacks are supposed to release the gil...
-    def _compile(self, python_function, args, kwargs=None):
-        types = []
-        c_type_arguments = []
-        for arg in args:
-            try:
-                c_type = type_map[type(arg)]
-            except KeyError:
-                c_type = ctypes.py_object(value)
-            c_type_arguments.append(c_type)
-        if kwargs:
-            c_type_arguments.append(ctypes.py_object(kwargs))  
-        header = ctypes.CFUNCTYPE(ctypes.c_void_p, *c_type_arguments)
-        compiled_function = header(python_function)
-        return compiled_function  
+        return self.function(*self.args, **self.kwargs)
+
         
 # for machinelibrary.Machines
 class Hardware_Device(Base):
