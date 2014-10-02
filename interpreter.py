@@ -3,8 +3,7 @@ from codeop import CommandCompiler
 
 import base
 import defaults
-from eventlibrary import Event
-
+Event = base.Event
 
 class Shell(base.Process):
     """Interactive Interpreter that can be used simultaneously with running
@@ -45,7 +44,7 @@ class Shell(base.Process):
                 sys.stdout.write(character) 
                 self.line.append(character)
             
-        Event("Shell", "run").post()
+        Event(self._instance_name, "run", component=self).post()
         
     def handle_backspace(self):
         line = ''.join(self.line)
@@ -82,7 +81,7 @@ class Shell(base.Process):
             if code and not self.definition:
                 self.prompt = ">>> "
                 self.lines = []
-                Event("Network_Manager", "buffer_data", self.connection, lines).post()
+                Event("Network_Manager0", "buffer_data", self.connection, lines).post()
             else:
                 self.definition = True
                 self.prompt = "... "
@@ -98,14 +97,14 @@ class Shell(base.Process):
     def on_connection(self, connection, address):
         self.connection = connection
         self.login_thread = self.create("networklibrary.Basic_Authentication_Client")    
-        Event("Shell", "login").post()
+        Event(self._instance_name, "login", component=self).post()
         
     def login(self):
         try:
             self.login_thread.run()
         except StopIteration:
             self.login_thread.delete()
-            Event("Shell", "run").post()
+            Event(self._instance_name, "run").post()
             print self.network_buffer
             self.network_buffer = None
             sys.stdout.write(self.prompt)
@@ -116,10 +115,10 @@ class Shell(base.Process):
                 except:
                     print "startup definitions failed to compile"                    
                 else:
-                    Event("Network_Manager", "buffer_data", self.connection, self.startup_definitions+"\n").post()
+                    Event("Network_Manager0", "buffer_data", self.connection, self.startup_definitions+"\n").post()
                     sys.stdout.write("Attempting to compile startup definitions...\n%s" % self.prompt)
         else:
-            Event("Shell", "login").post()
+            Event(self._instance_name, "login", component=self).post()
         
         
 class Shell_Service(base.Process):
@@ -141,7 +140,7 @@ class Shell_Service(base.Process):
         self.swap_file = open("sssf", "w+")
         self.log_file = open("%s log" % self.__class__.__name__, "w")
         
-        Event("Network_Manager", "create", "networklibrary.Server", \
+        Event("Network_Manager0", "create", "networklibrary.Server", \
         incoming=self.read_socket, outgoing=self.write_socket, on_connection=self.on_connection, \
         name="Remote_Console_Service", host_name=self.host_name, port=self.port).post()
                 
@@ -167,7 +166,7 @@ class Shell_Service(base.Process):
                 response = "Welcome %s from (%s)" % (username, address)\
                 +"\nPython %s on %s\n%s\n(%s)\n" % \
                 (sys.version, sys.platform, self.copyright, self.__class__.__name__)
-                Event("Network_Manager", "buffer_data", login_thread.connection, response).post()
+                Event("Network_Manager0", "buffer_data", login_thread.connection, response).post()
                 self.login_stage[address] = (username, "online/active")
                 self.network_buffer[login_thread.connection] = ""
                 self.login_threads.remove(login_thread)
@@ -188,7 +187,7 @@ class Shell_Service(base.Process):
                     self._main(client, input)
          
         if self in self.parent.objects["Shell_Service"]:
-            Event("Shell_Service", "run").post()
+            Event(self._instance_name, "run", component=self).post()
             
     def _main(self, connection, input):     
         sys.stdout = self.swap_file
@@ -200,7 +199,7 @@ class Shell_Service(base.Process):
         results = sys.stdout.read()
         if results:
             self.log_file.write("Results: " + results)
-            Event("Network_Manager", "buffer_data", connection, results).post()
+            Event("Network_Manager0", "buffer_data", connection, results).post()
         sys.stdout.seek(0)
         sys.stdout.truncate() # delete contents
         sys.stdout = sys.__stdout__
@@ -227,4 +226,4 @@ class Shell_Service(base.Process):
     def __del__(self):
         for connection in self.network_buffer.keys():
             print "informing %s that %s is shutting down" % (connection.getpeername(), self)
-            Event("Network_Manager", "buffer_data", connection, "Service shutting down").post()
+            Event("Network_Manager0", "buffer_data", connection, "Service shutting down").post()

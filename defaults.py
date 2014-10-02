@@ -3,12 +3,14 @@ font = time = Surface = NotImplemented
 import struct
 import socket
 from traceback import format_exc
+from multiprocessing import cpu_count
 
 SCREEN_SIZE = [800, 600]
 R, G, B = 180, 180, 180
 typeface = 'arial'
 NO_ARGS = tuple()
 NO_KWARGS = dict()
+PROCESSOR_COUNT = cpu_count()
 
 # Base
 Base = {}
@@ -23,8 +25,17 @@ Thread = Base.copy()
 Hardware_Device = Base.copy()
 
 # machinelibrary
+
+Event = Base.copy()
+
+Event_Handler = Hardware_Device.copy()
+Event_Handler.update({"number_of_processors" : PROCESSOR_COUNT})
+
+Processor = Hardware_Device.copy()
+
 Machine = Base.copy()
-Machine.update({"hardware_configuration" : (("machinelibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
+Machine.update({"processor_count" : PROCESSOR_COUNT,
+"hardware_configuration" : (("machinelibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
 "system_configuration" : (("systemlibrary.System", NO_ARGS, NO_KWARGS), )})
 
 # inputlibrary
@@ -34,16 +45,13 @@ Keyboard = Hardware_Device.copy()
 System = Base.copy()
 System.update({"name" : "system",
 "status" : "initializing",
-"initial_hardware" : ("machinelibrary.Keyboard", ),
-"component_configuration" : (("eventlibrary.Event_Handler", NO_ARGS, NO_KWARGS), 
-                            ("systemlibrary.Idle", NO_ARGS, NO_KWARGS),
-                            ("interpreter.Shell_Service", NO_ARGS, NO_KWARGS), 
-                            ("interpreter.Shell", NO_ARGS, NO_KWARGS),
+"hardware_configuration" : ("machinelibrary.Keyboard", ),
+"startup_processes" : (("systemlibrary.Idle", NO_ARGS, NO_KWARGS),
                             ("networklibrary.Network_Manager", NO_ARGS, NO_KWARGS),
-                            ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS)
-                            )})
+                            ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
 
 Idle = Process.copy()
+Idle.update({"auto_start" : False})
 
 Task_Scheduler = Process.copy()
 
@@ -155,12 +163,6 @@ Scanner.update({"subnet" : "127.0.0.1",
 "range" : (0, 0, 0, 254),
 "timeout" : 10,
 "priority" : "high"})
-
-# eventlibrary
-Event = Base.copy()
-
-Event_Handler = Process.copy()
-Event_Handler.update({"auto_start" : False})
 
 # Guilibrary
 Display = Process.copy()

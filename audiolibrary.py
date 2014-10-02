@@ -3,7 +3,7 @@ import struct
 import wave
 import time
 from contextlib import contextmanager
-from sys import platform
+from sys import platform, exit
 from ctypes import CFUNCTYPE, c_int, c_char_p, cdll
 
 # pyaudio requires: libportaudio0, libportaudio2, libportaudiocpp0, and portaudio19-dev on linux
@@ -12,9 +12,10 @@ from ctypes import CFUNCTYPE, c_int, c_char_p, cdll
 # wget http://people.csail.mit.edu/hubert/pyaudio/packages/python-pyaudio_0.2.8-1_i386.deb
 # sudo dpkg -i python-pyaudio_0.2.8-1_i386.deb
 import pyaudio
+
 import base
 import defaults
-from eventlibrary import Event
+Event = base.Event
 
 @contextmanager
 def alsa_errors_suppressed():
@@ -152,7 +153,7 @@ class Audio_Configuration_Utility(base.Process):
             self.delete()
         else:
             self.all_devices = self.get_all_devices(self.mode)
-            Event("Audio_Configuration_Utility", "run").post()
+            Event("Audio_Configuration_Utility", "run", component=self).post()
     
     def write_config_file(self, device_list):
         with open(self.config_file_name, "wb") as config_file:
@@ -215,7 +216,7 @@ class Audio_Configuration_Utility(base.Process):
         self.write_config_file(self.selected_devices)
         self.delete()
         if getattr(self, "exit_when_finished", None):
-            Event("System", "exit").post()
+            exit()
 
         
 class Audio_Manager(base.Process):
@@ -230,11 +231,11 @@ class Audio_Manager(base.Process):
         except:
             raise
             raw_input("Please run audio_config_utility. No config file found")
-            Event("System", "exit").post()
+            Event("System0", "exit").post()
         self.network_buffer = {}
         self.clients_listening_to = {}
         
-        Event("Network_Manager", "create", "networklibrary.Server",
+        Event("Network_Manager0", "create", "networklibrary.Server",
         incoming=self._incoming, outgoing=self._outgoing, on_connection=self._on_connection,
         name="Audio_Manager", port=40002, host_name="localhost").post()
         
@@ -254,7 +255,7 @@ class Audio_Manager(base.Process):
             options = pickle.dumps(options)
             channel_info.append(options)
         channel_list = "\r".join(channel_info)
-        Event("Network_Manager", "buffer_data", connection, channel_list).post()
+        Event("Network_Manager0", "buffer_data", connection, channel_list).post()
         self.channel_requests.append(connection)
         self.network_buffer[connection] = None
         
@@ -287,7 +288,7 @@ class Audio_Manager(base.Process):
             self._handle_device(device)            
         
         if self in self.parent.objects["Audio_Manager"]:
-            Event("Audio_Manager", "run").post()
+            Event("Audio_Manager", "run", component=self).post()
             
     def _handle_device(self, device):
         if device.input and device.data:
@@ -300,6 +301,6 @@ class Audio_Manager(base.Process):
             if device.network_listeners:
                 #sound_chunk = struct.pack("4096s", sound_chunk)
                 for client in self.clients_listening_to[device.name]:
-                    Event("Network_Manager", "buffer_data", client, sound_chunk).post()    
+                    Event("Network_Manager0", "buffer_data", client, sound_chunk).post()    
         elif device.output:
             device.data = device._get_data()

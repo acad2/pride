@@ -1,4 +1,5 @@
 import sys
+import os
 import multiprocessing
 import time
 from operator import attrgetter
@@ -7,62 +8,10 @@ Queue = que.Queue
 from weakref import proxy
 import base
 import functionlibrary
-import defaults
-
-              
-class Event(object):
-
-    def __init__(self, component_name, method, *args, **kwargs):
-        super(Event, self).__init__()
-        self.component_name = component_name
-        self.method = method # any method can be supplied
-        self.args = args # any arguments can be supplied
-        self.kwargs = kwargs # any keyword arguments can be supplied
-            
-    def post(self):
-        Event_Handler.events.put(self)
-        
-    def __str__(self):
-        return "%s_Event: %s" % (self.component_name, self.method)
-        
-    def execute_code(self, component):
-        call = getattr(component, self.method)
-        call(*self.args, **self.kwargs)   
-
-
-class Event_Handler(base.Process):
-
-    events = Queue()
-    defaults = defaults.Event_Handler
-    
-    def __init__(self, *args, **kwargs):
-        super(Event_Handler, self).__init__(*args, **kwargs)
-        self.thread = self.run()
-        
-    def run(self): # cannot be powered by events
-        while True:
-            self.prepare_queue()
-            while not self.queue_empty:
-                event = self.get_event()
-                component = self.parent.objects[event.component_name][0]
-                event.execute_code(component)
-            yield               
-            
-    def prepare_queue(self):
-        self.frame_queue = Event_Handler.events
-        self.queue_empty = False
-        Event_Handler.events = Queue()        
-                
-    def get_event(self):
-        # returns a single event from the frame queue
-        try:
-            event = self.frame_queue.get_nowait()
-        except que.Empty: 
-            self.queue_empty = True
-            event = Event("Idle", "run")
-        return event
-                             
+import defaults                            
  
+Event = base.Event
+
 class Task(base.Base):
     
     defaults = defaults.Base
@@ -112,6 +61,6 @@ class Task_Scheduler(base.Process):
             next(thread)
                 
         if self in self.parent.objects[self.__class__.__name__]:
-            Event("Task_Scheduler", "run").post()
+            Event("Task_Scheduler0", "run").post()
             
 #def 

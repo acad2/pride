@@ -8,11 +8,9 @@ from socket import gethostname
 from weakref import proxy
 from codeop import CommandCompiler
 
-# hhttp://erose1337.github.io/Easy_As_Py/
 import base
 import defaults
-import eventlibrary
-Event = eventlibrary.Event
+Event = base.Event
 
 
 class System(base.Base):
@@ -35,27 +33,16 @@ class System(base.Base):
         
         # enable the event handler to reference the system the same way as everyone else
         self.objects["System"] = [self]
- 
-        for component, args, kwargs in self.component_configuration:
+        print self.startup_processes
+        for component, args, kwargs in self.startup_processes:
+            #v: print "creating", component, args, kwargs
             self.create(component, *args, **kwargs)           
-            
-        self.event_process_thread = self.objects["Event_Handler"][0].run()
-        self.thread = self.run()
-        
+                    
     def exit(self):
-        exit()
+        Event("Machine", "delete", self).post()
      
     def run(self):
-        while True:
-            yield next(self.event_process_thread)     
-            
-    #def delete(self, *args):
-    #    """schedules object deletion via events as opposed to immediately. This
-    #    gives the object time to stop scheduling future events."""
-    #    Event("System", "_delete", *args).post()
-        
-    #def _delete(self, *args):
-    #    super(System, self.delete(*args))
+        pass    
         
         
 class Idle(base.Process):
@@ -65,11 +52,12 @@ class Idle(base.Process):
     def __init__(self, *args, **kwargs):
         super(Idle, self).__init__(*args, **kwargs)
         self.before_sleep = self.after_sleep = []
+        
     def run(self):
         for suspended_call in self.after_sleep:
             print "suspending %s" % suspended_call.func_name
             suspended_call()
-        time.sleep(.005)
+        time.sleep(.01)
         for restarted_call in self.before_sleep:
             print "restarting %s" % restarted_call.func_name
             restarted_call()
@@ -98,7 +86,7 @@ class Messenger(base.Process):
         super(Messenger, self).__init__(*args, **kwargs)
         self.conversations = {}
                        
-        Event("Network_Manager", "create", "networklibrary.Server", incoming=self._receive_message,\
+        Event("Network_Manager0", "create", "networklibrary.Server", incoming=self._receive_message,\
         outgoing=self._send_message, on_connection=self.register_connection, port=41337, name="Messenger").post()
         
     def _receive_message(self, sock):
@@ -108,16 +96,16 @@ class Messenger(base.Process):
             sock.close()
             sock.delete()
         print "%s: %s" % (sock.getpeername(), data)
-        Event("Network_Manager", "buffer_data", sock, data).post()
+        Event("Network_Manager0", "buffer_data", sock, data).post()
         
     def _send_message(self, sock, data):
         sock.send(data)
                 
     def run(self):
         if self in self.parent.objects[self.__class__.__name__]:
-            Event("Messenger", "run").post()
+            Event("Messenger0", "run").post()
         else:
-            Event("Network_Manager", "delete_server", "Messenger").post()
+            Event("Network_Manager0", "delete_server", "Messenger").post()
             
     def register_connection(self, connection, address):
         print "You may now speak with %s via %s.send..." % (address, self)
@@ -129,7 +117,7 @@ class Messenger(base.Process):
         port = int(port)
         connection = self.conversations[(str(ip), port)]
         print "sending", text, "to", destination
-        Event("Network_Manager", "buffer_data", connection, text).post()
+        Event("Network_Manager0", "buffer_data", connection, text).post()
   
     
 class Explorer(Application):
@@ -141,12 +129,12 @@ class Explorer(Application):
         super(Explorer, self).__init__(*args, **kwargs)
         self.homescreen = proxy(self.create("widgetlibrary.Homescreen"))
         self.time_service()
-        Event("Organizer", "pack", self).post()
-        Event("Display", "draw", self).post()
+        Event("Organizer0", "pack", self).post()
+        Event("Display0", "draw", self).post()
                 
     def run(self):        
         if self in self.parent.objects[self.__class__.__name__]:
-            Event("Explorer", "run").post()
+            Event("Explorer0", "run").post()
                            
     def _draw(self):
         return self.homescreen._draw()   

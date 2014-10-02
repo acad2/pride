@@ -4,8 +4,8 @@ import errno
 import time
 import defaults
 import base
-import eventlibrary
-Event = eventlibrary.Event
+
+Event = base.Event
 
 try:
     CONNECTION_IN_PROGRESS = errno.WSAEWOULDBLOCK
@@ -18,7 +18,7 @@ except:
     
     
 class Server(base.Wrapper):
-    """usage: Event("Network_Manager", "create", "networklibrary.Server",
+    """usage: Event("Network_Manager0", "create", "networklibrary.Server",
     incoming=myincoming, outgoing=myoutgoing, on_connection=myonconnection,
     name="My_Server", port=40010).post()"""
     
@@ -33,7 +33,7 @@ class Server(base.Wrapper):
         self.bind((self.host_name, self.port))
         self.listen(self.backlog)        
         self.parent.servers.append(self)
-        Event("Service_Listing", "add_local_service", (self.host_name, self.port), self.name).post()
+        Event("Service_Listing0", "add_local_service", (self.host_name, self.port), self.name).post()
         
         
 class Outbound_Connection(base.Wrapper):
@@ -44,7 +44,7 @@ class Outbound_Connection(base.Wrapper):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         super(Outbound_Connection, self).__init__(sock, *args, **kwargs)        
         self.setblocking(0)
-        Event("Network_Manager", "buffer_connection", self, self.target).post()
+        Event("Network_Manager0", "buffer_connection", self, self.target).post()
        
         
 class Inbound_Connection(base.Wrapper):
@@ -98,7 +98,7 @@ class Connection_File_Object(base.Base):
         self.connection = connection
         
     def write(self, data):        
-        Event("Network_Manager", "buffer_data", self.connection, data).post()
+        Event("Network_Manager0", "buffer_data", self.connection, data).post()
  
  
 class Basic_Authentication_Client(base.Thread):
@@ -122,7 +122,7 @@ class Basic_Authentication_Client(base.Thread):
             username = raw_input("Username: ")
             password = hash(raw_input("Password: "))
         response = username+"\n"+str(password)
-        Event("Network_Manager", "buffer_data", self.parent.connection, response).post()
+        Event("Network_Manager0", "buffer_data", self.parent.connection, response).post()
         yield
         
         while not self.parent.network_buffer:
@@ -134,10 +134,10 @@ class Basic_Authentication_Client(base.Thread):
             if "y" in raw_input("Retry?: ").lower():
                 target = self.connection.getpeername()
                 raise NotImplementedError
-                Event("Network_Manager", "create", "networklibrary.Outbound_Connection",\
+                Event("Network_Manager0", "create", "networklibrary.Outbound_Connection",\
                 target, incoming=self.incoming, outgoing=self.outgoing,\
                 on_connection=self.on_connection).post()                
-                #Event("Network_Manager", "disconnect", self.connection).post()
+                #Event("Network_Manager0", "disconnect", self.connection).post()
             else:
                 self.warning("failed to login. Exiting...", self)
                 Event("System", "delete", self).post()
@@ -168,7 +168,7 @@ class Basic_Authentication(base.Thread):
                 print "other exception occurred"
                 raise
             
-            Event("Network_Manager", "buffer_data", self.connection, response).post()        
+            Event("Network_Manager0", "buffer_data", self.connection, response).post()        
                     
     def _new_thread(self):
         while not self.parent.network_buffer[self.connection]:
@@ -191,7 +191,7 @@ class Network_Manager(base.Process):
         self.objects[socket.socket.__name__] = []
         self.readable_sockets = []
         self.writable_sockets = []
-        Event("System", "create", "networklibrary.Service_Listing", auto_start=False).post()
+        Event("System0", "create", "networklibrary.Service_Listing", auto_start=False).post()
         
     def buffer_data(self, connection, data, to=None):
         if to:
@@ -203,7 +203,7 @@ class Network_Manager(base.Process):
         self.write_buffer[connection] = chunk
         data = data[2048:]
         if data:
-            Event("Network_Manager", "buffer_data", connection, data, to).post()"""
+            Event("Network_Manager0", "buffer_data", connection, data, to).post()"""
             
     def debuffer_data(self, connection):
         try:
@@ -216,10 +216,10 @@ class Network_Manager(base.Process):
     
     def disconnect(self, connection):
         if self.write_buffer.has_key(connection):
-            Event("Network_Manager", "disconnect", connection).post()
+            Event("Network_Manager0", "disconnect", connection).post()
         else:
             connection.close()
-            Event("Network_Manager", "delete", connection).post()
+            Event("Network_Manager0", "delete", connection).post()
         
     def delete_server(self, server_name):
         for server in self.servers:
@@ -229,7 +229,7 @@ class Network_Manager(base.Process):
                 
     def run(self):
         if self.connection_buffer.keys():
-            #Event("Network_Manager", "handle_connections").post()          
+            #Event("Network_Manager0", "handle_connections").post()          
             self.handle_connections()
         
         if self.objects[socket.socket.__name__]:
@@ -241,13 +241,13 @@ class Network_Manager(base.Process):
  
                 if self.readable_sockets:
                     self.handle_reads()
-                    #Event("Network_Manager", "handle_reads").post()
+                    #Event("Network_Manager0", "handle_reads").post()
                 if self.writable_sockets:
                     self.handle_writes()
-                    #Event("Network_Manager", "handle_writes").post()            
+                    #Event("Network_Manager0", "handle_writes").post()            
                 
         if self in self.parent.objects[self.__class__.__name__]:
-            Event("Network_Manager", "run").post()
+            Event("Network_Manager0", "run").post()
                 
     def handle_connections(self):
         sockets = self.objects[socket.socket.__name__]
@@ -258,7 +258,7 @@ class Network_Manager(base.Process):
             if not sock.timeout:
                 del self.connection_buffer[sock]
                 sockets.append(sock)
-                Event("Network_Manager", "delete", sock).post()
+                Event("Network_Manager0", "delete", sock).post()
                 #sock.warning("Outbound Connection to %s timed out after %s frames" %
                 #(sock.target, sock.timeout))
                 continue

@@ -1,10 +1,49 @@
-from weakref import proxy, ref
-import inspect
-from sys import modules
 import functools
+import pickle
+import inspect
+import os
+from Queue import Queue
+from sys import modules
+from weakref import proxy, ref
+
 import defaults
 
+Components = {} 
+Component_Resolve = {}
 
+class Event(object):
+
+    events = Queue()
+            
+    def __init__(self, component_name, method, *args, **kwargs):
+        super(Event, self).__init__()
+        self.component_name = component_name
+        self.method = method # any method can be supplied
+        self.args = args # any arguments can be supplied
+        self.kwargs = kwargs # any keyword arguments can be supplied
+        try:
+            self.component = kwargs.pop("component")
+        except KeyError:
+            self.component = None
+                    
+    def post(self):
+        #vv: print "posted", self, self.args, self.kwargs
+        Event.events.put(self)
+        
+    def __str__(self):
+        return "%s_Event: %s" % (self.component_name, self.method)
+        
+    def execute_code(self):    
+        call = getattr(self.component, self.method)
+        call(*self.args, **self.kwargs)   
+ 
+    @staticmethod
+    def _get_events():
+        """Used by the event handler to acquire a frame of events"""
+        events = Event.events
+        Event.events = Queue()
+        return events 
+        
 class Docstring(object):
     
     def __init__(self):
@@ -145,6 +184,13 @@ class Base(object):
             instance = instance_type(*args)
             instance = Wrapper(instance, **kwargs)
         self.add(instance)
+        class_name = instance.__class__.__name__
+        number = self.objects[class_name].index(instance)
+        name = class_name + str(number)
+        instance._instance_number = number
+        instance._instance_name = name
+        instance._messages, Components[name] = os.pipe()
+        Component_Resolve[name] = instance
         return instance
         
     def add(self, instance):
@@ -283,21 +329,22 @@ class Process(Base):
         self.args = tuple()
         self.kwargs = dict()
         super(Process, self).__init__(*args, **kwargs)
-        Event = modules["eventlibrary"].Event
+        
         if self.auto_start:
-            Event(self.__class__.__name__, "start").post()
+            event = Event(self.__class__.__name__, "start")
+            event.component = self
+            event.post()
     
     def start(self): # compatibility with multiprocessing.Process
         self.run()
             
     def run(self):
-        Event = modules["eventlibrary"].Event
         if self.target:
             self.target(*self.args, **self.kwargs)
         if self.recurring:        
-            Event(self.__class__.__name__, "run").post()
+            Event(self._instance_name, "run").post()
         else:
-            Event("System", "delete", self).post()
+            Event(self.parent._instance_name, "delete", self).post()
  
  
 class Thread(Base):
