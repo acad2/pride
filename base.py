@@ -1,16 +1,17 @@
-import functools
+import mmap
 import pickle
 import inspect
-import os
+from time import time
 from Queue import Queue
 from sys import modules
 from weakref import proxy, ref
 
 import defaults
 
-Components = {} 
+Component_Memory = {} 
 Component_Resolve = {}
 
+    
 class Event(object):
 
     events = Queue()
@@ -21,10 +22,15 @@ class Event(object):
         self.method = method # any method can be supplied
         self.args = args # any arguments can be supplied
         self.kwargs = kwargs # any keyword arguments can be supplied
+        self.created_at = time()
         try:
             self.component = kwargs.pop("component")
         except KeyError:
             self.component = None
+        try:
+            self.priority = kwargs.pop("priority")
+        except KeyError:
+            self.priority = 16 # 16/1000 is about 60 fps
                     
     def post(self):
         #vv: print "posted", self, self.args, self.kwargs
@@ -132,11 +138,11 @@ class Base(object):
         # defaults dictionary and should be set in the __init__, like so
         self.objects = {}        
     
-    #def __getattribute__(self, attribute):  
-    #    value = super(Base, self).__getattribute__(attribute)
-    #    if "__" not in attribute and callable(value):
-    #        value = Runtime_Decorator(value)
-    #    return value
+    def __getattribute__(self, attribute):  
+        value = super(Base, self).__getattribute__(attribute)
+        if "__" not in attribute and callable(value):
+            value = Runtime_Decorator(value)
+        return value
         
     def attribute_setter(self, *args, **kwargs):
         """usage: object.attribute_setter((name, value_pairs), attrs=values)
@@ -189,8 +195,9 @@ class Base(object):
         name = class_name + str(number)
         instance._instance_number = number
         instance._instance_name = name
-        instance._messages, Components[name] = os.pipe()
+        memory = mmap.mmap(-1, 8096*2)        
         Component_Resolve[name] = instance
+        Component_Memory[name] = memory        
         return instance
         
     def add(self, instance):
@@ -217,6 +224,25 @@ class Base(object):
             for arg in args:
                 arg.delete()
 
+    def send_to(self, component_name, message):
+        #vv: print "sending to", component_name, len(message)
+        #vvv: message
+        Component_Memory[component_name].write(message+"|$|")
+        
+    def read_messages(self):
+        memory = Component_Memory[self._instance_name]
+        data = memory.read(8096*2)
+        memory.seek(0)
+        if data.replace("\x00", ""):
+            size = len(data)
+            memory.write("\x00"*size)
+            memory.seek(0)       
+            messages = data.split("|$|")[:1]
+        else:
+            messages = []
+        #vv: print "returning messages", messages
+        return messages
+        
     def warning(self, message="Error_Code", level="Warning", callback=None, callback_event=None):
         """usage: object.warning(Message, level, callback)
         
@@ -372,7 +398,7 @@ class Hardware_Device(Base):
     def __init__(self, *args, **kwargs):
         super(Hardware_Device, self).__init__(*args, **kwargs)
         
-         
+
 class Runtime_Decorator(object):
     """provides the ability to call a function with a decorator specified via
     keyword argument.
@@ -383,9 +409,14 @@ class Runtime_Decorator(object):
         self.function = function
             
     def __call__(self, *args, **kwargs):
-        
-        #if kwargs.has_key("context_manager"):
-        #    module_name, context_manager_name = self._resolve_string(kwargs.pop("context_manager"))
+
+        if kwargs.has_key("context_manager"):
+            module_name, context_manager_name = self._resolve_string(kwargs.pop("context_manager"))
+            module = self._get_module(module_name)
+            context_manager = getattr(module, context_manager_name)
+            with context_manager():
+                self.function(*args, **kwargs)
+                
         if kwargs.has_key("monkey_patch"):
             module_name, patch_name = self._resolve_string(kwargs.pop("monkey_patch"))
             module = self._get_module(module_name)

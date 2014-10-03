@@ -3,6 +3,7 @@ import sys
 import os
 import atexit
 import Queue
+from operator import attrgetter
 
 import base
 import defaults
@@ -59,18 +60,16 @@ class Event_Handler(base.Hardware_Device):
                     self.processor_events["Processor%s" % processor_number].append(event)
             
             for processor_number, event_list in self.processor_events.items():
-                setattr(Event_Handler, "%s_queue" % processor_number, event_list)
+                setattr(Event_Handler, "%s_queue" % processor_number, sorted(event_list, key=attrgetter("priority")))
                 self.processor_events[processor_number] = []
                 #v: print "Distributed %s events to %s" % (len(event_list), processor_number)
                 #vv: print "\t" + [str(item) for item in event_list]
                 #serialized_events = pickle.dumps(event_list)
-                #os.write(base.Components["Processor"+processor_number], serialized_events)
-                
+                #os.write(base.Components["Processor"+processor_number], serialized_events)                
             yield
             
-    def prepare_queue(self):
-        events = base.Event._get_events()
-        self.frame_queue = events
+    def prepare_queue(self):      
+        self.frame_queue = base.Event._get_events()
         self.queue_empty = False           
                 
     def get_event(self):
@@ -104,9 +103,17 @@ class Machine(base.Base):
             system = self.create(system_name, *args, **kwargs)
             for hardware_device in system.hardware_configuration:
                 system.add(self.objects[hardware_device.split(".")[1]][0])                
+        self.thread = self._run()
         
     def run(self):
         while True:
+            #vv: print "nexting machine thread"
+            next(self.thread)
+        
+    def _run(self):
+        while True:
+            #vv: print "processing frame"
             self.event_handler.run()
             for processor in self.objects["Processor"]:
                 processor.run()
+            yield

@@ -4,7 +4,6 @@ import traceback
 import time
 exit, modules = sys.exit, sys.modules
 from operator import attrgetter, itemgetter
-from socket import gethostname
 from weakref import proxy
 from codeop import CommandCompiler
 
@@ -33,7 +32,7 @@ class System(base.Base):
         
         # enable the event handler to reference the system the same way as everyone else
         self.objects["System"] = [self]
-        print self.startup_processes
+        #v: print self.startup_processes
         for component, args, kwargs in self.startup_processes:
             #v: print "creating", component, args, kwargs
             self.create(component, *args, **kwargs)           
@@ -57,7 +56,7 @@ class Idle(base.Process):
         for suspended_call in self.after_sleep:
             print "suspending %s" % suspended_call.func_name
             suspended_call()
-        time.sleep(.01)
+        time.sleep(self.sleep_time)
         for restarted_call in self.before_sleep:
             print "restarting %s" % restarted_call.func_name
             restarted_call()

@@ -46,8 +46,8 @@ class Timer(base.Base):
             self.parent.threads[self] = self.new_thread()
             self.target_time = time.time()+self.wait_time
         yield
-        
-        
+                     
+            
 class Task_Scheduler(base.Process):
     
     defaults = defaults.Task_Scheduler

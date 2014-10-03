@@ -4,7 +4,7 @@ import time
 from test import pystone
 from functools import wraps
 from weakref import ref
-import base
+
 
 seconds, pystones_per_second = pystone.pystones(pystone.LOOPS)
 
@@ -36,7 +36,7 @@ class Pystone_Test(object):
             print "%s took %s pystones to perform" % (self.function, pystones_result)
             return result
      
-     
+    
 class Timed(object):
     
     def __init__(self, function):
@@ -57,8 +57,8 @@ class Timed(object):
             raise
         else:
             end = timer()
-            print "%s took %s to run" % (self.function, end-start)
-            return result
+            time = end - start
+            return time, result
         
 
 
@@ -124,23 +124,9 @@ class EXCEPTIONSAFE(object):
     def __call__(self, *args, **kwargs):
         try:
             return self.function(*args, **kwargs)
-        except NameError:
-            import traceback
-            print "\n\nException in %s" % self.function
-            trace = traceback.format_exc()
-            print trace
-            if "KeyboardInterrupt" in trace:
-                import sys
-                sys.exit()
-            elif "SysemExit" not in trace:
-                restart = str(raw_input(">recall function? ")).upper()
-                if ("Y" or "YES") in restart:
-                    exceptionsafe = EXCEPTIONSAFE(self.function)
-                    exceptionsafe.__call__(*args, **kwargs)
-                elif ("N" or "NO") in restart: pass
-            else:
-                import sys
-                sys.exit()
+        except:
+            print "call to %s failed" % function
+         
 
 
 class ENCODE(object):

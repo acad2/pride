@@ -51,7 +51,8 @@ System.update({"name" : "system",
                             ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
 
 Idle = Process.copy()
-Idle.update({"auto_start" : False})
+Idle.update({"auto_start" : False,
+"sleep_time" : .005})
 
 Task_Scheduler = Process.copy()
 
@@ -111,7 +112,7 @@ Audio_Manager.update({"config_file_name" : "audiocfg"})
 
 # networklibrary
 Server = Base.copy()
-Server.update({"host_name" : socket.gethostname(), 
+Server.update({"host_name" : "localhost", 
 "port" : 0, 
 "backlog" : 50,
 "name" : "", 

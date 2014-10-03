@@ -1,5 +1,6 @@
 import socket
 import select
+import struct
 import errno
 import time
 import defaults
@@ -84,6 +85,8 @@ class Multicast_Receiver(base.Wrapper):
     def __init__(self, *args, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         super(Multicast_Receiver, self).__init__(sock, *args, **kwargs)
+        #if self.reuseaddr:
+        #    self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.bind((self.listener_address, self.port))
         group_option = socket.inet_aton(self.multicast_group)
         multicast_configuration = struct.pack("4sL", group_option, socket.INADDR_ANY)
@@ -140,7 +143,7 @@ class Basic_Authentication_Client(base.Thread):
                 #Event("Network_Manager0", "disconnect", self.connection).post()
             else:
                 self.warning("failed to login. Exiting...", self)
-                Event("System", "delete", self).post()
+                Event("System0", "delete", self).post()
                 raise NotImplementedError
 
                 

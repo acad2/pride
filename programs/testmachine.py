@@ -1,6 +1,7 @@
 import machinelibrary
 
 test_machine = machinelibrary.Machine()
+test_machine.create("interpreter.Shell_Service")
 test_machine.create("interpreter.Shell")
 
 if __name__ == "__main__":

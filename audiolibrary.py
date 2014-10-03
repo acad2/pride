@@ -37,7 +37,7 @@ def initialize_portaudio():
         print "Trying to suppress ALSA configuration errors..."
         with alsa_errors_suppressed():
             portaudio = pyaudio.PyAudio()
-        print "Please ignore any warnings you may have received"
+        print "**Please ignore any warnings you may have received**"
     else:
         portaudio = pyaudio.PyAudio()
     print "...done"
@@ -224,7 +224,7 @@ class Audio_Manager(base.Process):
     defaults = defaults.Audio_Manager
         
     def __init__(self, *args, **kwargs):
-        self.channel_requests = []
+        self.listeners = {}
         super(Audio_Manager, self).__init__(*args, **kwargs)
         try:
             self.load_config_file()       
@@ -232,56 +232,32 @@ class Audio_Manager(base.Process):
             raise
             raw_input("Please run audio_config_utility. No config file found")
             Event("System0", "exit").post()
-        self.network_buffer = {}
-        self.clients_listening_to = {}
-        
-        Event("Network_Manager0", "create", "networklibrary.Server",
-        incoming=self._incoming, outgoing=self._outgoing, on_connection=self._on_connection,
-        name="Audio_Manager", port=40002, host_name="localhost").post()
-        
-    def _incoming(self, connection):
-        self.network_buffer[connection] = connection.recv(2048)
-        
-    def _outgoing(self, connection, data):
-        connection.send(data)
 
-    def _on_connection(self, connection, address): # get which channel they want to listen to
+    def get_channel_info(self, instance): # get which channel they want to listen to
         channel_info = []
         for device in self.objects["PyAudio_Device"]:
             options = dict(**device.options)
             del options["stream_callback"] # can't pickle instancemethod Runtime_Decorator
             options["name"] = device.name
             options["sample_size"] = device.sample_size
-            options = pickle.dumps(options)
             channel_info.append(options)
-        channel_list = "\r".join(channel_info)
-        Event("Network_Manager0", "buffer_data", connection, channel_list).post()
-        self.channel_requests.append(connection)
-        self.network_buffer[connection] = None
+        channel_list = pickle.dumps(channel_info)
+        self.send_to(instance._instance_name, "Device_Info;;" + channel_list)
         
     def load_config_file(self):
         with open(self.config_file_name, "rb") as config_file:
             for device_info in pickle.load(config_file):
                 device = self.create(PyAudio_Device, device_info)
+                self.listeners[device.name] = []
                 device.initialize()
-            
-    def run(self):
-        # receive newly connected clients channel selection
-        for connection in self.channel_requests:
-            response = self.network_buffer[connection]
-            if not response:
-                pass
-            else:
-                self.channel_requests.remove(connection)
-                for selection in response.split("\n"):
-                    device = self.objects["PyAudio_Device"][int(selection)]
-                    device.network_listeners = True
-                    try:
-                        self.clients_listening_to[device.name].append(connection)
-                    except KeyError:
-                        self.clients_listening_to[device.name] = []
-                        self.clients_listening_to[device.name].append(connection)
-                                        
+    
+    def add_listener(self, listener, channel_name):
+        channel = None
+        for device in self.objects["PyAudio_Device"]:
+            if channel_name in device.name:
+                return self.listeners[device.name].append(listener._instance_name)
+        
+    def run(self):                                        
         # get the sound from each device and output it
         for device in self.objects["PyAudio_Device"]:
             device.next_frame()
@@ -294,13 +270,10 @@ class Audio_Manager(base.Process):
         if device.input and device.data:
             sound_chunk = device.data
             device.data = ""
-            #for listener in device.listeners:
-             #   listener.write(sound_chunk)
             if device.recording: #
                 device.file.writeframes(sound_chunk)
-            if device.network_listeners:
-                #sound_chunk = struct.pack("4096s", sound_chunk)
-                for client in self.clients_listening_to[device.name]:
-                    Event("Network_Manager0", "buffer_data", client, sound_chunk).post()    
+            for client in self.listeners[device.name]:
+                #v: print "sending sound to", client
+                self.send_to(client, "%s;;" % str(device.name) + sound_chunk)                    
         elif device.output:
             device.data = device._get_data()
