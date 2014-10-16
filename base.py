@@ -3,7 +3,7 @@ import pickle
 import inspect
 import time
 import sys
-import dill
+#import dill
 from Queue import Queue
 from weakref import proxy, ref
 
