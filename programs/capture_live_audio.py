@@ -3,7 +3,7 @@ import defaults
 
 NO_ARGS, NO_KWARGS = tuple(), dict()
 
-defaults.PyAudio_Device["recording"] = True
+defaults.Audio_Input["recording"] = True
 defaults.System["startup_processes"] += ("audiolibrary.Audio_Manager", NO_ARGS, NO_KWARGS), 
 
 machine = machinelibrary.Machine()

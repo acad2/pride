@@ -1,9 +1,10 @@
 import mmap
 import pickle
 import inspect
-from time import time
+import time
+import sys
+import dill
 from Queue import Queue
-from sys import modules
 from weakref import proxy, ref
 
 import defaults
@@ -22,7 +23,8 @@ class Event(object):
         self.method = method # any method can be supplied
         self.args = args # any arguments can be supplied
         self.kwargs = kwargs # any keyword arguments can be supplied
-        self.created_at = time()
+        self.created_at = time.clock()
+        
         try:
             self.component = kwargs.pop("component")
         except KeyError:
@@ -30,10 +32,11 @@ class Event(object):
         try:
             self.priority = kwargs.pop("priority")
         except KeyError:
-            self.priority = 16 # 16/1000 is about 60 fps
-                    
+            self.priority = 16 # 16/1000 is about 60 fps not implemented
+               
     def post(self):
         #vv: print "posted", self, self.args, self.kwargs
+        #Component_Memory["Event_Handler0"].write(dill.dumps(self) + "delimiter")
         Event.events.put(self)
         
     def __str__(self):
@@ -49,6 +52,7 @@ class Event(object):
         events = Event.events
         Event.events = Queue()
         return events 
+        
         
 class Docstring(object):
     
@@ -173,7 +177,7 @@ class Base(object):
                 module, _class = __name__, instance_type
             finally:
                 try:
-                    module = modules[module]
+                    module = sys.modules[module]
                 except KeyError:
                     module = __import__(module)
                 instance_type = getattr(module, _class)
@@ -185,7 +189,7 @@ class Base(object):
             #print "attempting to instantiate", instance_type, args, kwargs
             instance = instance_type(*args, **kwargs)
         except:
-            raise
+            #raise # uncomment when developing new things!
             self.warning("Failed to instantiate %s, wrapping" % instance_type, "Notification:")
             instance = instance_type(*args)
             instance = Wrapper(instance, **kwargs)
@@ -195,7 +199,7 @@ class Base(object):
         name = class_name + str(number)
         instance._instance_number = number
         instance._instance_name = name
-        memory = mmap.mmap(-1, 8096*2)        
+        memory = mmap.mmap(-1, instance.memory_size)        
         Component_Resolve[name] = instance
         Component_Memory[name] = memory        
         return instance
@@ -225,22 +229,23 @@ class Base(object):
                 arg.delete()
 
     def send_to(self, component_name, message):
-        #vv: print "sending to", component_name, len(message)
-        #vvv: message
-        Component_Memory[component_name].write(message+"|$|")
+        #memory = Component_Memory[component_name]
+        #memory.write(message+"delimiter")
+       # memory.flush()
+        Component_Memory[component_name].write(message+"delimiter")
         
     def read_messages(self):
         memory = Component_Memory[self._instance_name]
-        data = memory.read(8096*2)
+        memory.seek(0)
+        data = memory.read(self.memory_size)
         memory.seek(0)
         if data.replace("\x00", ""):
-            size = len(data)
+            size = len(data)   
+            messages = data.split("delimiter")[:1]
             memory.write("\x00"*size)
-            memory.seek(0)       
-            messages = data.split("|$|")[:1]
+            memory.seek(0)
         else:
-            messages = []
-        #vv: print "returning messages", messages
+            messages = []        
         return messages
         
     def warning(self, message="Error_Code", level="Warning", callback=None, callback_event=None):
@@ -343,7 +348,7 @@ class Wrapper(Base):
 
         [super(Wrapper, self).__setattr__(attribute, value) for attribute, value in kwargs.items()]
         
-
+            
 class Process(Base):
     """a base process for processes to subclass from. Processes are managed
     by the system. The start method begins a process while the run method contains
@@ -460,7 +465,7 @@ class Runtime_Decorator(object):
             
     def _get_module(self, module_name):
         try: # attempt to load the module if it exists already
-            module = modules[module_name]
+            module = sys.modules[module_name]
         except KeyError: # import it if it doesn't
             module = __import__(module_name)
         finally:

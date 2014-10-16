@@ -218,6 +218,7 @@ class Shell_Service(base.Process):
         try:
             exec code in locals(), globals()
         except BaseException as error:
+            sys.stdout = self.swap_file # can be changed by code and not changed back
             if type(error) == SystemExit:
                 raise
             else:

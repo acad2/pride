@@ -1,4 +1,5 @@
 import pyaudio
+
 font = time = Surface = NotImplemented
 import struct
 import socket
@@ -10,10 +11,10 @@ R, G, B = 180, 180, 180
 typeface = 'arial'
 NO_ARGS = tuple()
 NO_KWARGS = dict()
-PROCESSOR_COUNT = cpu_count()
+PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-Base = {}
+Base = {"memory_size" : 8096}
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
@@ -26,15 +27,17 @@ Hardware_Device = Base.copy()
 
 # machinelibrary
 
-Event = Base.copy()
+Timer = Base.copy()
 
 Event_Handler = Hardware_Device.copy()
-Event_Handler.update({"number_of_processors" : PROCESSOR_COUNT})
+Event_Handler.update({"number_of_processors" : PROCESSOR_COUNT,
+"idle_time" : .001})
 
 Processor = Hardware_Device.copy()
 
 Machine = Base.copy()
-Machine.update({"processor_count" : PROCESSOR_COUNT,
+Machine.update({"status" : "",
+"processor_count" : PROCESSOR_COUNT,
 "hardware_configuration" : (("machinelibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
 "system_configuration" : (("systemlibrary.System", NO_ARGS, NO_KWARGS), )})
 
@@ -44,15 +47,10 @@ Keyboard = Hardware_Device.copy()
 # systemlibrary
 System = Base.copy()
 System.update({"name" : "system",
-"status" : "initializing",
+"status" : "",
 "hardware_configuration" : ("machinelibrary.Keyboard", ),
-"startup_processes" : (("systemlibrary.Idle", NO_ARGS, NO_KWARGS),
-                            ("networklibrary.Network_Manager", NO_ARGS, NO_KWARGS),
-                            ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
-
-Idle = Process.copy()
-Idle.update({"auto_start" : False,
-"sleep_time" : .005})
+"startup_processes" : (("networklibrary.Network_Manager", NO_ARGS, NO_KWARGS),
+                       ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
 
 Task_Scheduler = Process.copy()
 
@@ -91,21 +89,29 @@ Shell_Service.update({"host_name" : "0.0.0.0",
 "backup_write" : None}) 
 
 # audiolibrary
+
+Wav_File = Base.copy()
+Wav_File.update({"mode" : "rb",
+"filename" : "",
+"repeat" : False})
+
 PyAudio_Device = Base.copy()
 PyAudio_Device.update({"format" : pyaudio.paInt16,
 "frames_per_buffer" : 0,
 "data" : "",
-"input" : False,
-"output" : False,
-"recording" : False,
-"network_listeners" : False})
+"recording" : False})
+
+Audio_Input = PyAudio_Device.copy()
+Audio_Input.update({"input" : True})
+
+Audio_Output = PyAudio_Device.copy()
+Audio_Output.update({"output" : True, 
+"mute" : False})
 
 Audio_Configuration_Utility = Process.copy()
 Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
-"mode" : ("input", "mode"),
-"auto_start" : False,
-"input_types" : ("input", "capture", "mic"),
-"output_types" : ("output", "speaker", "headphones")})
+"mode" : ("input",),
+"auto_start" : False})
 
 Audio_Manager = Process.copy()
 Audio_Manager.update({"config_file_name" : "audiocfg"})

@@ -20,33 +20,7 @@ class Task(base.Base):
         super(Task, self).__init__(*args, **kwargs)
         
    
-class Timer(base.Base):
-    
-    
-    def __init__(self, wait_time, method, *args, **kwargs):
-        self.parent = kwargs.pop("parent")
-        self.parent_weakref = kwargs.pop("parent_weakref")
-        super(Timer, self).__init__(wait_time=wait_time, method=method,
-        args=args, kwargs=kwargs)
-        self.parent.threads[self] = self.new_thread()
-        self.recurring = True
-        _time = time.time()
-        self.target_time = _time+self.wait_time
-                
-        if not hasattr(self, "args"):
-            self.args = tuple()
-        if not hasattr(self, "kwargs"):
-            self.kwargs = {}
-            
-    def new_thread(self):
-        while time.time() <= self.target_time:
-            yield
-        self.method(*self.args, **self.kwargs)
-        if self.recurring:
-            self.parent.threads[self] = self.new_thread()
-            self.target_time = time.time()+self.wait_time
-        yield
-                     
+                  
             
 class Task_Scheduler(base.Process):
     
@@ -54,11 +28,11 @@ class Task_Scheduler(base.Process):
     
     def __init__(self, *args, **kwargs):
         super(Task_Scheduler, self).__init__(*args, **kwargs)
-        self.threads = {}
+        self.objects["Timer"] = []
                 
     def run(self):
-        for thread in self.threads.values():
-            next(thread)
+        for timer in self.objects["Timer"]:
+            timer.run()
                 
         if self in self.parent.objects[self.__class__.__name__]:
             Event("Task_Scheduler0", "run").post()

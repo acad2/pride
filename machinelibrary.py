@@ -3,6 +3,7 @@ import sys
 import os
 import atexit
 import Queue
+import time
 from operator import attrgetter
 
 import base
@@ -17,23 +18,55 @@ except:
     atexit.register(posixkeyboard.toggle_echo, sys.stdin.fileno(), True)
  
 
+class Timer(base.Base):
+    
+    defaults = defaults.Timer
+    
+    def __init__(self, wait_time, method, *args, **kwargs):
+        try: # created via .create syntax
+            self.parent = kwargs.pop("parent")
+            self.parent_weakref = kwargs.pop("parent_weakref")
+        except KeyError:
+            pass
+        super(Timer, self).__init__()
+        self.wait_time = wait_time
+        self.method = method
+        self.target_time = time.time() + self.wait_time
+        if not args:
+            args = tuple()
+        if not kwargs:
+            kwargs = {}
+        self.args = args
+        self.kwargs = kwargs
+        
+    def run(self):
+        if time.time() < self.target_time:
+            return
+        results = self.method(*self.args, **self.kwargs)
+        self.target_time = time.time() + self.wait_time
+        return results
+   
+   
 class Processor(base.Hardware_Device):
     
     defaults = defaults.Processor
     
     def __init__(self, *args, **kwargs):
+        self.execution_times = {}
         super(Processor, self).__init__(*args, **kwargs)
         
     def run(self):
-        #serialized_events = os.read(self.buffer, 8096)
-        #events = pickle.loads(serialized_events)
-        events = getattr(Event_Handler, self._instance_name + "_queue")
+        self.events = sorted(getattr(Event_Handler, self._instance_name + "_queue"), key=attrgetter("priority"))
         setattr(Event_Handler, "%s_queue" % self._instance_name, [])
         #v: print "got events from %s_queue" % self._instance_name
-        for event in events:
-            #vv: print self._instance_name, "executing", event, event.args, event.kwargs
+        #v: print "processing events: ", [str(event) for event in self.events]
+        for event in self.events:
+            frequency = event.priority * .001
+            #self.create(Timer, frequency,  getattr(
+            #v: print "executing code", str(event)
             event.execute_code()
-            
+            #self.execution_times[(event.component_name, event.method)] = time.clock() - event.execute_at
+
             
 class Event_Handler(base.Hardware_Device):
     """Dispatches events to Processors via pipes."""
@@ -43,42 +76,47 @@ class Event_Handler(base.Hardware_Device):
     def __init__(self, *args, **kwargs):
         self.processor_events = {}
         super(Event_Handler, self).__init__(*args, **kwargs)
-        self.thread = self._new_thread()
-        
+                           
     def run(self):
-        return next(self.thread)
-        
-    def _new_thread(self): # cannot be perpetuated by events  
         #v: print self, "running"
-        while True:
-            self.prepare_queue()       
-            while not self.queue_empty:
-                for processor_number in range(self.number_of_processors):
-                    event = self.get_event()
-                    if not event.component:
-                        event.component = base.Component_Resolve[event.component_name]
-                    self.processor_events["Processor%s" % processor_number].append(event)
-            
-            for processor_number, event_list in self.processor_events.items():
-                setattr(Event_Handler, "%s_queue" % processor_number, sorted(event_list, key=attrgetter("priority")))
-                self.processor_events[processor_number] = []
-                #v: print "Distributed %s events to %s" % (len(event_list), processor_number)
-                #vv: print "\t" + [str(item) for item in event_list]
-                #serialized_events = pickle.dumps(event_list)
-                #os.write(base.Components["Processor"+processor_number], serialized_events)                
-            yield
-            
-    def prepare_queue(self):      
-        self.frame_queue = base.Event._get_events()
+        #self.get_frame_time()
+        self.prepare_queue()   
+        while not self.queue_empty:
+            for processor_number in range(self.number_of_processors):
+                event = self.get_event()
+                if not event.component:
+                    event.component = base.Component_Resolve[event.component_name]
+                self.processor_events["Processor%s" % processor_number].append(event)
+          
+        for processor_number, event_list in self.processor_events.items():
+            setattr(Event_Handler, "%s_queue" % processor_number, event_list)
+            self.processor_events[processor_number] = []
+            #v: print "Distributed %s events to %s" % (len(event_list), processor_number)
+            #vv: print "\t" + [str(item) for item in event_list]          
+        
+        time.sleep(self.idle_time)
+     
+    def get_frame_time(self):
+        old_time = self.frame_times.pop(self.frame_index)
+        self.frame_times[self.frame_index] = new_time = time.time()
+        
+    def prepare_queue(self):        
+        frame_queue = base.Event._get_events()
+        event_list = []
+        while not frame_queue.empty():
+            event_list.append(frame_queue.get_nowait())
+        self.frame_queue = sorted(event_list, key=attrgetter("priority"))
         self.queue_empty = False           
                 
     def get_event(self):
         # returns a single event from the frame queue
+        #v: print "getting event from frame queue", len(self.frame_queue)
         try:
-            event = self.frame_queue.get_nowait()
-        except Queue.Empty: 
+            event = self.frame_queue.pop(0)
+        except IndexError: 
             self.queue_empty = True
-            event = Event("Idle0", "run")
+            #v: print "queue empty!"
+            event = Event("Event_Handler0", "run", component=self, priority=0)
         return event
         
             
@@ -91,6 +129,7 @@ class Machine(base.Base):
   
         base.Component_Resolve["Machine"] = self
         self.event_handler = self.create(Event_Handler)
+        self.status = "running"
         
         for processor_number in range(self.processor_count):
             self.event_handler.processor_events["Processor%s" % processor_number] = []
@@ -100,20 +139,18 @@ class Machine(base.Base):
             hardware_device = self.create(device_name, *args, **kwargs)
             
         for system_name, args, kwargs in self.system_configuration:
-            system = self.create(system_name, *args, **kwargs)
-            for hardware_device in system.hardware_configuration:
-                system.add(self.objects[hardware_device.split(".")[1]][0])                
-        self.thread = self._run()
+            system = self.create(system_name, *args, **kwargs)             
+        
+    def create(self, *args, **kwargs):
+        instance = super(Machine, self).create(*args, **kwargs)
+        hardware_configuration = getattr(instance, "hardware_configuration", None)
+        if hardware_configuration:
+            for hardware_device in hardware_configuration:
+                instance.add(self.objects[hardware_device.split(".")[1]][0])
+        return instance
         
     def run(self):
-        while True:
-            #vv: print "nexting machine thread"
-            next(self.thread)
-        
-    def _run(self):
-        while True:
-            #vv: print "processing frame"
-            self.event_handler.run()
+        self.event_handler.run()
+        while self.status:
             for processor in self.objects["Processor"]:
                 processor.run()
-            yield

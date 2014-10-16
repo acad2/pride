@@ -199,14 +199,10 @@ class Network_Manager(base.Process):
     def buffer_data(self, connection, data, to=None):
         if to:
             data = (to, data)
-        self.write_buffer[connection] = data
-        """chunk = data[:2048]
-        if to:
-            chunk = (to, chunk)
-        self.write_buffer[connection] = chunk
-        data = data[2048:]
-        if data:
-            Event("Network_Manager0", "buffer_data", connection, data, to).post()"""
+        try:
+            self.write_buffer[connection].append(data)
+        except KeyError:
+            self.write_buffer[connection] = [data]
             
     def debuffer_data(self, connection):
         try:
@@ -297,20 +293,20 @@ class Network_Manager(base.Process):
                         self.warning("EAGAIN error reading %s" % sock)
                         
     def handle_writes(self):
-        for sock in self.writable_sockets: 
-            if self.write_buffer.has_key(sock): # only write if there's data
-                try:
-                    sock.outgoing(sock, self.write_buffer[sock])
-                except socket.error as error:
-                    if error.errno == CONNECTION_WAS_ABORTED:
-                        self.warning("Failed to send %s on %s" % (self.write_buffer[sock], sock), "%s" % error)
-                        sock.delete()
-                    elif error.errno == 11: # EAGAIN on unix
-                        self.warning("EAGAIN error when writing to %s" % sock)
-                else:
-                    del self.write_buffer[sock]            
-            else: 
-                pass                  
+        for sock in self.writable_sockets:
+            messages = self.write_buffer.get(sock)
+            if messages:
+                for index, message in enumerate(messages):
+                    try:
+                        sock.outgoing(sock, message)
+                    except socket.error as error:
+                        if error.errno == CONNECTION_WAS_ABORTED:
+                            self.warning("Failed to send %s on %s" % (self.write_buffer[sock], sock), "%s" % error)
+                            sock.delete()
+                        elif error.errno == 11: # EAGAIN on unix
+                            self.warning("EAGAIN error when writing to %s" % sock)
+                    else:
+                        del self.write_buffer[sock][index]
         
    
 class Service_Listing(base.Process):

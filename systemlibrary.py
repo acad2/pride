@@ -42,29 +42,7 @@ class System(base.Base):
      
     def run(self):
         pass    
-        
-        
-class Idle(base.Process):
-    """the system idle process. can be used to do maintainence during downtime"""
-    defaults = defaults.Idle
-    
-    def __init__(self, *args, **kwargs):
-        super(Idle, self).__init__(*args, **kwargs)
-        self.before_sleep = self.after_sleep = []
-        
-    def run(self):
-        for suspended_call in self.after_sleep:
-            print "suspending %s" % suspended_call.func_name
-            suspended_call()
-        time.sleep(self.sleep_time)
-        for restarted_call in self.before_sleep:
-            print "restarting %s" % restarted_call.func_name
-            restarted_call()
-        
-    def suspend_and_resume(self, method_one, method_two):
-        self.before_sleep.append(method_one)
-        self.after_sleep.append(method_two)
-        
+                
         
 class Application(base.Process):
     """a base application object to subclass from.

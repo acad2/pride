@@ -57,44 +57,9 @@ class Timed(object):
             raise
         else:
             end = timer()
-            time = end - start
-            return time, result
-        
-
-
-"""class Packed(object):
-
-        def __init__(self, init_function):
-                self.init_function = init_function
-
-        def __call__(self, *args, **kwargs):
-                instance = self.init_function(*args, **kwargs)
-                Display.pack(instance)
-                return instance"""
-
-"""class Filter(object):
-
-        def __init__(self, disallowed=None, callback=None):
-                self.disallowed_arguments = disallowed
-                self.callback = callback
-
-        def __call__(self, function):
-                def wrapped_function(*args, **kwargs):
-                        new_args = [arg for arg in args]
-                        for disallowed in self.disallowed_arguments:
-                                print "checking for disallowed argument %s against" % disallowed, args
-                                if disallowed in args:
-                                        print "found disallowed argument. performing callback"
-                                        if hasattr(self, "callback"):
-                                                self.callback[0](*self.callback[1:])
-                                        else:
-                                                new_args.remove(
-                        else: # if nothing was disallowed
-                                print "all arguments ok"
-                                function(*args, **kwargs)
-                return wrapped_function"""
-
-                
+            run_time = end - start
+            return run_time, result
+                        
 class Tracer(object):
     
     def __init__(self, function):
@@ -104,7 +69,22 @@ class Tracer(object):
         tracer = trace.Trace(trace=1)
         return tracer.runfunc(self.function, *args, **kwargs) 
           
-  
+    
+class Dump_Source(Tracer):
+    """Tracer decorator that dumps source code to disk instead of writing to sys.stdout."""
+    
+    def __init__(self, function):
+        super(Dump_Source, self).__init__(function)
+        
+    def __call__(self, *args, **kwargs):
+        old_stdout = sys.stdout
+        with open("%s_source.txt" % self.function.func_name, "w") as file:
+            sys.stdout = file
+            super(Dump_Source, self).__call__(*args, **kwargs)
+            sys.stdout = old_stdout
+            file.close()
+            
+            
 class Argument_log(object):
 
     def __init__(self, function):
@@ -113,43 +93,4 @@ class Argument_log(object):
     def __call__(self, *args, **kwargs):
         print "\calling %s with args: %s and kwargs: %s" % (self.function, args, kwargs)
         return self.function(*args, **kwargs)
-        print "call to %s complete" % self.function
-
-
-class EXCEPTIONSAFE(object):
-
-    def __init__(self, function):
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        try:
-            return self.function(*args, **kwargs)
-        except:
-            print "call to %s failed" % function
-         
-
-
-class ENCODE(object):
-    # arbitrary "encoding" decorator. just an example :)
-    # currently only functions as a single decorator
-
-    def __init__(self, function):
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        print "pre encoded args are: ", args
-        new_args = []
-        for arg in args:
-
-            if type(arg) == int:
-                new_args.append(arg*223)
-            elif type(arg) == float:
-                new_args.append(arg*232.2)
-            else:
-                new_args.append(arg)
-                print "string encoding not implemented"
-
-        args = tuple(new_args)
-        print 'post encoded args are:', args
-        self.function(*args, **kwargs)
-
+        print "call to %s complete" % self.function           
