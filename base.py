@@ -14,7 +14,7 @@ Component_Resolve = {}
 
     
 class Event(object):
-
+    
     events = Queue()
             
     def __init__(self, component_name, method, *args, **kwargs):
@@ -128,19 +128,21 @@ class Base(object):
     __metaclass__ = Metaclass
     
     # the default attributes an instance will initialize with.
-    # storing them here makes them modifiable at runtime.
+    # storing them here and using the attribute_setter method
+    # makes them modifiable at runtime and eliminates the need
+    # to type out the usual self.attribute = value statements
     defaults = defaults.Base
         
     # hotkeys should be pygame.locals.key_constant : eventlibrary.Event pairs
     hotkeys = {}
         
     def __init__(self, *args, **kwargs):
-        super(Base, self).__init__()
-        attributes = tuple(self.defaults.items()) + args
-        self.attribute_setter(*attributes, **kwargs)
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the __init__, like so
-        self.objects = {}        
+        self.objects = {}      
+        super(Base, self).__init__()
+        attributes = tuple(self.defaults.items()) + args
+        self.attribute_setter(*attributes, **kwargs)     
     
     def __getattribute__(self, attribute):  
         value = super(Base, self).__getattribute__(attribute)
@@ -189,7 +191,7 @@ class Base(object):
             #print "attempting to instantiate", instance_type, args, kwargs
             instance = instance_type(*args, **kwargs)
         except:
-            #raise # uncomment when developing new things!
+            raise # uncomment when developing new things!
             self.warning("Failed to instantiate %s, wrapping" % instance_type, "Notification:")
             instance = instance_type(*args)
             instance = Wrapper(instance, **kwargs)
@@ -209,8 +211,10 @@ class Base(object):
 
         adds an already existing object to the instances' class name entry in parent.objects.
         """
+        
         if not hasattr(instance, "parent"):
             instance.parent = self # is a reference problem without stm in place
+        #print "adding %s to %s.objects[%s]" % (instance, instance.parent, instance.__class__.__name__)
         try:
             self.objects[instance.__class__.__name__].append(instance)
         except KeyError:
@@ -229,9 +233,6 @@ class Base(object):
                 arg.delete()
 
     def send_to(self, component_name, message):
-        #memory = Component_Memory[component_name]
-        #memory.write(message+"delimiter")
-       # memory.flush()
         Component_Memory[component_name].write(message+"delimiter")
         
     def read_messages(self):

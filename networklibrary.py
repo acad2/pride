@@ -3,9 +3,10 @@ import select
 import struct
 import errno
 import time
+import mmap
+
 import defaults
 import base
-
 Event = base.Event
 
 try:
@@ -18,7 +19,30 @@ except:
     CONNECTION_WAS_ABORTED = errno.ECONNABORTED
     
     
-class Server(base.Wrapper):
+class Connection(base.Wrapper):
+    
+    defaults = defaults.Connection
+    def _get_protocol(self):
+        return (self.on_connection, self.incoming, self.outgoing)
+        
+    def _set_protocol(self, protocol):
+        on_connection, incoming, outgoing = protocol
+        self.on_connection = on_connection
+        self.incoming = incoming
+        self.outgoing = outgoing
+    protocol = property(_get_protocol, _set_protocol)        
+
+    on_connection = None
+    incoming = None
+    outgoing = None
+    def __init__(self, sock=None, *args, **kwargs):     
+        if not sock:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        super(Connection, self).__init__(sock, *args, **kwargs)
+        sock.setblocking(0)
+         
+            
+class Server(Connection):
     """usage: Event("Network_Manager0", "create", "networklibrary.Server",
     incoming=myincoming, outgoing=myoutgoing, on_connection=myonconnection,
     name="My_Server", port=40010).post()"""
@@ -26,10 +50,8 @@ class Server(base.Wrapper):
     defaults = defaults.Server
     
     def __init__(self, *args, **kwargs):
-        super(Server, self).__init__(None, *args, **kwargs)
-        sock = socket.socket(self.socket_family, self.socket_type)
-        self.wrapped_object = sock
-        self.setblocking(0)
+        self.inbound_connection_options = {}
+        super(Server, self).__init__(*args, **kwargs)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
         self.bind((self.host_name, self.port))
         self.listen(self.backlog)        
@@ -37,26 +59,103 @@ class Server(base.Wrapper):
         Event("Service_Listing0", "add_local_service", (self.host_name, self.port), self.name).post()
         
         
-class Outbound_Connection(base.Wrapper):
+class Outbound_Connection(Connection):
     
     defaults = defaults.Outbound_Connection
     
     def __init__(self, *args, **kwargs):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        super(Outbound_Connection, self).__init__(sock, *args, **kwargs)        
-        self.setblocking(0)
+        super(Outbound_Connection, self).__init__(*args, **kwargs)      
         Event("Network_Manager0", "buffer_connection", self, self.target).post()
        
+
+class Download(Outbound_Connection):
+    
+    defaults = defaults.Download
+    
+    def __init__(self, *args, **kwargs):
+        super(Download, self).__init__(*args, **kwargs)
+        if not self.filename:
+            self.warning("Attempted to start a download without a filename to use")
+            self.delete()
+        self.file = open("%s_filename" % self.filename_prefix, "wb")      
         
-class Inbound_Connection(base.Wrapper):
+    def on_connection(self, connection, address):
+        request = ":".join((self.filename, "0", str(self.network_chunk_size)))
+        print "sending download request: ", request
+        Event("Network_Manager0", "buffer_data", connection, request).post()
+        
+    def outgoing(self, connection, data):
+        connection.send(data)
+        
+    def incoming(self, connection):
+        response = connection.recv(self.network_chunk_size)
+        if response:
+            if self.download_in_progress:
+                position, data = response.split(self.delimiter)
+                end = len(data)
+                print "Download received %s bytes of %s" % (end, self.filename)
+                self.filesize += end
+                self.file.seek(int(position))
+                self.file.write(data)
+                self.file.flush()
+                request = ":".join((self.filename, str(end), str(end + self.network_chunk_size)))
+                Event("Network_Manager0", "buffer_data", connection, request).post()
+            else: # response to the request from on_connection containing file size
+                self.file_size = int(response)
+                print "Download started. File size: %s" % self.file_size
+                self.download_in_progress = True
+        else:
+            print "Download complete!"
+            connection.close()
+            self.file.close()
+            
+            
+class Inbound_Connection(Connection):
     
     defaults = defaults.Inbound_Connection
     
     def __init__(self, sock, *args, **kwargs):
         super(Inbound_Connection, self).__init__(sock, *args, **kwargs)
-        self.setblocking(0)
         
-
+ 
+class Upload(Inbound_Connection):
+    
+    defaults = defaults.Upload
+    
+    def __init__(self, *args, **kwargs):
+        super(Upload, self).__init__(*args, **kwargs)
+             
+    def outgoing(self, connection, data):
+        connection.send(data)
+        
+    def incoming(self, connection): 
+        try:
+            filename, start, end = connection.recv(self.network_chunk_size).split(":")
+        except ValueError:
+            self.resource.close()
+            self.delete()
+        print "servicing request for %s: %s-%s" % (filename, start, end)
+        if not self.resource:
+            self.load_file(filename)
+            Event("Network_Manager0", "buffer_data", connection, str(self.file_size)).post()
+        start_int = int(start)
+        end_int = int(end)
+        self.resource.seek(start_int)
+        data = self.resource.read(end_int - start_int)
+        print "sent %s bytes of data" % len(data)
+        message = "dEL!M17&R".join((start, data))
+        Event("Network_Manager0", "buffer_data", connection, message).post() 
+        
+    def load_file(self, filename):
+        _resource = resource = open(filename, "rb")
+        if self.use_mmap:
+            resource = mmap.mmap(_resource.fileno(), len(_resource.read()))
+            _resource.close()       
+        print "loaded resource: %s" % resource
+        self.file_size = len(resource.read())
+        self.resource = resource          
+        
+        
 class UDP_Socket(base.Wrapper):
             
     defaults = defaults.UDP_Socket
@@ -258,8 +357,7 @@ class Network_Manager(base.Process):
                 del self.connection_buffer[sock]
                 sockets.append(sock)
                 Event("Network_Manager0", "delete", sock).post()
-                #sock.warning("Outbound Connection to %s timed out after %s frames" %
-                #(sock.target, sock.timeout))
+                sock.warning("Outbound Connection to %s timed out after %s frames" % (sock.target, sock.timeout))
                 continue
             try: # this is how to properly do a non blocking connect
                 sock.connect(self.connection_buffer[sock])
@@ -275,10 +373,13 @@ class Network_Manager(base.Process):
     def handle_reads(self):
         for sock in self.readable_sockets:
             if sock in self.servers:
-                connection, address = sock.accept() # inbound connection received
-                _connection = self.create(Inbound_Connection, connection,\
-                outgoing=sock.outgoing, incoming=sock.incoming, on_connection=sock.on_connection)
-
+                connection, address = sock.accept() # inbound connection received  
+                options = sock.inbound_connection_options
+                _connection = self.create(sock.inbound_connection_type, connection, **options)
+                for method in ("on_connection", "incoming", "outgoing"):
+                    if not getattr(_connection, method):
+                        setattr(_connection, method, getattr(sock, method))
+                
                 if sock.on_connection: # server method to apply upon connection
                     sock.on_connection(_connection, address)
                 

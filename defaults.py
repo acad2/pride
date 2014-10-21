@@ -1,5 +1,3 @@
-import pyaudio
-
 font = time = Surface = NotImplemented
 import struct
 import socket
@@ -14,7 +12,8 @@ NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-Base = {"memory_size" : 8096}
+Base = {"memory_size" : 8096,
+"network_chunk_size" : 4096}
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
@@ -77,7 +76,7 @@ Shell.update({"username" : "root",
 "auto_login" : True,
 "host_name" : "localhost",
 "port" : 40000,
-"startup_definitions" : ""}) 
+"startup_definitions" : ''}) 
 
 Shell_Service = Process.copy()
 Shell_Service.update({"host_name" : "0.0.0.0", 
@@ -96,8 +95,8 @@ Wav_File.update({"mode" : "rb",
 "repeat" : False})
 
 PyAudio_Device = Base.copy()
-PyAudio_Device.update({"format" : pyaudio.paInt16,
-"frames_per_buffer" : 0,
+PyAudio_Device.update({"format" : 8,
+"frames_per_buffer" : 1024,
 "data" : "",
 "recording" : False})
 
@@ -117,29 +116,36 @@ Audio_Manager = Process.copy()
 Audio_Manager.update({"config_file_name" : "audiocfg"})
 
 # networklibrary
-Server = Base.copy()
+Connection = Base.copy()
+Connection.update({"socket_family" : socket.AF_INET, 
+"socket_type" : socket.SOCK_STREAM})
+
+Server = Connection.copy()
 Server.update({"host_name" : "localhost", 
 "port" : 0, 
-"backlog" : 50,
+"backlog" : 15,
 "name" : "", 
-"incoming" : None, 
-"outgoing" : None, 
-"on_connection" : None, 
-"socket_family" : socket.AF_INET, 
-"socket_type" : socket.SOCK_STREAM,
-"reuse_port" : 0})
-        
-Inbound_Connection = Base.copy()
-Inbound_Connection.update({"incoming" : None, 
-"outgoing" : None, 
-"on_connection" : None})
-
-Outbound_Connection = Base.copy()
-Outbound_Connection.update({"incoming" : None, 
-"outgoing" : None, 
-"on_connection" : None, 
-"as_port" : 0,
+"reuse_port" : 0,
+"inbound_connection_type" : "networklibrary.Inbound_Connection"})
+   
+Outbound_Connection = Connection.copy()
+Outbound_Connection.update({"as_port" : 0,
 "timeout" : 10})
+   
+Inbound_Connection = Connection.copy()
+
+Download = Outbound_Connection.copy()
+Download.update({"filesize" : 0,
+"filename" : '',
+"filename_prefix" : "Download",
+"download_in_progress" : False,
+"network_chunk_size" : Outbound_Connection["network_chunk_size"] + len("dEL!M17&R"),
+"delimiter" : "dEL!M17&R"})
+
+Upload = Inbound_Connection.copy()
+Upload.update({"use_mmap" : False,
+"resource" : None,
+"delimiter" : "dEL!M17&R"})
 
 UDP_Socket = Base.copy()
 UDP_Socket.update({"host_name" : "0.0.0.0",
@@ -170,6 +176,11 @@ Scanner.update({"subnet" : "127.0.0.1",
 "range" : (0, 0, 0, 254),
 "timeout" : 10,
 "priority" : "high"})
+
+# File transfer utility
+File_Transfer_Utility = Base.copy()
+File_Transfer_Utility.update({"port" : 40004})
+
 
 # Guilibrary
 Display = Process.copy()

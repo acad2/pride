@@ -5,7 +5,7 @@ import time
 exit, modules = sys.exit, sys.modules
 from operator import attrgetter, itemgetter
 from weakref import proxy
-from codeop import CommandCompiler
+
 
 import base
 import defaults

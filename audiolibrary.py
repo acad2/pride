@@ -138,12 +138,13 @@ class PyAudio_Device(base.Base):
             self.delete()
             
     def _new_thread(self):
-        stream = self.stream
+        raise NotImplementedError
+        """stream = self.stream
         stream.start_stream()
         while stream.is_active():
             yield
         stream.stop_stream()
-        stream.close() 
+        stream.close()"""
  
 
 class Audio_Input(PyAudio_Device):
@@ -154,10 +155,18 @@ class Audio_Input(PyAudio_Device):
         super(Audio_Input, self).__init__(portaudio_device_info, *args, **kwargs)
         self.channels = portaudio_device_info["maxInputChannels"]
         self.input_device_index = self.index
-        
-    def stream_callback(self, in_data, frame_count, time_info, status):
-        self.data = in_data
-        return (in_data, pyaudio.paContinue)
+    
+    def _new_thread(self):
+        stream = self.stream
+        while self.active:
+            #if stream.get_read_available() >= self.frames_per_buffer:
+                #print "removing %s of available %s frames" % (self.frames_per_buffer, stream.get_read_available())
+            self.data = stream.read(self.frames_per_buffer)#stream.get_read_available())
+            yield   
+    
+    #def stream_callback(self, in_data, frame_count, time_info, status):
+    #    self.data = in_data
+    #    return (in_data, pyaudio.paContinue)
             
 
 class Audio_Output(PyAudio_Device):
@@ -170,12 +179,22 @@ class Audio_Output(PyAudio_Device):
         
         if hasattr(self, "index"):
             self.output_device_index = self.index
-        
-    def stream_callback(self, in_data, frame_count, time_info, status):
+            
+    def _new_thread(self):
+        stream = self.stream
+        while self.active:
+            number_of_frames = stream.get_write_available()
+            data = self.data = self.data_source.read(number_of_frames)
+            if self.mute:
+                data = "\x00" * len(data)
+            stream.write(data)
+            yield 
+            
+    """def stream_callback(self, in_data, frame_count, time_info, status):
         data = self.data = self.data_source.read(frame_count)
         if self.mute:
             data = "\x00" * len(data)
-        return (data, pyaudio.paContinue)
+        return (data, pyaudio.paContinue)"""
             
         
 class Audio_Configuration_Utility(base.Process):
@@ -211,7 +230,6 @@ class Audio_Configuration_Utility(base.Process):
             device_info = PORTAUDIO.get_device_info_by_index(device_number)
             all_devices[device_number] = device_info
             count += 1
-        all_devices[count + 1] = {"name" : "Play a .wav file..."}
         return all_devices
 
     def print_display_devices(self, device_dict):
@@ -297,7 +315,7 @@ class Audio_Manager(base.Process):
         channel_info = []
         for device in self.audio_devices:
             options = dict(**device.options)
-            del options["stream_callback"] # can't pickle instancemethod Runtime_Decorator
+            #del options["stream_callback"] # can't pickle instancemethod Runtime_Decorator
             options["name"] = device.name
             options["sample_size"] = device.sample_size
             channel_info.append(options)
