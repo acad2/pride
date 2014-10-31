@@ -60,6 +60,8 @@ Support
 If you are having issues, please let me know. I can be reached at erose1337@hotmail.com.
 The project is currently in development.
 
+Development and recipes can found at http://ellasawrus-rex.tumblr.com/
+
 License
 -------
 
