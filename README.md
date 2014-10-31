@@ -5,7 +5,7 @@ The python metaprogramming framework aspires to enable effortless, expeditious
 software development. Paint a big picture quickly with good organization!
 
 Utilizing a pure python virtual machine and the framework api for it, an end 
-user can tie together a program and launch a vm in just a few lines of code:
+user can tie together a program and launch a machine in just a few lines of code:
 
     import machinelibrary
     import defaults
