@@ -23,22 +23,22 @@ Features
 --------
 A small slice of what all is available:
 
-Concurrency for vm processes is managed automatically and performed in serial within a 
+- Concurrency for vm processes is managed automatically and performed in serial within a 
 single physical thread/process.
     
-Fully object oriented design combines with a simple messaging scheme to makes global variables 
+- Fully object oriented design combines with a simple messaging scheme to makes global variables 
 and locking mechanisms seldom needed.
     
-Almost anything can be accomplished at runtime. This includes the ability define/create 
+- Almost anything can be accomplished at runtime. This includes the ability define/create 
 new processes and to modify/extend/pause/delete existing ones.
  
-Specify decorators, context managers, and monkey patches via keyword argument to any method call. 
-        
-A runtime interactive interprter. Allows you to play with all of the above concepts while your 
+- Specify decorators, context managers, and monkey patches via keyword argument to any individual method call. 
+
+- Useful docstrings, even if the author neglected or declined to write one.
+
+- A runtime interactive interprter. Allows you to play with all of the above concepts while your 
 application(s) are running. Allows for remote login which provides a ready to go, customizable 
 command line interface for your application(s) or server(s).
-    
-Useful docstrings - even if the author neglected or declined to write one.
 
 Installation
 ------------
@@ -67,12 +67,13 @@ The project is licensed under the GNU license.
 
 Dependencies
 -------
-A: Python 2.7 and:
-   Currently:
-    (optional) audiolibrary.py utilizes the PyAudio module, or pyalsaaudio on linux
-   Future/Expected:
-    (optional) pysdl2 - reintroduction of display/graphical applications
-   Future/Possibly:
-    (optional) dill - introduction of distributed computing, depends on pickleability of framework objects
-   Previously:
-    pygame - pre-machine layer graphical applications
+
+This project utilizes Python 2.7. External dependencies may be required depending on intended use:
+   
+- Currently: (optional) audiolibrary.py utilizes the PyAudio module, or pyalsaaudio on linux
+   
+- Future/Expected: (optional) pysdl2 - reintroduction of display/graphical applications
+
+- Future/Possibly: (optional) dill - introduction of distributed computing, depends on pickleability of framework objects
+   
+- Previously: pygame - pre-machine layer graphical applications
