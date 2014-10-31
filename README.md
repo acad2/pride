@@ -22,22 +22,23 @@ user can tie together a program and launch a vm in just a few lines of code:
 Features
 --------
 A small slice of what all is available:
-    Concurrency for vm processes is managed automatically and performed in serial within a 
-    single physical thread/process.
+
+Concurrency for vm processes is managed automatically and performed in serial within a 
+single physical thread/process.
     
-    Fully object oriented design combines with a simple messaging scheme to makes global variables 
-    and locking mechanisms seldom needed.
+Fully object oriented design combines with a simple messaging scheme to makes global variables 
+and locking mechanisms seldom needed.
     
-    Almost anything can be accomplished at runtime. This includes the ability define/create 
-    new processes and to modify/extend/pause/delete existing ones.
+Almost anything can be accomplished at runtime. This includes the ability define/create 
+new processes and to modify/extend/pause/delete existing ones.
  
-    Specify decorators, context managers, and monkey patches via keyword argument to any method call. 
+Specify decorators, context managers, and monkey patches via keyword argument to any method call. 
         
-    A runtime interactive interprter. Allows you to play with all of the above concepts while your 
-    application(s) are running. Allows for remote login which provides a ready to go, customizable 
-    command line interface for your application(s) or server(s).
+A runtime interactive interprter. Allows you to play with all of the above concepts while your 
+application(s) are running. Allows for remote login which provides a ready to go, customizable 
+command line interface for your application(s) or server(s).
     
-    Useful docstrings - even if the author neglected or declined to write one.
+Useful docstrings - even if the author neglected or declined to write one.
 
 Installation
 ------------
