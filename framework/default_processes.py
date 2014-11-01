@@ -1,4 +1,4 @@
-#   mpf.remote_connection - connect to another virtual machines interpreter service
+#   mpf.default_processes - constants - entries are useful for setting up new vms
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -15,23 +15,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import machinelibrary
-import sys
-import defaults
+NO_KWARGS = dict()
+NO_ARGS = tuple()
 
-NO_ARGS, NO_KWARGS = tuple(), dict()
-try:
-    host = sys.argv[1]
-    port = sys.argv[2]
-except IndexError:
-    host = raw_input("Enter host name: ")
-    port = raw_input("Enter port: ")
-print "Attempting connection to %s:%s" % (host, port)
+# audiolibrary
+AUDIO_MANAGER = ("audiolibrary.Audio_Manager", NO_ARGS, NO_KWARGS)
+AUDIO_CONFIGURATION_UTILITY = ("audiolibrary.Audio_Configuration_Utility", NO_ARGS, NO_KWARGS)
 
-options = {"host_name" : host,
-           "port" : int(port)}
-defaults.System["startup_processes"] += ("interpreter.Shell", NO_KWARGS, options),
-machine = machinelibrary.Machine()
+# interpreter
+SHELL_SERVICE = ("interpreter.Shell_Service", NO_ARGS, NO_KWARGS)
+SHELL = ("interpreter.Shell", NO_ARGS, NO_KWARGS)
 
-if __name__ == "__main__":
-    machine.run()
+# utilities
+FILE_MANAGER = ("utilities.File_Manager", NO_ARGS, NO_KWARGS)

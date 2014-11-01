@@ -1,4 +1,4 @@
-#   mpf.remote_connection - connect to another virtual machines interpreter service
+#   mpf.capture_live_audio - records a .wav from the microphone
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -16,21 +16,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import machinelibrary
-import sys
 import defaults
+from default_processes import *
 
-NO_ARGS, NO_KWARGS = tuple(), dict()
-try:
-    host = sys.argv[1]
-    port = sys.argv[2]
-except IndexError:
-    host = raw_input("Enter host name: ")
-    port = raw_input("Enter port: ")
-print "Attempting connection to %s:%s" % (host, port)
+#defaults.Audio_Manager["config_file_name"] = "audiocfg"
+defaults.Audio_Input["record_to_disk"] = True
+defaults.System["startup_processes"] += (AUDIO_MANAGER, ) 
 
-options = {"host_name" : host,
-           "port" : int(port)}
-defaults.System["startup_processes"] += ("interpreter.Shell", NO_KWARGS, options),
 machine = machinelibrary.Machine()
 
 if __name__ == "__main__":

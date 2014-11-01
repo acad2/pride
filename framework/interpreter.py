@@ -1,3 +1,20 @@
+#   mpf.interpreter - python interpreter with remote access
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import sys
 from codeop import CommandCompiler
 
@@ -13,8 +30,8 @@ class Shell(base.Process):
     compile = CommandCompiler()
     hotkeys = {}
     
-    def __init__(self, *args, **kwargs):
-        super(Shell, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Shell, self).__init__(**kwargs)
         self.line = []
         self.lines = []
         options = {"target" : (self.host_name, self.port),
@@ -23,42 +40,21 @@ class Shell(base.Process):
         "on_connection" : self.on_connection}        
         
         self.connection = self.create("networklibrary.Outbound_Connection", **options)  
-    
-    def run(self):    
+        self.keyboard = self.create("machinelibrary.Keyboard")
         
+    def run(self):        
         if self.network_buffer:
             sys.stdout.write(self.network_buffer+self.prompt)
             self.network_buffer = None
             
-        if self.parent.objects["Keyboard"][0].input_waiting(): # msvcrt.kbhit
-            character = self.parent.objects["Keyboard"][0].get_input() # msvcrt.getwch
-            if character == "\t": # don't even try to deal with tabs
-                character = "    "            
-
-            if character == u'\r':
+        if self.keyboard.input_waiting():
+            character = self.keyboard.get_character()     
+            if character == u'\n':
                 self.handle_return() 
-            elif character == u'\b':
-                sys.stdout.write(character)
-                self.handle_backspace()
             else:
-                sys.stdout.write(character) 
                 self.line.append(character)
-            
-        Event(self._instance_name, "run", component=self).post()
         
-    def handle_backspace(self):
-        line = ''.join(self.line)
-        if line != u"\n":
-            try:
-                char = self.line.pop()
-                if char == "    ":
-                    sys.stdout.write(" \b\b\b\b")
-                else:
-                    sys.stdout.write(" \b")
-            except IndexError:
-                sys.stdout.write(" ")
-        else:
-            sys.stdout.write(" ")
+        Event(self._instance_name, "run", component=self).post()
             
     def handle_return(self):
         line = ''.join(self.line)
@@ -67,7 +63,6 @@ class Shell(base.Process):
             self.definition = False
         self.lines.append(line+"\n")
         lines = "".join(self.lines)
-        sys.stdout.write("\n")
         try:
             code = self.compile(lines, "<stdin>", "exec")
         except (SyntaxError, OverflowError, ValueError) as error: # did not compile
@@ -81,7 +76,7 @@ class Shell(base.Process):
             if code and not self.definition:
                 self.prompt = ">>> "
                 self.lines = []
-                Event("Network_Manager0", "buffer_data", self.connection, lines).post()
+                Event("Asynchronous_Network0", "buffer_data", self.connection, lines).post()
             else:
                 self.definition = True
                 self.prompt = "... "
@@ -115,7 +110,7 @@ class Shell(base.Process):
                 except:
                     print "startup definitions failed to compile"                    
                 else:
-                    Event("Network_Manager0", "buffer_data", self.connection, self.startup_definitions+"\n").post()
+                    Event("Asynchronous_Network0", "buffer_data", self.connection, self.startup_definitions+"\n").post()
                     sys.stdout.write("Attempting to compile startup definitions...\n%s" % self.prompt)
         else:
             Event(self._instance_name, "login", component=self).post()
@@ -128,8 +123,8 @@ class Shell_Service(base.Process):
     defaults = defaults.Shell_Service
     compile = CommandCompiler()
     
-    def __init__(self, *args, **kwargs):
-        super(Shell_Service, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Shell_Service, self).__init__(**kwargs)
         self.line = []
         self.lines = []
         self.login_stage = {}
@@ -140,9 +135,13 @@ class Shell_Service(base.Process):
         self.swap_file = open("sssf", "w+")
         self.log_file = open("%s log" % self.__class__.__name__, "w")
         
-        Event("Network_Manager0", "create", "networklibrary.Server", \
-        incoming=self.read_socket, outgoing=self.write_socket, on_connection=self.on_connection, \
-        name="Remote_Console_Service", host_name=self.host_name, port=self.port).post()
+        options = {"incoming" : self.read_socket,
+                   "outgoing" : self.write_socket,
+                   "on_connection" : self.on_connection,
+                   "name" : "Remote_Console_Service",
+                   "interface" : self.interface,
+                   "port" : self.port}
+        Event("Asynchronous_Network0", "create", "networklibrary.Server", **options).post()
                 
     def on_connection(self, connection, address):
         self.network_buffer[connection] = None
@@ -166,7 +165,7 @@ class Shell_Service(base.Process):
                 response = "Welcome %s from (%s)" % (username, address)\
                 +"\nPython %s on %s\n%s\n(%s)\n" % \
                 (sys.version, sys.platform, self.copyright, self.__class__.__name__)
-                Event("Network_Manager0", "buffer_data", login_thread.connection, response).post()
+                Event("Asynchronous_Network0", "buffer_data", login_thread.connection, response).post()
                 self.login_stage[address] = (username, "online/active")
                 self.network_buffer[login_thread.connection] = ""
                 self.login_threads.remove(login_thread)
@@ -199,7 +198,7 @@ class Shell_Service(base.Process):
         results = sys.stdout.read()
         if results:
             self.log_file.write("Results: " + results)
-            Event("Network_Manager0", "buffer_data", connection, results).post()
+            Event("Asynchronous_Network0", "buffer_data", connection, results).post()
         sys.stdout.seek(0)
         sys.stdout.truncate() # delete contents
         sys.stdout = sys.__stdout__
@@ -227,4 +226,4 @@ class Shell_Service(base.Process):
     def __del__(self):
         for connection in self.network_buffer.keys():
             print "informing %s that %s is shutting down" % (connection.getpeername(), self)
-            Event("Network_Manager0", "buffer_data", connection, "Service shutting down").post()
+            Event("Asynchronous_Network0", "buffer_data", connection, "Service shutting down").post()

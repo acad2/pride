@@ -1,9 +1,26 @@
+#   mpf.defaults - config file - contains attributes:values for new instances
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 font = time = Surface = NotImplemented
 import struct
 import socket
 from traceback import format_exc
 from multiprocessing import cpu_count
-
+from StringIO import StringIO
 SCREEN_SIZE = [800, 600]
 R, G, B = 180, 180, 180
 typeface = 'arial'
@@ -43,13 +60,17 @@ Machine.update({"status" : "",
 # inputlibrary
 Keyboard = Hardware_Device.copy()
 
+# voipmessenger
+Voip_Messenger = Process.copy()
+Voip_Messenger.update({"port" : 40100})
+
 # systemlibrary
 System = Base.copy()
 System.update({"name" : "system",
 "status" : "",
 "hardware_configuration" : ("machinelibrary.Keyboard", ),
-"startup_processes" : (("networklibrary.Network_Manager", NO_ARGS, NO_KWARGS),
-                       ("eventlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
+"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS),
+                       ("machinelibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
 
 Task_Scheduler = Process.copy()
 
@@ -79,7 +100,7 @@ Shell.update({"username" : "root",
 "startup_definitions" : ''}) 
 
 Shell_Service = Process.copy()
-Shell_Service.update({"host_name" : "0.0.0.0", 
+Shell_Service.update({"interface" : "0.0.0.0", 
 "port" : 40000, 
 "prompt" : ">>> ", 
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
@@ -98,14 +119,16 @@ PyAudio_Device = Base.copy()
 PyAudio_Device.update({"format" : 8,
 "frames_per_buffer" : 1024,
 "data" : "",
-"recording" : False})
+"record_to_disk" : False})
 
 Audio_Input = PyAudio_Device.copy()
 Audio_Input.update({"input" : True})
 
 Audio_Output = PyAudio_Device.copy()
 Audio_Output.update({"output" : True, 
-"mute" : False})
+"mute" : False,
+"data_source" : StringIO(),
+})
 
 Audio_Configuration_Utility = Process.copy()
 Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
@@ -113,7 +136,8 @@ Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
 "auto_start" : False})
 
 Audio_Manager = Process.copy()
-Audio_Manager.update({"config_file_name" : "audiocfg"})
+Audio_Manager.update({"config_file_name" : '',
+"use_defaults" : True})
 
 # networklibrary
 Connection = Base.copy()
@@ -121,7 +145,7 @@ Connection.update({"socket_family" : socket.AF_INET,
 "socket_type" : socket.SOCK_STREAM})
 
 Server = Connection.copy()
-Server.update({"host_name" : "localhost", 
+Server.update({"interface" : "localhost", 
 "port" : 0, 
 "backlog" : 15,
 "name" : "", 
@@ -139,16 +163,15 @@ Download.update({"filesize" : 0,
 "filename" : '',
 "filename_prefix" : "Download",
 "download_in_progress" : False,
-"network_chunk_size" : Outbound_Connection["network_chunk_size"] + len("dEL!M17&R"),
-"delimiter" : "dEL!M17&R"})
+"network_chunk_size" : 8096*2})
 
 Upload = Inbound_Connection.copy()
 Upload.update({"use_mmap" : False,
-"resource" : None,
-"delimiter" : "dEL!M17&R"})
+"network_chunk_size" : 8096*2,
+"file" : None})
 
 UDP_Socket = Base.copy()
-UDP_Socket.update({"host_name" : "0.0.0.0",
+UDP_Socket.update({"interface" : "0.0.0.0",
 "port" : 0,
 "timeout" : 10})
 
@@ -166,7 +189,8 @@ Multicast_Receiver.update({"listener_address" : "0.0.0.0",
 Basic_Authentication_Client = Thread.copy()
 
 Basic_Authentication = Thread.copy()
-Network_Manager = Process.copy()
+
+Asynchronous_Network = Process.copy()
 
 Service_Listing = Process.copy()
 
@@ -177,10 +201,10 @@ Scanner.update({"subnet" : "127.0.0.1",
 "timeout" : 10,
 "priority" : "high"})
 
-# File transfer utility
-File_Transfer_Utility = Base.copy()
-File_Transfer_Utility.update({"port" : 40004})
-
+# File Manager
+File_Manager = Process.copy()
+File_Manager.update({"port" : 40021,
+"asynchronous_server" : True})
 
 # Guilibrary
 Display = Process.copy()

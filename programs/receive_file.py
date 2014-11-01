@@ -1,4 +1,4 @@
-#   mpf.remote_connection - connect to another virtual machines interpreter service
+#   mpf.receive_file - receives a file and saves it under the supplied filename
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -15,23 +15,26 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import machinelibrary
 import sys
+import machinelibrary
 import defaults
+from base import Event
+from default_processes import *
 
-NO_ARGS, NO_KWARGS = tuple(), dict()
 try:
-    host = sys.argv[1]
-    port = sys.argv[2]
-except IndexError:
-    host = raw_input("Enter host name: ")
-    port = raw_input("Enter port: ")
-print "Attempting connection to %s:%s" % (host, port)
-
-options = {"host_name" : host,
-           "port" : int(port)}
-defaults.System["startup_processes"] += ("interpreter.Shell", NO_KWARGS, options),
+    filename = sys.argv[1]
+except:
+    print "Usage: python receive_file.py filename [interface] [host_port]"
+    sys.exit()
+try:
+    interface = sys.argv[2]
+    port = sys.argv[3]
+    options = {"address" : (interface, int(port))}
+except:
+    options = {}
+    
+defaults.File_Manager["network_chunk_size"] = 32768
+defaults.System["startup_processes"] += (FILE_MANAGER, )
 machine = machinelibrary.Machine()
-
-if __name__ == "__main__":
-    machine.run()
+Event("File_Manager0", "receive_file", filename, **options).post()
+machine.run()

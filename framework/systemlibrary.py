@@ -1,4 +1,20 @@
-# standard modules
+#   mpf.systemlibrary - systems for running on a vm
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import sys
 import traceback
 import time
@@ -23,12 +39,12 @@ class System(base.Base):
     #hotkeys are specified in the form of keycode:Event pairs in a dictionary.
     hotkeys = {}
         
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         # used to explore the system via the console
         globals()["system_reference"] = self
         
         # sets default attributes
-        super(System, self).__init__(*args, **kwargs)
+        super(System, self).__init__(**kwargs)
         
         # enable the event handler to reference the system the same way as everyone else
         self.objects["System"] = [self]
@@ -51,19 +67,19 @@ class Application(base.Process):
     defaults = defaults.Application
     # subclass from me and set some hotkeys!
     
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Application, self).__init__(**kwargs)
             
                 
 class Messenger(base.Process):
 
     defaults = defaults.Messenger
     
-    def __init__(self, *args, **kwargs):
-        super(Messenger, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Messenger, self).__init__(**kwargs)
         self.conversations = {}
                        
-        Event("Network_Manager0", "create", "networklibrary.Server", incoming=self._receive_message,\
+        Event("Asynchronous_Network0", "create", "networklibrary.Server", incoming=self._receive_message,\
         outgoing=self._send_message, on_connection=self.register_connection, port=41337, name="Messenger").post()
         
     def _receive_message(self, sock):
@@ -73,7 +89,7 @@ class Messenger(base.Process):
             sock.close()
             sock.delete()
         print "%s: %s" % (sock.getpeername(), data)
-        Event("Network_Manager0", "buffer_data", sock, data).post()
+        Event("Asynchronous_Network0", "buffer_data", sock, data).post()
         
     def _send_message(self, sock, data):
         sock.send(data)
@@ -82,7 +98,7 @@ class Messenger(base.Process):
         if self in self.parent.objects[self.__class__.__name__]:
             Event("Messenger0", "run").post()
         else:
-            Event("Network_Manager0", "delete_server", "Messenger").post()
+            Event("Asynchronous_Network0", "delete_server", "Messenger").post()
             
     def register_connection(self, connection, address):
         print "You may now speak with %s via %s.send..." % (address, self)
@@ -94,7 +110,7 @@ class Messenger(base.Process):
         port = int(port)
         connection = self.conversations[(str(ip), port)]
         print "sending", text, "to", destination
-        Event("Network_Manager0", "buffer_data", connection, text).post()
+        Event("Asynchronous_Network0", "buffer_data", connection, text).post()
   
     
 class Explorer(Application):
@@ -102,8 +118,8 @@ class Explorer(Application):
     when graphical applications are worked back in"""
     defaults = defaults.Explorer
     
-    def __init__(self, *args, **kwargs):
-        super(Explorer, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Explorer, self).__init__(**kwargs)
         self.homescreen = proxy(self.create("widgetlibrary.Homescreen"))
         self.time_service()
         Event("Organizer0", "pack", self).post()

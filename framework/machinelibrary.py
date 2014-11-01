@@ -1,3 +1,20 @@
+#   mpf.machinelibrary - virtual machine - processor - event handler 
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import pickle
 import sys
 import os
@@ -9,9 +26,11 @@ from operator import attrgetter
 import base
 import defaults
 Event = base.Event
+
 try:
-    from windowskeyboard import Keyboard
+    from keyboard import Keyboard
 except:
+    raise
     import posixkeyboard
     Keyboard = posixkeyboard.Keyboard
     posixkeyboard.toggle_echo(sys.stdin.fileno(), False)
@@ -45,15 +64,31 @@ class Timer(base.Base):
         results = self.method(*self.args, **self.kwargs)
         self.target_time = time.time() + self.wait_time
         return results
-   
-   
+  
+  
+class Task_Scheduler(base.Process):
+    
+    defaults = defaults.Task_Scheduler
+    
+    def __init__(self, **kwargs):
+        super(Task_Scheduler, self).__init__(**kwargs)
+        self.objects["Timer"] = []
+                
+    def run(self):
+        for timer in self.objects["Timer"]:
+            timer.run()
+                
+        if self in self.parent.objects[self.__class__.__name__]:
+            Event("Task_Scheduler0", "run", component=self).post()
+
+            
 class Processor(base.Hardware_Device):
     
     defaults = defaults.Processor
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.execution_times = {}
-        super(Processor, self).__init__(*args, **kwargs)
+        super(Processor, self).__init__(**kwargs)
         
     def run(self):
         self.events = sorted(getattr(Event_Handler, self._instance_name + "_queue"), key=attrgetter("priority"))
@@ -73,9 +108,9 @@ class Event_Handler(base.Hardware_Device):
     
     defaults = defaults.Event_Handler
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.processor_events = {}
-        super(Event_Handler, self).__init__(*args, **kwargs)
+        super(Event_Handler, self).__init__(**kwargs)
                            
     def run(self):
         #v: print self, "running"
@@ -124,8 +159,8 @@ class Machine(base.Base):
     
     defaults = defaults.Machine
     
-    def __init__(self, *args, **kwargs):
-        super(Machine, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Machine, self).__init__(**kwargs)
   
         base.Component_Resolve["Machine"] = self
         self.event_handler = self.create(Event_Handler)
@@ -152,5 +187,6 @@ class Machine(base.Base):
     def run(self):
         self.event_handler.run()
         while self.status:
+            print "machine running"
             for processor in self.objects["Processor"]:
                 processor.run()

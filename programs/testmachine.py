@@ -1,12 +1,13 @@
+#   mpf.testmachine - a virtual machine with a local interpreter connection
+
 import machinelibrary
 import defaults
-NO_ARGS = defaults.NO_ARGS
-NO_KWARGS = defaults.NO_KWARGS
+from default_processes import *
+from base import Event
 
-INTERPRETER_SERVICE = ("interpreter.Shell_Service", NO_ARGS, NO_KWARGS)
-CONNECTION = ("interpreter.Shell", NO_ARGS, NO_KWARGS)
-defaults.System["startup_processes"] += (INTERPRETER_SERVICE, CONNECTION)
-test_machine = machinelibrary.Machine()
+machine = machinelibrary.Machine()
+Event("System0", "create", "interpreter.Shell_Service").post()
+Event("System0", "create", "interpreter.Shell").post()
 
 if __name__ == "__main__":
-    test_machine.run()
+    machine.run()

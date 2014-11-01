@@ -1,3 +1,20 @@
+#   mpf.base - root inheritance objects, many framework features are defined here
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
 import mmap
 import pickle
 import inspect
@@ -119,9 +136,9 @@ class Metaclass(type):
 class Base(object):
     """A base object to inherit from. an object that inherits from base 
     can have arbitrary attributes set upon object instantiation by specifying 
-    argument tuples of (attribute_name, value) pairs or more readable as keyword arguments.
-    an object that inherits from base will also be able to create/hold arbitrary 
-    python objects by specifying them as arguments to create.
+    them as keyword arguments. An object that inherits from base will also 
+    be able to create/hold arbitrary python objects by specifying them as 
+    arguments to create.
     
     classes that inherit from base should specify a class.defaults dictionary that will automatically
     include the specified (attribute, value) pairs on all new instances"""
@@ -136,13 +153,15 @@ class Base(object):
     # hotkeys should be pygame.locals.key_constant : eventlibrary.Event pairs
     hotkeys = {}
         
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the __init__, like so
-        self.objects = {}      
+        self.objects = {}
         super(Base, self).__init__()
-        attributes = tuple(self.defaults.items()) + args
-        self.attribute_setter(*attributes, **kwargs)     
+        attributes = dict(self.defaults.items())
+        if kwargs:
+            attributes.update(kwargs)
+        self.attribute_setter(**attributes)     
     
     def __getattribute__(self, attribute):  
         value = super(Base, self).__getattribute__(attribute)
@@ -150,15 +169,10 @@ class Base(object):
             value = Runtime_Decorator(value)
         return value
         
-    def attribute_setter(self, *args, **kwargs):
-        """usage: object.attribute_setter((name, value_pairs), attrs=values)
+    def attribute_setter(self, **kwargs):
+        """usage: object.attribute_setter(attr1=value1, attr2=value2).
+        called implicitly in __init__ for any object that inherits from Base."""
         
-        sets instance attributes. positional arguments should be tuples that contain
-        attribute_name, attribute_value pairs. keyword arguments can also be used
-        to explicitly specify attributes. this is called implicitly in __init__ for any
-        object that inherits from Base."""
-        if args: 
-            [setattr(self, attribute, value) for attribute, value in args]
         [setattr(self, attr, val) for attr, val in kwargs.items()]
                      
     def create(self, instance_type, *args, **kwargs): 
@@ -195,6 +209,7 @@ class Base(object):
             self.warning("Failed to instantiate %s, wrapping" % instance_type, "Notification:")
             instance = instance_type(*args)
             instance = Wrapper(instance, **kwargs)
+        instance.added_to = []
         self.add(instance)
         class_name = instance.__class__.__name__
         number = self.objects[class_name].index(instance)
@@ -214,6 +229,7 @@ class Base(object):
         
         if not hasattr(instance, "parent"):
             instance.parent = self # is a reference problem without stm in place
+        instance.added_to.append(self)
         #print "adding %s to %s.objects[%s]" % (instance, instance.parent, instance.__class__.__name__)
         try:
             self.objects[instance.__class__.__name__].append(instance)
@@ -224,13 +240,15 @@ class Base(object):
         """usage: object.delete() or object.delete(child)
         
         currently does not always function as intended. don't rely on it!"""
+        import gc
         if not args:     
             for child in self.get_children():
                 child.delete()
-            self.parent.objects[self.__class__.__name__].remove(self)
+            for instance in self.added_to:
+                instance.objects[self.__class__.__name__].remove(self)
         else:
-            for arg in args:
-                arg.delete()
+            for instance in args:
+                self.objects[instance.__class__.__name__].remove(instance)
 
     def send_to(self, component_name, message):
         Component_Memory[component_name].write(message+"delimiter")
@@ -287,14 +305,14 @@ class Wrapper(Base):
     """a class that will act as the object it wraps and as a base
     object simultaneously."""
        
-    def __init__(self, wrapped_object, *args, **kwargs):
-        self.wrapped_object = None
-        attr_setter = super(Wrapper, self).__getattribute__("attribute_setter")
-        defaults = super(Wrapper, self).__getattribute__("defaults")
-        try:
-            attr_setter(defaults.items(), wrapped_object=wrapped_object, objects={}, *args, **kwargs)
-        except:
-            raise
+    def __init__(self, wrapped_object=None, **kwargs):
+        attributes = {"wrapped_object" : wrapped_object, "objects" : {}}
+        default_kwargs = super(Wrapper, self).__getattribute__("defaults")
+        if default_kwargs:
+            attributes.update(default_kwargs)
+        if kwargs:
+            attributes.update(kwargs)
+        super(Wrapper, self).attribute_setter(**attributes)
                        
     def _get_wrapper_attribute(self, attribute):
         return super(Wrapper, self).__getattribute__(attribute)
@@ -338,16 +356,7 @@ class Wrapper(Base):
         
     def __next__(self): # python 3
         return next(self.wrapped_object)
-        
-    def attribute_setter(self, *args, **kwargs):
-        # modified version of base.attribute_setter using super calls to set
-        # attributes on the wrapper instead of the wrapped object
-        if args:
-            for arg in args:
-                for attribute, value in arg:
-                    super(Wrapper, self).__setattr__(attribute, value)
 
-        [super(Wrapper, self).__setattr__(attribute, value) for attribute, value in kwargs.items()]
         
             
 class Process(Base):
@@ -357,10 +366,10 @@ class Process(Base):
     
     defaults = defaults.Process
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
-        super(Process, self).__init__(*args, **kwargs)
+        super(Process, self).__init__(**kwargs)
         
         if self.auto_start:
             event = Event(self.__class__.__name__, "start")
@@ -383,11 +392,11 @@ class Thread(Base):
     """does not run in psuedo-parallel like threading.thread"""
     defaults = defaults.Thread 
                 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
         self.results = []
-        super(Thread, self).__init__(*args, **kwargs)
+        super(Thread, self).__init__(**kwargs)
                 
     def start(self):
         self.run()
@@ -401,8 +410,8 @@ class Hardware_Device(Base):
     
     defaults = defaults.Hardware_Device
     
-    def __init__(self, *args, **kwargs):
-        super(Hardware_Device, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(Hardware_Device, self).__init__(**kwargs)
         
 
 class Runtime_Decorator(object):
