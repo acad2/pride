@@ -1,0 +1,4 @@
+site_name: Metaprogramming Framework
+pages:
+- [index.md, Home]
+- [Features.md, Features]
