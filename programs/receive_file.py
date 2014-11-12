@@ -16,25 +16,28 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-import machinelibrary
+import vmlibrary
 import defaults
+import utilities
 from base import Event
 from default_processes import *
 
-try:
-    filename = sys.argv[1]
-except:
-    print "Usage: python receive_file.py filename [interface] [host_port]"
-    sys.exit()
-try:
-    interface = sys.argv[2]
-    port = sys.argv[3]
-    options = {"address" : (interface, int(port))}
-except:
-    options = {}
-    
-defaults.File_Manager["network_chunk_size"] = 32768
-defaults.System["startup_processes"] += (FILE_MANAGER, )
-machine = machinelibrary.Machine()
-Event("File_Manager0", "receive_file", filename, **options).post()
-machine.run()
+receive_args = {"filename" : None,
+                "interface" : "0.0.0.0",
+                "port" : 40021}
+server_args = dict(defaults.File_Server)
+server_args.update({"exit_when_finished" : 1})
+
+args = dict(receive_args)
+args.update(server_args)
+options = utilities.get_options(args, description="Receives a file sent from send_file.py")
+
+receive_options = dict((key, options[key]) for key in receive_args.keys())
+server_options = dict((key, options[key]) for key in server_args.keys())
+machine = vmlibrary.Machine()
+
+Event("System0", "create", "utilities.File_Server", **server_options).post()
+Event("File_Server0", "receive_file", **receive_options).post()
+
+if __name__ == "__main__":
+    machine.run()

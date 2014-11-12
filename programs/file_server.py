@@ -1,27 +1,18 @@
-#   mpf.file_server - provide asynchronous uploads for networklibrary.Downloads
-#
-#    Copyright (C) 2014  Ella Rose
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import machinelibrary
+import vmlibrary
 import defaults
+import utilities
 from default_processes import *
+from base import Event
 
-defaults.Event_Handler["idle_time"] = 0
-defaults.System["startup_processes"] += (FILE_MANAGER, SHELL_SERVICE)
-machine = machinelibrary.Machine()
+args = dict(defaults.File_Server)
+args.update({"throttle" : .005})
+
+options = utilities.get_options(args)
+throttle = options.pop("throttle")
+
+Event("System0", "create", "utilities.File_Server", **options).post()
+defaults.Event_Handler["idle_time"] = throttle
+machine = vmlibrary.Machine()
 
 if __name__ == "__main__":
     machine.run()

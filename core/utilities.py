@@ -1,4 +1,5 @@
-#   mpf.utilities - latency measurement, file up/downloads, running average
+#   mpf.utilities - shell commands, arg parser, latency measurement, 
+#                    file server,  uploads/downloads, running average
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -20,6 +21,7 @@ import sys
 import os
 import time
 import argparse
+import subprocess
 from collections import deque
 
 import base
@@ -27,27 +29,57 @@ import defaults
 
 Event = base.Event
 
-def get_arguments(argument_names, argument_defaults, **kwargs):
+def shell(command):
+    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    output = process.communicate()[0]
+    
+def get_arguments(argument_info, **kwargs):
     arguments = {}
-    parser = argparse.ArgumentParser(**kwargs)
-    for index, names in enumerate(argument_names):
-        short_name, long_name = names
+    parser = argparse.ArgumentParser(**kwargs)    
+    argument_names = argument_info.keys()
+    argument_defaults = argument_info.values()
+    
+    for index, name in enumerate(argument_names):
+        if name[0] == "-":
+            short_name = name[1]
+            long_name = name[1:]
+        else:
+            short_name = "-" + name[0]
+            long_name = "--" + name
+        names = (short_name, long_name)      
         default_value = argument_defaults[index]
+        variable_type = type(default_value)
+        if variable_type == bool:
+            variable_type = int            
         for arg_name in names:
-            arguments[arg_name] = {"dest" : long_name.replace("-", ""), "default" : default_value}
+            attribute = long_name.replace("-", '')
+            info = {}
+            if variable_type is type(None):
+                arg_name = attribute
+            else:
+                info.update({"dest" : attribute, 
+                             "default" : default_value,
+                             "type" : variable_type})
+            arguments[arg_name] = info
+            
     for argument_name, options in arguments.items():
-        parser.add_argument(argument_name, **options)  
+        parser.add_argument(argument_name, **options)
     return parser.parse_args()
+    
+def get_options(argument_info, **kwargs):
+    namespace = get_arguments(argument_info, **kwargs)
+    options = dict((key, getattr(namespace, key)) for key in namespace.__dict__.keys())
+    return options
     
 class Latency(object):
     
-    def __init__(self, name=None):
+    def __init__(self, name=None, average_size=20):
         super(Latency, self).__init__()
         self.name = name
         self.latency = 0.0
         self.now = time.clock()
         self.max = 0.0
-        self.average = Average(size=20)
+        self.average = Average(size=average_size)
         self._position = 0
 
     def update(self):
@@ -73,9 +105,10 @@ class Latency(object):
             
 class Average(object):
         
-    def __init__(self, values=None, size=20):
+    def __init__(self, name='', size=20, values=None):
         if not values:
             values = []
+        self.name = name
         self.values = deque(values, size)
         self.max_size = size
         self.size = float(len(self.values))
@@ -83,17 +116,14 @@ class Average(object):
             self.average = sum(self.values) / self.size
         else:
             self.average = 0
-     
-    def add(self, value):
-        if self.size == self.max_size:
-            self.full_add(value)
-        else:
-            self.partial_add(value)
+        self.add = self.partial_add
             
     def partial_add(self, value):
         self.size += 1
         self.values.append(value)
         self.average = sum(self.values) / self.size
+        if self.size == self.max_size:
+            self.add = self.full_add
         
     def full_add(self, value):
         old_value = self.values[0]
@@ -102,29 +132,34 @@ class Average(object):
         self.average += adjustment        
 
 
-class File_Manager(base.Base):
+class File_Server(base.Base):
 
-    defaults = defaults.File_Manager
+    defaults = defaults.File_Server
     
     def __init__(self, **kwargs):
-        super(File_Manager, self).__init__(**kwargs)        
+        super(File_Server, self).__init__(**kwargs)     
+        
         if self.asynchronous_server:
-            options = {"port" : self.port, 
-                       "name" : "File_Manager", 
+            options = {"interface" : self.interface,
+                       "port" : self.port, 
+                       "name" : "File_Server", 
                        "inbound_connection_type" : "networklibrary.Upload"}                           
             Event("Asynchronous_Network0", "create", "networklibrary.Server", **options).post()    
 
-    def send_file(self, filename, address, port=40021, show_progress=True):
-        to = (address, port)
-        sender = self.create("networklibrary.UDP_Socket", port=40021)
-        data = open(filename, "rb").read()
+    def send_file(self, filename='', ip='', port=40021, show_progress=True):
+        to = (ip, port)
+        sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sender.connect(to)
+        with open(filename, "rb") as data_file:
+            data = data_file.read()
+            data_file.close()
         file_size = len(data)
         latency = Latency(name="send_file %s" % filename)
         frame_time = Average(size=100)
         upload_rate = Average(size=10)
         started_at = time.clock()
         while data:
-            amount_sent = sender.sendto(data[:self.network_chunk_size], to)            
+            amount_sent = sender.send(data[:self.network_chunk_size])            
             data = data[self.network_chunk_size:]
             if show_progress:
                 latency.update()
@@ -138,10 +173,13 @@ class File_Manager(base.Base):
                 sys.stdout.write("Upload rate: %iB/s. Time remaining: %i" % (bytes_per_second, time_remaining))
         print "\n%s bytes uploaded in %s seconds" % (file_size, time.clock() - started_at)
         sender.close()
+        if getattr(self, "exit_when_finished", None):
+            sys.exit()
 
-    def receive_file(self, filename, address=("0.0.0.0", 40021), show_progress=True):
-        receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        receiver.bind(address)
+    def receive_file(self, filename='', interface="0.0.0.0", port=40021, show_progress=True):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((interface, port))
+        server.listen(1)        
         _file = open(filename, "wb")
         frame_time = Average(size=100)
         download_rate = Average(size=10)
@@ -149,11 +187,14 @@ class File_Manager(base.Base):
         downloading = True
         started_at = time.clock()
         data_size = 0
+        print "waiting for connection...", interface, port
+        receiver, _from = server.accept()
+        print "Received"
+        receiver.settimeout(2)
         while downloading:
             latency.update()
-            try:
-                data, _from = receiver.recvfrom(self.network_chunk_size)
-            except socket.error:
+            data = receiver.recv(self.network_chunk_size)
+            if not data:
                 downloading = False
             amount_received = len(data)
             download_rate.add(amount_received)
@@ -167,11 +208,14 @@ class File_Manager(base.Base):
                 bytes_per_second = chunks_per_second * download_rate.average
                 sys.stdout.write("\b"*80)
                 sys.stdout.write("Downloading at %iB/s" % bytes_per_second)
+        sys.stdout.write("\b"*80)
         print "\nDownload of %s complete (%s bytes in %s seconds)" % \
-        (filename, data_size, time.clock() - started_at)
+        (filename, data_size, (time.clock() - started_at - 2.0))
         _file.close()
         receiver.close()
-        
+        server.close()
+        if getattr(self, "exit_when_finished", None):
+            sys.exit()
 
 class Updater(object):
                 

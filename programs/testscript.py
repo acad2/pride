@@ -1,1 +1,1 @@
-"""I'm the default script for launcher.py"""
+"""I'm the default script for shell launcher.py"""

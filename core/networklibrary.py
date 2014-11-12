@@ -24,6 +24,7 @@ import errno
 import time
 import mmap
 import contextlib
+import traceback
 
 import defaults
 import base
@@ -72,8 +73,12 @@ class Server(Connection):
     def __init__(self, **kwargs):
         self.inbound_connection_options = {}
         super(Server, self).__init__(**kwargs)        
-        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
-        self.bind((self.interface, self.port))
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, struct.pack('b', self.reuse_port))
+        try:
+            self.bind((self.interface, self.port))
+        except socket.error:
+            self.warning(traceback.format_exc() + "\nAddress already in use. Deleting %s\n" % self)
+            return Event("Server", "delete", component=self).post()
         self.listen(self.backlog)        
         self.parent.servers.append(self)
         Event("Service_Listing0", "add_local_service", (self.interface, self.port), self.name).post()
@@ -84,7 +89,9 @@ class Outbound_Connection(Connection):
     defaults = defaults.Outbound_Connection
     
     def __init__(self, **kwargs):
-        super(Outbound_Connection, self).__init__(**kwargs)      
+        super(Outbound_Connection, self).__init__(**kwargs)    
+        if not self.target:
+            self.target = (self.ip, self.port)
         Event("Asynchronous_Network0", "buffer_connection", self, self.target).post()
        
 
@@ -98,17 +105,23 @@ class Download(Outbound_Connection):
         if not self.filename:
             self.warning("Attempted to start a download without a filename to use")
             self.delete()
-        self.file = open("%s_%s" % (self.filename_prefix, self.filename), "wb")      
+        try:
+            self.file = open("%s_%s" % (self.filename_prefix, self.filename), "wb")       
+        except IOError:
+            filename = raw_input("Please provide a name for the downloaded file: ")
+            self.file = open(filename, "wb")
         
     def on_connection(self, connection, address):
         self.thread = self._new_thread(connection)
         self.connection = connection
-        message = (self.filename, str(0), str(self.network_chunk_size))
+        network_chunk_size = self.network_chunk_size
+        self.expecting = network_chunk_size + 17
+        message = (str(0), str(network_chunk_size), self.filename)
         request = ":".join(message)
-        Event("Asynchronous_Network0", "buffer_data", connection, request).post()
-        print "sending download request: ", request        
+        Event("Asynchronous_Network0", "buffer_data", connection, request).post() 
         
     def outgoing(self, connection, data):
+        print "sending request", data
         connection.send(data)
         
     def incoming(self, connection):
@@ -122,8 +135,12 @@ class Download(Outbound_Connection):
                 print "WARNING: download did not receive expected amount of data"
                 print "Expected: %s\tReceived: %s" % (self.total_file_size, self.filesize)
             else:
-                print "Downloaded %s" % self.filesize
+                print "Downloaded: %s (%s bytes in %i seconds)" % \
+                (self.filename, self.filesize, time.time() - self.started_at)
+            
             Event("download", "delete", component=self).post()
+            if getattr(self, "exit_when_finished", None):
+                sys.exit()
 
     def delete(self, *args):
         self.connection.close()
@@ -131,28 +148,55 @@ class Download(Outbound_Connection):
         super(Download, self).delete(*args)
                     
     def _new_thread(self, connection):
+        network_chunk_size = self.network_chunk_size
+        full_buffer = 17 + network_chunk_size
         size = connection.recv(16)
         self.total_file_size = int(size)
         print "Download of %s started. File size: %s" % (self.filename, self.total_file_size)
+        self.started_at = time.time()
         yield
         while self.filesize < self.total_file_size:
-            raw = connection.recv(17+self.network_chunk_size)
-            position, data = raw.split(":", 1)
-            position = int(position)
-            self.file.seek(position)
-            self.file.write(data)
-            self.file.flush()
-            end = self.file.tell()
-            self.filesize += end - position
-            if self.total_file_size - end < self.network_chunk_size:
-                request = ":".join((self.filename, str(end), str(self.total_file_size)))
-            else:
-                request = ":".join((self.filename, str(end), str(end + self.network_chunk_size)))
-            Event("Asynchronous_Network0", "buffer_data", connection, request).post()  
+            received = connection.recv(full_buffer)
+            amount = len(received)
+            self.expecting -= amount
+            if self.expecting: # less then full amount received
+                assert self.expecting == abs(self.expecting)
+                if self.header_received: # already did the split and got file position
+                    position = self.file.tell()
+                    data = received # received is just data
+                else: # have not gotten header yet
+                    position, data = received.split(":", 1)
+                    position = int(position)
+                    self.header_received = True
+                self.write_data(data, position)
+            else: # received all the data expected
+                position, data = received.split(":", 1)
+                position = int(position)
+                self.write_data(data, position)
+                end = self.file.tell()
+                self.filesize += end - position
+                self.send_request(connection, end)
             yield
-        Event("Asynchronous_Network0", "buffer_data", connection, "complete").post()     
+        Event("Asynchronous_Network0", "buffer_data", connection, "complete").post() 
+        
+    def send_request(self, connection, file_position):
+        network_chunk_size = self.network_chunk_size
+        file_size = self.total_file_size
+        amount_left = file_size - file_position
+        if amount_left < network_chunk_size:
+            expecting = amount_left + 17
+            request = ":".join((str(file_position), str(file_size), self.filename))
+        else:
+            expecting = network_chunk_size + 17
+            request = ":".join((str(file_position), str(file_position + network_chunk_size), self.filename))
+        self.expecting = expecting  
+        Event("Asynchronous_Network0", "buffer_data", connection, request).post()      
 
-            
+    def write_data(self, data, position):
+        self.file.seek(position)
+        self.file.write(data)
+        self.file.flush()
+        
 class Inbound_Connection(Connection):
     
     defaults = defaults.Inbound_Connection
@@ -167,17 +211,17 @@ class Upload(Inbound_Connection):
     
     def __init__(self, sock, **kwargs):
         super(Upload, self).__init__(sock, **kwargs)
-        self.debugsize = 0
+        self.settimeout(60)
         
     def outgoing(self, connection, data):
         connection.send(data)
         
     def incoming(self, connection): 
         try:
-            filename, start, end = connection.recv(self.network_chunk_size).split(":")
-        except ValueError:
-            print "closing upload"
-            self.resource.close()
+            start, end, filename = connection.recv(self.network_chunk_size).split(":", 2)
+        except (socket.error, ValueError):
+            #v: print "Finishing upload of %s" % self.filename
+            self.file.close()
             self.close()
             self.delete()            
         #v: print "servicing request for %s: %s-%s" % (filename, start, end)
@@ -219,6 +263,7 @@ class Upload(Inbound_Connection):
         return data
         
     def load_file(self, filename):
+        self.filename = filename
         self.file_size = os.path.getsize(filename)
         self.file = open(filename, "rb")       
                  
@@ -351,7 +396,7 @@ class Basic_Authentication(base.Thread):
                 raise
             
             Event("Asynchronous_Network0", "buffer_data", self.connection, response).post()        
-            Event("Basic_Authentication", "delete").post()
+            Event("Basic_Authentication", "delete", component=self).post()
             
     def _new_thread(self):
         while not self.parent.network_buffer[self.connection]:
@@ -400,7 +445,7 @@ class Asynchronous_Network(base.Process):
             Event("Asynchronous_Network0", "disconnect", connection).post()
         else:
             connection.close()
-            Event("Asynchronous_Network0", "delete", connection).post()
+            Event("Asynchronous_Network0", "delete", connection, component=self).post()
         
     def delete_server(self, server_name):
         for server in self.servers:
@@ -439,7 +484,7 @@ class Asynchronous_Network(base.Process):
             if not self.timeouts[sock]:
                 del self.connection_buffer[sock]
                 sockets.append(sock)
-                Event("Asynchronous_Network0", "delete", sock).post()
+                Event("Asynchronous_Network0", "delete", sock, component=self).post()
                 sock.warning("Outbound Connection to %s timed out after %s frames" % (sock.target, sock.timeout))
                 continue
             try: # this is how to properly do a non blocking connect
@@ -515,7 +560,7 @@ class Service_Listing(base.Process):
                 service = "Local Service " + self.local_services[address]
             except KeyError:
                 service = "unknown"
-        self.services[address] = service
+        self.services[address] = (port, service)
         
     def remove_local_service(self, address):
         del self.local_services[address]
@@ -528,3 +573,6 @@ class Service_Listing(base.Process):
         for address, service_name in self.services.items():
             print "Address: %s\tService Name: %s" % (address, service_name)
         
+        for requester in messages:
+            self.sendto(requester, "\n".join("Address: %s\tService: %s,%s" % (address, port, service_name)\
+            for address, port, service_name in self.local_services.items()))

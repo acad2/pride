@@ -91,16 +91,17 @@ class Processor(base.Hardware_Device):
         super(Processor, self).__init__(**kwargs)
         
     def run(self):
-        self.events = sorted(getattr(Event_Handler, self._instance_name + "_queue"), key=attrgetter("priority"))
-        setattr(Event_Handler, "%s_queue" % self._instance_name, [])
-        #v: print "got events from %s_queue" % self._instance_name
-        #v: print "processing events: ", [str(event) for event in self.events]
-        for event in self.events:
-            frequency = event.priority * .001
-            #self.create(Timer, frequency,  getattr(
-            #v: print "executing code", str(event)
-            event.execute_code()
-            #self.execution_times[(event.component_name, event.method)] = time.clock() - event.execute_at
+        while True:
+            self.events = sorted(getattr(Event_Handler, self._instance_name + "_queue"), key=attrgetter("priority"))
+            setattr(Event_Handler, "%s_queue" % self._instance_name, [])
+            #v: print "got events from %s_queue" % self._instance_name
+            #v: print "processing events: ", [str(event) for event in self.events]
+            for event in self.events:
+                #frequency = event.priority * .001
+                #self.create(Timer, frequency,  getattr(
+                #v: print "executing code", str(event)
+                event.execute_code()
+                #self.execution_times[(event.component_name, event.method)] = time.clock() - event.execute_at
 
             
 class Event_Handler(base.Hardware_Device):

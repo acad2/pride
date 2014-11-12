@@ -34,14 +34,15 @@ Base = {"memory_size" : 8096,
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
-"network_buffer" : None,
-"recurring" : False})
+"network_buffer" : '',
+"recurring" : False,
+"keyboard_input" : ''})
 
 Thread = Base.copy()
 
 Hardware_Device = Base.copy()
 
-# machinelibrary
+# vmlibrary
 
 Timer = Base.copy()
 
@@ -51,26 +52,44 @@ Event_Handler.update({"number_of_processors" : PROCESSOR_COUNT,
 
 Processor = Hardware_Device.copy()
 
+System = Base.copy()
+System.update({"name" : "system",
+"status" : "",
+"hardware_configuration" : ("vmlibrary.Keyboard", ),
+"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS),
+                       ("vmlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
+
 Machine = Base.copy()
-Machine.update({"status" : "",
-"processor_count" : PROCESSOR_COUNT,
-"hardware_configuration" : (("machinelibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
-"system_configuration" : (("systemlibrary.System", NO_ARGS, NO_KWARGS), )})
+Machine.update({"processor_count" : PROCESSOR_COUNT,
+"hardware_configuration" : (("vmlibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
+"system_configuration" : (("vmlibrary.System", NO_ARGS, NO_KWARGS), )})
 
 # inputlibrary
 Keyboard = Hardware_Device.copy()
 
 # voipmessenger
 Voip_Messenger = Process.copy()
-Voip_Messenger.update({"port" : 40100})
+Voip_Messenger.update({"microphone_name" : "microphone",
+"port" : 40100,
+"name" : "voip_messenger",
+"channels" : 2,
+"rate" : 48000,
+"format" : 2,
+"message_header" : "message",
+"call_header" : "call",
+"hangup_header" : "hangup",
+"audio_header" : "audio"})
 
-# systemlibrary
-System = Base.copy()
-System.update({"name" : "system",
-"status" : "",
-"hardware_configuration" : ("machinelibrary.Keyboard", ),
-"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS),
-                       ("machinelibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
+# stdout display
+Stdout_Display = Process.copy()
+Stdout_Display.update({"height" : 600,
+"width" : 840,
+"components" : ("stdoutdisplay.Border",)})
+
+Border = Base.copy()
+Border.update({"height" : 600,
+"width" : 840,
+"character" : '#'})
 
 Task_Scheduler = Process.copy()
 
@@ -91,8 +110,8 @@ Shell.update({"username" : "root",
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
 "definition" : False, 
 "traceback" : format_exc, 
-"backup_write" : None, 
-"login_stage" : None, 
+"backup_write" : '', 
+"login_stage" : '', 
 "auto_start" : False,
 "auto_login" : True,
 "host_name" : "localhost",
@@ -106,7 +125,7 @@ Shell_Service.update({"interface" : "0.0.0.0",
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
 "definition" : False, 
 "traceback" : format_exc, 
-"backup_write" : None}) 
+"backup_write" : ''}) 
 
 # audiolibrary
 
@@ -115,20 +134,41 @@ Wav_File.update({"mode" : "rb",
 "filename" : "",
 "repeat" : False})
 
+AlsaAudio_Device = Base.copy()
+AlsaAudio_Device.update({"channels" : 1,
+"rate" : 48000,
+"format" : 2, # alsaaudio.PCM_FORMAT_S16_LE
+"sample_size" : 16,
+"period_size" : 1024,
+"record_to_disk" : False,
+"card" : "hw:0,0",
+"data" : '',
+"frame_count" : 0})
+
+AlsaAudio_Input = AlsaAudio_Device.copy()
+AlsaAudio_Input.update({"type" : 1, # PCM_CAPTURE
+"mode" : 1, # PCM_NONBLOCK
+"_data" : ''}) 
+
+AlsaAudio_Output = AlsaAudio_Device.copy()
+AlsaAudio_Output.update({"type" : 0, # PCM_PLAYBACK
+"mode" : 1}) # PCM_NONBLOCK
+
 PyAudio_Device = Base.copy()
 PyAudio_Device.update({"format" : 8,
-"frames_per_buffer" : 1024,
+"frames_per_buffer" : 768,
 "data" : "",
-"record_to_disk" : False})
+"record_to_disk" : False,
+"frame_count" : 0})
 
 Audio_Input = PyAudio_Device.copy()
-Audio_Input.update({"input" : True})
+Audio_Input.update({"input" : True,
+"_data" : ''})
 
 Audio_Output = PyAudio_Device.copy()
 Audio_Output.update({"output" : True, 
 "mute" : False,
-"data_source" : StringIO(),
-})
+"data_source" : StringIO()})
 
 Audio_Configuration_Utility = Process.copy()
 Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
@@ -136,8 +176,15 @@ Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
 "auto_start" : False})
 
 Audio_Manager = Process.copy()
-Audio_Manager.update({"config_file_name" : '',
+Audio_Manager.update({"config_file_name" : 'audiocfg',
 "use_defaults" : True})
+
+Audio_Channel = Thread.copy()
+Audio_Channel.update({"audio_data" : '',
+"memory_size" : 65535})
+
+Audio_Service = Thread.copy()
+Audio_Service.update({"memory_size" : 65535})
 
 # networklibrary
 Connection = Base.copy()
@@ -153,22 +200,25 @@ Server.update({"interface" : "localhost",
 "inbound_connection_type" : "networklibrary.Inbound_Connection"})
    
 Outbound_Connection = Connection.copy()
-Outbound_Connection.update({"as_port" : 0,
+Outbound_Connection.update({"ip" : "localhost",
+"port" : 80,
+"target" : tuple(),
+"as_port" : 0,
 "timeout" : 10})
    
 Inbound_Connection = Connection.copy()
 
 Download = Outbound_Connection.copy()
 Download.update({"filesize" : 0,
-"filename" : '',
+"filename" : None,
 "filename_prefix" : "Download",
 "download_in_progress" : False,
-"network_chunk_size" : 8096*2})
+"network_chunk_size" : 16384})
 
 Upload = Inbound_Connection.copy()
 Upload.update({"use_mmap" : False,
-"network_chunk_size" : 8096*2,
-"file" : None})
+"network_chunk_size" : 16384,
+"file" : ''})
 
 UDP_Socket = Base.copy()
 UDP_Socket.update({"interface" : "0.0.0.0",
@@ -202,8 +252,10 @@ Scanner.update({"subnet" : "127.0.0.1",
 "priority" : "high"})
 
 # File Manager
-File_Manager = Process.copy()
-File_Manager.update({"port" : 40021,
+File_Server = Process.copy()
+File_Server.update({"interface" : "localhost",
+"port" : 40021,
+"network_chunk_size" : 16384,
 "asynchronous_server" : True})
 
 # Guilibrary
@@ -225,9 +277,9 @@ Gui_Object.update({'x' : 0,
         "color" : (R, G, B), 
         "outline" : 5, 
         "popup" : False, 
-        "pack_mode" : None, 
+        "pack_mode" : '', 
         "typeface" : (typeface, 16), 
-        "pack_modifier" : None, 
+        "pack_modifier" : '', 
         "color_scalar" : .6})
 
 Window = Gui_Object.copy()
@@ -279,7 +331,7 @@ Help_Bar = Button.copy()
 Help_Bar.update({"pack_mode" : "horizontal"})
 
 Property_Button = Button.copy()
-Property_Button.update({"property" : None, 
+Property_Button.update({"property" : '', 
 "display" : False})
 
 File_Button = Button.copy()

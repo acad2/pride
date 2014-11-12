@@ -1,25 +1,30 @@
 #   mpf.send_file - sends a file via udp to the specified address
 
 import sys
-import machinelibrary
+import vmlibrary
 import defaults
+import utilities
 from base import Event
 from default_processes import *
 
-try:
-    filename = sys.argv[1]
-    ip = sys.argv[2]
-except:
-    print "Usage: python send_file filename destination_ip destination_port"
-    sys.exit()
-    
-try:
-    port = int(sys.argv[3])
-except:
-    port = 40021
-    
-defaults.File_Manager["network_chunk_size"] = 8096
-defaults.System["startup_processes"] += (FILE_MANAGER, )
-machine = machinelibrary.Machine()
-Event("File_Manager0", "send_file", filename, ip, port).post()
-machine.run()
+file_server_args = dict(defaults.File_Server)
+file_server_args.update({"exit_when_finished" : 1})
+                         
+send_args = {"filename" : None,
+             "ip" : "localhost", 
+             "port" : 40021}
+             
+args = dict(file_server_args)
+args.update(send_args)
+description = "Sends a file to a machine running receive_file.py"
+options = utilities.get_options(args, description=description)
+
+file_server_options = dict((key, options[key]) for key in file_server_args.keys())
+send_options = dict((key, options[key]) for key in send_args.keys())
+
+Event("System0", "create", "utilities.File_Server", **file_server_options).post()
+Event("File_Server0", "send_file", **send_options).post()
+machine = vmlibrary.Machine()
+
+if __name__ == "__main__":
+    machine.run()

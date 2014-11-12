@@ -67,10 +67,9 @@ class Timed(object):
         start = timer()
         try:
             result = self.function(*args, **kwargs)
-        except:
+        except BaseException as error:
             end = timer()
-            print "%s crashed after %ss" % (self.function, end-start)
-            print "local variables: ", locals(), "\n"
+            print "%s when timing %s after %ss" % (type(error), self.function, end-start)
             raise
         else:
             end = timer()
@@ -92,40 +91,46 @@ class Tracer(object):
                      "function_name" : code.co_name,
                      "line_number" : frame.f_lineno,
                      "called_from" : code.co_filename}                                
-                    
+        
+        module = code.co_filename.split("\\")[-1].replace(".py", "")
+        source_info = {"function" : inspect.getsource(code),        
+                  "module" : inspect.getsource(__import__(module))}
+          
         caller = frame.f_back
-        caller_code = caller.f_code
-        caller_info = {"caller" : caller,
-                       "code" : caller_code,
-                       "line_number" : caller.f_lineno,
-                       "function_name" : caller_code.co_name}   
-                       
-        if not self.function_source:
-            self.function_source = inspect.getsource(code)
-            module = code.co_filename.split("\\")[-1].replace(".py", "")
-            self.function_module_source = inspect.getsource(__import__(module))
-            self.caller_source = inspect.getsource(caller_code)           
-        return call_info, caller_info
+        if caller:
+            caller_code = caller.f_code
+            caller_info = {"caller" : caller,
+                           "code" : caller_code,
+                           "line_number" : caller.f_lineno,
+                           "function_name" : caller_code.co_name} 
+            source_info["caller"] = inspect.getsource(caller_code)
+        else:
+            caller_info = {}
+        
+        return call_info, caller_info, source_info
 
     def trace(self, frame, event, arg):
-        call_info, caller_info = self.get_frame_info(frame)
-        local_trace = None
-        function_name = call_info["function_name"]
-        frame_locals = frame.f_locals
-        if call_info["function_name"] == "write":
-            pass # ignore print calls
-        elif event == "return":
-            self.source += "returned %s\n" % type(arg)
-            self.debug += "%s returned %s\n" % (function_name, arg)
-        else:
-            source = self.function_module_source.split("\n")[call_info["line_number"]-1] + "\n"
-            for attribute, value in frame_locals.items():
-                source = source.replace(attribute, str(value))
-            self.source += source
-            self.debug += "call to %s from %s line %s\n" % \
-            (function_name, call_info["called_from"], call_info["line_number"])
-            local_trace = self.trace            
-        return local_trace
+        if event != "exception":
+            call_info, caller_info, source_info = self.get_frame_info(frame)
+            local_trace = None
+            function_name = call_info["function_name"]
+            frame_locals = frame.f_locals
+            if call_info["function_name"] == "write":
+                pass # ignore print calls
+            elif event == "return":
+                self.source += "returned %s\n" % type(arg)
+                self.debug += "%s returned %s\n" % (function_name, arg)
+            else:
+                source = source_info["module"].split("\n")[call_info["line_number"]]
+                
+                for attribute, value in frame_locals.items():
+                    source = source.replace(attribute, str(value))
+                print source
+                #self.source += source
+                #self.debug += "call to %s from %s line %s\n" % \
+                #(function_name, call_info["called_from"], call_info["line_number"])
+                local_trace = self.trace            
+            return local_trace
         
     def __call__(self, *args, **kwargs):
         old_trace = sys.gettrace()
