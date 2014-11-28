@@ -14,7 +14,6 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import sys
 import os
 import socket
@@ -25,9 +24,12 @@ import time
 import mmap
 import contextlib
 import traceback
+import getpass
+#import hashlib
 
 import defaults
 import base
+from utilities import Latency, Average
 Event = base.Event
 
 try:
@@ -62,7 +64,11 @@ class Connection(base.Wrapper):
         super(Connection, self).__init__(sock, **kwargs)
         sock.setblocking(0)
          
-            
+    def delete(self):
+        self.close()
+        super(Connection, self).delete()
+        
+        
 class Server(Connection):
     """usage: Event("Asynchronous_Network0", "create", "networklibrary.Server",
     incoming=myincoming, outgoing=myoutgoing, on_connection=myonconnection,
@@ -77,7 +83,8 @@ class Server(Connection):
         try:
             self.bind((self.interface, self.port))
         except socket.error:
-            self.warning(traceback.format_exc() + "\nAddress already in use. Deleting %s\n" % self)
+            message = traceback.format_exc() + "\nAddress already in use. Deleting %s\n" % self
+            self.alert(message, 5)
             return Event("Server", "delete", component=self).post()
         self.listen(self.backlog)        
         self.parent.servers.append(self)
@@ -102,26 +109,27 @@ class Download(Outbound_Connection):
     def __init__(self, **kwargs):
         self.received_chunks = []
         super(Download, self).__init__(**kwargs)
-        if not self.filename:
-            self.warning("Attempted to start a download without a filename to use")
-            self.delete()
-        try:
-            self.file = open("%s_%s" % (self.filename_prefix, self.filename), "wb")       
-        except IOError:
-            filename = raw_input("Please provide a name for the downloaded file: ")
-            self.file = open(filename, "wb")
         
     def on_connection(self, connection, address):
         self.thread = self._new_thread(connection)
         self.connection = connection
         network_chunk_size = self.network_chunk_size
         self.expecting = network_chunk_size + 17
+        self.header_received = False
+        if not self.filename:
+            self.alert("Attempted to start a download without a filename to use", 4)
+            self.delete()
+        else:
+            try:
+                self.file = open("%s_%s" % (self.filename_prefix, self.filename), "wb")       
+            except IOError:
+                filename = raw_input("Please provide a name for the downloaded file: ")
+                self.file = open(filename, "wb")
         message = (str(0), str(network_chunk_size), self.filename)
-        request = ":".join(message)
+        request = ":".join(message)        
         Event("Asynchronous_Network0", "buffer_data", connection, request).post() 
         
     def outgoing(self, connection, data):
-        print "sending request", data
         connection.send(data)
         
     def incoming(self, connection):
@@ -142,10 +150,14 @@ class Download(Outbound_Connection):
             if getattr(self, "exit_when_finished", None):
                 sys.exit()
 
-    def delete(self, *args):
-        self.connection.close()
-        self.file.close()
-        super(Download, self).delete(*args)
+    def delete(self):
+        try:
+            self.file.close()
+        except AttributeError:
+            pass
+        super(Download, self).delete()
+        if getattr(self, "exit_when_finished", None):
+            sys.exit()
                     
     def _new_thread(self, connection):
         network_chunk_size = self.network_chunk_size
@@ -159,20 +171,16 @@ class Download(Outbound_Connection):
             received = connection.recv(full_buffer)
             amount = len(received)
             self.expecting -= amount
-            if self.expecting: # less then full amount received
-                assert self.expecting == abs(self.expecting)
-                if self.header_received: # already did the split and got file position
-                    position = self.file.tell()
-                    data = received # received is just data
-                else: # have not gotten header yet
-                    position, data = received.split(":", 1)
-                    position = int(position)
-                    self.header_received = True
-                self.write_data(data, position)
-            else: # received all the data expected
+            assert self.expecting == abs(self.expecting)
+            if not self.header_received: # beginning of request
+                self.header_received = True
                 position, data = received.split(":", 1)
                 position = int(position)
-                self.write_data(data, position)
+            else: # did not receive all the data
+                data = received
+                position = self.file.tell()
+            self.write_data(data, position)
+            if not self.expecting: # received all the data expected
                 end = self.file.tell()
                 self.filesize += end - position
                 self.send_request(connection, end)
@@ -189,7 +197,8 @@ class Download(Outbound_Connection):
         else:
             expecting = network_chunk_size + 17
             request = ":".join((str(file_position), str(file_position + network_chunk_size), self.filename))
-        self.expecting = expecting  
+        self.expecting = expecting
+        self.header_received = False
         Event("Asynchronous_Network0", "buffer_data", connection, request).post()      
 
     def write_data(self, data, position):
@@ -220,18 +229,21 @@ class Upload(Inbound_Connection):
         try:
             start, end, filename = connection.recv(self.network_chunk_size).split(":", 2)
         except (socket.error, ValueError):
-            #v: print "Finishing upload of %s" % self.filename
+            self.alert("Finished upload of {0}".format(self.filename), 1)
             self.file.close()
             self.close()
-            self.delete()            
-        #v: print "servicing request for %s: %s-%s" % (filename, start, end)
+            self.delete()
+            return
+        self.alert("servicing request for {0}: {1}-{2}".format(filename, start, end), 1)
         start_index = int(start)
         end_index = int(end)
         if not self.file:
+            self.alert("Providing download of {0} for {1}".format(filename, connection.getpeername()), 3)
             self.load_file(filename)
             if self.file_size > mmap.ALLOCATIONGRANULARITY * 10:
-                self.mmap_file = True
-                Event("Asynchronous_Network0", "buffer_data", connection, str(self.file_size).zfill(16)).post()
+                self.mmap_file = True    
+            file_size = str(self.file_size).zfill(16)
+            Event("Asynchronous_Network0", "buffer_data", connection, str(self.file_size).zfill(16)).post()
         if self.mmap_file:
             data = self.read_from_memory(start_index)
         else:
@@ -347,7 +359,7 @@ class Basic_Authentication_Client(base.Thread):
         else:
             print "Please provide login information for", self
             username = raw_input("Username: ")
-            password = hash(raw_input("Password: "))
+            password = hash(getpass.getpass())
         response = username+"\n"+str(password)
         Event("Asynchronous_Network0", "buffer_data", self.parent.connection, response).post()
         yield
@@ -355,7 +367,7 @@ class Basic_Authentication_Client(base.Thread):
         while not self.parent.network_buffer:
             yield        
         if self.parent.network_buffer in ("Invalid password", "Invalid username"):
-            self.warning("%s supplied in login attempt" % self.network_buffer, "Shell")        
+            self.alert("%s supplied in login attempt" % self.network_buffer, 4)        
             self.login_stage = None
             self.network_buffer = None
             if "y" in raw_input("Retry?: ").lower():
@@ -366,7 +378,7 @@ class Basic_Authentication_Client(base.Thread):
                 on_connection=self.on_connection).post()                
                 #Event("Asynchronous_Network0", "disconnect", self.connection).post()
             else:
-                self.warning("failed to login. Exiting...", self)
+                self.alert("failed to login. Exiting...", 5)
                 Event("System0", "delete", self).post()
                 raise NotImplementedError
 
@@ -392,7 +404,7 @@ class Basic_Authentication(base.Thread):
             elif isinstance(exception, StopIteration):
                 raise                
             else:
-                print "other exception occurred"
+                print "unhandled exception occurred..."
                 raise
             
             Event("Asynchronous_Network0", "buffer_data", self.connection, response).post()        
@@ -421,7 +433,7 @@ class Asynchronous_Network(base.Process):
         self.readable_sockets = []
         self.writable_sockets = []
         Event("System0", "create", "networklibrary.Service_Listing", auto_start=False).post()
-        
+            
     def buffer_data(self, connection, data, to=None):
         if to:
             data = (to, data)
@@ -446,7 +458,7 @@ class Asynchronous_Network(base.Process):
         else:
             connection.close()
             Event("Asynchronous_Network0", "delete", connection, component=self).post()
-        
+     
     def delete_server(self, server_name):
         for server in self.servers:
             if server.name == server_name:
@@ -455,26 +467,29 @@ class Asynchronous_Network(base.Process):
                 
     def run(self):
         if self.connection_buffer.keys():
-            #Event("Asynchronous_Network0", "handle_connections").post()          
             self.handle_connections()
+        socket_name = socket.socket.__name__
+        socket_objects = self.objects[socket_name]
+        if socket_objects:
+            self.number_of_sockets = number_of_sockets = len(socket_objects)            
+            range_size = (number_of_sockets / 500) + 1
+            for chunk in xrange(range_size):
+                start_index = chunk * 500
+                end_index = start_index + 500
+                socket_list = socket_objects[start_index:end_index]
+                self._handle_sockets(socket_list)            
+            
+        self.propagate()
         
-        if self.objects[socket.socket.__name__]:
-            number_of_socket_chunks = (len(self.objects[socket.socket.__name__])/500)
-            for chunk in xrange(number_of_socket_chunks+1):
-                socket_list = self.objects[socket.socket.__name__][chunk*500:(1+chunk)*500]
-                readable_sockets, writeable_sockets, errors = select.select(\
-                socket_list, socket_list, [], 0.0)    
+    def _handle_sockets(self, socket_list):
+        readable_sockets, writeable_sockets, errors = select.select(\
+        socket_list, socket_list, [], 0.0)    
+        if readable_sockets:
+            self.handle_reads(readable_sockets)
  
-                if readable_sockets:
-                    self.handle_reads(readable_sockets)
-                    #Event("Asynchronous_Network0", "handle_reads").post()
-                if writeable_sockets:
-                    self.handle_writes(writeable_sockets)
-                    #Event("Asynchronous_Network0", "handle_writes").post()            
-                
-        if self in self.parent.objects[self.__class__.__name__]:
-            Event("Asynchronous_Network0", "run").post()
-                
+        if writeable_sockets:
+            self.handle_writes(writeable_sockets)
+                                 
     def handle_connections(self):
         sockets = self.objects[socket.socket.__name__]
         for sock in self.connection_buffer.keys():            
@@ -483,9 +498,11 @@ class Asynchronous_Network(base.Process):
             self.timeouts[sock] -= 1
             if not self.timeouts[sock]:
                 del self.connection_buffer[sock]
-                sockets.append(sock)
-                Event("Asynchronous_Network0", "delete", sock, component=self).post()
-                sock.warning("Outbound Connection to %s timed out after %s frames" % (sock.target, sock.timeout))
+                del self.timeouts[sock]
+                if sock.timeout_notify:
+                    sock.alert("{0} to {1} timed out after {2} frames".format(sock.instance_name, sock.target, sock.timeout), 4)
+                self.add
+                sock.delete()
                 continue
             try: # this is how to properly do a non blocking connect
                 sock.connect(self.connection_buffer[sock])
@@ -503,10 +520,9 @@ class Asynchronous_Network(base.Process):
             if sock in self.servers:
                 connection, address = sock.accept() # inbound connection received  
                 options = sock.inbound_connection_options
-                _connection = self.create(sock.inbound_connection_type, connection, **options)
                 for method in ("on_connection", "incoming", "outgoing"):
-                    if not getattr(_connection, method):
-                        setattr(_connection, method, getattr(sock, method))
+                    options.setdefault(method, getattr(sock, method))                
+                _connection = self.create(sock.inbound_connection_type, connection, **options)
                 
                 if sock.on_connection: # server method to apply upon connection
                     sock.on_connection(_connection, address)
@@ -519,7 +535,7 @@ class Asynchronous_Network(base.Process):
                         sock.close()
                         sock.delete()
                     elif error.errno == 11: # EAGAIN on unix
-                        self.warning("EAGAIN error reading %s" % sock)
+                        self.alert("EAGAIN error reading %s" % sock, 4)
                         
     def handle_writes(self, writable_sockets):
         for sock in writable_sockets:
@@ -530,10 +546,11 @@ class Asynchronous_Network(base.Process):
                         sock.outgoing(sock, message)
                     except socket.error as error:
                         if error.errno == CONNECTION_WAS_ABORTED:
-                            self.warning("Failed to send %s on %s" % (self.write_buffer[sock], sock), "%s" % error)
+                            message = "Failed to send %s on %s" % (self.write_buffer[sock], sock) + "%s" % error
+                            self.alert(message, 4)
                             sock.delete()
                         elif error.errno == 11: # EAGAIN on unix
-                            self.warning("EAGAIN error when writing to %s" % sock)
+                            self.alert("EAGAIN error when writing to %s" % sock, 4)
                     else:
                         del self.write_buffer[sock][index]
         
@@ -572,7 +589,95 @@ class Service_Listing(base.Process):
         print "List of known network services: "
         for address, service_name in self.services.items():
             print "Address: %s\tService Name: %s" % (address, service_name)
+    
+    def process_request(self):
+        for requester in self.read_messages():            
+            listings = "\n".join("Address: %s\tService: %s" % (address, service_info) for address, service_info in self.local_services.items())
+            self.send_to(requester, listings)
+            
+            
+class File_Server(base.Base):
+
+    defaults = defaults.File_Server
+    
+    def __init__(self, **kwargs):
+        super(File_Server, self).__init__(**kwargs)     
         
-        for requester in messages:
-            self.sendto(requester, "\n".join("Address: %s\tService: %s,%s" % (address, port, service_name)\
-            for address, port, service_name in self.local_services.items()))
+        if self.asynchronous_server:
+            options = {"interface" : self.interface,
+                       "port" : self.port, 
+                       "name" : "File_Server", 
+                       "inbound_connection_type" : "networklibrary.Upload"}                           
+            Event("Asynchronous_Network0", "create", "networklibrary.Server", **options).post()    
+
+    def send_file(self, filename='', ip='', port=40021, show_progress=True):
+        to = (ip, port)
+        sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sender.connect(to)
+        with open(filename, "rb") as data_file:
+            data = data_file.read()
+            data_file.close()
+        file_size = len(data)
+        latency = Latency(name="send_file %s" % filename)
+        frame_time = Average(size=100)
+        upload_rate = Average(size=10)
+        started_at = time.clock()
+        while data:
+            amount_sent = sender.send(data[:self.network_chunk_size])            
+            data = data[self.network_chunk_size:]
+            if show_progress:
+                latency.update()
+                upload_rate.add(amount_sent)
+                frame_time.add(latency.latency)
+                data_size = len(data)
+                chunks_per_second = 1.0 / frame_time.average
+                bytes_per_second = chunks_per_second * upload_rate.average
+                time_remaining = (data_size / bytes_per_second)
+                sys.stdout.write("\b"*80)
+                sys.stdout.write("Upload rate: %iB/s. Time remaining: %i" % (bytes_per_second, time_remaining))
+        print "\n%s bytes uploaded in %s seconds" % (file_size, time.clock() - started_at)
+        sender.close()
+        if getattr(self, "exit_when_finished", None):
+            sys.exit()
+
+    def receive_file(self, filename='', interface="0.0.0.0", port=40021, show_progress=True):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((interface, port))
+        server.listen(1)        
+        _file = open(filename, "wb")
+        frame_time = Average(size=100)
+        download_rate = Average(size=10)
+        latency = Latency(name="receive_file %s" % filename)
+        downloading = True
+        started_at = time.clock()
+        data_size = 0
+        print "Waiting for connection...", interface, port
+        receiver, _from = server.accept()
+        print "Connection received"
+        receiver.settimeout(2)
+        while downloading:
+            latency.update()
+            data = receiver.recv(self.network_chunk_size)
+            if not data:
+                downloading = False
+            amount_received = len(data)
+            download_rate.add(amount_received)
+            data_size += amount_received
+            receiver.settimeout(2)
+            _file.write(data)
+            _file.flush()
+            if show_progress:
+                frame_time.add(latency.latency)
+                chunks_per_second = 1.0 / frame_time.average
+                bytes_per_second = chunks_per_second * download_rate.average
+                sys.stdout.write("\b"*80)
+                sys.stdout.write("Downloading at %iB/s" % bytes_per_second)
+        sys.stdout.write("\b"*80)
+        print "\nDownload of %s complete (%s bytes in %s seconds)" % \
+        (filename, data_size, (time.clock() - started_at - 2.0))
+        _file.close()
+        receiver.close()
+        server.close()
+        if getattr(self, "exit_when_finished", None):
+            sys.exit()
+            

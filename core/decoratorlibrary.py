@@ -24,14 +24,20 @@ from test import pystone
 from functools import wraps
 from weakref import ref
 
-seconds, pystones_per_second = pystone.pystones(pystone.LOOPS)
+if "win" in sys.platform:
+    timer = time.clock
+else:
+    timer = time.time  
 
 class Pystone_Test(object):
     
     def __init__(self, function):
         self.function = function
+        if not hasattr(Pystone_Test, "pystones_per_second"):
+            Pystone_Test.pystones_per_second = pystone.pystones(pystone.LOOPS)      
         
     def __call__(self, *args, **kwargs):
+        pystones_per_second = Pystone_Test.pystones_per_second
         if sys.platform == "win32":
             timer = time.clock
         else:
@@ -56,20 +62,18 @@ class Pystone_Test(object):
     
 class Timed(object):
     
-    def __init__(self, function):
+    def __init__(self, function, exception_notify=True):
         self.function = function
-        if sys.platform == "win32":
-            self.timer = time.clock
-        else:
-            self.timer = time.time       
+        self.exception_notify = exception_notify
+        
     def __call__(self, *args, **kwargs):
-        timer = self.timer
         start = timer()
         try:
             result = self.function(*args, **kwargs)
         except BaseException as error:
             end = timer()
-            print "%s when timing %s after %ss" % (type(error), self.function, end-start)
+            if self.exception_notify:
+                print "%s when timing %s after %ss" % (type(error), self.function, end-start)
             raise
         else:
             end = timer()
@@ -77,7 +81,7 @@ class Timed(object):
             return run_time, result
                         
 class Tracer(object):
-    "'call', 'line', 'return', 'exception', 'c_call', 'c_return', or 'c_exception'"
+    
     def __init__(self, function):
         self.function = function
         self.source = ''
@@ -94,7 +98,7 @@ class Tracer(object):
         
         module = code.co_filename.split("\\")[-1].replace(".py", "")
         source_info = {"function" : inspect.getsource(code),        
-                  "module" : inspect.getsource(__import__(module))}
+                       "module" : inspect.getsource(__import__(module))}
           
         caller = frame.f_back
         if caller:

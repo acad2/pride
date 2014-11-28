@@ -22,7 +22,7 @@ options = utilities.get_options(args, description=description)
 file_server_options = dict((key, options[key]) for key in file_server_args.keys())
 send_options = dict((key, options[key]) for key in send_args.keys())
 
-Event("System0", "create", "utilities.File_Server", **file_server_options).post()
+Event("System0", "create", "networklibrary.File_Server", **file_server_options).post()
 Event("File_Server0", "send_file", **send_options).post()
 machine = vmlibrary.Machine()
 

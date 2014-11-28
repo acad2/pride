@@ -70,7 +70,7 @@ class Audio_Device(base.Base):
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         
     def initialize(self):
-        #v: print "initializing device %s" % self.name, self.options
+        self.alert("initializing device {0} with options: {1}".format(self.name, self.options), 2)
         try:
             self.stream = PORTAUDIO.open(**self.options)
         except:
@@ -113,7 +113,6 @@ class Audio_Input(Audio_Device):
     
     def __init__(self, **kwargs):
         super(Audio_Input, self).__init__(**kwargs)
-        print "input creating with", self.options
         if hasattr(self, "index"):
             self.input_device_index = self.index
         
@@ -155,7 +154,7 @@ class Audio_Output(Audio_Device):
         stream = self.stream
         while self.active:
             number_of_frames = stream.get_write_available()
-            print "%s frames available, fpb: %s" % (number_of_frames, self.frames_per_buffer)
+            #print "%s frames available, fpb: %s" % (number_of_frames, self.frames_per_buffer)
             if number_of_frames >= self.frames_per_buffer:
                 data = self.data_source.read(self.frames_per_buffer)
                 self.data = data

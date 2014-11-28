@@ -1,5 +1,11 @@
-import alsaaudio
+import time
 import wave
+
+# install requires python-dev and libasound2:
+# sudo apt-get install python-dev
+# sudo apt-get install libasound2
+# sudo pip install pyalsaaudio
+import alsaaudio
 
 import base
 import defaults   
@@ -26,7 +32,7 @@ class Audio_Device(base.Base):
         super(Audio_Device, self).__init__(**kwargs)            
         
     def initialize(self):
-	print "%s %s initializing" % (self.name, self.card)
+        print "%s %s initializing" % (self.name, self.card)
         self.pcm = alsaaudio.PCM(type=self.type, mode=self.mode, card=self.card)
         self.pcm.setchannels(self.channels)
         self.pcm.setrate(self.rate)
@@ -62,7 +68,7 @@ class Audio_Input(Audio_Device):
     
     def __init__(self, **kwargs):
     	super(Audio_Input, self).__init__(**kwargs)
-	self.thread = self._new_thread()
+        self.thread = self._new_thread()
 
     def _new_thread(self):
         full_buffer_size = self.full_buffer_size

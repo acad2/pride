@@ -1,5 +1,5 @@
 #   mpf.utilities - shell commands, arg parser, latency measurement, 
-#                    file server,  uploads/downloads, running average
+#                    documentation, running average
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -21,17 +21,16 @@ import sys
 import os
 import time
 import argparse
+import inspect
 import subprocess
 from collections import deque
+from StringIO import StringIO
 
-import base
 import defaults
 
-Event = base.Event
-
-def shell(command):
-    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-    output = process.communicate()[0]
+def shell(command, shell=False):
+    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, shell=shell)
+    return process.communicate()[0]
     
 def get_arguments(argument_info, **kwargs):
     arguments = {}
@@ -132,91 +131,72 @@ class Average(object):
         self.average += adjustment        
 
 
-class File_Server(base.Base):
+def documentation(instance):
+    if isinstance(instance, type):
+        _class = instance
+    else:
+        _class = instance.__class__
+    options_text = '\n Default values for newly created instances:\n'     
+    try: # gather the default attribute names and values (base objects only)
+        options = ""
+        for key, value in _class.defaults.items():
+            options += " \t{0:16}\t{1}\n".format(key, value)
+        if not options:
+            options_text = "\n No defaults are assigned to new instances\n"
+        else:
+            options_text += options
+    except AttributeError: # does not have defaults
+        options_text = "\n\n"
+    docstring = "%s documentation:\n" % _class.__name__
+    class_docstring = getattr(_class, "__doc", '')
+    if not class_docstring:
+        class_docstring = getattr(_class, "__doc__", '')
+    docstring += "\t" + class_docstring + "\n" + options_text + "\n"
+    docstring += " This object defines the following public methods:\n"
+    count = 0
+    found = False
+    uses_decorator = False
+    for attribute_name in _class.__dict__.keys():
+        if "_" != attribute_name[0]:
+            attribute = getattr(_class, attribute_name)
+            if callable(attribute):
+                attribute = getattr(attribute, "function", attribute)
+                found = True
+                count += 1
+                count_string = str(count)        
+                docstring += "\n \t"+count_string+". "+ attribute_name + "\n"
+                try:
+                    argspec = inspect.getargspec(attribute)
+                except:
+                    continue
+                function_docstring = inspect.getdoc(attribute)
+                if function_docstring:
+                    formatted = ''
+                    stringio = StringIO(function_docstring)
+                    for line in stringio.readlines():
+                        formatted += line + " \t\t"
+                    docstring += " \t\tDocstring: " + formatted + "\n\n"
+                #docstring += "%s uses the following argument specification:\n"
+                if argspec.args:
+                    docstring += " \t\tRequired arguments: " + str(argspec.args) + "\n"
+                if argspec.defaults:
+                    docstring += " \t\tDefault arguments: " + str(argspec.defaults) + "\n"
+                if argspec.varargs:
+                    docstring += " \t\tVariable positional arguments: " + str(argspec.varargs)+ "\n"
+                if argspec.keywords:
+                    docstring += " \t\tKeyword arguments: " + str(argspec.keywords) + "\n"""
+    if not found:
+        docstring += " \tNo public methods defined\n"
+    try:
+        mro = str(_class.__mro__)
+    except AttributeError:
+        docstring += "\n No method resolution order detected\n"
+    else:
+        docstring += "\n This objects method resolution order is:\n \t"
+        docstring += mro + "\n"
+    return docstring        
 
-    defaults = defaults.File_Server
     
-    def __init__(self, **kwargs):
-        super(File_Server, self).__init__(**kwargs)     
-        
-        if self.asynchronous_server:
-            options = {"interface" : self.interface,
-                       "port" : self.port, 
-                       "name" : "File_Server", 
-                       "inbound_connection_type" : "networklibrary.Upload"}                           
-            Event("Asynchronous_Network0", "create", "networklibrary.Server", **options).post()    
-
-    def send_file(self, filename='', ip='', port=40021, show_progress=True):
-        to = (ip, port)
-        sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sender.connect(to)
-        with open(filename, "rb") as data_file:
-            data = data_file.read()
-            data_file.close()
-        file_size = len(data)
-        latency = Latency(name="send_file %s" % filename)
-        frame_time = Average(size=100)
-        upload_rate = Average(size=10)
-        started_at = time.clock()
-        while data:
-            amount_sent = sender.send(data[:self.network_chunk_size])            
-            data = data[self.network_chunk_size:]
-            if show_progress:
-                latency.update()
-                upload_rate.add(amount_sent)
-                frame_time.add(latency.latency)
-                data_size = len(data)
-                chunks_per_second = 1.0 / frame_time.average
-                bytes_per_second = chunks_per_second * upload_rate.average
-                time_remaining = (data_size / bytes_per_second)
-                sys.stdout.write("\b"*80)
-                sys.stdout.write("Upload rate: %iB/s. Time remaining: %i" % (bytes_per_second, time_remaining))
-        print "\n%s bytes uploaded in %s seconds" % (file_size, time.clock() - started_at)
-        sender.close()
-        if getattr(self, "exit_when_finished", None):
-            sys.exit()
-
-    def receive_file(self, filename='', interface="0.0.0.0", port=40021, show_progress=True):
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind((interface, port))
-        server.listen(1)        
-        _file = open(filename, "wb")
-        frame_time = Average(size=100)
-        download_rate = Average(size=10)
-        latency = Latency(name="receive_file %s" % filename)
-        downloading = True
-        started_at = time.clock()
-        data_size = 0
-        print "waiting for connection...", interface, port
-        receiver, _from = server.accept()
-        print "Received"
-        receiver.settimeout(2)
-        while downloading:
-            latency.update()
-            data = receiver.recv(self.network_chunk_size)
-            if not data:
-                downloading = False
-            amount_received = len(data)
-            download_rate.add(amount_received)
-            data_size += amount_received
-            receiver.settimeout(2)
-            _file.write(data)
-            _file.flush()
-            if show_progress:
-                frame_time.add(latency.latency)
-                chunks_per_second = 1.0 / frame_time.average
-                bytes_per_second = chunks_per_second * download_rate.average
-                sys.stdout.write("\b"*80)
-                sys.stdout.write("Downloading at %iB/s" % bytes_per_second)
-        sys.stdout.write("\b"*80)
-        print "\nDownload of %s complete (%s bytes in %s seconds)" % \
-        (filename, data_size, (time.clock() - started_at - 2.0))
-        _file.close()
-        receiver.close()
-        server.close()
-        if getattr(self, "exit_when_finished", None):
-            sys.exit()
-
 class Updater(object):
                 
     def __init__(self):

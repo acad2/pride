@@ -36,7 +36,7 @@ receive_options = dict((key, options[key]) for key in receive_args.keys())
 server_options = dict((key, options[key]) for key in server_args.keys())
 machine = vmlibrary.Machine()
 
-Event("System0", "create", "utilities.File_Server", **server_options).post()
+Event("System0", "create", "networklibrary.File_Server", **server_options).post()
 Event("File_Server0", "receive_file", **receive_options).post()
 
 if __name__ == "__main__":

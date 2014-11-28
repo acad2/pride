@@ -2,7 +2,6 @@ import array
 import pickle
 import struct
 import wave
-import time
 import sys
 
 if "linux" in sys.platform:
@@ -36,7 +35,8 @@ class Wav_File(base.Base):
         self.number_of_frames = number_of_frames
         self.comptype = comptype
         self.compname = compname
-        #v: print "opened wav file with", channels, format, rate, number_of_frames
+        message = "opened wav file with channels: {0}, format: {1}, rate: {2}, number of frames: {3}".format(channels, format, rate, number_of_frames)
+        self.alert(message, 2)
         
     def read(self, size):
         data = self.file.readframes(size)
@@ -212,7 +212,8 @@ class Audio_Manager(base.Process):
         # get the sound from each device and output it
         for device in self.audio_devices:
             device.next_frame()
-            self._handle_device(device)            
+            if device.data:
+                self._handle_device(device)            
         
         self.propagate()
 
@@ -244,15 +245,16 @@ class Audio_Manager(base.Process):
 	
     def _handle_device(self, device):
         sound_chunk = device.data
-        if sound_chunk:
-            device.data = ''
-            if device.record_to_disk: 
-                #vv: print "%s recorded %s sound chunks" % (device.name, len(sound_chunk))
-                device.file.writeframes(sound_chunk)    
+        device.data = ''
+        data_size = len(sound_chunk)
+        name = device.name
+        if device.record_to_disk: 
+            self.alert("{0} recorded {1} sound chunks".format(name, data_size), 0)
+            device.file.writeframes(sound_chunk)
         
-            for client in self.listeners[device.name]:
-                #vv: print "%s;;%s bytes of sound to %s" % (device.name, len(sound_chunk), client)
-                self.send_to(client, "%s;;" % str(device.name) + sound_chunk)      
+        for client in self.listeners[device.name]:
+            self.alert("{0} send {1} bytes of sound to {2}".format(name, data_size, client), 0)
+            self.send_to(client, name + ";;" + sound_chunk)      
 
                 
 class Audio_Channel(base.Thread):
@@ -268,8 +270,9 @@ class Audio_Channel(base.Thread):
 
     def _new_thread(self):
         while True:
-            for message in self.read_messages():
-                device_name, audio_data = message.split(";;")
+            messages = self.read_messages()
+            if messages:
+                device_name, audio_data = messages[-1].split(";;", 1)
                 self.audio_data = audio_data                
             yield
             
@@ -284,6 +287,10 @@ class Audio_Channel(base.Thread):
 class Audio_Service(base.Thread):
     
     defaults = defaults.Audio_Service
+    
+    def _get_channels(self):
+        return self.objects["Audio_Channel"]
+    channels = property(_get_channels)
     
     def __init__(self, **kwargs):
         self.channel_configuration = {}
@@ -311,10 +318,6 @@ class Audio_Service(base.Thread):
             for index, channel_info in enumerate(channel_configuration):
                 name = channel_info["name"]
                 channel_info["latency"] = Latency(name=name)
-                self.channel_configuration[name] = channel_info
-                self.audio_data[name] = ""
-                self.clients_listening_to[name] = []
-                self.input_channels[index] = name
                 channel = self.create(Audio_Channel, **channel_info)                    
                 Event("Audio_Manager0", "add_listener", channel, name).post()        
         yield

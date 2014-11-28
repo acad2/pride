@@ -19,11 +19,11 @@ import pickle
 import sys
 import os
 import atexit
-import Queue
+import heapq
 import time
 from collections import deque
 from operator import attrgetter
-
+import multiprocessing
 import base
 import defaults
 import utilities
@@ -31,52 +31,13 @@ from keyboard import Keyboard
 from decoratorlibrary import Timed
 Event = base.Event
  
-
-class Timer(base.Base):
-    
-    defaults = defaults.Timer
-    
-    def __init__(self, wait_time, method, *args, **kwargs):
-        try: # created via .create syntax
-            self.parent = kwargs.pop("parent")
-            self.parent_weakref = kwargs.pop("parent_weakref")
-        except KeyError:
-            pass
-        super(Timer, self).__init__()
-        self.wait_time = wait_time
-        self.method = method
-        self.target_time = time.time() + self.wait_time
-        if not args:
-            args = tuple()
-        if not kwargs:
-            kwargs = {}
-        self.args = args
-        self.kwargs = kwargs
-        
-    def run(self):
-        if time.time() < self.target_time:
-            return
-        results = self.method(*self.args, **self.kwargs)
-        self.target_time = time.time() + self.wait_time
-        return results
-  
-  
-class Task_Scheduler(base.Process):
-    
-    defaults = defaults.Task_Scheduler
-    
-    def __init__(self, **kwargs):
-        super(Task_Scheduler, self).__init__(**kwargs)
-        self.objects["Timer"] = []
-                
-    def run(self):
-        for timer in self.objects["Timer"]:
-            timer.run()
-                
-        if self in self.parent.objects[self.__class__.__name__]:
-            Event("Task_Scheduler0", "run", component=self).post()
-
-            
+if "win" in sys.platform:
+    timer_function = time.clock
+else:
+    timer_function = time.time  
+          
+                        
+                        
 class Processor(base.Hardware_Device):
     
     defaults = defaults.Processor
@@ -86,73 +47,27 @@ class Processor(base.Hardware_Device):
         super(Processor, self).__init__(**kwargs)
         
     def run(self):
+        events = Event.events
         while True:
-            self.events = sorted(getattr(Event_Handler, self.instance_name + "_queue"), key=attrgetter("priority"))
-            setattr(Event_Handler, "%s_queue" % self.instance_name, [])
-            #v: print "got events from %s_queue" % self.instance_name
-            #v: print "processing events: ", [str(event) for event in self.events]
-            for event in self.events:
-                if not event.component:
-                    event.component = base.Component_Resolve[event.component_name]
-                #v: print "executing code", str(event)
-                call = (event.component_name, event.method)
-                time_taken, results = Timed(event.execute_code)()
-                try:
-                    self.execution_times[call].add(time_taken)
-                except KeyError:
-                    average = self.execution_times[call] = utilities.Average(name=call, size=5)
-                    average.add(time_taken)
-                #vv: print "%s takes about %ss to execute" % (call, self.execution_times[call].average)    
+            execute_at, event = heapq.heappop(events)
+            if not event.component:
+                event.component = base.Component_Resolve[event.component_name]
+            self.alert("{0} executing code ".format(self.instance_name) + str(event), 0)
+            time_until = max(0, execute_at - timer_function())
+            time.sleep(time_until)
+            time_taken, results = Timed(event.execute_code, exception_notify=False)()
+            call = (event.component_name, event.method)
+            try:
+                self.execution_times[call].add(time_taken)
+            except KeyError:
+                average = self.execution_times[call] = utilities.Average(name=call, size=5)
+                average.add(time_taken)
+            self.alert("{0} takes about {1}s to execute".format(call, self.execution_times[call].average), 1)
                     
-class Event_Handler(base.Hardware_Device):
-    """Dispatches events to Processors"""
-    
-    defaults = defaults.Event_Handler
-    
-    def __init__(self, **kwargs):
-        self.processor_events = {}
-        latency_options = {"name" : "%s frame time" % self.instance_name,
-                           "average_size" : 5}
-        self.frame_time = utilities.Latency(**latency_options)
-        self.frame_queue = deque([[] for x in xrange(100)], 100)
-        super(Event_Handler, self).__init__(**kwargs)
-                           
-    def run(self):
-        #v: print self, "running"
-        self.frame_time.update()
-        #self.frame_time.display()
-        self.prepare_queue()   
-        while not self.queue_empty:
-            for processor_number in range(self.number_of_processors):
-                event = self.get_event()
-                self.processor_events["Processor%s" % processor_number].append(event)
-          
-        for processor_number, event_list in self.processor_events.items():
-            setattr(Event_Handler, "%s_queue" % processor_number, event_list)
-            self.processor_events[processor_number] = []
-            #v: print "Distributed %s events to %s" % (len(event_list), processor_number)
-            #vv: print "\t" + [str(item) for item in event_list]    
-        time.sleep(self.idle_time)
-             
-    def prepare_queue(self):        
-        frame_queue = base.Event._get_events()
-        event_list = []
-        while not frame_queue.empty():
-            event_list.append(frame_queue.get_nowait())
-        self.frame_queue = sorted(event_list, key=attrgetter("priority"))
-        self.queue_empty = False           
-                
-    def get_event(self):
-        # returns a single event from the frame queue
-        #v: print "getting event from frame queue", len(self.frame_queue)
-        try:
-            event = self.frame_queue.pop(0)
-        except IndexError: 
-            self.queue_empty = True
-            #v: print "queue empty!"
-            event = Event("Event_Handler0", "run", component=self, priority=100)
-        return event
-        
+    def display_process_info(self):
+        for key, value in self.execution_times.iteritems():
+            print key, value.average
+                            
 
 class System(base.Base):
     """a class for managing components and applications.
@@ -170,9 +85,9 @@ class System(base.Base):
         # sets default attributes
         super(System, self).__init__(**kwargs)
         
-        #v: print "%s starting with %s" % (self.instance_name, self.startup_processes)
+        self.alert("{0} starting with ".format(self.instance_name) + str(self.startup_processes), 2)
         for component, args, kwargs in self.startup_processes:
-            #v: print "creating", component, args, kwargs
+            self.alert("creating {0} with {1} {2}".format(component, args, kwargs), 1)
             self.create(component, *args, **kwargs)           
                     
     def exit(self):
@@ -181,18 +96,15 @@ class System(base.Base):
     def run(self):
         pass
 
-        
+            
 class Machine(base.Base):
     
     defaults = defaults.Machine
     
     def __init__(self, **kwargs):
         super(Machine, self).__init__(**kwargs)
-        
-        self.event_handler = self.create(Event_Handler)
-                
+
         for processor_number in range(self.processor_count):
-            self.event_handler.processor_events["Processor%s" % processor_number] = []
             self.create(Processor)
            
         for device_name, args, kwargs in self.hardware_configuration:
@@ -210,6 +122,8 @@ class Machine(base.Base):
         return instance
         
     def run(self):
-        self.event_handler.run()
-        for processor in self.objects["Processor"]:
-            processor.run()
+        processor = self.objects["Processor"][0]
+        processor.run()
+        #pool = multiprocessing.Pool()
+        #while True:
+        #   pool.map(processor.run, Event.events)

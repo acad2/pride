@@ -29,14 +29,21 @@ NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-Base = {"memory_size" : 8096,
-"network_chunk_size" : 4096}
+Base = {"memory_size" : 8192,
+"network_chunk_size" : 4096,
+"ignore_alerts" : False}
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
 "network_buffer" : '',
-"recurring" : False,
-"keyboard_input" : ''})
+"keyboard_input" : '',
+"priority" : .04,
+"minimum_priority" : .04,
+"maximum_priority" : .04,
+"priority_scales_with" : '',
+"update_priority_interval" : 20,
+"scale_against" : 1.0,
+"scale_operator" : "div"})
 
 Thread = Base.copy()
 
@@ -44,20 +51,14 @@ Hardware_Device = Base.copy()
 
 # vmlibrary
 
-Timer = Base.copy()
-
-Event_Handler = Hardware_Device.copy()
-Event_Handler.update({"number_of_processors" : PROCESSOR_COUNT,
-"idle_time" : .001})
-
 Processor = Hardware_Device.copy()
+Processor.update({"ignore_alerts" : True}) # show everything that is processed or not
 
 System = Base.copy()
 System.update({"name" : "system",
 "status" : "",
 "hardware_configuration" : ("vmlibrary.Keyboard", ),
-"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS),
-                       ("vmlibrary.Task_Scheduler", NO_ARGS, NO_KWARGS))})
+"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS), )})
 
 Machine = Base.copy()
 Machine.update({"processor_count" : PROCESSOR_COUNT,
@@ -177,7 +178,8 @@ Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
 
 Audio_Manager = Process.copy()
 Audio_Manager.update({"config_file_name" : 'audiocfg',
-"use_defaults" : True})
+"use_defaults" : True,
+"priority" : .005})
 
 Audio_Channel = Thread.copy()
 Audio_Channel.update({"audio_data" : '',
@@ -194,7 +196,7 @@ Connection.update({"socket_family" : socket.AF_INET,
 Server = Connection.copy()
 Server.update({"interface" : "localhost", 
 "port" : 0, 
-"backlog" : 15,
+"backlog" : 50,
 "name" : "", 
 "reuse_port" : 0,
 "inbound_connection_type" : "networklibrary.Inbound_Connection"})
@@ -202,9 +204,10 @@ Server.update({"interface" : "localhost",
 Outbound_Connection = Connection.copy()
 Outbound_Connection.update({"ip" : "localhost",
 "port" : 80,
-"target" : tuple(),
+"target" : None,
 "as_port" : 0,
-"timeout" : 10})
+"timeout" : 10,
+"timeout_notify" : True})
    
 Inbound_Connection = Connection.copy()
 
@@ -213,12 +216,14 @@ Download.update({"filesize" : 0,
 "filename" : None,
 "filename_prefix" : "Download",
 "download_in_progress" : False,
-"network_chunk_size" : 16384})
+"network_chunk_size" : 16384,
+"port" : 40021})
 
 Upload = Inbound_Connection.copy()
 Upload.update({"use_mmap" : False,
 "network_chunk_size" : 16384,
-"file" : ''})
+"file" : '',
+"mmap_file" : False})
 
 UDP_Socket = Base.copy()
 UDP_Socket.update({"interface" : "0.0.0.0",
@@ -241,19 +246,15 @@ Basic_Authentication_Client = Thread.copy()
 Basic_Authentication = Thread.copy()
 
 Asynchronous_Network = Process.copy()
+Asynchronous_Network.update({"number_of_sockets" : 0,
+"priority_scales_with" : "number_of_sockets",
+"update_priority_interval" : 5})
 
 Service_Listing = Process.copy()
 
-Scanner = Process.copy()
-Scanner.update({"subnet" : "127.0.0.1",
-"ports" : (22, ),
-"range" : (0, 0, 0, 254),
-"timeout" : 10,
-"priority" : "high"})
-
 # File Manager
 File_Server = Process.copy()
-File_Server.update({"interface" : "localhost",
+File_Server.update({"interface" : "0.0.0.0",
 "port" : 40021,
 "network_chunk_size" : 16384,
 "asynchronous_server" : True})

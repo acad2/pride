@@ -1,4 +1,4 @@
-from setuptools import setup
+"""from setuptools import setup
 
 setup(name="Metaprogramming Framework"
       description="An asynchronous embeddable virtual machine, capable of running an arbitrary number of framework processes concurrently."
@@ -24,4 +24,6 @@ setup(name="Metaprogramming Framework"
 #          'console_scripts': [],
  #     },
       include_package_data=True,
-      zip_safe=True)
+      zip_safe=True)"""
+      
+print "setup.py install not enabled yet. Please dump all files into one directory before use"      
