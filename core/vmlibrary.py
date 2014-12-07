@@ -23,7 +23,7 @@ import heapq
 import time
 from collections import deque
 from operator import attrgetter
-import multiprocessing
+#import multiprocessing
 import base
 import defaults
 import utilities
@@ -31,11 +31,7 @@ from keyboard import Keyboard
 from decoratorlibrary import Timed
 Event = base.Event
  
-if "win" in sys.platform:
-    timer_function = time.clock
-else:
-    timer_function = time.time  
-          
+timer_function = utilities.timer_function
                         
                         
 class Processor(base.Hardware_Device):
@@ -48,25 +44,41 @@ class Processor(base.Hardware_Device):
         
     def run(self):
         events = Event.events
+        Component_Resolve = base.Component_Resolve
         while True:
             execute_at, event = heapq.heappop(events)
+            component_name = event.component_name
             if not event.component:
-                event.component = base.Component_Resolve[event.component_name]
+                try:
+                    event.component = Component_Resolve[component_name]
+                except KeyError:
+                    self.alert("{0} {1} component does not exist".format(event,
+                    component_name), 5)  
+                    continue
+                    
             self.alert("{0} executing code ".format(self.instance_name) + str(event), 0)
-            time_until = max(0, execute_at - timer_function())
+            time_until = max(0, (execute_at - timer_function()))
             time.sleep(time_until)
-            time_taken, results = Timed(event.execute_code, exception_notify=False)()
-            call = (event.component_name, event.method)
+            try:
+                start = timer_function()
+                results = event.execute_code()
+            except BaseException as exception:
+                raise
+                if type(exception) in (SystemExit, KeyboardInterrupt):
+                    raise
+                print exception.traceback   
+            
+            time_taken = timer_function() - start
+            call = (component_name, event.method)
             try:
                 self.execution_times[call].add(time_taken)
             except KeyError:
                 average = self.execution_times[call] = utilities.Average(name=call, size=5)
                 average.add(time_taken)
-            self.alert("{0} takes about {1}s to execute".format(call, self.execution_times[call].average), 1)
                     
     def display_process_info(self):
-        for key, value in self.execution_times.iteritems():
-            print key, value.average
+        for process, time_taken in self.execution_times.iteritems():
+            print process, time_taken.meta_average
                             
 
 class System(base.Base):

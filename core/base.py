@@ -33,12 +33,6 @@ import utilities
 Component_Memory = {} 
 Component_Resolve = {}
 
-if "win" in sys.platform:
-    timer_function = time.clock
-else:
-    timer_function = time.time  
-
-
 class Event(object):
     
     events = []
@@ -49,29 +43,38 @@ class Event(object):
         self.method = method # any method can be supplied
         self.args = args # any arguments can be supplied
         self.kwargs = kwargs # any keyword arguments can be supplied
-            
+        priority = kwargs.setdefault("priority", .04)
+        
         try: # supplying the component foregoes the need for a lookup
             self.component = kwargs.pop("component")
         except KeyError:
             self.component = None
-        try: # for process scheduler, priority is in seconds
-            priority = self.priority = kwargs.pop("priority")
-        except KeyError:
-            priority = self.priority = .04 # 25 fps
-        self.execute_at = priority + timer_function()
+            
+        if method != "create":
+            del kwargs["priority"]
+        self.execute_at = priority + utilities.timer_function()
         
     def post(self):
         heapq.heappush(Event.events, (self.execute_at, self))
         
     def __str__(self):
-        number_of_formats = len(self.args)
-        arg_string = "%s " * number_of_formats
-        return "%s_Event: %s " % (self.component_name, self.method) + arg_string % self.args
+        args = self.args
+        kwargs = self.kwargs
+        number_of_formats = len(args)
+        arg_string = ", ".join("{0}".format(args[index]) for index in xrange(number_of_formats))
+        kwarg_string = ", ".join("{0}={1}".format(attr, value) for attr, value in kwargs.items())
+        format_arguments = (self.component_name, self.method, arg_string, kwarg_string)
+        return "Event {0}.{1}({2}, {3})".format(*format_arguments)
         
     def execute_code(self):    
         call = getattr(self.component, self.method)
-        call(*self.args, **self.kwargs)   
-         
+        try:
+            result = call(*self.args, **self.kwargs)   
+        except BaseException as result:
+            result.traceback = traceback.format_exc()
+            raise result
+        return result
+        
         
 class Runtime_Decorator(object):
     """provides the ability to call a function with a decorator specified via
@@ -250,7 +253,11 @@ class Base(object):
     defaults = defaults.Base
      
     def _get_name(self):
-        return type(self).__name__ + str(self.instance_number)
+        name = type(self).__name__
+        instance_number = self.instance_number
+        if instance_number:
+            name += str(instance_number)
+        return name
     instance_name = property(_get_name)
     
     def __new__(cls, *args, **kwargs):
@@ -312,9 +319,8 @@ class Base(object):
         except BaseException as error:
             if error in (SystemExit, KeyboardInterrupt):
                 raise
-            raise
             self.alert("Exception instantiating {0}, attemping to apply Wrapper...\n{1}".format(\
-            instance_type, traceback.format_exc()), 4)
+            instance_type, traceback.format_exc()), 5)
             instance = instance_type(*args)
             instance = Wrapper(instance, **kwargs)
         instance.added_to = set()
@@ -324,7 +330,8 @@ class Base(object):
     def delete(self):
         """usage: object.delete() or object.delete(child). thoroughly untested."""
         del Component_Resolve[self.instance_name]
-        del Component_Memory[self.instance_name]
+        if self.memory_size:
+            del Component_Memory[self.instance_name]
         del type(self).instance_tracker[self.instance_number]
         for child in self.get_children():
             child.delete()
@@ -382,9 +389,9 @@ class Base(object):
         
         alert severity is relative to the Alert.log_level and Alert.print_level;
         a lower number indicates a less verbose/severe notification."""
-        if not self.ignore_alerts:
+        if level >= self.ignore_alert_level:
             if (level >= Alert.print_level):
-                print message
+                sys.stdout.write(message + "\n>>> ")                
             if level >= Alert.log_level:
                 severity = Alert.level_map[level]
                 Alert.log.write(severity + message + "\n")        
@@ -416,23 +423,27 @@ class Base(object):
 class Wrapper(Base):
     """a class that will act as the object it wraps and as a base
     object simultaneously."""
-       
-    def __init__(self, wrapped_object=None, **kwargs):
+        
+    def __init__(self, **kwargs):
         """attributes = {"wrapped_object" : wrapped_object, "objects" : {}, "added_to" : set()}
-        default_kwargs = super(Wrapper, self).__getattribute__("defaults")
-        if default_kwargs:
-            attributes.update(default_kwargs)
         if kwargs:
             attributes.update(kwargs)
         super(Wrapper, self).attribute_setter(**attributes)"""
-        kwargs["wrapped_object"] = wrapped_object
+        wraps_method = super(Wrapper, self).__getattribute__("wraps")
+        wraps_method(kwargs.pop("wrapped_object"))
         super(Wrapper, self).__init__(**kwargs)
-                       
-    def _get_wrapper_attribute(self, attribute):
-        return super(Wrapper, self).__getattribute__(attribute)
 
+    def wraps(self, obj):
+        super(Wrapper, self).__setattr__("wrapped_object", obj)
+        
     def __getattribute__(self, attribute): 
+        wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
         try:
+            value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)
+        except AttributeError:
+            value = super(Wrapper, self).__getattribute__(attribute)
+        return value
+        """try:
             wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
         except AttributeError:
             return super(Wrapper, self).__getattribute__(attribute)            
@@ -443,15 +454,17 @@ class Wrapper(Base):
                 attr = super(Wrapper, self).__getattribute__(attribute)
             except AttributeError:
                 raise
-        return attr
+        return attr"""
             
     def __setattr__(self, attribute, value):      
         try:
-            wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
+            wrapped_object = self.wrapped_object
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:
             super(Wrapper, self).__setattr__(attribute, value)
-            
+    
+
+        
     def __dir__(self):
         return dir(super(Wrapper, self).__getattribute__("wrapped_object"))
 
@@ -486,37 +499,39 @@ class Process(Base):
         self.args = tuple()
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)
+        if self.stdin_buffer_size:
+            self.stdin_buffer = mmap.mmap(-1, self.stdin_buffer_size)
+            Event("User_Input0", "add_buffer", self.stdin_buffer).post()
+            
         if self.auto_start:
-            args = (self.__class__.__name__, "start")
+            args = (self.instance_name, "start")
             options = {"component" : self,
                        "priority" : 0.0}
             Event(*args, **options).post()
-
     
-    def start(self): # compatibility with multiprocessing.Process
+    def start(self): # (hopeful) compatibility with multiprocessing.Process
         self.run()
         args = (self.__class__.__name__, "adjust_priority")
         options = {"component" : self,
                    "priority" : self.update_priority_interval}
-   #     Event(*args, **options).post()
+        #Event(*args, **options).post()
         
     def run(self):
         if self.target:
             self.target(*self.args, **self.kwargs)
-        if self.recurring:        
-            Event(self.instance_name, "run").post()
-        else:
-            Event(self.parent.instance_name, "delete", self).post()
+
+        self.propagate()
  
     def adjust_priority(self):
-        scaling_value = getattr(self, self.priority_scales_with, 1)
+        scaling_value = getattr(self, self.priority_scales_with, self.priority)
         scale_against = self.scale_against
         scale_function = getattr(scale_against, "__{0}__".format(self.scale_operator))
         priority = scale_function(scaling_value)
-        print "calculated priority", priority, scale_against, scaling_value
-        priority = max(priority, self.minimum_priority)
-        print "after comparison to minimum", priority
-        self.priority = min(priority, self.maximum_priority)
+        #print self, "calculated priority", priority, scale_against, scaling_value
+        priority = min(priority, self.minimum_priority)
+        #print "after comparison to minimum", priority
+        self.priority = max(priority, self.maximum_priority)
+        #print "set priority to", self.priority
         args = (self.__class__.__name__, "adjust_priority")
         options = {"component" : self,
                    "priority" : self.update_priority_interval}
@@ -545,14 +560,6 @@ class Thread(Base):
     
     def run(self): 
         return self.function(*self.args, **self.kwargs)
-
-    def control_exchange(self, signal):
-        print "doing control exchange with", str(signal)
-        if callable(signal):
-            print "got a signal"
-            signal()
-        else:
-            return signal
 
     
 # for vmlibrary.Machines

@@ -82,7 +82,7 @@ class Audio_Configuration_Utility(base.Process):
             
     def get_all_devices(self):
         if "linux" in sys.platform:
-            devices = dict((index, {"card" : device_name, "name" : device_name}) for index, device_name in enumerate(alsaaudio.cards()))
+            devices = dict((index, {"card" : "hw:{0},0".format(index), "name" : device_name}) for index, device_name in enumerate(alsaaudio.cards()))
         else:
             devices = {}
             for device_number in xrange(PORTAUDIO.get_device_count()):
@@ -169,7 +169,7 @@ class Audio_Manager(base.Process):
             except:
                 raise
                 raw_input("Please run audio_config_utility. No config file found")
-                Event("System0", "exit").post()
+                Event("System", "exit").post()
         elif self.use_defaults:
             input_info, output_info = Audio_Configuration_Utility.get_default_devices()
             input = self.create(Audio_Input, input_info)
@@ -211,7 +211,7 @@ class Audio_Manager(base.Process):
     def run(self):                                        
         # get the sound from each device and output it
         for device in self.audio_devices:
-            device.next_frame()
+            device.get_data()
             if device.data:
                 self._handle_device(device)            
         
@@ -305,7 +305,7 @@ class Audio_Service(base.Thread):
         
     def run(self):
         return next(self.frame)
-        
+
     def _new_thread(self):
         messages = None
         while not messages:
@@ -315,7 +315,7 @@ class Audio_Service(base.Thread):
         for message in messages:
             header, message = message.split(";;")
             channel_configuration = pickle.loads(message)
-            for index, channel_info in enumerate(channel_configuration):
+            for channel_info in channel_configuration:
                 name = channel_info["name"]
                 channel_info["latency"] = Latency(name=name)
                 channel = self.create(Audio_Channel, **channel_info)                    
@@ -328,4 +328,4 @@ class Audio_Service(base.Thread):
             
     def get_new_audio(self):
         for channel in self.objects["Audio_Channel"]:
-            channel.run()                
+            channel.run()

@@ -14,24 +14,12 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import vmlibrary
-import sys
+from base import Event
 import defaults
-
-NO_ARGS, NO_KWARGS = tuple(), dict()
-try:
-    host = sys.argv[1]
-    port = sys.argv[2]
-except IndexError:
-    host = raw_input("Enter host name: ")
-    port = raw_input("Enter port: ")
-print "Attempting connection to %s:%s" % (host, port)
-
-options = {"host_name" : host,
-           "port" : int(port)}
-defaults.System["startup_processes"] += ("interpreter.Shell", NO_KWARGS, options),
-machine = vmlibrary.Machine()
+import utilities
+options = utilities.get_options(defaults.Outbound_Connection)
+Event("System", "create", "networklibrary.Outbound_Connection", **options).post()
 
 if __name__ == "__main__":
-    machine.run()
+    from metapython import Metapython
+    metapython = Metapython()

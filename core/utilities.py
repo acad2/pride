@@ -28,8 +28,13 @@ from StringIO import StringIO
 
 import defaults
 
+if "win" in sys.platform:
+    timer_function = time.clock
+else:
+    timer_function = time.time  
+    
 def shell(command, shell=False):
-    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, shell=shell)
+    process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
     
 def get_arguments(argument_info, **kwargs):
@@ -76,7 +81,7 @@ class Latency(object):
         super(Latency, self).__init__()
         self.name = name
         self.latency = 0.0
-        self.now = time.clock()
+        self.now = timer_function()
         self.max = 0.0
         self.average = Average(size=average_size)
         self._position = 0
@@ -84,7 +89,7 @@ class Latency(object):
     def update(self):
         self._position += 1
         time_before = self.time_before = self.now
-        now = self.now = time.clock()
+        now = self.now = timer_function()
         latency = now - time_before
         self.average.add(latency)
         if (self._position == 20 or latency > self.max):
@@ -103,10 +108,20 @@ class Latency(object):
             
             
 class Average(object):
-        
-    def __init__(self, name='', size=20, values=None):
-        if not values:
-            values = []
+      
+    def _get_meta_average(self):
+        average = self._meta_average.average
+        if not average:
+            average = self.average
+        return average
+    meta_average = property(_get_meta_average)
+    
+    def __init__(self, name='', size=20, values=tuple(), meta_average=True):
+        value = meta_average
+        if meta_average:        
+            value = Average("{0} meta-average".format(name), 30, meta_average=False)
+        self._meta_average = value
+            
         self.name = name
         self.values = deque(values, size)
         self.max_size = size
@@ -129,8 +144,10 @@ class Average(object):
         adjustment = (value - old_value) / self.size
         self.values.append(value)
         self.average += adjustment        
-
-
+        if self._meta_average:
+            self._meta_average.add(self.average)
+   
+            
 def documentation(instance):
     if isinstance(instance, type):
         _class = instance

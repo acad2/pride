@@ -16,22 +16,30 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 font = time = Surface = NotImplemented
+SCREEN_SIZE = [800, 600]
+typeface = 'arial'
+R = G = B = 0
+
 import struct
 import socket
 from traceback import format_exc
 from multiprocessing import cpu_count
 from StringIO import StringIO
-SCREEN_SIZE = [800, 600]
-R, G, B = 180, 180, 180
-typeface = 'arial'
+
 NO_ARGS = tuple()
 NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-Base = {"memory_size" : 8192,
-"network_chunk_size" : 4096,
-"ignore_alerts" : False}
+# you can save memory if you only have lots of objects but 
+# few that actually use their memory. note that for reasonable 
+# amounts of objects the difference is negligible and 
+# not worth the loss of convenience
+MANUALLY_REQUEST_MEMORY = 0 
+DEFAULT_MEMORY_SIZE = 4096
+Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
+"network_packet_size" : 4096,
+"ignore_alert_level" : 3}
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
@@ -43,22 +51,60 @@ Process.update({"auto_start" : True,
 "priority_scales_with" : '',
 "update_priority_interval" : 20,
 "scale_against" : 1.0,
-"scale_operator" : "div"})
+"scale_operator" : "mul",
+"stdin_buffer_size" : 0})
 
 Thread = Base.copy()
 
 Hardware_Device = Base.copy()
 
+ # metapython
+JYTHON = "java -jar jython.jar"
+PYPY = "pypy"
+CPYTHON = "python"
+DEFAULT_IMPLEMENTATION = CPYTHON
+
+Shell = Process.copy()
+Shell.update({"username" : "root", 
+"password" : "password", 
+"prompt" : ">>> ", 
+"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
+"definition" : False, 
+"traceback" : format_exc, 
+"backup_write" : '', 
+"login_stage" : '', 
+"auto_start" : False,
+"auto_login" : True,
+"ip" : "localhost",
+"port" : 40022,
+"startup_definitions" : ''}) 
+
+Metapython = Process.copy()
+Metapython.update({"command" : "shell_launcher",
+"python" : CPYTHON,
+"jython" : JYTHON,
+"pypy" : PYPY,
+"implementation" : "python",
+"environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
+"interface" : "0.0.0.0", 
+"port" : 40022, 
+"prompt" : ">>> ", 
+"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
+"definition" : False, 
+"traceback" : format_exc, 
+"backup_write" : '',
+"priority" : .01})
+
 # vmlibrary
 
 Processor = Hardware_Device.copy()
-Processor.update({"ignore_alerts" : True}) # show everything that is processed or not
+Processor.update({"ignore_alerts" : 0}) # show everything that is processed or not
 
 System = Base.copy()
 System.update({"name" : "system",
 "status" : "",
 "hardware_configuration" : ("vmlibrary.Keyboard", ),
-"startup_processes" : (("networklibrary.Asynchronous_Network", NO_ARGS, NO_KWARGS), )})
+"startup_processes" : tuple()})
 
 Machine = Base.copy()
 Machine.update({"processor_count" : PROCESSOR_COUNT,
@@ -102,31 +148,6 @@ Messenger = Application.copy()
 
 Explorer = Application.copy()
 Explorer.update({"time" : ""})
-
-# interpreter
-Shell = Process.copy()
-Shell.update({"username" : "root", 
-"password" : "password", 
-"prompt" : ">>> ", 
-"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
-"definition" : False, 
-"traceback" : format_exc, 
-"backup_write" : '', 
-"login_stage" : '', 
-"auto_start" : False,
-"auto_login" : True,
-"host_name" : "localhost",
-"port" : 40000,
-"startup_definitions" : ''}) 
-
-Shell_Service = Process.copy()
-Shell_Service.update({"interface" : "0.0.0.0", 
-"port" : 40000, 
-"prompt" : ">>> ", 
-"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
-"definition" : False, 
-"traceback" : format_exc, 
-"backup_write" : ''}) 
 
 # audiolibrary
 
@@ -204,7 +225,7 @@ Server.update({"interface" : "localhost",
 Outbound_Connection = Connection.copy()
 Outbound_Connection.update({"ip" : "localhost",
 "port" : 80,
-"target" : None,
+"target" : tuple(),
 "as_port" : 0,
 "timeout" : 10,
 "timeout_notify" : True})
@@ -216,12 +237,12 @@ Download.update({"filesize" : 0,
 "filename" : None,
 "filename_prefix" : "Download",
 "download_in_progress" : False,
-"network_chunk_size" : 16384,
+"network_packet_size" : 16384,
 "port" : 40021})
 
 Upload = Inbound_Connection.copy()
 Upload.update({"use_mmap" : False,
-"network_chunk_size" : 16384,
+"network_packet_size" : 16384,
 "file" : '',
 "mmap_file" : False})
 
@@ -242,12 +263,15 @@ Multicast_Receiver.update({"listener_address" : "0.0.0.0",
 "port" : 0})
 
 Basic_Authentication_Client = Thread.copy()
+Basic_Authentication_Client.update({"memory_size" : 4096})
 
 Basic_Authentication = Thread.copy()
 
 Asynchronous_Network = Process.copy()
 Asynchronous_Network.update({"number_of_sockets" : 0,
 "priority_scales_with" : "number_of_sockets",
+"scale_operator" : "div",
+"maximum_priority" : .0005,
 "update_priority_interval" : 5})
 
 Service_Listing = Process.copy()
@@ -256,17 +280,37 @@ Service_Listing = Process.copy()
 File_Server = Process.copy()
 File_Server.update({"interface" : "0.0.0.0",
 "port" : 40021,
-"network_chunk_size" : 16384,
+"network_packet_size" : 16384,
 "asynchronous_server" : True})
 
-# Guilibrary
-Display = Process.copy()
+# sdllibrary
+
+SDL_Component = Base.copy()
+
+World = SDL_Component.copy()
+World.update({"displays" : ({"display_number" : 0}, )})
+
+SDL_Window = SDL_Component.copy()
+SDL_Window.update({"size" : (800, 600),
+"show" : True})
+
+Renderer = SDL_Component.copy()
+
+Sprite_Factory = SDL_Component.copy()
+
+Font_Manager = SDL_Component.copy()
+Font_Manager.update({"font_path" : "C:\\Windows\\Fonts\\arial.ttf",
+"default_font_size" : 14})
+
+Display = Hardware_Device.copy()
 Display.update({"x" : 0, 
 'y' : 0, 
 "size" : SCREEN_SIZE, 
 "layer" : 0, 
 "max_layer" : 0, 
-"drawing" : False})
+"drawing" : False,
+"windows" : ({"name" : "default_window"}, ),
+"name" : "Metapython",})
 
 # Widgets
 # these are the required attributes for a fully draw-able object
@@ -282,14 +326,14 @@ Gui_Object.update({'x' : 0,
         "typeface" : (typeface, 16), 
         "pack_modifier" : '', 
         "color_scalar" : .6})
-
+        
 Window = Gui_Object.copy()
-Window.update({"title_bar" : False, 
+Window.update({"show_title_bar" : False, 
 "pack_mode" : "layer"})
 
 Container = Window.copy()
 Container.update({"alpha" : 1, 
-        "pack_mode" : "vertical"})
+"pack_mode" : "vertical"})
 
 Button = Container.copy()
 Button.update({"shape" : "rect"})

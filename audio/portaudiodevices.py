@@ -75,14 +75,10 @@ class Audio_Device(base.Base):
             self.stream = PORTAUDIO.open(**self.options)
         except:
             raise
-        self.thread = self._new_thread()
+        
         if self.record_to_disk:
             self.file = self._new_wave_file()  
-        self.active = True   
-        
-    def _open_wave_file(self, filename):
-        return wave.open(filename, "rb")
-        
+            
     def _new_wave_file(self):
         """create a new wave file of appropriate format"""
         filename = ("%s recording.wav" % self.name).replace(" ", "_")
@@ -97,13 +93,7 @@ class Audio_Device(base.Base):
         print "created wave file: channels %s, sample width %s, rate %s" % (self.channels, PORTAUDIO.get_sample_size(self.format), self.rate)
         return file
         
-    def next_frame(self):
-        try:
-            next(self.thread)
-        except StopIteration:
-            self.delete()
-            
-    def _new_thread(self):
+    def get_data(self):
         raise NotImplementedError
  
 
@@ -116,23 +106,23 @@ class Audio_Input(Audio_Device):
         if hasattr(self, "index"):
             self.input_device_index = self.index
         
-    def _new_thread(self):
-        stream = self.stream
-        full_buffer_size = self.full_buffer_size
-        while self.active:
-            frame_count = stream.get_read_available()
-            data = stream.read(frame_count)
-            if getattr(self, "data_source", None):
-                bytes = frame_count * self.sample_size * self.channels
-                data = self.data_source.read(bytes)
-            self._data += data
-            self.frame_count += frame_count
-            if self.frame_count >= self.frames_per_buffer:
-                self.data = self._data[:full_buffer_size]
-                self._data = self._data[full_buffer_size:]
-                self.frame_count -= self.frames_per_buffer
-            yield        
-            
+    def get_data(self):
+        stream = self.stream       
+        frame_count = stream.get_read_available()
+        data = stream.read(frame_count)
+        if getattr(self, "data_source", None):
+            bytes = frame_count * self.sample_size * self.channels
+            data = self.data_source.read(bytes)
+        
+        self._data += data
+        self.frame_count += frame_count
+        
+        if self.frame_count >= self.frames_per_buffer:
+            full_buffer_size = self.full_buffer_size
+            self.data = self._data[:full_buffer_size]
+            self._data = self._data[full_buffer_size:]
+            self.frame_count -= self.frames_per_buffer
+                    
 
 class Audio_Output(Audio_Device):
             
@@ -150,16 +140,14 @@ class Audio_Output(Audio_Device):
     def set_source(self, file_like_object):
         self.data_source = file_like_object
         
-    def _new_thread(self):
+    def get_data(self):
         stream = self.stream
-        while self.active:
-            number_of_frames = stream.get_write_available()
-            #print "%s frames available, fpb: %s" % (number_of_frames, self.frames_per_buffer)
-            if number_of_frames >= self.frames_per_buffer:
-                data = self.data_source.read(self.frames_per_buffer)
-                self.data = data
-                if self.mute:
-                    data = "\x00" * self.frames_per_buffer
-                stream.write(data)
-                yield
+        number_of_frames = stream.get_write_available()
+        if number_of_frames >= self.frames_per_buffer:
+            data = self.data_source.read(self.frames_per_buffer)
+            self.data = data
+            if self.mute:
+                data = "\x00" * self.frames_per_buffer
+            stream.write(data)
+        
             

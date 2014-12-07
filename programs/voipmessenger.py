@@ -44,10 +44,10 @@ class Voip_Messenger(base.Process):
                    "incoming" : self._incoming,
                    "outgoing" : self._outgoing}
         self.socket = self.create("networklibrary.UDP_Socket", **options)
-        Event("Asynchronous_Network0", "add", self.socket).post()        
+        Event("Asynchronous_Network", "add", self.socket).post()        
         
     def _incoming(self, connection):
-        data, _from = connection.recvfrom(self.network_chunk_size)
+        data, _from = connection.recvfrom(self.network_packet_size)
         self.network_buffer[(connection, _from)] = data
         
     def _outgoing(self, connection, data):
@@ -74,7 +74,7 @@ class Voip_Messenger(base.Process):
             if self.microphone_name in channel.name and data:
                 for listener in self.listeners:
                     args = (self.socket, channel.audio_data, listener)                  
-                    Event("Asynchronous_Network0", "buffer_data", *args).post()
+                    Event("Asynchronous_Network", "buffer_data", *args).post()
             channel.audio_data = ''
             
     def handle_input(self):        
@@ -93,7 +93,7 @@ class Voip_Messenger(base.Process):
                 message = getattr(self, "%s_header" % command)
             ip, port = address.split(":")
             to = (ip, int(port))
-            Event("Asynchronous_Network0", "buffer_data", self.socket, message, to).post()
+            Event("Asynchronous_Network", "buffer_data", self.socket, message, to).post()
 
     def handle_incoming(self):
         for _from, data in self.network_buffer.items():
@@ -122,6 +122,6 @@ if __name__ == "__main__":
     import vmlibrary
     
     machine = vmlibrary.Machine()
-    Event("System0", "create", "audiolibrary.Audio_Manager").post()
-    Event("System0", "create", Voip_Messenger).post()
+    Event("System", "create", "audiolibrary.Audio_Manager").post()
+    Event("System", "create", Voip_Messenger).post()
     machine.run()

@@ -39,11 +39,10 @@ class Audio_Device(base.Base):
         self.pcm.setformat(self.format)
         self.sample_size = self.sample_size
         self.pcm.setperiodsize(self.period_size)
-        self.thread = self._new_thread()
         if self.record_to_disk:
             self.file = self._new_wave_file()
     
-    def _new_thread(self):
+    def get_data(self):
         raise NotImplementedError
         
     def _new_wave_file(self):
@@ -68,27 +67,21 @@ class Audio_Input(Audio_Device):
     
     def __init__(self, **kwargs):
     	super(Audio_Input, self).__init__(**kwargs)
-        self.thread = self._new_thread()
-
-    def _new_thread(self):
-        full_buffer_size = self.full_buffer_size
-        while True:
-            frame_count, data = self.pcm.read()
-            if getattr(self, "data_source", None):
-                bytes = frame_count * (self.sample_size / 8)
-                data = self.data_source.read(bytes)
-            self._data += data
-            self.frame_count += frame_count
-            if self.frame_count >= self.period_size:
-                self.data = self._data[:full_buffer_size]
-                self._data = self._data[full_buffer_size:]
-                #print "got %s/%s bytes of audio data" % (len(self.data), full_buffer_size), time.time()
-                self.frame_count -= self.period_size
-            yield
-            
-    def next_frame(self):
-        next(self.thread)
         
+    def get_data(self):
+        frame_count, data = self.pcm.read()
+        if getattr(self, "data_source", None):
+            bytes = frame_count * (self.sample_size / 8)
+            data = self.data_source.read(bytes)
+        self.data = data
+        """self.frame_count += frame_count
+        if self.frame_count >= self.period_size:
+            full_buffer_size = self.full_buffer_size
+            self.data = self._data[:full_buffer_size]
+            self._data = self._data[full_buffer_size:]
+            #print "got %s/%s bytes of audio data" % (len(self.data), full_buffer_size), time.time()
+            self.frame_count -= self.period_size"""
+    
 
 class Audio_Output(Audio_Device):
                 
@@ -96,20 +89,14 @@ class Audio_Output(Audio_Device):
     
     def __init__(self, **kwargs):
         super(Audio_Output, self).__init__(**kwargs)
-        self.thread = self._new_thread()
+        
+    def get_data(self):
+        self.data += self.data_source.read(self.period_size)
+        buffer_size = len(self.data)
+        if buffer_size >= self.full_buffer_size:
+            data = self.data
+            if self.mute:
+                data = "\x00" * self.period_size
+            self.pcm.write(data)
+            self.data = self.data[buffer_size:]
 
-    def _new_thread(self):
-        full_buffer_size = self.full_buffer_size
-        while True:
-            self.data += self.data_source.read(self.period_size)
-            buffer_size = len(self.data)
-            if buffer_size >= full_buffer_size:
-                data = self.data
-                if self.mute:
-                    data = "\x00" * self.period_size
-                self.pcm.write(data)
-                self.data = self.data[buffer_size:]
-            yield
-            
-    def next_frame(self):
-        next(self.thread)
