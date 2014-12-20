@@ -39,33 +39,38 @@ def shell(command, shell=False):
     
 def get_arguments(argument_info, **kwargs):
     arguments = {}
-    parser = argparse.ArgumentParser(**kwargs)    
     argument_names = argument_info.keys()
-    argument_defaults = argument_info.values()
-    
+    switch = {"short" : "-",
+              "long" : "--",
+              "positional" : ""}       
+              
     for index, name in enumerate(argument_names):
-        if name[0] == "-":
-            short_name = name[1]
-            long_name = name[1:]
-        else:
-            short_name = "-" + name[0]
-            long_name = "--" + name
-        names = (short_name, long_name)      
-        default_value = argument_defaults[index]
-        variable_type = type(default_value)
-        if variable_type == bool:
-            variable_type = int            
-        for arg_name in names:
-            attribute = long_name.replace("-", '')
-            info = {}
-            if variable_type is type(None):
-                arg_name = attribute
-            else:
-                info.update({"dest" : attribute, 
-                             "default" : default_value,
-                             "type" : variable_type})
-            arguments[arg_name] = info
+        
+        try:
+            modifiers = kwargs.pop("{0}".format(name))
+        except KeyError:
+            modifiers = {}
+        modifiers.setdefault("types", ("long", ))
+        
+        info = {}
+        for keyword_argument, value in modifiers.items():
+            info[keyword_argument] = value
+        
+        temporary = {}
+        for arg_type in info.pop("types"):
+            arg_name = switch[arg_type] + name
+            default_value = argument_info[name]
             
+            if arg_type != "positional":
+                temporary["dest"] = name            
+            temporary["default"] = default_value
+            temporary["type"] = type(default_value)            
+            for key, value in temporary.items():
+                info.setdefault(key, value)       
+            
+            arguments[arg_name] = info
+    
+    parser = argparse.ArgumentParser(**kwargs)            
     for argument_name, options in arguments.items():
         parser.add_argument(argument_name, **options)
     return parser.parse_args()

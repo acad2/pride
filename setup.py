@@ -1,8 +1,8 @@
-"""from setuptools import setup
+from setuptools import setup
 
-setup(name="Metaprogramming Framework"
-      description="An asynchronous embeddable virtual machine, capable of running an arbitrary number of framework processes concurrently."
-      long_description=open("readme.txt", "r").read())
+setup(name="Metaprogramming Framework",
+      description="An asynchronous embeddable virtual machine, capable of running an arbitrary number of framework processes concurrently.",
+      long_description=open("documentation/docs/index.md", "r").read(),
       classifiers=["Development Status :: 3 - Alpha",
         "License :: OSI Approved :: GNU General Public License (GPL)"
         "Programming Language :: Python :: 2.7",
@@ -10,20 +10,14 @@ setup(name="Metaprogramming Framework"
         "Topic :: System :: Shells",
         "Topic :: Multimedia :: Sound/Audio :: Capture/Recording",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: Other/Nonlisted Topic"]
+        "Topic :: Other/Nonlisted Topic"],
         #"Topic :: Software Development :: User Interfaces" # with from pygame to pysdl
         #Topic :: System :: Distributed Computing # some day!       
-      keywords="concurrency asynchronous virtual machine"
-      url="https://github.com/erose1337/Metaprogramming_Framework"
-      author="Ella Rose"
+      keywords="concurrency asynchronous virtual machine",
+      url="https://github.com/erose1337/Metaprogramming_Framework",
+      author="Ella Rose",
       author_email="erose1337@hotmail.com",
       license="GNU GPL",
-      packages=[],
-      install_requires=[],
-      #entry_points={
-#          'console_scripts': [],
- #     },
+      packages=["audio", "documentation", "framework", "utilities", "programs"],
       include_package_data=True,
-      zip_safe=True)"""
-      
-print "setup.py install not enabled yet. Please dump all files into one directory before use"      
+      zip_safe=True)

@@ -88,7 +88,7 @@ class Server(Connection):
             message = traceback.format_exc() + "\nAddress already in use. Deleting %s\n" % self
             self.alert(message, 5)
             return Event("Server", "delete", component=self).post()
-        self.listen(self.backlog)        
+        self.listen(self.backlog)   
         self.parent.servers.append(self)
         Event("Service_Listing", "add_local_service", (self.interface, self.port), self.name).post()
         
@@ -341,41 +341,62 @@ class Basic_Authentication_Client(base.Thread):
         self.thread = self._new_thread()
         
     def run(self):
-        next(self.thread)
+        try:
+            next(self.thread)
+        except StopIteration:
+            self.delete()
+ 
+    def wait(self):
+        self.alert("Waiting for reply", 5)
         
     def _new_thread(self):
-        if self.parent.auto_login:
-            username = self.parent.username
-            password = self.parent.password
-            print "automatically logging in as %s..." % username
+        if self.auto_login:
+            username, password = self.credentials
+            self.alert("automatically logging in as {0}...".format(username), 3)          
         else:
             print "Please provide login information for", self
             username = raw_input("Username: ")
-            password = hash(getpass.getpass())
+            password = getpass.getpass()
+        
+        password = hash(password)
         response = username+"\n"+str(password)
-        self.alert("sending login info", 0)
         Event("Asynchronous_Network", "buffer_data", self.parent.connection, response).post()
+        self.wait()
         yield
         
         while not self.parent.network_buffer:
-            self.alert("Waiting for reply", 0)
-            yield        
-        if self.parent.network_buffer in ("Invalid password", "Invalid username"):
-            self.alert("%s supplied in login attempt" % self.network_buffer, 4)        
-            self.login_stage = None
-            self.network_buffer = None
-            if "y" in raw_input("Retry?: ").lower():
-                target = self.connection.getpeername()
-                raise NotImplementedError
-                Event("Asynchronous_Network", "create", "networklibrary.Outbound_Connection",\
-                target, incoming=self.incoming, outgoing=self.outgoing,\
-                on_connection=self.on_connection).post()                
-                #Event("Asynchronous_Network", "disconnect", self.connection).post()
+            self.wait()
+            yield            
+            
+        reply = self.parent.network_buffer.lower()
+        if reply in ("invalid password", "invalid username"):
+            self.alert("{0} supplied in login attempt".format(reply), 4)        
+            if reply == "invalid password":
+                self.handle_invalid_password()
             else:
-                self.alert("failed to login. Exiting...", 5)
-                Event("System", "delete", self).post()
-                raise NotImplementedError
-
+                self.handle_invalid_username()
+        else:
+            self.handle_success(self.parent.connection)
+            
+    def retry(self):
+        if "y" in raw_input("Retry?: ").lower():
+            target = self.parent.connection.getpeername()
+            raise NotImplementedError
+            Event("Asynchronous_Network", "create", "networklibrary.Outbound_Connection",\
+            target, incoming=self.incoming, outgoing=self.outgoing,\
+            on_connection=self.on_connection).post()                
+            #Event("Asynchronous_Network", "disconnect", self.connection).post()
+        else:
+            self.alert("failed to login. Exiting...", 5)
+                        
+    def handle_invalid_username(self):
+        self.retry()
+        
+    def handle_invalid_password(self):
+        self.retry()
+    
+    def handle_success(self, connection):
+        raise NotImplementedError
                 
 class Basic_Authentication(base.Thread):
                     
@@ -390,30 +411,38 @@ class Basic_Authentication(base.Thread):
     def run(self):
         try:
             next(self.thread)
-        except BaseException as exception:
-            if type(exception) == AssertionError:
-                response = "Invalid password"
-            elif type(exception) == KeyError:
-                response = "Invalid username"                
-            elif isinstance(exception, StopIteration):
-                raise                
-            else:
-                print "unhandled exception occurred..."
-                raise
-            
-            Event("Asynchronous_Network", "buffer_data", self.connection, response).post()        
-            Event("Basic_Authentication", "delete", component=self).post()
+        except (AssertionError, KeyError, StopIteration) as exception:
+            switch = {AssertionError : self.handle_invalid_password,
+                      KeyError : self.handle_invalid_username,
+                      StopIteration : self.handle_success}
+            switch[type(exception)](self.connection, self.address)
+            self.connection = None
+            self.delete()
             
     def _new_thread(self):
-        while not self.parent.network_buffer[self.connection]:
+        connection = self.connection
+        while not self.parent.network_buffer[connection]:
             self.alert("waiting for reply", 0)
             yield 
         self.alert("credentials received", 0)
-        username, password = self.parent.network_buffer[self.connection].strip().split("\n", 1)
-        assert self.parent.authenticate[username] == hash(password)   
-        self.connection.username = username
+        username, password = self.parent.network_buffer.pop(connection).strip().split("\n", 1)
+        connection.username = username
+        assert self.parent.authenticate[username] == int(password)
             
-                    
+    def handle_invalid_username(self, connection, address):
+        Event("Asynchronous_Network", "buffer_data", connection, self.invalid_username_string).post()
+                
+    def handle_invalid_password(self, connection, address):
+        Event("Asynchronous_Network", "buffer_data", self.connection, self.invalid_password_string).post()
+                
+    def handle_success(self, connection, address):
+        Event(self.parent, "log_in", connection).post()
+        
+    def delete(self):
+        self.connection = None
+        super(Basic_Authentication, self).delete()
+        
+        
 class Asynchronous_Network(base.Process):
 
     defaults = defaults.Asynchronous_Network

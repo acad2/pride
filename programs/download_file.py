@@ -1,14 +1,8 @@
-import utilities
-import vmlibrary
-import defaults
 from base import Event
 
-args = dict(defaults.Download)
-args.update({"exit_when_finished" : 1})
-        
-options = utilities.get_options(args, description="File Downloader")
-machine = vmlibrary.Machine()
+options = {"parse_args" : True}
 Event("Asynchronous_Network", "create", "networklibrary.Download", **options).post()
 
 if __name__ == "__main__":
-    machine.run()
+    import metapython
+    interpreter = metapython.Metapython(parent=__name__)

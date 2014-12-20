@@ -189,6 +189,7 @@ class Display(base.Hardware_Device):
     def run(self):       
         print self.get_mouse_state()
         Event(self.instance_name, "run", component=self).post()
+        self.surface.update()
         """for item in self.draw_queue:
             #surface = self.surface_cache[item]
             sdl2.SDL_Blit(self.surface, (item.position))

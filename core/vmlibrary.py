@@ -63,10 +63,9 @@ class Processor(base.Hardware_Device):
                 start = timer_function()
                 results = event.execute_code()
             except BaseException as exception:
-                raise
                 if type(exception) in (SystemExit, KeyboardInterrupt):
                     raise
-                print exception.traceback   
+                print exception.traceback
             
             time_taken = timer_function() - start
             call = (component_name, event.method)

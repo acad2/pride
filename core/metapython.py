@@ -7,23 +7,27 @@ import base
 import utilities
 import defaults
 Event = base.Event
-
+    
+    
 class Shell(base.Process):
     """(Potentially remote) connection to the interactive interpreter"""
     
     defaults = defaults.Shell
     hotkeys = {}
     
+    exit_on_help = False
+    
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
         self.line = []
         self.lines = []
         options = {"target" : (self.ip, self.port),
-        "incoming" : self._incoming,
-        "outgoing" : self._outgoing,
-        "on_connection" : self._on_connection}        
+                   "incoming" : self._incoming,
+                   "outgoing" : self._outgoing,
+                   "on_connection" : self._on_connection}        
         
-        self.connection = self.create("networklibrary.Outbound_Connection", **options)  
+        self.connection = self.create("networklibrary.Outbound_Connection", **options)
+        self.definition = False
         self.keyboard = self.create("vmlibrary.Keyboard")
         
     def run(self):        
@@ -79,37 +83,54 @@ class Shell(base.Process):
                 
     def _on_connection(self, connection, address):
         self.connection = connection
-        self.login_thread = self.create("networklibrary.Basic_Authentication_Client")    
+        options = {"auto_login" : self.auto_login,
+                   "credentials" : (self.username, self.password),
+                   "handle_success" : self._on_login_success,
+                   "wait" : self._on_wait}
+          
+        self.login_thread = self.create("networklibrary.Basic_Authentication_Client", **options)
         Event(self.instance_name, "_login", component=self).post()
-        
+    
+    def _on_login_success(self, connection):
+        Event(self.instance_name, "run", component=self).post()
+        print self.network_buffer
+        self.network_buffer = ''
+        sys.stdout.write(self.prompt)      
+        if self.startup_definitions:
+            try:
+                sys.stdout.write("Attempting to compile startup definitions...\n%s" % self.prompt)              
+                compile(self.startup_definitions, "startup_definition", "exec")
+            except:
+                args = (self.instance_name, traceback.format_exc())
+                self.alert("{0} startup definitions failed to compile\n{1}".format(*args), 5)
+            else:
+                Event("Asynchronous_Network", "buffer_data", self.connection, self.startup_definitions+"\n").post()
+    
+    def _on_wait(self):
+        Event(self.instance_name, "_login", component=self).post()   
+    
     def _login(self):
-        try:
-            self.login_thread.run()
-        except StopIteration:
-            self.login_thread.delete()
-            del self.login_thread
-            Event(self.instance_name, "run").post()
-            print self.network_buffer
-            self.network_buffer = None
-            sys.stdout.write(self.prompt)
-            self.login_stage = None            
-            if self.startup_definitions:
-                try:
-                    compile(self.startup_definitions, "startup_definition", "exec")
-                except:
-                    print "startup definitions failed to compile"
-                    print traceback.format_exc()
-                else:
-                    Event("Asynchronous_Network", "buffer_data", self.connection, self.startup_definitions+"\n").post()
-                    sys.stdout.write("Attempting to compile startup definitions...\n%s" % self.prompt)
-        else:
-            Event(self.instance_name, "_login", component=self).post()
+        self.login_thread.run()        
                 
                 
 class Metapython(base.Process):
     
     defaults = defaults.Metapython
-        
+    
+    parser_ignore = ("environment_setup", "prompt", "copyright", "authentication_scheme",
+                     "auto_start", "keyboard_input", "traceback", "pypy", "jython",
+                     "python", "network_buffer", "stdin_buffer_size", "memory_size",
+                     "network_packet_size", "interface", "port")
+    parser_modifiers = {"command" : {"types" : ("positional", ),
+                                     "nargs" : '?'},           
+                        "help" : {"types" : ("short", "long"),
+                                  "nargs" : '?'}
+                        }
+    exit_on_help = False
+    
+    for attribute in parser_ignore:
+        parser_modifiers[attribute] = "ignore"
+    
     def __init__(self, **kwargs):
         self.process_requests = []
         self.connected_clients = []
@@ -120,6 +141,7 @@ class Metapython(base.Process):
         self.log_file = open("%s_log" % self.__class__.__name__, "a")
         
         super(Metapython, self).__init__(**kwargs)
+        self.objects.setdefault(self.authentication_scheme.split(".", 1)[-1], [])
         self.network_buffer = {}
         self.setup_environment()
         self.start_interpreter()
@@ -149,9 +171,10 @@ class Metapython(base.Process):
                    "interface" : self.interface,
                    "port" : self.port}
         
-        Event("Asynchronous_Network", "create", "networklibrary.Server", **options).post()   
+        Event("Asynchronous_Network", "create", "networklibrary.Server", **options).post()
+        module_name = self.command.split(".py")[0]
         try:
-            module = __import__(self.command)
+            module = __import__(module_name)
         except ImportError:
             raise
         else:            
@@ -161,9 +184,10 @@ class Metapython(base.Process):
             
     def _on_connection(self, connection, address):
         self.network_buffer[connection] = ''
-        login_thread = self.create("networklibrary.Basic_Authentication", connection, address)
-        self.login_threads.append(login_thread)
-                       
+        args = (connection, address)
+        options = {"handle_success" : self.handle_login_success}
+        login_thread = self.create(self.authentication_scheme, *args, **options)
+                               
     def _read_socket(self, connection):
         self.network_buffer[connection] = connection.recv(8096)
             
@@ -186,28 +210,20 @@ class Metapython(base.Process):
         Event(self.instance_name, "run", component=self, priority=self.priority).post()
 
     def handle_logins(self):
-        for login_thread in self.login_threads:
-            try:
-                login_thread.run()
-            except StopIteration: 
-                self.log_in(login_thread)
-                
-    def log_in(self, login_thread):
-        connection = login_thread.connection
-        address = login_thread.address
+        for login_thread in self.objects["Basic_Authentication"]:
+            login_thread.run()
+                    
+    def handle_login_success(self, connection, address):
         username = connection.username
         prompt = self.prompt
         string_info = (username, address, sys.version, sys.platform, self.copyright, 
                        self.__class__.__name__, self.implementation)
         
         response = "Welcome {0} from {1}\nPython {2} on {3}\n{4}\n{5} ({6})\n".format(*string_info)   
-                   
         Event("Asynchronous_Network", "buffer_data", connection, response).post()
                                 
         self.connected_clients.append(connection)
-        self.network_buffer[connection] = ""
-        self.login_threads.remove(login_thread)
-        login_thread.delete()        
+        self.network_buffer[connection] = ""    
                 
         # controls namespace that clients have access to        
         #self.client_namespaces[connection] = {"__builtins__" : globals()["__builtins__"], \
@@ -240,7 +256,7 @@ class Metapython(base.Process):
                 sys.stdout.write(self.traceback())
         else:
             self.log_file.write("Command:\n"+input)
-            return code                                                                                    
+            return code                                                                       
         
     def execute_code(self, code):
         try:
@@ -257,19 +273,6 @@ class Metapython(base.Process):
         os.execlp(*sys_argvs)
                          
  
-if __name__ == "__main__":
-    options = utilities.get_options(Metapython.defaults)
-    implementation = options["implementation"]
-    command = options["command"]
-    if implementation != defaults.DEFAULT_IMPLEMENTATION:
-        if not command:
-            command = "testmachine.py"
-        sys_argvs = (implementation + " Metapython " + command).split()  
-        print "starting", sys_argvs
-        Metapython.start_process(sys_argvs)
-    else:
-        metapython = Metapython(**options)
+if __name__ == "__main__": 
+    metapython = Metapython(parse_args=True, parent=__name__)
     
-    #args = (options["implementation"] + " Metapython " + options["command"]).split()
-    #print "starting", args
-    #

@@ -24,6 +24,8 @@ import argparse
 import traceback
 import functools
 import heapq
+import ast
+from copy import copy
 from types import MethodType
 from weakref import proxy, ref
 
@@ -166,26 +168,123 @@ class Docstring(object):
         return utilities.documentation(_object)
                 
 
+class Parser(object):
+    sys_argv_backup = copy(sys.argv)
+    
+    def __init__(self, parser, modifiers, exit_on_help, name):
+        super(Parser, self).__init__()
+        self.parser = parser
+        self.modifiers = modifiers
+        self.exit_on_help = exit_on_help
+        self.name = name
+        
+    def get_arguments(self, argument_info):
+        arguments = {}
+        argument_names = argument_info.keys()
+        switch = {"short" : "-",
+                  "long" : "--",
+                  "positional" : ""}       
+              
+        default_modifiers = {"types" : ("long", )}
+        self_modifiers = self.modifiers
+        for name in argument_names:
+            modifiers = self_modifiers.get(name, default_modifiers)
+            if modifiers == "ignore":
+                continue
+            info = {}
+            for keyword_argument, value in modifiers.items():
+                info[keyword_argument] = value
+        
+            temporary = {}
+            for arg_type in info.pop("types"):            
+                if arg_type != "positional":
+                    temporary["dest"] = name                  
+                
+                default_value = argument_info[name]
+                temporary["default"] = default_value
+                value_type = type(default_value)
+                if value_type == bool:
+                    value_type = ast.literal_eval
+                temporary["type"] = value_type
+                
+                for key, value in temporary.items():
+                    info.setdefault(key, value)   
+                    
+                arg_name = switch[arg_type] + name
+                arguments[arg_name] = info
+    
+        parser = self.parser
+        exit_on_help = self.exit_on_help
+        
+        for argument_name, options in arguments.items():
+            parser.add_argument(argument_name, **options)
+        
+        new_argv = copy(Parser.sys_argv_backup)
+        sys.argv = new_argv
+        
+        try:    
+            arguments, unused = parser.parse_known_args()
+        except SystemExit:
+            if exit_on_help:
+                raise
+            try:
+                new_argv.pop(new_argv.index("-h"))
+            except ValueError:
+                new_argv.pop(new_argv.index("--help"))
+            arguments, unused = parser.parse_known_args()
+            
+        if unused:
+          #  new_argv = copy(Parser.sys_argv_backup)
+            for unused_name in unused:
+                index = new_argv.index(unused_name)          
+                new_argv.pop(index)
+                
+                if "-" in unused_name: # pop whatever the value for the positional arg was too
+                    try:
+                        word = new_argv.pop(index)
+                    except IndexError: # no argument supplied to positional arg
+                        pass
+                    else:
+                        try:
+                            unused.remove(word)
+                        except ValueError:
+                            pass
+                        
+            arguments, unused = parser.parse_known_args()             
+            sys.argv = copy(Parser.sys_argv_backup)            
+        return arguments
+        
+    def get_options(self, argument_info):
+        namespace = self.get_arguments(argument_info)
+        options = dict((key, getattr(namespace, key)) for key in namespace.__dict__.keys())
+        return options
+
+        
 class Metaclass(type):
     """Includes class.defaults attribute/values in docstrings. Applies the
     Runtime_Decorator to class methods. Adds instance trackers to classes."""
     
-    parser = argparse.ArgumentParser(description="Base parser", add_help=False)
-    subparsers = parser.add_subparsers(help='')
+    parser = argparse.ArgumentParser()  
+    command_parser = parser.add_subparsers(help="filename")
+    run_parser = command_parser.add_parser("run", help="execute the specified script")
+    profile_parser = command_parser.add_parser("profile", help="profile the specified script")  
     
     enable_runtime_decoration = True
     
     def __new__(cls, name, bases, attributes):
         Metaclass.make_docstring(attributes)
-        #Metaclass.make_parser(cls, attributes) # not implemented
+                
         attributes["instance_tracker"] = {}
         attributes["instance_count"] = 0
         new_class = type.__new__(cls, name, bases, attributes)
+        
+        modifiers = attributes.get("parser_modifiers", {})
+        exit_on_help = attributes.get("exit_on_help", True)
+        Metaclass.make_parser(new_class, name, modifiers, exit_on_help)
+        
+        #new_class.source = inspect.getsource(new_class)
         if Metaclass.enable_runtime_decoration:
             Metaclass.decorate(cls, new_class, attributes)
-        
-        #self.create_parser = self.subparsers.add_parser("create", help="Create objects")
-        #self.create_parser.add_argument("create", help="Create a new machine or process")
         return new_class
     
     @staticmethod
@@ -198,19 +297,10 @@ class Metaclass(type):
         attributes["__doc__"] = Docstring()
     
     @staticmethod    
-    def make_parser(cls, attributes):
-        parser_parents = []
-        for parent_class in cls.__mro__:
-            parser = getattr(parent_class, "_parser__parser", None)
-            if parser:
-                parser_parents.append(parent_class._parser__parser)
-        cls_parser = argparse.ArgumentParser(parents=parser_parents)
-        defaults = attributes.get("defaults", None)
-        if defaults:
-            for key, value in defaults.items():
-                cls_parser.add_argument("--%s" % key, type=type(value), default=value)
-        attributes["__parser"] = cls_parser
-        
+    def make_parser(new_class, name, modifiers, exit_on_help):
+        parser = Metaclass.command_parser.add_parser(name)
+        new_class.parser = Parser(parser, modifiers, exit_on_help, name)
+                
     @staticmethod
     def decorate(cls, new_class, attributes):
         for key, value in new_class.__dict__.items():
@@ -245,6 +335,7 @@ class Base(object):
     classes that inherit from base should specify a class.defaults dictionary that will automatically
     include the specified (attribute, value) pairs on all new instances"""
     __metaclass__ = Metaclass
+    parser_modifiers = {}
     
     # the default attributes an instance will initialize with.
     # storing them here and using the attribute_setter method
@@ -260,7 +351,7 @@ class Base(object):
         return name
     instance_name = property(_get_name)
     
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):               
         instance = super(Base, cls).__new__(cls, *args, **kwargs)
         instance_number = instance.instance_number = cls.instance_count
         cls.instance_tracker[instance_number] = instance
@@ -268,14 +359,19 @@ class Base(object):
         return instance
         
     def __init__(self, **kwargs):
-        # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the __init__, like so
-        self.objects = {}
         super(Base, self).__init__()
-        attributes = self.defaults.copy()
-        if kwargs:
-            attributes.update(kwargs)
+        
+        # mutable datatypes (i.e. containers) should not be used inside the
+        # defaults dictionary and should be set in the call to __init__
+        self.objects = {}
+        
+        # instance attributes are assigned via kwargs
+        attributes = self.defaults.copy()        
+        if "parse_args" in kwargs and kwargs["parse_args"]:
+            attributes.update(self.parser.get_options(attributes))
+        attributes.update(kwargs)
         self.attribute_setter(**attributes)     
+        
         name = self.instance_name
         Component_Resolve[name] = self        
         if self.memory_size:
@@ -284,7 +380,7 @@ class Base(object):
             
     def attribute_setter(self, **kwargs):
         """usage: object.attribute_setter(attr1=value1, attr2=value2).
-        called implicitly in __init__ for any object that inherits from Base."""        
+        called implicitly in __init__ for any object that inherits from Base."""   
         [setattr(self, attr, val) for attr, val in kwargs.items()]
                      
     def create(self, instance_type, *args, **kwargs): 
@@ -293,53 +389,65 @@ class Base(object):
         The specified python object will be instantiated with the given arguments
         and placed inside object.objects under the created objects class name via 
         the add method"""
-        if not kwargs.has_key("parent"):
-            kwargs["parent"] = self
-            #kwargs["parent_weakref"] = ref(self)
-            
+        kwargs.setdefault("parent", self)
+                        
         # resolve string to actual class
-        if type(instance_type) == str:
-            try:
-                module, _class = instance_type.split(".")
-            except ValueError:
-                module, _class = __name__, instance_type
-            finally:
-                try:
-                    module = sys.modules[module]
-                except KeyError:
-                    module = __import__(module)
-                instance_type = getattr(module, _class)
+        try:
+            names = instance_type.split(".")
+        except AttributeError:
+            pass
+        else:
+            module_name = names.pop(0)
+            module_name = module_name.replace("metapython", "__main__")
+            if module_name in sys.modules:
+                _from = sys.modules[module_name]
+            else:
+                _from = __import__(module_name)
+                
+            for name in names:                
+                _from = getattr(_from, name)
+            instance_type = _from
         
         # instantiate the new object from a class object
         # if the object does not accept the attempted supplied kwargs (such as
         # the above-set parent attribute), then it is wrapped so it can
         try:
-            #print "attempting to instantiate", instance_type, args, kwargs, "\n"
+    #        print "attempting to instantiate", instance_type, args, kwargs, "\n"
             instance = instance_type(*args, **kwargs)
         except BaseException as error:
+            raise
             if error in (SystemExit, KeyboardInterrupt):
                 raise
-            self.alert("Exception instantiating {0}, attemping to apply Wrapper...\n{1}".format(\
-            instance_type, traceback.format_exc()), 5)
-            instance = instance_type(*args)
-            instance = Wrapper(instance, **kwargs)
+            trace = traceback.format_exc() + "\n"            
+            try:
+                instance = instance_type(*args)
+            except:
+                print "real exception encountered when creating {0}".format(instance_type)
+                print trace
+                raise error            
+            kwargs["wrapped_object"] = instance
+            instance = Wrapper(**kwargs)
+        
         instance.added_to = set()
         self.add(instance)       
         return instance
  
     def delete(self):
         """usage: object.delete() or object.delete(child). thoroughly untested."""
+        #print "deleting {0} from".format(self.instance_name), Component_Resolve.keys()
         del Component_Resolve[self.instance_name]
         if self.memory_size:
             del Component_Memory[self.instance_name]
         del type(self).instance_tracker[self.instance_number]
-        for child in self.get_children():
-            child.delete()
+        
         class_name = type(self).__name__
         for instance_name in self.added_to:
             instance = Component_Resolve[instance_name]
          #   print "removing %s from %s" % (self.instance_name, instance_name)
             instance.remove(self)             
+        
+        for child in self.get_children():
+            child.delete()   
             
     def remove(self, *args):
         for arg in args:
@@ -351,7 +459,7 @@ class Base(object):
         adds an already existing object to the instances' class name entry in parent.objects.
         """        
         if not hasattr(instance, "parent"):
-            instance.parent = self # is a reference problem without stm in place
+            instance.parent = self # is a reference problem without reference tracking in place
         instance.added_to.add(self.instance_name)        
         try:
             self.objects[instance.__class__.__name__].append(instance)
@@ -418,8 +526,12 @@ class Base(object):
             tree[self].append(proxy(instance))
             tree.update(instance.get_family_tree())
         return tree    
+        
+    def _get_source(self):
+        return inspect.getsource(self.__class__)
+    source = property(_get_source)
     
-
+    
 class Wrapper(Base):
     """a class that will act as the object it wraps and as a base
     object simultaneously."""
@@ -432,7 +544,7 @@ class Wrapper(Base):
         wraps_method = super(Wrapper, self).__getattribute__("wraps")
         wraps_method(kwargs.pop("wrapped_object"))
         super(Wrapper, self).__init__(**kwargs)
-
+                
     def wraps(self, obj):
         super(Wrapper, self).__setattr__("wrapped_object", obj)
         
@@ -443,18 +555,6 @@ class Wrapper(Base):
         except AttributeError:
             value = super(Wrapper, self).__getattribute__(attribute)
         return value
-        """try:
-            wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
-        except AttributeError:
-            return super(Wrapper, self).__getattribute__(attribute)            
-        try:
-            attr = getattr(wrapped_object, attribute)
-        except AttributeError:
-            try:
-                attr = super(Wrapper, self).__getattribute__(attribute)
-            except AttributeError:
-                raise
-        return attr"""
             
     def __setattr__(self, attribute, value):      
         try:
@@ -462,8 +562,6 @@ class Wrapper(Base):
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:
             super(Wrapper, self).__setattr__(attribute, value)
-    
-
         
     def __dir__(self):
         return dir(super(Wrapper, self).__getattribute__("wrapped_object"))
@@ -477,15 +575,6 @@ class Wrapper(Base):
 
     def __repr__(self):
         return super(Wrapper, self).__repr__()
-
-    def __iter__(self):
-        return self.wrapped_object
-    
-    def next(self): # python 2
-        return next(self.wrapped_object)
-        
-    def __next__(self): # python 3
-        return next(self.wrapped_object)
 
                                 
 class Process(Base):
@@ -511,10 +600,6 @@ class Process(Base):
     
     def start(self): # (hopeful) compatibility with multiprocessing.Process
         self.run()
-        args = (self.__class__.__name__, "adjust_priority")
-        options = {"component" : self,
-                   "priority" : self.update_priority_interval}
-        #Event(*args, **options).post()
         
     def run(self):
         if self.target:

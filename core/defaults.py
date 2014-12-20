@@ -46,12 +46,6 @@ Process.update({"auto_start" : True,
 "network_buffer" : '',
 "keyboard_input" : '',
 "priority" : .04,
-"minimum_priority" : .04,
-"maximum_priority" : .04,
-"priority_scales_with" : '',
-"update_priority_interval" : 20,
-"scale_against" : 1.0,
-"scale_operator" : "mul",
 "stdin_buffer_size" : 0})
 
 Thread = Base.copy()
@@ -69,7 +63,6 @@ Shell.update({"username" : "root",
 "password" : "password", 
 "prompt" : ">>> ", 
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
-"definition" : False, 
 "traceback" : format_exc, 
 "backup_write" : '', 
 "login_stage" : '', 
@@ -80,7 +73,7 @@ Shell.update({"username" : "root",
 "startup_definitions" : ''}) 
 
 Metapython = Process.copy()
-Metapython.update({"command" : "shell_launcher",
+Metapython.update({"command" : "shell_launcher.py",
 "python" : CPYTHON,
 "jython" : JYTHON,
 "pypy" : PYPY,
@@ -90,10 +83,10 @@ Metapython.update({"command" : "shell_launcher",
 "port" : 40022, 
 "prompt" : ">>> ", 
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
-"definition" : False, 
 "traceback" : format_exc, 
-"backup_write" : '',
-"priority" : .01})
+"priority" : .04,
+"authentication_scheme" : "networklibrary.Basic_Authentication"})
+#"help" : "Execute a python script or launch a live interpreter session"})
 
 # vmlibrary
 
@@ -263,11 +256,14 @@ Multicast_Receiver.update({"listener_address" : "0.0.0.0",
 "port" : 0})
 
 Basic_Authentication_Client = Thread.copy()
-Basic_Authentication_Client.update({"memory_size" : 4096})
+Basic_Authentication_Client.update({"memory_size" : 4096,
+"credentials" : tuple()})
 
 Basic_Authentication = Thread.copy()
-
+Basic_Authentication.update({"invalid_password_string" : "Invalid Password",
+"invalid_username_string" : "Invalid Username"})
 Asynchronous_Network = Process.copy()
+
 Asynchronous_Network.update({"number_of_sockets" : 0,
 "priority_scales_with" : "number_of_sockets",
 "scale_operator" : "div",
