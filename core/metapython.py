@@ -15,8 +15,9 @@ class Shell(base.Process):
     defaults = defaults.Shell
     hotkeys = {}
     
-    exit_on_help = False
-    
+    exit_on_help = True
+    parser_ignore = ("copyright", "traceback", "copyright")
+   
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
         self.line = []
@@ -102,7 +103,7 @@ class Shell(base.Process):
                 compile(self.startup_definitions, "startup_definition", "exec")
             except:
                 args = (self.instance_name, traceback.format_exc())
-                self.alert("{0} startup definitions failed to compile\n{1}".format(*args), 5)
+                self.alert("{0} startup definitions failed to compile\n{1}".format(*args), 0)
             else:
                 Event("Asynchronous_Network", "buffer_data", self.connection, self.startup_definitions+"\n").post()
     
@@ -127,10 +128,7 @@ class Metapython(base.Process):
                                   "nargs" : '?'}
                         }
     exit_on_help = False
-    
-    for attribute in parser_ignore:
-        parser_modifiers[attribute] = "ignore"
-    
+        
     def __init__(self, **kwargs):
         self.process_requests = []
         self.connected_clients = []

@@ -31,7 +31,7 @@ NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-# you can save memory if you only have lots of objects but 
+# you can save memory if you have LOTS of objects but 
 # few that actually use their memory. note that for reasonable 
 # amounts of objects the difference is negligible and 
 # not worth the loss of convenience
@@ -39,7 +39,7 @@ MANUALLY_REQUEST_MEMORY = 0
 DEFAULT_MEMORY_SIZE = 4096
 Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
 "network_packet_size" : 4096,
-"ignore_alert_level" : 3}
+"verbosity" : ''}
 
 Process = Base.copy()
 Process.update({"auto_start" : True, 
@@ -64,8 +64,6 @@ Shell.update({"username" : "root",
 "prompt" : ">>> ", 
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.', 
 "traceback" : format_exc, 
-"backup_write" : '', 
-"login_stage" : '', 
 "auto_start" : False,
 "auto_login" : True,
 "ip" : "localhost",

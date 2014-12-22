@@ -278,11 +278,25 @@ class Metaclass(type):
         attributes["instance_count"] = 0
         new_class = type.__new__(cls, name, bases, attributes)
         
-        modifiers = attributes.get("parser_modifiers", {})
+        # parser
         exit_on_help = attributes.get("exit_on_help", True)
-        Metaclass.make_parser(new_class, name, modifiers, exit_on_help)
         
-        #new_class.source = inspect.getsource(new_class)
+        base_class = bases[0]
+        modifiers = getattr(base_class, "parser_modifiers", {}).copy()                 
+        
+        parser_ignore = set()
+        new_parser_ignore = attributes.get("parser_ignore", tuple())
+        old_parser_ignore = getattr(base_class, "parser_ignore", tuple())
+        for ignore in new_parser_ignore + old_parser_ignore:
+            parser_ignore.add(ignore)  
+        new_class.parser_ignore = tuple(parser_ignore)
+        for attribute in parser_ignore:
+            modifiers[attribute] = "ignore"
+           
+        new_modifiers = attributes.get("parser_modifiers", {})
+        modifiers.update(new_modifiers)           
+        Metaclass.make_parser(new_class, name, modifiers, exit_on_help)                
+
         if Metaclass.enable_runtime_decoration:
             Metaclass.decorate(cls, new_class, attributes)
         return new_class
@@ -336,7 +350,7 @@ class Base(object):
     include the specified (attribute, value) pairs on all new instances"""
     __metaclass__ = Metaclass
     parser_modifiers = {}
-    
+    parser_ignore = ("network_packet_size", "memory_size")
     # the default attributes an instance will initialize with.
     # storing them here and using the attribute_setter method
     # makes them modifiable at runtime and eliminates the need
@@ -483,7 +497,7 @@ class Base(object):
             messages = []        
         return messages
 
-    def alert(self, message="Unspecified message", level=4, callback=None, callback_event=None):
+    def alert(self, message="Unspecified message", level=0, callback=None, callback_event=None):
         """usage: base.alert(message, level, callback, callback_event)
         
         Create an alert. Depending on the level given, the alert may be printed
@@ -496,12 +510,13 @@ class Base(object):
         -callback_event is an optional Event to be posted when the alert is triggered.
         
         alert severity is relative to the Alert.log_level and Alert.print_level;
-        a lower number indicates a less verbose/severe notification."""
-        if level >= self.ignore_alert_level:
+        a lower number indicates a less verbose notification, while 0 indicates
+        an error or exception and will never be suppressed"""  
+        if level <= self.verbosity:
             if (level >= Alert.print_level):
                 sys.stdout.write(message + "\n>>> ")                
             if level >= Alert.log_level:
-                severity = Alert.level_map[level]
+                severity = Alert.level_map.get(level, str(level))
                 Alert.log.write(severity + message + "\n")        
             if callback_event:
                 callback_event.post()
@@ -583,7 +598,8 @@ class Process(Base):
     the actual code to be executed every frame."""
     
     defaults = defaults.Process
-    
+    parser_ignore = ("auto_start", "network_buffer", "keyboard_input", "stdin_buffer_size")
+
     def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
