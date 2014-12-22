@@ -1,7 +1,7 @@
-Python Metaprogramming Framework
+Metapython
 ========
 
-The python metaprogramming framework aspires to enable effortless, expeditious
+Metapython aspires to enable effortless, expeditious
 software development. Paint a big picture quickly with good organization!
 
 Utilizing a pure python virtual machine and the framework api for it, an end 

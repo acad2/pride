@@ -59,6 +59,24 @@
                     </li>
                 
                 
+                
+                    <li >
+                        <a href="../chapter1/">Chapter1</a>
+                    </li>
+                
+                
+                
+                    <li >
+                        <a href="../chapter_2/">Chapter 2</a>
+                    </li>
+                
+                
+                
+                    <li >
+                        <a href="../chapter_3/">Chapter 3</a>
+                    </li>
+                
+                
                 </ul>
             
 
@@ -72,8 +90,8 @@
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
-                <li class="disabled">
-                    <a rel="prev" >
+                <li >
+                    <a rel="prev" href="../chapter1/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -255,6 +273,24 @@ elsewhere in python. </li>
 <p>The attribute setter method relates to the central idea of the framework and computing in 
 general: repetitive actions should be consigned to software functions instead of performed 
 by humans. </p>
+<p>The create method uses the following syntax:</p>
+<pre class="prettyprint well"><code>instance = base_object.create("module.object", *args, **kwargs)
+</code></pre>
+<p>This method can be used to instantiate arbitrary python objects. Objects created this
+way will have a parent keyword argument supplied to their <strong>init</strong> call. If the object is
+not a framework object it likely does not accept this argument. Framework incompatible 
+objects are wrapped in a proxy object known as base.Wrapper. This wrapper allows non
+framework objects to function as framework objects, including the ability to use the
+create method to store objects. Objects instantiated via the create method are automatically
+added to parent.objects, where parent is object that called create.</p>
+<p>The last thing that should be noted here is the Event object. Event objects are used
+to submit instructions for processing. They take the syntax:</p>
+<pre class="prettyprint well"><code>Event(component_name, "method", *args, **kwargs)
+</code></pre>
+<p>Where component_name is the instance name of the object, method is the method to be
+called, and args and kwargs are the arguments and keyword arguments for the method
+to be called. If a "component" keyword argument is supplied, it will be assigned to
+the event as an attribute and the normal component_name lookup will be bypassed. </p>
 <h2 id="automatic-concurrency">Automatic concurrency</h2>
 <p>The organized design of the project allows you to write single threaded/single process
 components and have them run concurrently (as long as there's no blocking calls... for now!)</p>
