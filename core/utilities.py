@@ -1,4 +1,4 @@
-#   mpf.utilities - shell commands, arg parser, latency measurement, 
+#   mpf.utilities - shell commands, latency measurement, 
 #                    documentation, running average
 #
 #    Copyright (C) 2014  Ella Rose
@@ -36,50 +36,7 @@ else:
 def shell(command, shell=False):
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
-    
-def get_arguments(argument_info, **kwargs):
-    arguments = {}
-    argument_names = argument_info.keys()
-    switch = {"short" : "-",
-              "long" : "--",
-              "positional" : ""}       
-              
-    for index, name in enumerate(argument_names):
         
-        try:
-            modifiers = kwargs.pop("{0}".format(name))
-        except KeyError:
-            modifiers = {}
-        modifiers.setdefault("types", ("long", ))
-        
-        info = {}
-        for keyword_argument, value in modifiers.items():
-            info[keyword_argument] = value
-        
-        temporary = {}
-        for arg_type in info.pop("types"):
-            arg_name = switch[arg_type] + name
-            default_value = argument_info[name]
-            
-            if arg_type != "positional":
-                temporary["dest"] = name            
-            temporary["default"] = default_value
-            temporary["type"] = type(default_value)            
-            for key, value in temporary.items():
-                info.setdefault(key, value)       
-            
-            arguments[arg_name] = info
-    
-    parser = argparse.ArgumentParser(**kwargs)            
-    for argument_name, options in arguments.items():
-        parser.add_argument(argument_name, **options)
-    return parser.parse_args()
-    
-def get_options(argument_info, **kwargs):
-    namespace = get_arguments(argument_info, **kwargs)
-    options = dict((key, getattr(namespace, key)) for key in namespace.__dict__.keys())
-    return options
-    
 class Latency(object):
     
     def __init__(self, name=None, average_size=20):

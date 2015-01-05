@@ -26,10 +26,10 @@ except:
 import select
 from threading import Thread
 
-import base
+import vmlibrary
 import defaults
 
-class Keyboard(base.Hardware_Device):
+class Keyboard(vmlibrary.Hardware_Device):
     
     defaults = defaults.Keyboard
     

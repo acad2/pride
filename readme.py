@@ -1,4 +1,4 @@
-Metaprogramming_Framework
+Metapython
 =========================
 
 all sorts of runtime fun in python

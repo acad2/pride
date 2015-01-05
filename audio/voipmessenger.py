@@ -21,7 +21,7 @@ import base
 import defaults
 Event = base.Event
 
-class Voip_Messenger(base.Process):
+class Voip_Messenger(vmlibrary.Process):
     
     defaults = defaults.Voip_Messenger
     

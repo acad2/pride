@@ -29,55 +29,17 @@ from copy import copy
 from types import MethodType
 from weakref import proxy, ref
 
+import metaclass
 import defaults
 import utilities
+timer_function = utilities.timer_function
 
 Component_Memory = {} 
 Component_Resolve = {}
+Attribute_Values = {}
+Attribute_Log = {}
 
-class Event(object):
-    
-    events = []
-            
-    def __init__(self, component_name, method, *args, **kwargs):
-        super(Event, self).__init__()
-        self.component_name = component_name
-        self.method = method # any method can be supplied
-        self.args = args # any arguments can be supplied
-        self.kwargs = kwargs # any keyword arguments can be supplied
-        priority = kwargs.setdefault("priority", .04)
-        
-        try: # supplying the component foregoes the need for a lookup
-            self.component = kwargs.pop("component")
-        except KeyError:
-            self.component = None
-            
-        if method != "create":
-            del kwargs["priority"]
-        self.execute_at = priority + utilities.timer_function()
-        
-    def post(self):
-        heapq.heappush(Event.events, (self.execute_at, self))
-        
-    def __str__(self):
-        args = self.args
-        kwargs = self.kwargs
-        number_of_formats = len(args)
-        arg_string = ", ".join("{0}".format(args[index]) for index in xrange(number_of_formats))
-        kwarg_string = ", ".join("{0}={1}".format(attr, value) for attr, value in kwargs.items())
-        format_arguments = (self.component_name, self.method, arg_string, kwarg_string)
-        return "Event {0}.{1}({2}, {3})".format(*format_arguments)
-        
-    def execute_code(self):    
-        call = getattr(self.component, self.method)
-        try:
-            result = call(*self.args, **self.kwargs)   
-        except BaseException as result:
-            result.traceback = traceback.format_exc()
-            raise result
-        return result
-        
-        
+
 class Runtime_Decorator(object):
     """provides the ability to call a function with a decorator specified via
     keyword argument.
@@ -86,46 +48,57 @@ class Runtime_Decorator(object):
     
     def __init__(self, function):
         self.function = function        
-    
-    def __call__(self, *args, **kwargs):
-        #print self.function, args, kwargs
         
+    def __call__(self, *args, **kwargs):
         if kwargs.has_key("context_manager"):
-            module_name, context_manager_name = self._resolve_string(kwargs.pop("context_manager"))
-            module = self._get_module(module_name)
-            context_manager = getattr(module, context_manager_name)
-            with context_manager():
-                result = self.function(*args, **kwargs)
-                
+            result = self._handle_context_manager(args, kwargs)   
+            
         elif kwargs.has_key("monkey_patch"):
-            module_name, patch_name = self._resolve_string(kwargs.pop("monkey_patch"))
-            module = self._get_module(module_name)
-            monkey_patch = getattr(module, patch_name)
-            result = monkey_patch(self.function.im_self, *args, **kwargs)
+            result = self._handle_monkey_patch(args, kwargs)  
             
         elif kwargs.has_key('decorator'):
-            decorator_type = kwargs.pop("decorator")            
-            module_name, decorator_name = self._resolve_string(decorator_type)
-            decorator = self._get_decorator(decorator_name, module_name)
-            wrapped_function = decorator(self.function)
-            result = wrapped_function(*args, **kwargs)
-
+            result = self._handle_decorator(args, kwargs)
+            
         elif kwargs.has_key('decorators'):
-            decorators = []
-            decorator_names = kwargs.pop("decorators")
-            for item in decorator_names:
-                module_name, decorator_name = self._resolve_string(item)
-                decorator = self._get_decorator(decorator_name, module_name)
-                decorators.append(decorator)
-
-            wrapped_function = self.function
-            for item in reversed(decorators):
-                wrapped_function = item(wrapped_function)            
-            result = wrapped_function(*args, **kwargs)
-        
+            result = self._handle_decorators(args, kwargs)    
+            
         else:
             result = self.function(*args, **kwargs)
         return result
+       
+    def _handle_context_manager(self, args, kwargs):
+        module_name, context_manager_name = self._resolve_string(kwargs.pop("context_manager"))
+        module = self._get_module(module_name)
+        context_manager = getattr(module, context_manager_name)
+        with context_manager():
+            result = self.function(*args, **kwargs)
+        return result
+
+    def _handle_monkey_patch(self, args, kwargs):
+        module_name, patch_name = self._resolve_string(kwargs.pop("monkey_patch"))
+        module = self._get_module(module_name)
+        monkey_patch = getattr(module, patch_name)
+        return monkey_patch(self.function.im_self, *args, **kwargs)
+ 
+    def _handle_decorator(self, args, kwargs):
+        decorator_type = kwargs.pop("decorator")            
+        module_name, decorator_name = self._resolve_string(decorator_type)
+        decorator = self._get_decorator(decorator_name, module_name)
+        wrapped_function = decorator(self.function)
+        return wrapped_function(*args, **kwargs)
+        
+    def _handle_decorators(self, args, kwargs):
+        decorators = []
+        decorator_names = kwargs.pop("decorators")
+        for item in decorator_names:
+            module_name, decorator_name = self._resolve_string(item)
+            decorator = self._get_decorator(decorator_name, module_name)
+            decorators.append(decorator)
+
+        wrapped_function = self.function
+        for item in reversed(decorators):
+            wrapped_function = item(wrapped_function)            
+        return wrapped_function(*args, **kwargs)
         
     def _resolve_string(self, string):
         try: # attempt to split the string into a module and attribute
@@ -274,10 +247,9 @@ class Metaclass(type):
     def __new__(cls, name, bases, attributes):
         Metaclass.make_docstring(attributes)
                 
-        attributes["instance_tracker"] = {}
-        attributes["instance_count"] = 0
         new_class = type.__new__(cls, name, bases, attributes)
-        
+        new_class.instance_tracker = {}
+        new_class.instance_count = 0
         # parser
         exit_on_help = attributes.get("exit_on_help", True)
         
@@ -324,19 +296,116 @@ class Metaclass(type):
                 bound_method = MethodType(wrapped, None, new_class)
                 setattr(new_class, key, bound_method)                
         return new_class
-            
+ 
+    """def __setattr__(cls, attribute, value):
+        print "\ninside __setattr__ {0}.{1}".format(cls, attribute)
+        if "__" not in attribute:
+            value_name = id(value)
+            Attribute_Values[value_name] = value
+            Attribute_Log[(id(cls), attribute)] = value_name
+            print "changing {0}.{1} to reference name".format(cls, attribute)
+            value = value_name
+        print "set {0}.{1} to {2}".format(cls, attribute, value)
+        super(Metaclass, cls).__setattr__(attribute, value)
+        
+    def __getattribute__(cls, attribute):
+        value = super(Metaclass, cls).__getattribute__(attribute)
+        if "__" not in attribute:
+            print "{0} retrieving {1} (currently {2})".format(cls, attribute, type(value))
+            try:
+                value = Attribute_Values[value]
+            except:
+                print "\t{0}.{1} ({2}) is not a reference".format(cls, attribute, value)
+        print "returning {0}.{1} {2}".format(cls, attribute, value)
+        print
+        return value"""
+        
+        
+class Event(object):
+    
+    events = []
+    cache = {}
+    
+    def _get_execute_at(self):
+        return self.created_at + self.priority
+    execute_at = property(_get_execute_at)
+    log_processor_time = False
+    
+    """def __new__(cls, component_name, method, *args, **kwargs):
+        new = super(Event, cls).__new__
+        cache = cls.cache
+        key = (component_name, method)
+        if key in cache:
+            instance = cache[key]            
+        else:            
+            instance = new(cls, component_name, method, *args, **kwargs)
+            instance.component_name = component_name
+            instance.method = method # any method can be supplied
+            instance.priority = 0.0
+            instance.component = None
+            instance.args = []
+            instance.kwargs = []
+            cache[key] = instance        
+        return instance
+        
+    def __init__(self, component_name, method, *args, **kwargs):
+        self.args.append(args) # any arguments can be supplied
+        self.kwargs.append(kwargs) # any keyword arguments can be supplied        
+        self.created_at = utilities.timer_function()
+        
+    def execute_code(self):    
+        call = getattr(self.component, self.method)
+        args = self.args.pop(0)
+        kwargs = self.kwargs.pop(0)
+        try:
+            result = call(*args, **kwargs)   
+        except BaseException as result:
+            result.traceback = traceback.format_exc()
+            raise result
+        return result"""
+        
+    def __init__(self, component_name, method, *args, **kwargs):
+        super(Event, self).__init__()
+        self.component_name = component_name
+        self.method = method
+        self.args = args
+        self.kwargs = kwargs
+        self.component = None
+        self.priority = 0.0
+        self.created_at = timer_function()
+        
+    def post(self):
+        heapq.heappush(Event.events, (self.execute_at, self))
+                
+    def __str__(self):
+        args = self.args
+        kwargs = self.kwargs
+        number_of_formats = len(args)
+        arg_string = ", ".join("{0}".format(args[index]) for index in xrange(number_of_formats))
+        kwarg_string = ", ".join("{0}={1}".format(attr, value) for attr, value in kwargs.items())
+        format_arguments = (self.component_name, self.method)#, arg_string, kwarg_string)
+        return "Event {0}.{1}".format(*format_arguments)
+        
+    def execute_code(self):    
+        call = getattr(self.component, self.method)
+        try:
+            result = call(*self.args, **self.kwargs)   
+        except BaseException as result:
+            result.traceback = traceback.format_exc()
+            raise result
+        return result
+                    
 
 class Alert(object):
     
-    log_level = 4
-    print_level = 3
+    log_level = 0
+    print_level = 0
     log = open("Alerts.log", "w+")
-    level_map = {0 : "very very verbose notification ",
-                 1 : "very verbose notification ",
-                 2 : "verbose notification ",
-                 3 : "notification ",
-                 4 : "warning ",
-                 5 : "error "}
+    level_map = {0 : "Error ",
+                'v' : "notification ",
+                'vv' : "verbose notification ",
+                'vvv' : "very verbose notification ",
+                'vvvv' : "extremely verbose notification "}
             
         
 class Base(object):
@@ -346,8 +415,7 @@ class Base(object):
     be able to create/hold arbitrary python objects by specifying them as 
     arguments to create.
     
-    classes that inherit from base should specify a class.defaults dictionary that will automatically
-    include the specified (attribute, value) pairs on all new instances"""
+    classes that inherit from base should specify a class.defaults dictionary that will automatically include the specified (attribute, value) pairs on all new instances"""
     __metaclass__ = Metaclass
     parser_modifiers = {}
     parser_ignore = ("network_packet_size", "memory_size")
@@ -390,7 +458,23 @@ class Base(object):
         Component_Resolve[name] = self        
         if self.memory_size:
             memory = mmap.mmap(-1, self.memory_size)             
-            Component_Memory[name] = memory 
+            Component_Memory[name] = memory, []
+    
+    """def __setattr__(self, attribute, value):
+        value_name = id(value)
+        Attribute_Values[value_name] = value
+        Attribute_Log[(id(self), attribute)] = value_name
+        value = value_name
+      #  print "set {0}.{1} to {2}".format(self, attribute, value)
+        super(Base, self).__setattr__(attribute, value)
+        
+    def __getattribute__(self, attribute):
+        value_name = super(Base, self).__getattribute__(attribute)
+        try:
+            value = Attribute_Values[value_name]
+        except:
+            value = value_name
+        return value""" 
             
     def attribute_setter(self, **kwargs):
         """usage: object.attribute_setter(attr1=value1, attr2=value2).
@@ -426,10 +510,10 @@ class Base(object):
         # if the object does not accept the attempted supplied kwargs (such as
         # the above-set parent attribute), then it is wrapped so it can
         try:
-    #        print "attempting to instantiate", instance_type, args, kwargs, "\n"
+            #print "attempting to instantiate", instance_type, args, kwargs, "\n"
             instance = instance_type(*args, **kwargs)
         except BaseException as error:
-            raise
+           # raise
             if error in (SystemExit, KeyboardInterrupt):
                 raise
             trace = traceback.format_exc() + "\n"            
@@ -449,12 +533,12 @@ class Base(object):
     def delete(self):
         """usage: object.delete() or object.delete(child). thoroughly untested."""
         #print "deleting {0} from".format(self.instance_name), Component_Resolve.keys()
-        del Component_Resolve[self.instance_name]
+        name = self.instance_name
+        del Component_Resolve[name]
         if self.memory_size:
-            del Component_Memory[self.instance_name]
-        del type(self).instance_tracker[self.instance_number]
+            del Component_Memory[name]
+        type(self).instance_tracker[self.instance_number] = None
         
-        class_name = type(self).__name__
         for instance_name in self.added_to:
             instance = Component_Resolve[instance_name]
          #   print "removing %s from %s" % (self.instance_name, instance_name)
@@ -464,8 +548,9 @@ class Base(object):
             child.delete()   
             
     def remove(self, *args):
+        objects = self.objects
         for arg in args:
-            self.objects[arg.__class__.__name__].remove(arg)
+            objects[arg.__class__.__name__].remove(arg)
             
     def add(self, instance):
         """usage: object.add(other_object)
@@ -473,6 +558,7 @@ class Base(object):
         adds an already existing object to the instances' class name entry in parent.objects.
         """        
         if not hasattr(instance, "parent"):
+            raise NotImplementedError
             instance.parent = self # is a reference problem without reference tracking in place
         instance.added_to.add(self.instance_name)        
         try:
@@ -481,29 +567,33 @@ class Base(object):
             self.objects[instance.__class__.__name__] = [instance]
         
     def send_to(self, component_name, message):
-        Component_Memory[component_name].write(message+"delimiter")
+        memory, pointers = Component_Memory[component_name]
+        memory.write(message)
+        pointers.append(memory.tell())
         
     def read_messages(self):
-        memory = Component_Memory[self.instance_name]
+        name = self.instance_name
+        memory, pointers = Component_Memory[name]
+        old_pointer = 0
+        messages = []
+        for pointer in pointers:
+            messages.append(memory[old_pointer:pointer]) 
+            old_pointer = pointer
         memory.seek(0)
-        data = memory.read(self.memory_size)
-        memory.seek(0)
-        if data.count("delimiter"):
-            size = len(data) 
-            messages = data.split("delimiter")[:-1]
-            memory.write("\x00"*size)
-            memory.seek(0)
-        else:
-            messages = []        
+        Component_Memory[name] = memory, []
         return messages
 
-    def alert(self, message="Unspecified message", level=0, callback=None, callback_event=None):
-        """usage: base.alert(message, level, callback, callback_event)
+    def alert(self, message="Unspecified alert message", 
+                    format_args=tuple(), 
+                    level=0, 
+                    callback=None, callback_event=None):
+        """usage: base.alert(message, format_args, level, callback, callback_event)
         
         Create an alert. Depending on the level given, the alert may be printed
         for immediate attention and/or logged quietly for later viewing. 
         
         -message is a string that will be logged and/or displayed
+        -format_args are any string formatting args for message.format() 
         -level is a small integer indicating the severity of the alert. 
         -callback is an optional tuple of (function, args, kwargs) to be called when
         the alert is triggered
@@ -511,11 +601,13 @@ class Base(object):
         
         alert severity is relative to the Alert.log_level and Alert.print_level;
         a lower number indicates a less verbose notification, while 0 indicates
-        an error or exception and will never be suppressed"""  
+        an error or exception and will never be suppressed."""  
+        
         if level <= self.verbosity:
-            if (level >= Alert.print_level):
+            message = message.format(*format_args)
+            if (level <= Alert.print_level) or not level:
                 sys.stdout.write(message + "\n>>> ")                
-            if level >= Alert.log_level:
+            if level <= Alert.log_level:
                 severity = Alert.level_map.get(level, str(level))
                 Alert.log.write(severity + message + "\n")        
             if callback_event:
@@ -545,7 +637,7 @@ class Base(object):
     def _get_source(self):
         return inspect.getsource(self.__class__)
     source = property(_get_source)
-    
+
     
 class Wrapper(Base):
     """a class that will act as the object it wraps and as a base
@@ -556,16 +648,25 @@ class Wrapper(Base):
         if kwargs:
             attributes.update(kwargs)
         super(Wrapper, self).attribute_setter(**attributes)"""
-        wraps_method = super(Wrapper, self).__getattribute__("wraps")
-        wraps_method(kwargs.pop("wrapped_object"))
+        wraps = super(Wrapper, self).__getattribute__("wraps")
+        try:
+            wrapped_object = kwargs.pop("wrapped_object")
+        except KeyError:
+            pass
+        else:
+            wraps(wrapped_object)
         super(Wrapper, self).__init__(**kwargs)
                 
-    def wraps(self, obj):
-        super(Wrapper, self).__setattr__("wrapped_object", obj)
+    def wraps(self, obj, set_defaults=False):
+        set_attr = super(Wrapper, self).__setattr__
+        if set_defaults:
+            for attribute, value in self.defaults.items():
+                set_attr(attribute, value)
+        set_attr("wrapped_object", obj)
         
     def __getattribute__(self, attribute): 
-        wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
         try:
+            wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
             value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)
         except AttributeError:
             value = super(Wrapper, self).__getattribute__(attribute)
@@ -590,84 +691,6 @@ class Wrapper(Base):
 
     def __repr__(self):
         return super(Wrapper, self).__repr__()
-
                                 
-class Process(Base):
-    """a base process for processes to subclass from. Processes are managed
-    by the system. The start method begins a process while the run method contains
-    the actual code to be executed every frame."""
-    
-    defaults = defaults.Process
-    parser_ignore = ("auto_start", "network_buffer", "keyboard_input", "stdin_buffer_size")
 
-    def __init__(self, **kwargs):
-        self.args = tuple()
-        self.kwargs = dict()
-        super(Process, self).__init__(**kwargs)
-        if self.stdin_buffer_size:
-            self.stdin_buffer = mmap.mmap(-1, self.stdin_buffer_size)
-            Event("User_Input0", "add_buffer", self.stdin_buffer).post()
-            
-        if self.auto_start:
-            args = (self.instance_name, "start")
-            options = {"component" : self,
-                       "priority" : 0.0}
-            Event(*args, **options).post()
-    
-    def start(self): # (hopeful) compatibility with multiprocessing.Process
-        self.run()
-        
-    def run(self):
-        if self.target:
-            self.target(*self.args, **self.kwargs)
-
-        self.propagate()
- 
-    def adjust_priority(self):
-        scaling_value = getattr(self, self.priority_scales_with, self.priority)
-        scale_against = self.scale_against
-        scale_function = getattr(scale_against, "__{0}__".format(self.scale_operator))
-        priority = scale_function(scaling_value)
-        #print self, "calculated priority", priority, scale_against, scaling_value
-        priority = min(priority, self.minimum_priority)
-        #print "after comparison to minimum", priority
-        self.priority = max(priority, self.maximum_priority)
-        #print "set priority to", self.priority
-        args = (self.__class__.__name__, "adjust_priority")
-        options = {"component" : self,
-                   "priority" : self.update_priority_interval}
-        self.alert("set {0} priority to {1}".format(self, self.priority), 0)
-        Event(*args, **options).post()
-        
-    def propagate(self):
-        if self in self.parent.objects[self.__class__.__name__]:
-            options = {"component" : self,
-                       "priority" : self.priority}
-            Event(self.instance_name, "run", **options).post()
-        
-        
-class Thread(Base):
-    """does not run in psuedo-parallel like threading.thread"""
-    defaults = defaults.Thread 
-                
-    def __init__(self, **kwargs):
-        self.args = tuple()
-        self.kwargs = dict()
-        self.results = []
-        super(Thread, self).__init__(**kwargs)
-                
-    def start(self):
-        self.run()
-    
-    def run(self): 
-        return self.function(*self.args, **self.kwargs)
-
-    
-# for vmlibrary.Machines
-class Hardware_Device(Base):
-    
-    defaults = defaults.Hardware_Device
-    
-    def __init__(self, **kwargs):
-        super(Hardware_Device, self).__init__(**kwargs)
         

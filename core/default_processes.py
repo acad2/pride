@@ -27,4 +27,4 @@ SHELL_SERVICE = ("interpreter.Shell_Service", NO_ARGS, NO_KWARGS)
 SHELL = ("interpreter.Shell", NO_ARGS, NO_KWARGS)
 
 # utilities
-FILE_SERVER = ("networklibrary.File_Server", NO_ARGS, NO_KWARGS)
+File_Service = ("networklibrary2.File_Service", NO_ARGS, NO_KWARGS)

@@ -70,7 +70,8 @@ class Audio_Device(base.Base):
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         
     def initialize(self):
-        self.alert("initializing device {0} with options: {1}".format(self.name, self.options), 2)
+        self.alert("initializing device {0} with options: {1}",
+                  (self.name, self.options), "vv")
         try:
             self.stream = PORTAUDIO.open(**self.options)
         except:

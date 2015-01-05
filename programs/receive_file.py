@@ -25,7 +25,7 @@ from default_processes import *
 receive_args = {"filename" : None,
                 "interface" : "0.0.0.0",
                 "port" : 40021}
-server_args = dict(defaults.File_Server)
+server_args = dict(defaults.File_Service)
 server_args.update({"exit_when_finished" : 1})
 
 args = dict(receive_args)
@@ -36,8 +36,8 @@ receive_options = dict((key, options[key]) for key in receive_args.keys())
 server_options = dict((key, options[key]) for key in server_args.keys())
 machine = vmlibrary.Machine()
 
-Event("System", "create", "networklibrary.File_Server", **server_options).post()
-Event("File_Server0", "receive_file", **receive_options).post()
+Event("System", "create", "networklibrary2.File_Service", **server_options).post()
+Event("File_Service0", "receive_file", **receive_options).post()
 
 if __name__ == "__main__":
     machine.run()

@@ -18,7 +18,10 @@
 font = time = Surface = NotImplemented
 SCREEN_SIZE = [800, 600]
 typeface = 'arial'
-R = G = B = 0
+#R = G = B = 0
+R = 45
+G = 150
+B = 245
 
 import struct
 import socket
@@ -29,6 +32,9 @@ from StringIO import StringIO
 NO_ARGS = tuple()
 NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
+
+stdin_FILE_NO = -1
+stdin_BUFFER_SIZE = 16384
 
 # Base
 # you can save memory if you have LOTS of objects but 
@@ -45,8 +51,7 @@ Process = Base.copy()
 Process.update({"auto_start" : True, 
 "network_buffer" : '',
 "keyboard_input" : '',
-"priority" : .04,
-"stdin_buffer_size" : 0})
+"priority" : .04})
 
 Thread = Base.copy()
 
@@ -75,7 +80,7 @@ Metapython.update({"command" : "shell_launcher.py",
 "python" : CPYTHON,
 "jython" : JYTHON,
 "pypy" : PYPY,
-"implementation" : "python",
+"implementation" : DEFAULT_IMPLEMENTATION,
 "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
 "interface" : "0.0.0.0", 
 "port" : 40022, 
@@ -88,18 +93,20 @@ Metapython.update({"command" : "shell_launcher.py",
 
 # vmlibrary
 
+Stdin = Base.copy()
+
 Processor = Hardware_Device.copy()
 Processor.update({"ignore_alerts" : 0}) # show everything that is processed or not
 
 System = Base.copy()
 System.update({"name" : "system",
 "status" : "",
-"hardware_configuration" : ("vmlibrary.Keyboard", ),
+"hardware_configuration" : tuple(),
 "startup_processes" : tuple()})
 
 Machine = Base.copy()
 Machine.update({"processor_count" : PROCESSOR_COUNT,
-"hardware_configuration" : (("vmlibrary.Keyboard", NO_ARGS, NO_KWARGS), ),
+"hardware_configuration" : tuple(),
 "system_configuration" : (("vmlibrary.System", NO_ARGS, NO_KWARGS), )})
 
 # inputlibrary
@@ -201,7 +208,14 @@ Audio_Service = Thread.copy()
 Audio_Service.update({"memory_size" : 65535})
 
 # networklibrary
-Connection = Base.copy()
+
+Socket = Base.copy()
+Socket.update({"allow_port_zero" : True,
+"idle" : True,
+"idle_check_interval" : 0,
+"memory_size" : MANUALLY_REQUEST_MEMORY})
+
+Connection = Socket.copy()
 Connection.update({"socket_family" : socket.AF_INET, 
 "socket_type" : socket.SOCK_STREAM})
 
@@ -211,7 +225,8 @@ Server.update({"interface" : "localhost",
 "backlog" : 50,
 "name" : "", 
 "reuse_port" : 0,
-"inbound_connection_type" : "networklibrary.Inbound_Connection"})
+"inbound_connection_type" : "networklibrary.Inbound_Connection",
+"share_methods" : ("on_connection", "incoming", "outgoing")})
    
 Outbound_Connection = Connection.copy()
 Outbound_Connection.update({"ip" : "localhost",
@@ -225,7 +240,7 @@ Inbound_Connection = Connection.copy()
 
 Download = Outbound_Connection.copy()
 Download.update({"filesize" : 0,
-"filename" : None,
+"filename" :'',
 "filename_prefix" : "Download",
 "download_in_progress" : False,
 "network_packet_size" : 16384,
@@ -237,20 +252,20 @@ Upload.update({"use_mmap" : False,
 "file" : '',
 "mmap_file" : False})
 
-UDP_Socket = Base.copy()
+UDP_Socket = Socket.copy()
 UDP_Socket.update({"interface" : "0.0.0.0",
 "port" : 0,
 "timeout" : 10})
 
 # only addresses in the range of 224.0.0.0 to 230.255.255.255 are valid for IP multicast
-Multicast_Beacon = Base.copy()
+Multicast_Beacon = UDP_Socket.copy()
 Multicast_Beacon.update({"packet_ttl" : struct.pack("b", 127),
 "multicast_group" : "224.0.0.0", 
 "multicast_port" : 1929})
 
-Multicast_Receiver = Base.copy()
-Multicast_Receiver.update({"listener_address" : "0.0.0.0",
-"multicast_group" : "224.0.0.0",
+Multicast_Receiver = UDP_Socket.copy()
+Multicast_Receiver.update({"interface" : "0.0.0.0",
+"ip" : "224.0.0.0",
 "port" : 0})
 
 Basic_Authentication_Client = Thread.copy()
@@ -268,14 +283,17 @@ Asynchronous_Network.update({"number_of_sockets" : 0,
 "maximum_priority" : .0005,
 "update_priority_interval" : 5})
 
-Service_Listing = Process.copy()
-
-# File Manager
-File_Server = Process.copy()
-File_Server.update({"interface" : "0.0.0.0",
+File_Service = Process.copy()
+File_Service.update({"interface" : "0.0.0.0",
 "port" : 40021,
 "network_packet_size" : 16384,
-"asynchronous_server" : True})
+"asynchronous_server" : True,
+"auto_start" : False})
+
+# Mail Server
+Mail_Server = Process.copy()
+Mail_Server.update({"address" : "notreal@inbox.com",
+"mail_server_name" : "metapython_email_server"})
 
 # sdllibrary
 
@@ -285,43 +303,45 @@ World = SDL_Component.copy()
 World.update({"displays" : ({"display_number" : 0}, )})
 
 SDL_Window = SDL_Component.copy()
-SDL_Window.update({"size" : (800, 600),
-"show" : True})
+SDL_Window.update({"size" : SCREEN_SIZE,
+"showing" : True,
+"layer" : 0,
+"name" : "Metapython",
+"color" : (0, 0, 0)})
 
 Renderer = SDL_Component.copy()
+Renderer.update({"componenttypes" : tuple()})
+
+User_Input = Process.copy()
+#User_Input.update({"priority" : .01})
 
 Sprite_Factory = SDL_Component.copy()
 
 Font_Manager = SDL_Component.copy()
-Font_Manager.update({"font_path" : "C:\\Windows\\Fonts\\arial.ttf",
-"default_font_size" : 14})
+Font_Manager.update({"font_path" : "./resources/fonts/Aero.ttf",
+"default_font_size" : 14,
+"default_color" : (15, 180, 35),
+"default_background" : (0, 0, 0)})
 
-Display = Hardware_Device.copy()
-Display.update({"x" : 0, 
+# guilibrary
+
+Organizer = Process.copy()
+Organizer.update({"priority" : 0})
+
+Window_Object = Base.copy()
+Window_Object.update({'x' : 0, 
 'y' : 0, 
-"size" : SCREEN_SIZE, 
-"layer" : 0, 
-"max_layer" : 0, 
-"drawing" : False,
-"windows" : ({"name" : "default_window"}, ),
-"name" : "Metapython",})
-
-# Widgets
-# these are the required attributes for a fully draw-able object
-Gui_Object = Base.copy()
-Gui_Object.update({'x' : 0, 
-        'y' : 0, 
-        'size' : SCREEN_SIZE, 
-        "layer" : 1, 
-        "color" : (R, G, B), 
-        "outline" : 5, 
-        "popup" : False, 
-        "pack_mode" : '', 
-        "typeface" : (typeface, 16), 
-        "pack_modifier" : '', 
-        "color_scalar" : .6})
+'size' : SCREEN_SIZE, 
+"layer" : 1, 
+"color" : (R, G, B), 
+"outline_width" : 5, 
+"popup" : False, 
+"pack_mode" : '', 
+"held" : False, 
+"pack_modifier" : '', 
+"color_scalar" : .6})
         
-Window = Gui_Object.copy()
+Window = Window_Object.copy()
 Window.update({"show_title_bar" : False, 
 "pack_mode" : "layer"})
 
@@ -330,8 +350,12 @@ Container.update({"alpha" : 1,
 "pack_mode" : "vertical"})
 
 Button = Container.copy()
-Button.update({"shape" : "rect"})
+Button.update({"shape" : "rect",
+"text" : "Button",
+"text_color" : (255, 130, 25)})
 
+
+# widgetlibrary
 Popup_Window = Window.copy()
 Popup_Window.update({"popup" : True, 
         "pack_modifier" : lambda parent, child: setattr(child, "position", (SCREEN_SIZE[0]/2, SCREEN_SIZE[1]/2))})
@@ -363,8 +387,8 @@ Task_Bar.update({"pack_modifier" : lambda parent, child:\
 setattr(child, "y", (parent.y+parent.size[1])-child.size[1])\
 }) # ^ aligns the bottom left corners of the parent and child object
 
-Date_Time = Button.copy()
-Date_Time.update({"pack_mode" : "horizontal"})
+Date_Time_Button = Button.copy()
+Date_Time_Button.update({"pack_mode" : "horizontal"})
 
 Help_Bar = Button.copy()
 Help_Bar.update({"pack_mode" : "horizontal"})

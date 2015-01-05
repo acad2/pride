@@ -36,7 +36,7 @@ class Wav_File(base.Base):
         self.comptype = comptype
         self.compname = compname
         message = "opened wav file with channels: {0}, format: {1}, rate: {2}, number of frames: {3}".format(channels, format, rate, number_of_frames)
-        self.alert(message, 2)
+        self.alert(message, level="vv")
         
     def read(self, size):
         data = self.file.readframes(size)
@@ -54,7 +54,7 @@ class Wav_File(base.Base):
         self.file.close()     
         
         
-class Audio_Configuration_Utility(base.Process):
+class Audio_Configuration_Utility(vmlibrary.Process):
         
     defaults = defaults.Audio_Configuration_Utility
     
@@ -150,7 +150,7 @@ class Audio_Configuration_Utility(base.Process):
             exit()
 
         
-class Audio_Manager(base.Process):
+class Audio_Manager(vmlibrary.Process):
     
     defaults = defaults.Audio_Manager
     
@@ -249,15 +249,17 @@ class Audio_Manager(base.Process):
         data_size = len(sound_chunk)
         name = device.name
         if device.record_to_disk: 
-            self.alert("{0} recorded {1} sound chunks".format(name, data_size), 0)
+            self.alert("{0} recorded {1} sound chunks", 
+                      (name, data_size), "vvv")
             device.file.writeframes(sound_chunk)
         
         for client in self.listeners[device.name]:
-            self.alert("{0} send {1} bytes of sound to {2}".format(name, data_size, client), 0)
+            self.alert("{0} send {1} bytes of sound to {2}",
+                      (name, data_size, client), "vvv")
             self.send_to(client, name + ";;" + sound_chunk)      
 
                 
-class Audio_Channel(base.Thread):
+class Audio_Channel(vmlibrary.Thread):
     
     defaults = defaults.Audio_Channel
     
@@ -284,7 +286,7 @@ class Audio_Channel(base.Thread):
         return data
         
         
-class Audio_Service(base.Thread):
+class Audio_Service(vmlibrary.Thread):
     
     defaults = defaults.Audio_Service
     

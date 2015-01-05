@@ -4,12 +4,14 @@ import os
 from contextlib import closing
 
 import base
+import vmlibrary
 import utilities
 import defaults
 Event = base.Event
     
-    
-class Shell(base.Process):
+stdin = vmlibrary.stdin
+
+class Shell(vmlibrary.Process):
     """(Potentially remote) connection to the interactive interpreter"""
     
     defaults = defaults.Shell
@@ -28,9 +30,9 @@ class Shell(base.Process):
                    "on_connection" : self._on_connection}        
         
         self.connection = self.create("networklibrary.Outbound_Connection", **options)
+        self.keyboard = self.create("keyboard.Keyboard")
         self.definition = False
-        self.keyboard = self.create("vmlibrary.Keyboard")
-        
+                
     def run(self):        
         if self.network_buffer:
             sys.stdout.write(self.network_buffer+self.prompt)
@@ -90,10 +92,10 @@ class Shell(base.Process):
                    "wait" : self._on_wait}
           
         self.login_thread = self.create("networklibrary.Basic_Authentication_Client", **options)
-        Event(self.instance_name, "_login", component=self).post()
-    
+        self.process("_login")
+            
     def _on_login_success(self, connection):
-        Event(self.instance_name, "run", component=self).post()
+        self.process("run")
         print self.network_buffer
         self.network_buffer = ''
         sys.stdout.write(self.prompt)      
@@ -103,18 +105,19 @@ class Shell(base.Process):
                 compile(self.startup_definitions, "startup_definition", "exec")
             except:
                 args = (self.instance_name, traceback.format_exc())
-                self.alert("{0} startup definitions failed to compile\n{1}".format(*args), 0)
+                self.alert("{0} startup definitions failed to compile\n{1}", 
+                           args, 0)
             else:
                 Event("Asynchronous_Network", "buffer_data", self.connection, self.startup_definitions+"\n").post()
     
     def _on_wait(self):
-        Event(self.instance_name, "_login", component=self).post()   
-    
+        self.process("_login")
+            
     def _login(self):
         self.login_thread.run()        
                 
                 
-class Metapython(base.Process):
+class Metapython(vmlibrary.Process):
     
     defaults = defaults.Metapython
     
@@ -139,6 +142,13 @@ class Metapython(base.Process):
         self.log_file = open("%s_log" % self.__class__.__name__, "a")
         
         super(Metapython, self).__init__(**kwargs)
+        implementation = self.implementation
+        if implementation != defaults.DEFAULT_IMPLEMENTATION:
+            #command = sys.argv
+           # command[0] = self.implementation
+           command = [self.implementation, "metapython.py"] + sys.argv[1:]
+           print "starting new process", command
+           self.start_process(command)
         self.objects.setdefault(self.authentication_scheme.split(".", 1)[-1], [])
         self.network_buffer = {}
         self.setup_environment()
@@ -162,23 +172,25 @@ class Metapython(base.Process):
             os.environ[variable] = result
     
     def start_interpreter(self):
+        # construct a server
         options = {"incoming" : self._read_socket,
                    "outgoing" : self._write_socket,
                    "on_connection" : self._on_connection,
-                   "name" : "Metapython_Interpreter",
+                   "name" : self.instance_name,
                    "interface" : self.interface,
                    "port" : self.port}
         
         Event("Asynchronous_Network", "create", "networklibrary.Server", **options).post()
+        
         module_name = self.command.split(".py")[0]
-        try:
-            module = __import__(module_name)
-        except ImportError:
-            raise
-        else:            
-            machine = self.create("vmlibrary.Machine")
-            machine.create("networklibrary.Asynchronous_Network")
-            machine.run()                
+        Event("Metapython", "import_module", module_name).post()
+                
+        machine = self.create("vmlibrary.Machine")
+        machine.create("networklibrary.Asynchronous_Network")
+        machine.run()    
+        
+    def import_module(self, module_name):
+        module = __import__(module_name)              
             
     def _on_connection(self, connection, address):
         self.network_buffer[connection] = ''
@@ -205,8 +217,8 @@ class Metapython(base.Process):
          #   self.process_requests.remove[index]
             #utilities.shell("{0} {1}".format(*process))
         
-        Event(self.instance_name, "run", component=self, priority=self.priority).post()
-
+        self.process("run")
+  
     def handle_logins(self):
         for login_thread in self.objects["Basic_Authentication"]:
             login_thread.run()
@@ -265,9 +277,8 @@ class Metapython(base.Process):
                 raise
             else:
                 sys.stdout.write(self.traceback())      
-                
-    @staticmethod           
-    def start_process(sys_argvs):
+                     
+    def start_process(self, sys_argvs):
         os.execlp(*sys_argvs)
                          
  
