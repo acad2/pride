@@ -15,15 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import vmlibrary
+from base import Instruction
 import defaults
-from default_processes import *
 
-#defaults.Audio_Manager["config_file_name"] = "audiocfg"
+
 defaults.Audio_Input["record_to_disk"] = True
-defaults.System["startup_processes"] += (AUDIO_MANAGER, ) 
-
-machine = vmlibrary.Machine()
-
-if __name__ == "__main__":
-    machine.run()
+Instruction("System", "create", "audiolibrary.Audio_Manager").execute()

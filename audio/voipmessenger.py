@@ -19,12 +19,12 @@ import mmap
 
 import base
 import defaults
-Event = base.Event
+Instruction = base.Instruction
 
 class Voip_Messenger(vmlibrary.Process):
-    
+
     defaults = defaults.Voip_Messenger
-    
+
     def __init__(self, **kwargs):
         self.log = {}
         self.listeners = []
@@ -34,26 +34,26 @@ class Voip_Messenger(vmlibrary.Process):
         self.file = mmap.mmap(-1, 8192 * 2)
         self.keyboard = self.create("keyboard.Keyboard")
         self.audio_service = self.create("audiolibrary.Audio_Service")
-        
+
         file_info = {"format" : self.format,
                      "rate" : self.rate,
                      "channels" : self.channels,
                      "name" : self.name}
-        Event("Audio_Manager0", "play_file", file_info, self.file).post()
+        Instruction("Audio_Manager0", "play_file", file_info, self.file).execute()
         options = {"port" : self.port,
-                   "incoming" : self._incoming,
-                   "outgoing" : self._outgoing}
+                   "socket_recv" : self._socket_recv,
+                   "socket_send" : self._socket_send}
         self.socket = self.create("networklibrary.UDP_Socket", **options)
-        Event("Asynchronous_Network", "add", self.socket).post()        
-        
-    def _incoming(self, connection):
+        Instruction("Asynchronous_Network", "add", self.socket).execute()
+
+    def _socket_recv(self, connection):
         data, _from = connection.recvfrom(self.network_packet_size)
         self.network_buffer[(connection, _from)] = data
-        
-    def _outgoing(self, connection, data):
+
+    def _socket_send(self, connection, data):
         to, data = data
         connection.sendto(data, to)
-        
+
     def run(self):
         self.audio_service.run()
         self.send_audio()
@@ -63,24 +63,24 @@ class Voip_Messenger(vmlibrary.Process):
             print "Commands: message, call, hangup"
             print "to send a message: message address:port this is the message"
             print "to call: call address:port"
-            print "to hangup: hangup address:port"        
-        self.handle_incoming()
-        
-        self.propagate()
-        
-    def send_audio(self):        
+            print "to hangup: hangup address:port"
+        self.handle_socket_recv()
+
+        self.run_instruction.execute()
+
+    def send_audio(self):
         for channel in self.audio_service.objects["Audio_Channel"]:
             data = channel.read()
             if self.microphone_name in channel.name and data:
                 for listener in self.listeners:
-                    args = (self.socket, channel.audio_data, listener)                  
-                    Event("Asynchronous_Network", "buffer_data", *args).post()
+                    args = (self.socket, channel.audio_data, listener)
+                    Instruction("Asynchronous_Network", "buffer_data", *args).execute()
             channel.audio_data = ''
-            
-    def handle_input(self):        
+
+    def handle_input(self):
         if self.keyboard.input_waiting():
             self.keyboard.get_line(self)
-        
+
         if self.keyboard_input:
             input = self.keyboard_input
             self.keyboard_input = ''
@@ -93,9 +93,9 @@ class Voip_Messenger(vmlibrary.Process):
                 message = getattr(self, "%s_header" % command)
             ip, port = address.split(":")
             to = (ip, int(port))
-            Event("Asynchronous_Network", "buffer_data", self.socket, message, to).post()
+            Instruction("Asynchronous_Network", "buffer_data", self.socket, message, to).execute()
 
-    def handle_incoming(self):
+    def handle_socket_recv(self):
         for _from, data in self.network_buffer.items():
             header, message = data.split(" ", 1)
             if "call" in header:
@@ -115,13 +115,13 @@ class Voip_Messenger(vmlibrary.Process):
                     self.log[_from].write(message + "\n")
                 except KeyError:
                     self.log = {_from : open("%s.log" % _from, "a")}
-                    self.log[_from].write(message + "\n")            
+                    self.log[_from].write(message + "\n")
                 print "%s: %s" % (self.talking_to[_from], message)
-                
+
 if __name__ == "__main__":
     import vmlibrary
-    
+
     machine = vmlibrary.Machine()
-    Event("System", "create", "audiolibrary.Audio_Manager").post()
-    Event("System", "create", Voip_Messenger).post()
+    Instruction("System", "create", "audiolibrary.Audio_Manager").execute()
+    Instruction("System", "create", Voip_Messenger).execute()
     machine.run()

@@ -1,4 +1,4 @@
-#   mpf.keyboard - non blocking user input (eventually!)
+#   mpf.keyboard - non blocking user input (instructionually!)
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -22,7 +22,7 @@ try:
 except:
     def input_waiting():
         return select.select([sys.stdin], [], [], 0.0)[0]
-        
+
 import select
 from threading import Thread
 
@@ -30,25 +30,25 @@ import vmlibrary
 import defaults
 
 class Keyboard(vmlibrary.Hardware_Device):
-    
+
     defaults = defaults.Keyboard
-    
+
     def __init__(self, **kwargs):
         super(Keyboard, self).__init__(**kwargs)
         self.characters = ''
         self.getting_input = False
         self.reader_thread = Thread(target=self.raw_input)
         self.receivers = set()
-        
+
     def input_waiting(self):
         return (self.characters or input_waiting())
-    
+
     def get_line(self, receiver):
         self.receivers.add(receiver)
         if not self.getting_input:
             self.getting_input = True
             self.reader_thread.start()
-                        
+
     def raw_input(self):
         characters = sys.stdin.readline()
         for receiver in self.receivers:

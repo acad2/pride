@@ -19,7 +19,7 @@ import sys
 import vmlibrary
 import defaults
 import utilities
-from base import Event
+from base import Instruction
 from default_processes import *
 
 receive_args = {"filename" : None,
@@ -36,8 +36,8 @@ receive_options = dict((key, options[key]) for key in receive_args.keys())
 server_options = dict((key, options[key]) for key in server_args.keys())
 machine = vmlibrary.Machine()
 
-Event("System", "create", "networklibrary2.File_Service", **server_options).post()
-Event("File_Service0", "receive_file", **receive_options).post()
+Instruction("System", "create", "networklibrary2.File_Service", **server_options).execute()
+Instruction("File_Service0", "receive_file", **receive_options).execute()
 
 if __name__ == "__main__":
     machine.run()

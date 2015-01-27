@@ -11,57 +11,66 @@ else:
     import portaudiodevices as audio_devices
     pyaudio = audio_devices.pyaudio
     PORTAUDIO = audio_devices.PORTAUDIO
+
 import base
+import vmlibrary
 import defaults
 from utilities import Latency
-Event = base.Event
+Instruction = base.Instruction
 
 Audio_Device = audio_devices.Audio_Device
 Audio_Input = audio_devices.Audio_Input
 Audio_Output = audio_devices.Audio_Output
 
 class Wav_File(base.Base):
-    
+
     defaults = defaults.Wav_File
-    
+
     def __init__(self, **kwargs):
         super(Wav_File, self).__init__(**kwargs)
-        self.file = wave.open(self.filename, "rb")
-        channels, sample_width, rate, number_of_frames, comptype, compname = self.file.getparams()
-        self.channels = channels
-        self.sample_width = sample_width
-        self.format = 2 # hardcoded to PCM_FORMAT_S16_LE for quick fix
-        self.rate = rate
-        self.number_of_frames = number_of_frames
-        self.comptype = comptype
-        self.compname = compname
-        message = "opened wav file with channels: {0}, format: {1}, rate: {2}, number of frames: {3}".format(channels, format, rate, number_of_frames)
-        self.alert(message, level="vv")
-        
+        _file = self.file = wave.open(self.filename, self.mode)
+        if 'r' in self.mode:
+            channels, sample_width, rate, number_of_frames, comptype, compname = self.file.getparams()
+            self.channels = channels
+            self.sample_width = sample_width
+            self.format = 2 # hardcoded to PCM_FORMAT_S16_LE for quick fix
+            self.rate = rate
+            self.number_of_frames = number_of_frames
+            self.comptype = comptype
+            self.compname = compname
+        else:
+            _file.setnchannels(self.channels)
+            _file.setsampwidth(self.sample_width)
+            _file.setframerate(self.rate)
+            #self.file.setparams((self.channels, self.sample_width, self.rate, 0, None, ''))
+            format_args = (self.channels, self.sample_width, self.rate)
+        message = "opened wav file with channels: {0}, format: {1}, rate: {2}"
+        self.alert(message, (self.channels, self.sample_width, self.rate), level="vv")
+
     def read(self, size):
         data = self.file.readframes(size)
         if self.repeat and (self.file.tell() == self.number_of_frames):
             self.file.rewind()
         return data
-        
+
     def tell(self):
         return self.file.tell()
-        
+
     def write(self, data):
         self.file.writeframes(data)
-        
+
     def close(self):
-        self.file.close()     
-        
-        
+        self.file.close()
+
+
 class Audio_Configuration_Utility(vmlibrary.Process):
-        
+
     defaults = defaults.Audio_Configuration_Utility
-    
+
     def __init__(self, **kwargs):
         self.selected_devices = []
         super(Audio_Configuration_Utility, self).__init__(**kwargs)
-        
+
         if "default" in self.mode:
             default_input, default_output = self.get_default_devices()
             self.selected_devices.append(default_input)
@@ -70,8 +79,10 @@ class Audio_Configuration_Utility(vmlibrary.Process):
             self.delete()
         else:
             self.all_devices = self.get_all_devices()
-            Event("Audio_Configuration_Utility", "run", component=self).post()
-    
+            instruction = Instruction("Audio_Configuration_Utility", "run")
+            instruction.component = self
+            instruction.execute()
+
     def write_config_file(self, device_list):
         with open(self.config_file_name, "wb") as config_file:
             for device in device_list:
@@ -79,7 +90,7 @@ class Audio_Configuration_Utility(vmlibrary.Process):
             pickle.dump(device_list, config_file)
             config_file.flush()
             config_file.close()
-            
+
     def get_all_devices(self):
         if "linux" in sys.platform:
             devices = dict((index, {"card" : "hw:{0},0".format(index), "name" : device_name}) for index, device_name in enumerate(alsaaudio.cards()))
@@ -97,11 +108,11 @@ class Audio_Configuration_Utility(vmlibrary.Process):
     def print_display_devices(self, device_dict):
         for key, value in device_dict.items():
             print "%s: %s" % (key, value)
-        
+
     def get_selections(self):
         selection = ""
         self.selected_devices = []
-    
+
         while "done" not in selection:
             print "\n"*80
             print "type 'done' to finish selecting..."
@@ -123,25 +134,25 @@ class Audio_Configuration_Utility(vmlibrary.Process):
                     selection = raw_input("Invalid index. press enter to continue to or 'done' to finish")
                     if 'done' in selection:
                         break
-                else:        
-                    name = raw_input("Rename device or press enter for default name: ") 
+                else:
+                    name = raw_input("Rename device or press enter for default name: ")
                     if name:
                         device["name"] = name
                     self.selected_devices.append(device)
-        print "finished selecting devices"        
-    
+        print "finished selecting devices"
+
     @staticmethod
     def get_default_devices():
         if "linux" in sys.platform:
-	    input, output = "hw:0,0", "hw:0,0"
-	else:
-	    host_api_info = PORTAUDIO.get_default_host_api_info()
-	    input_index = host_api_info["defaultInputDevice"]
-	    output_index = host_api_info["defaultOutputDevice"]
-	    input = PORTAUDIO.get_device_info_by_index(input_index)
-	    output = PORTAUDIO.get_device_info_by_index(output_index)
-	return input, output
-    
+            input, output = "hw:0,0", "hw:0,0"
+        else:
+            host_api_info = PORTAUDIO.get_default_host_api_info()
+            input_index = host_api_info["defaultInputDevice"]
+            output_index = host_api_info["defaultOutputDevice"]
+            input = PORTAUDIO.get_device_info_by_index(input_index)
+            output = PORTAUDIO.get_device_info_by_index(output_index)
+        return input, output
+
     def run(self):
         self.get_selections()
         self.write_config_file(self.selected_devices)
@@ -149,73 +160,70 @@ class Audio_Configuration_Utility(vmlibrary.Process):
         if getattr(self, "exit_when_finished", None):
             exit()
 
-        
+
 class Audio_Manager(vmlibrary.Process):
-    
+
     defaults = defaults.Audio_Manager
-    
+
     def _get_devices(self):
         return self.objects.get("Audio_Input", []) + self.objects.get("Audio_Output", [])
-        
+
     audio_devices = property(_get_devices)
-    
+
     def __init__(self, **kwargs):
-        self.listeners = {}
-        self.device_names = {}
+        device_names = self.device_names = {}
+        self.latency = Latency(name="audio_manager")
         super(Audio_Manager, self).__init__(**kwargs)
         if self.config_file_name:
             try:
-                self.load_config_file()       
+                self.load_config_file()
             except:
-                raise
                 raw_input("Please run audio_config_utility. No config file found")
-                Event("System", "exit").post()
+                Instruction("System", "exit").execute()
         elif self.use_defaults:
             input_info, output_info = Audio_Configuration_Utility.get_default_devices()
+            
             input = self.create(Audio_Input, input_info)
             output = self.create(Audio_Output, output_info)
+            
+            device_names[input.instance_name] = input
+            device_names[output.instance_name] = output
+            
             input.initialize()
             output.initialize()
-            self.listeners[input.name] = []
-            self.listeners[output.name] = []
-    
+
     def load_config_file(self):
         with open(self.config_file_name, "rb") as config_file:
             for device_info in pickle.load(config_file):
                 device = self.create(Audio_Input, **device_info)
-                self.listeners[device.name] = []
-                self.device_names[device.name] = device
-                device.initialize()		    
+                self.device_names[device.instance_name] = device
+                device.initialize()
 
     def send_channel_info(self, listener):
-        """usage: Event("Audio_Manager0", "send_channel_info", my_object).post() 
+        """usage: Instruction("Audio_Manager", "send_channel_info", my_object).execute()
         => Message: "Device_Info;;" + pickled list containing dictionaries
-        
+
         Request a listing of available audio channels to the specified instances
         memory. This message can be retrieved via instance.read_messages()"""
         channel_info = []
         for device in self.audio_devices:
             options = dict(**device.options)
             options["name"] = device.name
+            options["device_name"] = device.instance_name
             options["sample_size"] = device.sample_size
             channel_info.append(options)
         channel_list = pickle.dumps(channel_info)
         self.send_to(listener.instance_name, "Channel_Info;;" + channel_list)
-        
-    def add_listener(self, listener, channel_name):
-        channel = None
-        for device in self.audio_devices:
-            if channel_name in device.name:
-                return self.listeners[device.name].append(listener.instance_name)
-        
-    def run(self):                                        
-        # get the sound from each device and output it
+
+    def add_listener(self, listener, device_name):
+        return self.device_names[device_name].listeners.append(listener.instance_name)
+
+    def run(self):
+        #self.latency.update()
+        #self.latency.display()
         for device in self.audio_devices:
             device.get_data()
-            if device.data:
-                self._handle_device(device)            
-        
-        self.propagate()
+        self.run_instruction.execute()
 
     def play_file(self, file_info, file, to=None, mute=False, record=False):
         _format = file_info["format"] # in bytes, pyaudio needs it's own constant instead
@@ -226,74 +234,60 @@ class Audio_Manager(vmlibrary.Process):
             sample_size = int(format_name[-2:])
         except NameError:
             pass
-        options = {"data_source" : file, 
+        options = {"data_source" : file,
                    "mute" : mute,
                    "format" : _format,
                    "rate" : file_info["rate"],
                    "channels" : file_info["channels"],
-                   "name" : file_info["name"]}        
+                   "name" : file_info["name"]}
         speaker = self.create(Audio_Output, **options)
         speaker.initialize()
-        self.listeners[speaker.name] = []
+
         if to:
-            self.listeners[speaker.name].append(to.instance_name)            
-   
+            speaker.listeners.append(to.instance_name)
+
     def record(self, device_name):
         device = self.device_names[device_name]
         device.file = device._new_wave_file()
-        device.record_to_disk = True            
-	
-    def _handle_device(self, device):
-        sound_chunk = device.data
-        device.data = ''
-        data_size = len(sound_chunk)
-        name = device.name
-        if device.record_to_disk: 
-            self.alert("{0} recorded {1} sound chunks", 
-                      (name, data_size), "vvv")
-            device.file.writeframes(sound_chunk)
-        
-        for client in self.listeners[device.name]:
-            self.alert("{0} send {1} bytes of sound to {2}",
-                      (name, data_size, client), "vvv")
-            self.send_to(client, name + ";;" + sound_chunk)      
+        device.record_to_disk = True
 
-                
+
 class Audio_Channel(vmlibrary.Thread):
-    
+
     defaults = defaults.Audio_Channel
-    
+
     def __init__(self, **kwargs):
         super(Audio_Channel, self).__init__(**kwargs)
         self.frame = self._new_thread()
-                
+
     def run(self):
         return next(self.frame)
 
     def _new_thread(self):
+        read_messages = self.read_messages
+        join = ''.join
         while True:
-            messages = self.read_messages()
+            messages = read_messages()
             if messages:
-                device_name, audio_data = messages[-1].split(";;", 1)
-                self.audio_data = audio_data                
+                self.audio_data = join(messages)
             yield
-            
+
     def read(self, bytes=0):
         if not bytes:
             bytes = len(self.audio_data)
         data = self.audio_data[:bytes]
         self.audio_data[bytes:]
         return data
-        
-        
+
+
 class Audio_Service(vmlibrary.Thread):
-    
+
     defaults = defaults.Audio_Service
-    
+
     def _get_channels(self):
         return self.objects["Audio_Channel"]
     channels = property(_get_channels)
-    
+
     def __init__(self, **kwargs):
         self.channel_configuration = {}
         self.audio_data = {}
@@ -303,31 +297,31 @@ class Audio_Service(vmlibrary.Thread):
         self.network_buffer = {}
         self.objects["Audio_Channel"] = []
         self.frame = self._new_thread()
-        Event("Audio_Manager0", "send_channel_info", self).post()
-        
+        Instruction("Audio_Manager", "send_channel_info", self).execute()
+
     def run(self):
         return next(self.frame)
 
     def _new_thread(self):
         messages = None
+        channels = self.objects["Audio_Channel"]
+
         while not messages:
             messages = self.read_messages()
-            yield                        
-        
+            yield
+
         for message in messages:
             header, message = message.split(";;")
             channel_configuration = pickle.loads(message)
             for channel_info in channel_configuration:
                 name = channel_info["name"]
+                device_name = channel_info["device_name"]
                 channel_info["latency"] = Latency(name=name)
-                channel = self.create(Audio_Channel, **channel_info)                    
-                Event("Audio_Manager0", "add_listener", channel, name).post()        
+                channel = self.create(Audio_Channel, **channel_info)
+                Instruction("Audio_Manager", "add_listener", channel, device_name).execute()
         yield
-        
+
         while True:
-            self.get_new_audio()
+            for channel in channels:
+                channel.run()
             yield
-            
-    def get_new_audio(self):
-        for channel in self.objects["Audio_Channel"]:
-            channel.run()

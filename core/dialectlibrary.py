@@ -42,27 +42,27 @@ DICTIONARY[""] = ""
 
 for module_name in sys.builtin_module_names:
     DICTIONARY[module_name] = module_name
-    
-    
+
+
 
 
 class Module_Listing(object):
-    
+
     def __init__(self, **kwargs):
         super(Module_Listing, self).__init__()
         [setattr(self, key, value) for key, value in kwargs.items()]
         setattr(self, "file", getattr(self, "file", StringIO()))
-        
+
     def from_help(self):
         helper = pydoc.Helper(output=self.file)
         helper("modules")
-        
+
     def read_file(self):
         file = self.file
         file.seek(0)
         text = file.read()
-        return text    
-        
+        return text
+
     def trim(self, text):
         _file = StringIO(text)
         found = []
@@ -70,21 +70,21 @@ class Module_Listing(object):
         for line in _file.readlines():
             if line.split(" ").count("") > 2:
                 found += line.split()
-                
+
         return ' '.join(found)
-        
+
     def get_modules(self):
         self.from_help()
         original = self.read_file()
         return self.trim(original)
-     
+
     def make_file(self, filename):
         with open(filename, 'w') as _file:
             _file.write(self.get_modules())
             _file.flush()
             _file.close()
-        
-            
+
+
 class Dialect(object):
 
     def __init__(self, **kwargs):
@@ -121,7 +121,7 @@ class Dialect(object):
 
 class Random_Dialect(Dialect):
 
-    def __init__(self, **kwargs):  
+    def __init__(self, **kwargs):
         super(Random_Dialect, self).__init__(**kwargs)
         self.delimiters = ['\t', ":", ',', '.', "(", ")", "\n", "#", "=", "+", "-", "*", "&", "%", "!", '[', ']', '{', '}', '"', "'", "\\", '/', "'''", '"""', '<', '>']#characters#(".", ",", "(", ")", ":", "\n", '#', "'''", '"""')
 
@@ -137,16 +137,16 @@ class Random_Dialect(Dialect):
         return word
 
     def translate(self, _file, mode="to"):
-        _file_text = _file.read()     
-        dictionary = self.dictionary   
+        _file_text = _file.read()
+        dictionary = self.dictionary
         delimiters = self.delimiters
         _file_text = _file_text.replace("     ", '\t')
-        if mode == "to":            
+        if mode == "to":
             for delimiter in delimiters:
-                _file_text = _file_text.replace(delimiter, " {0} ".format(delimiter))          
-        
+                _file_text = _file_text.replace(delimiter, " {0} ".format(delimiter))
+
         elif mode == "from":
-            dictionary = dict((value, key) for key, value in dictionary.items())               
+            dictionary = dict((value, key) for key, value in dictionary.items())
 
         __file = StringIO(_file_text)
         result = self._translate_file(__file, dictionary)
@@ -155,13 +155,13 @@ class Random_Dialect(Dialect):
                 result = result.replace(" {0} ".format(delimiter), delimiter)
         result = result.replace("\t", '     ')
         return result
-        
+
     def _translate_file(self, _file, dictionary):
         new_file = []
         for line in _file.readlines():
             new_line = []
             for word in line.split(" "):
-                new_token = self._translate_word(word, dictionary)              
+                new_token = self._translate_word(word, dictionary)
                 new_line.append(new_token)
             #    print "adding new token {0} from word {1}".format(new_token, word)
             #print "appending \n{0}\n{1}\n".format(new_line, " ".join(new_line))
@@ -178,27 +178,27 @@ class Random_Dialect(Dialect):
                 end = ""
                 if word and "\n" == word[-1]:
                     end = "\n"
-                new_token = dictionary[word] = self.random_word() + end            
+                new_token = dictionary[word] = self.random_word() + end
         return new_token
 
-   
+
 class Obfuscated_Dialect(Random_Dialect):
-    
+
     def __init__(self, **kwargs):
         super(Obfuscated_Dialect, self).__init__(**kwargs)
-        
+
     def obfuscate(self, _file, mode="to"):
         source = super(Obfuscated_Dialect, self).translate(_file, mode)
         for delimiter in self.delimiters:
             source = source.replace(" {0} ".format(delimiter), delimiter)
       #  source = source.replace("\t", '     ')
         return source
-        
-        
+
+
 if __name__ == "__main__":
     import difflib
     from verbosedialect import verbose_dialect
-    from cdialect import c_dialect
+
     from StringIO import StringIO
     difference = difflib.Differ()
     filename = "./networklibrary.py"
@@ -220,17 +220,18 @@ if __name__ == "__main__":
 
     key = Random_Dialect(**DICTIONARY)
     key.save("key.mpy", mode="dictionary")
-    
-    encrypted = key.translate(_file) 
+
+    encrypted = key.translate(_file)
     encrypted_file = open("{0}.mpy".format(filename), "w+")
     encrypted_file.write(encrypted)
     encrypted_file.flush()
-    encrypted_file.seek(0)    
+    encrypted_file.seek(0)
     _file.seek(0)
-    #print encrypted[:2048]
+    print encrypted[:2048]
     plain_text = key.translate(encrypted_file, "from")
-    #print plain_text
-    
+    print plain_text[:2048]
+    assert plain_text == source
+
     key2 = Obfuscated_Dialect(**DICTIONARY)
     obfuscated = key2.obfuscate(_file)
     obfuscated_file = open("{0}.opy".format(filename), "w+")
@@ -239,13 +240,13 @@ if __name__ == "__main__":
     obfuscated_file.close()
     print obfuscated
     code = compile(obfuscated, 'encrypted', 'exec')
-    exec code in locals(), globals()
+   # exec code in locals(), globals()
     #try:
-    assert plain_text == source
+
     #except AssertionError:
      #   print "Assertion Error"
       #  diff = difference.compare(source.splitlines(), plain_text.splitlines())
-       # print "\n".join(diff)   
-    
+       # print "\n".join(diff)
+
     code = compile(plain_text, "encrypted", "exec")
     exec code in locals(), globals()

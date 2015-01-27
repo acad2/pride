@@ -2,20 +2,20 @@ from cStringIO import StringIO
 
 import base
 import defaults
-                        
+
 class Stdin(base.Base):
-    
+
     defaults = defaults.Stdin
-    
+
     def __init__(self, **kwargs):
         self.available = False
         super(Stdin, self).__init__(**kwargs)
         self._readline_thread = self.readline_thread()
         self.file = StringIO()
-        
+
     def read(self, size=None):
         file = self.file
-        seek = file.seek        
+        seek = file.seek
         seek(0)
         all = file.read()
         seek(0)
@@ -25,7 +25,7 @@ class Stdin(base.Base):
         file.write(all[size:])
         string = all[:size]
         return string
-        
+
     def readline_thread(self):
         file = self.file
         seek = file.seek
@@ -47,13 +47,13 @@ class Stdin(base.Base):
                 else:
                     string = ''
             yield string
-            
+
     def readline(self):
         """usage: stdin.readline() => string.
-        
+
         Will return '' if no full line is available"""
         return next(self._readline_thread)
-        
+
     def write(self, bytes):
         self.available = True
         self.file.write(bytes)

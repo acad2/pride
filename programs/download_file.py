@@ -1,4 +1,9 @@
-from base import Event
+from base import Instruction, Base
 
-options = {"parse_args" : True}
-Event("Asynchronous_Network", "create", "networklibrary2.Download", **options).post()
+constructor = Base()
+
+options = {"parse_args" : True,
+           "exit_when_finished" : True}
+download = constructor.create("networklibrary2.Download", **options)
+
+#Instruction("Asynchronous_Network", "create", "networklibrary2.Download", **options).execute()

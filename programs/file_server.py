@@ -1,4 +1,3 @@
-from base import Event
+from base import Instruction
 
-options = {"parse_args" : True}
-Event("System", "create", "networklibrary2.File_Service", **options).post()
+Instruction("System", "create", "networklibrary2.File_Service", parse_args=True).execute()
