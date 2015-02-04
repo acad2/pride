@@ -1,9 +1,11 @@
-from base import Instruction, Base
+import mpre.base as base
 
-constructor = Base()
+def metapython_main():
+    constructor = base.Base()
 
-options = {"parse_args" : True,
+    options = {"parse_args" : True,
            "exit_when_finished" : True}
-download = constructor.create("networklibrary2.Download", **options)
-
-#Instruction("Asynchronous_Network", "create", "networklibrary2.Download", **options).execute()
+    constructor.create("mpre.networklibrary2.Download", **options)
+           
+if __name__ == "__main__":
+    metapython_main()

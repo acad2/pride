@@ -1,4 +1,4 @@
-Python Metaprogramming Framework
+Metapython
 ========
 
 The python metaprogramming framework aspires to enable effortless, expeditious

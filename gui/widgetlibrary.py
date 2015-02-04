@@ -2,7 +2,8 @@ import time
 
 import guilibrary
 import defaults
-from base import Instruction
+import mpre.base as base
+Instruction = base.Instruction
 
 
 class Popup_Menu(guilibrary.Container):

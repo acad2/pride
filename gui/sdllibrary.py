@@ -12,9 +12,9 @@ sdl2.ext.init()
 sdl2.sdlttf.TTF_Init()
 font_module = sdl2.sdlttf
 
-import base
-import vmlibrary
-import utilities
+import mpre.base as base
+import mpre.vmlibrary as vmlibrary
+import mpre.utilities as utilities
 import defaults
 Instruction = base.Instruction
 

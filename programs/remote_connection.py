@@ -1,4 +1,4 @@
-#   mpf.remote_connection - connect to another virtual machines interpreter service
+#   mpf.remote_connection - connect to another virtual machines Metapython service
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -14,12 +14,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from base import Instruction
-import defaults
-import utilities
-options = utilities.get_options(defaults.Outbound_Connection)
-Instruction("System", "create", "networklibrary.Outbound_Connection", **options).execute()
+import mpre.base as base
 
+def metapython_main():
+    base.Instruction("System", "create", "networklibrary.Outbound_Connection", parse_args=True).execute()
+    
 if __name__ == "__main__":
-    from metapython import Metapython
-    metapython = Metapython()
+    metapython_main()

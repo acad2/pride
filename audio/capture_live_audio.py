@@ -15,9 +15,20 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from base import Instruction
-import defaults
+import mpre.base as base
+Base = base.Base
+Instruction = base.Instruction
 
+import audiolibrary
 
-defaults.Audio_Input["record_to_disk"] = True
-Instruction("System", "create", "audiolibrary.Audio_Manager").execute()
+def metapython_main():
+    constructor = Base()
+    Instruction("System", "create", audiolibrary.Audio_Manager).execute()
+
+    print "creating wav file with two channels"
+    wav_file = constructor.create(audiolibrary.Wav_File, channels=2, rate=48000, filename="captured_live_audio.wav", mode='wb')
+
+    Instruction("Audio_Manager", "record", "microphone", wav_file).execute()
+    
+if __name__ == "__main__":
+    metapython_main()

@@ -4,10 +4,10 @@ from operator import attrgetter
 from sys import modules
 from math import floor, sqrt
 
-import base
-import vmlibrary
+import mpre.base as base
+import mpre.vmlibrary as vmlibrary
 import defaults
-import utilities
+import mpre.utilities as utilities
 Instruction = base.Instruction
 
 import sdl2

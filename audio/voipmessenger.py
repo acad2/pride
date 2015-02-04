@@ -15,9 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import mmap
-
-import base
+import mpre.base as base
+import mpre.vmlibrary as vmlibrary
+import audiolibrary
 import defaults
 Instruction = base.Instruction
 
@@ -31,21 +31,20 @@ class Voip_Messenger(vmlibrary.Process):
         self.talking_to = {}
         super(Voip_Messenger, self).__init__(**kwargs)
         self.network_buffer = {}
-        self.file = mmap.mmap(-1, 8192 * 2)
-        self.keyboard = self.create("keyboard.Keyboard")
-        self.audio_service = self.create("audiolibrary.Audio_Service")
+        
+        self.keyboard = self.create("metapython.core.keyboard.Keyboard")
+        self.audio_service = self.create(audiolibrary.Audio_Service)
 
         file_info = {"format" : self.format,
                      "rate" : self.rate,
                      "channels" : self.channels,
                      "name" : self.name}
-        Instruction("Audio_Manager0", "play_file", file_info, self.file).execute()
+        Instruction("Audio_Manager", "play_file", file_info, self.file).execute()
         options = {"port" : self.port,
                    "socket_recv" : self._socket_recv,
                    "socket_send" : self._socket_send}
         self.socket = self.create("networklibrary.UDP_Socket", **options)
-        Instruction("Asynchronous_Network", "add", self.socket).execute()
-
+        
     def _socket_recv(self, connection):
         data, _from = connection.recvfrom(self.network_packet_size)
         self.network_buffer[(connection, _from)] = data
@@ -74,7 +73,7 @@ class Voip_Messenger(vmlibrary.Process):
             if self.microphone_name in channel.name and data:
                 for listener in self.listeners:
                     args = (self.socket, channel.audio_data, listener)
-                    Instruction("Asynchronous_Network", "buffer_data", *args).execute()
+                    self.public_method("Asynchronous_Network", "buffer_data", *args).execute()
             channel.audio_data = ''
 
     def handle_input(self):
@@ -93,7 +92,7 @@ class Voip_Messenger(vmlibrary.Process):
                 message = getattr(self, "%s_header" % command)
             ip, port = address.split(":")
             to = (ip, int(port))
-            Instruction("Asynchronous_Network", "buffer_data", self.socket, message, to).execute()
+            self.public_method("Asynchronous_Network", "buffer_data", self.socket, message, to).execute()
 
     def handle_socket_recv(self):
         for _from, data in self.network_buffer.items():
@@ -118,10 +117,9 @@ class Voip_Messenger(vmlibrary.Process):
                     self.log[_from].write(message + "\n")
                 print "%s: %s" % (self.talking_to[_from], message)
 
-if __name__ == "__main__":
-    import vmlibrary
-
-    machine = vmlibrary.Machine()
-    Instruction("System", "create", "audiolibrary.Audio_Manager").execute()
+def metapython_main():    
+    Instruction("System", "create", audiolibrary.Audio_Manager).execute()
     Instruction("System", "create", Voip_Messenger).execute()
-    machine.run()
+    
+if __name__ == "__main__":
+    metapython_main()

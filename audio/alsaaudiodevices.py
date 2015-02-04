@@ -7,7 +7,7 @@ import wave
 # sudo pip install pyalsaaudio
 import alsaaudio
 
-import base
+import mpre.base as base
 import defaults
 
 class Audio_Device(base.Base):
@@ -31,8 +31,6 @@ class Audio_Device(base.Base):
     def __init__(self, **kwargs):
         self.listeners = []
         super(Audio_Device, self).__init__(**kwargs)
-
-    def initialize(self):
         print "%s %s initializing" % (self.name, self.card)
         self.pcm = alsaaudio.PCM(type=self.type, mode=self.mode, card=self.card)
         self.pcm.setchannels(self.channels)
@@ -42,30 +40,11 @@ class Audio_Device(base.Base):
         self.pcm.setperiodsize(self.period_size)
 
         self.thread = self._new_thread()
-        if self.record_to_disk:
-            self.file = self._new_wave_file()
 
     def get_data(self):
         raise NotImplementedError
 
-    def _new_wave_file(self):
-        """create a new wave file of appropriate format"""
-        filename = ("%s recording.wav" % self.name).replace(" ", "_")
-        try:
-            file = wave.open(filename, "wb")
-        except IOError:
-            print "unusable default filename %s" % (self.name)
-            file = wave.open("%s.wav" % raw_input("Please enter filename: "), "wb")
-        file.setnchannels(self.channels)
-        file.setsampwidth(self.format)
-        file.setframerate(self.rate)
-
-        return file
-
     def handle_data(self, audio_data):
-        if self.record_to_disk:
-            self.file.writeframes(audio_data)
-
         for client in self.listeners:
             self.send_to(client, audio_data)
 
@@ -84,6 +63,7 @@ class Audio_Input(Audio_Device):
         pcm_read = self.pcm.read
         data_source = getattr(self, "data_source", None)
         read_data = getattr(data_source, "read", None)
+        
         byte_scalar = self.sample_size / 8
         handle_data = self.handle_data
 
@@ -101,23 +81,36 @@ class Audio_Output(Audio_Device):
 
     def __init__(self, **kwargs):
         super(Audio_Output, self).__init__(**kwargs)
-
+        if not self.data_source:
+            self.mute = True
+        else:
+            try:
+                self.data_source.listeners.append(self.instance_name)
+            except AttributeError:
+                self.input_from = self.data_source.read
+                
     def _new_thread(self):
-        data = ''
+        data_source = getattr(self, "data_source", self.pcm)
         read_data = self.data_source.read
         period_size = self.period_size
         full_buffer_size = self.full_buffer_size
         silence = "\x00" * period_size
         pcm_write = self.pcm.write
 
+        if self.input_from == self.data_source.read:
+            read_data = partial(self.data_source.read, full_buffer_size)
+        else:
+            read_data = lambda: ''.join(self.read_messages())
+        
+        data = ''
         while True:
-            data += read_data(period_size)
+            data += read_data()            
             buffer_size = len(data)
             if buffer_size >= full_buffer_size:
                 if self.mute:
                     data = silence
-                pcm_write(data)
-                data = data[buffer_size:]
+                pcm_write(data[:full_buffer_size])
+                data = data[full_buffer_size:]
             yield
 
     def get_data(self):

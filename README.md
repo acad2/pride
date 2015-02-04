@@ -1,81 +1,48 @@
-Python Metaprogramming Framework
-========
+Metapython
+=========================
 
-The python metaprogramming framework aspires to enable effortless, expeditious
-software development. Paint a big picture quickly with good organization!
+all sorts of runtime fun in python
 
-Utilizing a pure python virtual machine and the framework api for it, an end 
-user can tie together a program and launch a machine in just a few lines of code:
-
-    import machinelibrary
-    import defaults
-    from default_processes import *
-    from base import Event
-
-    defaults.System["startup_processes"] += (AUDIO_MANAGER, )
-    machine = machinelibrary.Machine()
-    Event("Audio_Manager0", "play_wav_file", "test_wav.wav").post()
-
-    if __name__ == "__main__":
-        machine.run()
-
-Features
---------
-A small slice of what all is available:
-
-- Concurrency for vm processes is managed automatically and performed in serial within a 
-single physical thread/process.
+Q: What is it?
+A:  A python virtual machine that provides a structured environment where any number
+    of arbitrarily complex logical processes can be run concurrently. Processes
+    can be paused/deleted, launched via other python modules, created at runtime from source, and are scheduled to run at specific intervals according to their priority.
     
-- Fully object oriented design combines with a simple messaging scheme to makes global variables 
-and locking mechanisms seldom needed.
-    
-- Almost anything can be accomplished at runtime. This includes the ability define/create 
-new processes and to modify/extend/pause/delete existing ones.
+    Optional modules provide beginning support for low level audio manipulation, SDL2, 
+    and compiled cython extensions may be avialable at some point in addition to the
+    pure python version that will always be available.
  
-- Specify decorators, context managers, and monkey patches via keyword argument to any individual method call. 
-
-- Useful docstrings, even if the author neglected or declined to write one.
-
-- A runtime interactive interprter. Allows you to play with all of the above concepts while your 
-application(s) are running. Allows for remote login which provides a ready to go, customizable 
-command line interface for your application(s) or server(s).
-
-Installation
-------------
-
-Install the metaprogramming framework by downloading the zip from github:
-
-- https://github.com/erose1337/Metaprogramming_Framework/archive/master.zip
-- pip setup.py install coming soon
-
-Contribute
-----------
-
-- Issue Tracker: https://github.com/erose1337/Metaprogramming_Framework/issues
-- Source Code: https://github.com/erose1337/Metaprogramming_Framework
-
-Support
--------
-
-If you are having issues, please let me know. I can be reached at erose1337@hotmail.com.
-The project is currently in development.
-
-Development and recipes can found at http://ellasawrus-rex.tumblr.com/
-
-License
--------
-
-The project is licensed under the GNU license.
-
-Dependencies
--------
-
-This project utilizes Python 2.7. External dependencies may be required depending on intended use:
-   
-- Currently: (optional) audiolibrary.py utilizes the PyAudio module, or pyalsaaudio on linux
-   
-- Future/Expected: (optional) pysdl2 - reintroduction of display/graphical applications
-
-- Future/Possibly: (optional) dill - introduction of distributed computing, depends on pickleability of framework objects
-   
-- Previously: pygame - pre-machine layer graphical applications
+Q: What features does it offer?
+A: A slice of what is available:
+    Effortless concurrency for nonblocking tasks. Processes are cooperatively
+    scheduled and designed to process one frame at a time. No reliance on global
+    data structures eliminates any need for locking mechanisms. 
+    
+    An interactive interpreter that runs as process on the virtual machine. 
+    Allows for remote login (but has a juvenile authentication scheme!). 
+    The ability to execute Instruction objects and arbitrary python code via the interpreter allows for powerful process management. This includes the ability
+    to update a running process without stopping or (potentially) even pausing it
+    
+    Objects that inherit from the Base object type have a number of builtins:
+    
+    1. Abundant docstrings - even if the author neglected or declined to write one.
+    2. Programming object instantiation via the create method, and explicit
+       object deletion via the delete method
+    3. They can specify decorators and monkey patches via keyword argument to any 
+       method call.
+    4. The message passing mechanisms send_to and read_messages can be used to
+       send raw bytes to memory owned by another process
+    5. The alert method, which allows assignment of verbosity level to messages
+       which can be used to determine whether or not to print or log said messages.
+       It also provides callback method and callback Instruction options.
+       
+    
+Q: Where can I learn more?
+A: Investigate https://github.com/erose1337/Metaprogramming_Framework
+  
+Q: What are the dependencies?
+A: Python 2.7 and:
+   Currently:
+    audiolibrary.py utilizes the PyAudio module, or pyalsaaudio on linux (optional module)
+    sdllibrary utilizes pysdl2 and SDL2 (optional module)
+    
