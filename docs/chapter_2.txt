@@ -1,3 +1,43 @@
+    ...
+    def __init__(self, attributes, values):
+    # we could have the names memory_size and network_chunk_size in attributes
+    # and then have the corresponding values in values
+
+    
+    # but what we probably want is a dictionary instead:
+    
+    def __init__(self, attribute_dict):
+        # we could have attribute:value pairs in attribute_dict
+        
+    # but it's even more natural to use pythons **kwargs sytnax
+    # which means the method accepts any keyword arguments supplied
+    
+    def __init__(self, **kwargs):
+        # attribute:value pairs reside in kwargs
+        
+    # so we have the input to our __init__ method decided, but
+    # what does the __init__ method really do? In this example
+    # it sets two attributes. There is a function called setattr
+    # that can do this programmatically 
+    
+    def __init__(self, **kwargs):
+        #we could set the attributes to their values like so:
+        
+        for attribute, value in kwargs.items():
+            setattr(self, attribute, value)
+        
+    # but the very best way is to make the pattern reusable. so we
+    # will move the method outside of __init__, and call that method
+    # in __init__ instead. we can also replace the for loop with a
+    # list comprehension
+    
+    def __init__(self, **kwargs):
+        self.set_attributes(**kwargs)
+        
+    def set_attributes(self, **kwargs):
+        [setattr(attribute, value) for attribute, value in kwargs.items()]
+        
+
 Tracking instances and __new__
 
 The __init__ method of python objects is often mistakenly referred to as the

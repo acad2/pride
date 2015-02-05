@@ -1,6 +1,9 @@
 site_name: mpre
 pages:
 - ['index.md', 'Homepage']
+- ['base_tutorial.md', 'Tutorial', 'Introduction']
+- ['Building_a_Base_object.md', 'Tutorial', 'Building a Base object']
+- ['Metaclass_features.md', 'Tutorial', 'Metaclass Features']
 - ['mpre\base.md', 'mpre', 'base']
 - ['mpre\buildproject.md', 'mpre', 'buildproject']
 - ['mpre\defaults.md', 'mpre', 'defaults']
