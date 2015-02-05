@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+
+        <title>portaudiodevices - mpre</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link href="../../css/prettify-1.0.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">mpre</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                
+                
+                    <li >
+                        <a href="../..">Homepage</a>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">mpre <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../mpre/base/">base</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/defaults/">defaults</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/installtest/">installtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/keyboard/">keyboard</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/networklibrary/">networklibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/networklibrary2/">networklibrary2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/package/">package</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/shell_launcher/">shell_launcher</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/stdin/">stdin</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/utilities/">utilities</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/vmlibrary/">vmlibrary</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown active">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../audiolibrary/">audiolibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../audio_config_utility/">audio_config_utility</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../capture_live_audio/">capture_live_audio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../defaults/">defaults</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../play_wav_file/">play_wav_file</a>
+                            </li>
+                        
+                            <li class="active">
+                                <a href="./">portaudiodevices</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../voipmessenger/">voipmessenger</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">gui <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../gui/defaults/">defaults</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../gui/guilibrary/">guilibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../gui/sdllibrary/">sdllibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../gui/sdltest/">sdltest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../gui/widgetlibrary/">widgetlibrary</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">misc <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../misc/convert_bases/">convert_bases</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/decoratorlibrary/">decoratorlibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/decoratorlibrary2/">decoratorlibrary2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/downloadtest/">downloadtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/mmaptest/">mmaptest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/securitylibrary/">securitylibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/verbosedialect/">verbosedialect</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/build_metapython_package/">build_metapython_package</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/bytecodedis/">bytecodedis</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/bytecodemap/">bytecodemap</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/compile/">compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/create_package/">create_package</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/download_file/">download_file</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/file_server/">file_server</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/get_modules/">get_modules</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/remote_connection/">remote_connection</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/send_file/">send_file</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/stupidreceive/">stupidreceive</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../programs/stupidsend/">stupidsend</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                </ul>
+            
+
+            
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                
+                
+                <li >
+                    <a rel="next" href="../play_wav_file/">
+                        <i class="fa fa-arrow-left"></i> Previous
+                    </a>
+                </li>
+                <li >
+                    <a rel="prev" href="../voipmessenger/">
+                        Next <i class="fa fa-arrow-right"></i>
+                    </a>
+                </li>
+                
+                
+            </ul>
+            
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#mpreaudioportaudiodevices">mpre.audio.portaudiodevices</a></li>
+        
+            <li><a href="#argumenterror">ArgumentError</a></li>
+        
+            <li><a href="#array">Array</a></li>
+        
+            <li><a href="#audio_device">Audio_Device</a></li>
+        
+            <li><a href="#audio_input">Audio_Input</a></li>
+        
+            <li><a href="#audio_output">Audio_Output</a></li>
+        
+            <li><a href="#bigendianstructure">BigEndianStructure</a></li>
+        
+            <li><a href="#cdll">CDLL</a></li>
+        
+            <li><a href="#formaterror">FormatError</a></li>
+        
+            <li><a href="#hresult">HRESULT</a></li>
+        
+            <li><a href="#instruction">Instruction</a></li>
+        
+            <li><a href="#latency">Latency</a></li>
+        
+            <li><a href="#libraryloader">LibraryLoader</a></li>
+        
+            <li><a href="#littleendianstructure">LittleEndianStructure</a></li>
+        
+            <li><a href="#oledll">OleDLL</a></li>
+        
+            <li><a href="#pydll">PyDLL</a></li>
+        
+            <li><a href="#structure">Structure</a></li>
+        
+            <li><a href="#union">Union</a></li>
+        
+            <li><a href="#windll">WinDLL</a></li>
+        
+            <li><a href="#c_bool">c_bool</a></li>
+        
+            <li><a href="#c_byte">c_byte</a></li>
+        
+            <li><a href="#c_char">c_char</a></li>
+        
+            <li><a href="#c_char_p">c_char_p</a></li>
+        
+            <li><a href="#c_double">c_double</a></li>
+        
+            <li><a href="#c_float">c_float</a></li>
+        
+            <li><a href="#c_int">c_int</a></li>
+        
+            <li><a href="#c_int16">c_int16</a></li>
+        
+            <li><a href="#c_int32">c_int32</a></li>
+        
+            <li><a href="#c_int64">c_int64</a></li>
+        
+            <li><a href="#c_int8">c_int8</a></li>
+        
+            <li><a href="#c_long">c_long</a></li>
+        
+            <li><a href="#c_longdouble">c_longdouble</a></li>
+        
+            <li><a href="#c_longlong">c_longlong</a></li>
+        
+            <li><a href="#c_short">c_short</a></li>
+        
+            <li><a href="#c_size_t">c_size_t</a></li>
+        
+            <li><a href="#c_ssize_t">c_ssize_t</a></li>
+        
+            <li><a href="#c_ubyte">c_ubyte</a></li>
+        
+            <li><a href="#c_uint">c_uint</a></li>
+        
+            <li><a href="#c_uint16">c_uint16</a></li>
+        
+            <li><a href="#c_uint32">c_uint32</a></li>
+        
+            <li><a href="#c_uint64">c_uint64</a></li>
+        
+            <li><a href="#c_uint8">c_uint8</a></li>
+        
+            <li><a href="#c_ulong">c_ulong</a></li>
+        
+            <li><a href="#c_ulonglong">c_ulonglong</a></li>
+        
+            <li><a href="#c_ushort">c_ushort</a></li>
+        
+            <li><a href="#c_void_p">c_void_p</a></li>
+        
+            <li><a href="#c_voidp">c_voidp</a></li>
+        
+            <li><a href="#c_wchar">c_wchar</a></li>
+        
+            <li><a href="#c_wchar_p">c_wchar_p</a></li>
+        
+            <li><a href="#py_object">py_object</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+
+<h1 id="mpreaudioportaudiodevices">mpre.audio.portaudiodevices</h1>
+<p>No documentation available</p>
+<h2 id="argumenterror">ArgumentError</h2>
+<p>No documentation available</p>
+<h2 id="array">Array</h2>
+<p>XXX to be provided</p>
+<h2 id="audio_device">Audio_Device</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Default values for newly created instances:</p>
+<ul>
+<li>network_packet_size      4096</li>
+<li>frames_per_buffer        1024</li>
+<li>format                   8</li>
+<li>deleted                  False</li>
+<li>frame_count              0</li>
+<li>verbosity                </li>
+<li>record_to_disk           False</li>
+<li>memory_size              65535</li>
+<li>data                     </li>
+</ul>
+<p>This object defines the following non-private methods:</p>
+<ul>
+<li>
+<p><strong>get_data</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>handle_data</strong>(self, audio_data):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>open_stream</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+</ul>
+<p>This objects method resolution order is:</p>
+<p>(class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')</p>
+<h2 id="audio_input">Audio_Input</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Default values for newly created instances:</p>
+<ul>
+<li>network_packet_size      4096</li>
+<li>frames_per_buffer        1024</li>
+<li>format                   8</li>
+<li>deleted                  False</li>
+<li>data                     </li>
+<li>verbosity                </li>
+<li>record_to_disk           False</li>
+<li>memory_size              65535</li>
+<li>input                    True</li>
+<li>_data                    </li>
+<li>frame_count              0</li>
+</ul>
+<p>This object defines the following non-private methods:</p>
+<ul>
+<li>
+<p><strong>read</strong>(self, size=0):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>get_data</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+</ul>
+<p>This objects method resolution order is:</p>
+<p>(class 'mpre.audio.portaudiodevices.Audio_Input', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')</p>
+<h2 id="audio_output">Audio_Output</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Default values for newly created instances:</p>
+<ul>
+<li>network_packet_size      4096</li>
+<li>frames_per_buffer        1024</li>
+<li>data_source              None</li>
+<li>format                   8</li>
+<li>deleted                  False</li>
+<li>data                     </li>
+<li>verbosity                </li>
+<li>mute                     False</li>
+<li>record_to_disk           False</li>
+<li>memory_size              65535</li>
+<li>output                   True</li>
+<li>frame_count              0</li>
+</ul>
+<p>This object defines the following non-private methods:</p>
+<ul>
+<li>
+<p><strong>get_data</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+</ul>
+<p>This objects method resolution order is:</p>
+<p>(class 'mpre.audio.portaudiodevices.Audio_Output', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')</p>
+<h2 id="bigendianstructure">BigEndianStructure</h2>
+<p>Structure with big endian byte order</p>
+<h2 id="cdll">CDLL</h2>
+<p>An instance of this class represents a loaded dll/shared
+    library, exporting functions using the standard C calling
+    convention (named 'cdecl' on Windows).</p>
+<pre class="prettyprint well"><code>The exported functions can be accessed as attributes, or by
+indexing with the function name.  Examples:
+
+&lt;obj&gt;.qsort -&gt; callable object
+&lt;obj&gt;['qsort'] -&gt; callable object
+
+Calling the functions releases the Python GIL during the call and
+reacquires it afterwards.
+</code></pre>
+<h2 id="formaterror">FormatError</h2>
+<p>No documentation available</p>
+<h2 id="hresult">HRESULT</h2>
+<p>No documentation available</p>
+<h2 id="instruction">Instruction</h2>
+<p>No documentation available</p>
+<h2 id="latency">Latency</h2>
+<p>No documentation available</p>
+<h2 id="libraryloader">LibraryLoader</h2>
+<p>No documentation available</p>
+<h2 id="littleendianstructure">LittleEndianStructure</h2>
+<p>Structure base class</p>
+<h2 id="oledll">OleDLL</h2>
+<p>This class represents a dll exporting functions using the
+        Windows stdcall calling convention, and returning HRESULT.
+        HRESULT error values are automatically raised as WindowsError
+        exceptions.</p>
+<h2 id="pydll">PyDLL</h2>
+<p>This class represents the Python library itself.  It allows to
+    access Python API functions.  The GIL is not released, and
+    Python exceptions are handled correctly.</p>
+<h2 id="structure">Structure</h2>
+<p>Structure base class</p>
+<h2 id="union">Union</h2>
+<p>Union base class</p>
+<h2 id="windll">WinDLL</h2>
+<p>This class represents a dll exporting functions using the
+        Windows stdcall calling convention.</p>
+<h2 id="c_bool">c_bool</h2>
+<p>No documentation available</p>
+<h2 id="c_byte">c_byte</h2>
+<p>No documentation available</p>
+<h2 id="c_char">c_char</h2>
+<p>No documentation available</p>
+<h2 id="c_char_p">c_char_p</h2>
+<p>No documentation available</p>
+<h2 id="c_double">c_double</h2>
+<p>No documentation available</p>
+<h2 id="c_float">c_float</h2>
+<p>No documentation available</p>
+<h2 id="c_int">c_int</h2>
+<p>No documentation available</p>
+<h2 id="c_int16">c_int16</h2>
+<p>No documentation available</p>
+<h2 id="c_int32">c_int32</h2>
+<p>No documentation available</p>
+<h2 id="c_int64">c_int64</h2>
+<p>No documentation available</p>
+<h2 id="c_int8">c_int8</h2>
+<p>No documentation available</p>
+<h2 id="c_long">c_long</h2>
+<p>No documentation available</p>
+<h2 id="c_longdouble">c_longdouble</h2>
+<p>No documentation available</p>
+<h2 id="c_longlong">c_longlong</h2>
+<p>No documentation available</p>
+<h2 id="c_short">c_short</h2>
+<p>No documentation available</p>
+<h2 id="c_size_t">c_size_t</h2>
+<p>No documentation available</p>
+<h2 id="c_ssize_t">c_ssize_t</h2>
+<p>No documentation available</p>
+<h2 id="c_ubyte">c_ubyte</h2>
+<p>No documentation available</p>
+<h2 id="c_uint">c_uint</h2>
+<p>No documentation available</p>
+<h2 id="c_uint16">c_uint16</h2>
+<p>No documentation available</p>
+<h2 id="c_uint32">c_uint32</h2>
+<p>No documentation available</p>
+<h2 id="c_uint64">c_uint64</h2>
+<p>No documentation available</p>
+<h2 id="c_uint8">c_uint8</h2>
+<p>No documentation available</p>
+<h2 id="c_ulong">c_ulong</h2>
+<p>No documentation available</p>
+<h2 id="c_ulonglong">c_ulonglong</h2>
+<p>No documentation available</p>
+<h2 id="c_ushort">c_ushort</h2>
+<p>No documentation available</p>
+<h2 id="c_void_p">c_void_p</h2>
+<p>No documentation available</p>
+<h2 id="c_voidp">c_voidp</h2>
+<p>No documentation available</p>
+<h2 id="c_wchar">c_wchar</h2>
+<p>No documentation available</p>
+<h2 id="c_wchar_p">c_wchar_p</h2>
+<p>No documentation available</p>
+<h2 id="py_object">py_object</h2>
+<p>No documentation available</p>
+</div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+
+        
+
+        <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/prettify-1.0.min.js"></script>
+        <script src="../../js/base.js"></script>
+        
+    </body>
+</html>
