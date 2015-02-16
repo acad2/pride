@@ -109,7 +109,7 @@ class Audio_Device(vmlibrary.Thread):
 
     def handle_data(self, audio_data):
         for client in self.listeners:
-            self.send_to(client, audio_data)
+            self.rpc(client, audio_data)
         
 
 class Audio_Input(Audio_Device):
@@ -227,7 +227,7 @@ class Audio_Output(Audio_Device):
                              
                 data = silence if self.mute else ''.join(data_packet)
                 
-                # send_to listeners here
+                # rpc listeners here
                 handle_data(data)
                 # write to device/file here
                 stream_write(data)

@@ -18,8 +18,6 @@ import mpre.utilities as utilities
 import defaults
 Instruction = base.Instruction
 
-stdin = vmlibrary.stdin
-
 
 class Display_Wrapper(base.Wrapper):
     """used by the display internally to display all objects"""
@@ -301,13 +299,15 @@ class User_Input(vmlibrary.Process):
                         key = self.uppercase[key]
                     except KeyError:
                         pass
-                    stdin.write(key)
+                    raise NotImplementedError
+                    #stdin.write(key)
                 else:
                     hotkey = self.get_hotkey(self.active_item, (key, modifier))
                     if hotkey:
                         hotkey.execute()
             else:
-                stdin.write(key)
+                raise NotImplementedError
+                #stdin.write(key)
             #sys.stdout.write(key)
 
     def get_hotkey(self, instance, key_press):

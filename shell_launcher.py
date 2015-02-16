@@ -11,9 +11,6 @@ definitions = \
 constructor = base.Base()
 create = constructor.create
 
-def buffer_data(connection, data):
-    constructor.public_method("Asynchronous_Network", "buffer_data", connection, data)
-
 def add_to_network(sock):
     constructor.public_method("Asynchronous_Network", "add", sock).execute()
 

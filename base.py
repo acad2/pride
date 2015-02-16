@@ -34,9 +34,14 @@ timer_function = utilities.timer_function
 
 Component_Memory = mpre.Component_Memory
 Component_Resolve = mpre.Component_Resolve
-Type_Cache = mpre.Type_Cache
+Parallel_Instructions = mpre.Parallel_Instructions
+Parents = mpre.Parents
+References_To = mpre.References_To
 
-        
+from threading import Lock
+
+memlock = Lock()
+
 class Docstring(object):
     
     def __init__(self):
@@ -68,6 +73,7 @@ class Runtime_Decorator(object):
     
     def __init__(self, function):
         self.function = function
+        functools.update_wrapper(self, function)
         self.handler_map = {"monkey_patch" : self._handle_monkey_patch,
                             "decorator" : self._handle_decorator,
                             "decorators" : self._handle_decorators}
@@ -75,6 +81,7 @@ class Runtime_Decorator(object):
     def __call__(self, *args, **kwargs):
         check_for = kwargs.pop
         modifiers = ("monkey_patch", "decorator", "decorators")
+        
         for modifier in modifiers:
             found = check_for(modifier, None)
             if found:
@@ -281,38 +288,11 @@ class Metaclass(Documented):
     def decorate(cls, new_class, attributes):
         for key, value in new_class.__dict__.items():
             if key[0] != "_" and callable(value):
-                wrapped = Runtime_Decorator(value)
-                #print
-                #print "changing {} to rd".format(key)
-                #print inspect.getargspec(value)
-                #assert wrapped.__call__ != Runtime_Decorator.__call__
-                functools.update_wrapper(wrapped, value)
-                bound_method = types.MethodType(wrapped, None, new_class)
+                bound_method = types.MethodType(Runtime_Decorator(value), 
+                                                None, 
+                                                new_class)
                 setattr(new_class, key, bound_method)
         return new_class
-
-    """def __setattr__(cls, attribute, value):
-        print "\ninside __setattr__ {0}.{1}".format(cls, attribute)
-        if "__" not in attribute:
-            value_name = id(value)
-            Attribute_Values[value_name] = value
-            Attribute_Log[(id(cls), attribute)] = value_name
-            print "changing {0}.{1} to reference name".format(cls, attribute)
-            value = value_name
-        print "set {0}.{1} to {2}".format(cls, attribute, value)
-        super(Metaclass, cls).__setattr__(attribute, value)
-
-    def __getattribute__(cls, attribute):
-        value = super(Metaclass, cls).__getattribute__(attribute)
-        if "__" not in attribute:
-            print "{0} retrieving {1} (currently {2})".format(cls, attribute, type(value))
-            try:
-                value = Attribute_Values[value]
-            except:
-                print "\t{0}.{1} ({2}) is not a reference".format(cls, attribute, value)
-        print "returning {0}.{1} {2}".format(cls, attribute, value)
-        print
-        return value"""
 
 
 class Instruction(object):
@@ -352,14 +332,14 @@ class Alert(object):
 
     log_level = 0
     print_level = 0
-    log = open("Alerts.log", "w+")
+    log = open("Alerts.log", "a")
     level_map = {0 : "Error ",
                 'v' : "notification ",
                 'vv' : "verbose notification ",
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
 
-
+                
 class Base(object):
     """A base object to inherit from. An object that inherits from base
     can have arbitrary attributes set upon object instantiation by specifying
@@ -389,39 +369,38 @@ class Base(object):
     # makes them modifiable at runtime and eliminates the need
     # to type out the usual self.attribute = value statements
     defaults = defaults.Base
-
     
-    def __new__(cls, *args, **kwargs):
-        instance = super(Base, cls).__new__(cls, *args, **kwargs)
-        
-        instance_number = instance.instance_number = cls.instance_count
-        
-        ending = str(instance_number) if instance_number else ''
-
-        instance.instance_name = cls.__name__ + ending
-        cls.instance_tracker[instance_number] = instance
-        cls.instance_count += 1
-        return instance
-
+    def _get_parent(self):
+        return Parents[self]
+    parent = property(_get_parent)
+    
     def __init__(self, **kwargs):
         super(Base, self).__init__()
-
+        self._return_to = {}
+        
+        # register name + number
+        cls = type(self)
+        
+        instance_number = self.instance_number = cls.instance_count
+        cls.instance_tracker[instance_number] = self
+        cls.instance_count += 1
+        
+        ending = str(instance_number) if instance_number else ''
+        name = self.instance_name = cls.__name__ + ending
+        Component_Resolve[name] = self
+        
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__
         self.objects = {}
 
         # instance attributes are assigned via kwargs
         attributes = self.defaults.copy()
+        attributes.update(kwargs)
         if kwargs.get("parse_args"):
             attributes.update(self.parser.get_options(attributes))
-        attributes.update(kwargs)
+                
         self.attribute_setter(**attributes)
-        
-        self.added_to = set()
-        
-        name = self.instance_name
-        
-        Component_Resolve[name] = self
+               
         if self.memory_size:
             memory = mmap.mmap(-1, self.memory_size)
             Component_Memory[name] = memory, []
@@ -437,39 +416,19 @@ class Base(object):
         The specified python object will be instantiated with the given arguments
         and placed inside object.objects under the created objects class name via
         the add method"""
-        kwargs.setdefault("parent", self.instance_name)
-    
-        try:
-            instance_type = Type_Cache[instance_type] if instance_type in Type_Cache\
-                            else self._resolve_string(instance_type)
-        except AttributeError: # a type was passed instead of a string
-            pass
-            
+        if not isinstance(instance_type, type):
+            instance_type = self._resolve_string(instance_type)
+                    
         # instantiate the new object from a class object
-        # if the object does not accept the attempted supplied kwargs (such as
-        # the above-set parent attribute), then it is wrapped so it can
-        try:
-            #print "attempting to instantiate", instance_type, args, kwargs, "\n"
-            instance = instance_type(*args, **kwargs)
-        except BaseException as error:
-            if error in (SystemExit, KeyboardInterrupt):
-                raise
-            
-            trace = traceback.format_exc() + "\n"
-            try:
-                instance = instance_type(*args)
-            except:
-                print "real exception encountered when creating {0}".format(instance_type)
-                print trace
-                raise error
-            kwargs["wrapped_object"] = instance
-            instance = Wrapper(**kwargs)
+        instance = instance_type(*args, **kwargs)
 
         self.add(instance)
+        Parents[instance] = self.instance_name
         return instance
 
     def delete(self):
         """usage: object.delete() or object.delete(child). thoroughly untested."""
+        assert not self.deleted
         self.deleted = True
         
         name = self.instance_name
@@ -483,7 +442,8 @@ class Base(object):
             for _name in children_names:
                 Component_Resolve[_name].delete()
                 
-        names = [instance_name for instance_name in self.added_to]
+        print "deleting references to", self
+        names = [instance_name for instance_name in References_To[self]]
         for instance_name in names:
             instance = Component_Resolve[instance_name]
             instance.remove(self)
@@ -494,49 +454,29 @@ class Base(object):
        # print "\nFinished deleting {}".format(self.instance_name)
 
     def remove(self, instance):
-        #print "inside remove: removing {0} from {1}".format(instance.instance_name, self.instance_name)
-        self.objects[instance.__class__.__name__].remove(instance)
-        instance.added_to.remove(self.instance_name)
+        """Usage: object.remove(instance)
         
+        Removes an instance from self.objects"""
+        self.objects[instance.__class__.__name__].remove(instance)
+        References_To[instance].remove(self.instance_name)
+                
     def add(self, instance):
-        """usage: object.add(other_object)
+        """usage: object.add(instance)
 
-        adds an already existing object to the instances' class name entry in parent.objects.
-        """
-        if self.instance_name not in instance.added_to:
-            objects = self.objects
-            instance_class = instance.__class__.__name__
-            
-            siblings = objects.get(instance_class, [])           
+        adds an instance to the instances' class name entry in parent.objects.
+        """        
+        references = References_To.get(instance, set())
+        
+        objects = self.objects
+        instance_class = instance.__class__.__name__
+        siblings = objects.get(instance_class, [])  
+                        
+        if instance not in siblings:
             siblings.append(instance)
-            self.objects[instance_class] = siblings
-            
-            instance.added_to.add(self.instance_name)
-        else:
-            self.alert("{} attempted to add {}, which has already been added",
-                      (self.instance_name, instance.instance_name),
-                       level=0)
-
-    def send_to(self, component_name, message):
-        memory, pointers = Component_Memory[component_name]
-        memory.write(message)
-        pointers.append(memory.tell())
-
-    def read_messages(self):
-        name = self.instance_name
-        memory, pointers = Component_Memory[name]
-        if pointers:
-            old_pointer = 0
-            messages = []
-            for pointer in pointers:
-                messages.append(memory[old_pointer:pointer])
-                old_pointer = pointer
-            memory.seek(0)
-            Component_Memory[name] = memory, []
-        else:
-            messages = tuple()
-        return messages
-
+            objects[instance_class] = siblings
+            references.add(self.instance_name)
+            References_To[instance] = references            
+                
     def alert(self, message="Unspecified alert message",
                     format_args=tuple(),
                     level=0,
@@ -558,10 +498,10 @@ class Base(object):
         an error or exception and will never be suppressed."""
 
         if self.verbosity >= level:
-            message = message.format(*format_args)
-            if (level >= Alert.print_level) or not level:
+            message = self.instance_name + ": " + message.format(*format_args)
+            if not Alert.print_level or level <= Alert.print_level:
                 sys.stdout.write(message + "\n")
-            if level >= Alert.log_level:
+            if level <= Alert.log_level:
                 severity = Alert.level_map.get(level, str(level))
                 Alert.log.write(severity + message + "\n")
             if callback_instruction:
@@ -569,31 +509,7 @@ class Base(object):
             if callback:
                 function, args, kwargs = callback
                 return function(*args, **kwargs)
-       # else:
-        #    print "{0} < {1}".format(self.verbosity, level)
-    def get_children(self):
-        """usage: for child in object.get_children...
-
-        Creates a generator that yields the immediate children of the object.
-        WARNING: do not mutate self.objects when using this"""
-        for _list in self.objects.values():
-            for child in _list:
-                yield child
-
-    def get_family_tree(self):
-        """usage: all_objects = object.get_family_tree()
-
-        returns a dictionary containing all the children/descendants of object"""
-        tree = {self : []}
-        for instance in self.get_children():
-            tree[self].append(instance.instance_name)
-            tree.update(instance.get_family_tree())
-        return tree
-
-    def _get_source(self):
-        return inspect.getsource(self.__class__)
-    source = property(_get_source)
-
+                        
     def public_method(self, component_name, method_name, *args, **kwargs):
         """usage: base.public_method(component_name, method_name, *args, **kwargs) =>
                   component.method(*args, **kwargs)
@@ -610,22 +526,101 @@ class Base(object):
             return getattr(component, method_name)(*args, **kwargs)
         else:
             raise ValueError
+    
+    def rpc(self, component_name, message,
+            _response_to="None"):
+        """Usage: component.send(component_name, message)
+        
+        Writes the supplied message to the memory owned by component_name.
+        Internally, an index to the end of the message is stored for later retrieval.
+        
+            - component_name is a base_object.instance_name
+            - message can be bytes or a string"""
+        #if memlock.locked():
+        #    print "concurrency error !"
+       #     raise SystemExit
+      #  memlock.acquire()
+        memory, pointers = Component_Memory[component_name]
+        Parallel_Instructions.append(component_name)
+        
+        reaction = ''
+        if message[:6] == "return":
+            flag, reaction, message = message.split(" ", 2)
+            
+        id, packet = self._make_packet(_response_to, message)
+        if reaction:
+            self._return_to[id] = reaction
+        
+        memory.write(packet)
+        pointers.append((self.instance_name, memory.tell()))
+       # memlock.release()
+        
+    def read_messages(self):
+        """Usage: component.read_messages => [message1, message2, ...]
+        
+        Returns a list of messages. The list contains all messages sent via
+        the rpc method since the last call to read_messages. Messages in the list
+        are of the bytes/string type"""
+
+        name = self.instance_name
+        memory, pointers = Component_Memory[name]
+        
+        messages = []
+        if pointers:
+            old_pointer = 0
+            for sender, pointer in pointers:
+                messages.append((sender, memory[old_pointer:pointer]))
+                old_pointer = pointer
+            memory.seek(0)
+            Component_Memory[name] = memory, []
+        
+        return messages
+
+    def _make_packet(self, response_to, data):
+        message = response_to + " " + data
+        id = str(hash(message))
+        return id, id + " " + message
+        
+    def react(self):        
+        for sender, packet in self.read_messages():
+    #        print "Received packet: ", packet
+            id, response_to, data = packet.split(" ", 2)            
+            
+            if response_to in self._return_to:
+                command = self._return_to[response_to]
+                old_command, value = data.split(" ", 1)
+            else:
+                command, value = data.split(" ", 1)
+                                       
+            self.alert("handling response {} {}",
+                       [command, value[:32]],
+                       level='vv')
+    #        print "reaction: ", self.instance_name, command, value
+            response = getattr(self, command)(sender, value)
+            
+            if response:                                
+                self.alert("Sending response: {} in response to {}",
+                           [response, id],
+                           level='vvv')
+                self.rpc(sender, response, id)
             
     def _resolve_string(self, string):
-        """Given a string of x.y.z, import x.y and return an instance of z"""
+        """Given a string of ...x.y.z, import ...x.y and return an instance of z"""
         module_name = string.split(".")   
         class_name = module_name.pop(-1)
         module_name = '.'.join(module_name)
-        
+        if not module_name:
+            module_name = "__main__"
+            
         _from = sys.modules[module_name] if module_name in sys.modules\
                 else importlib.import_module(module_name)
 
         return getattr(_from, class_name)
         
-        
+            
 class Wrapper(Base):
-    """a class that will act as the object it wraps and as a base
-    object simultaneously."""
+    """a class that will act as the object it wraps and as an
+       Rpc_Enabled Base object simultaneously."""
 
     def __init__(self, **kwargs):
         """attributes = {"wrapped_object" : wrapped_object, "objects" : {}, "added_to" : set()}
@@ -661,17 +656,4 @@ class Wrapper(Base):
             wrapped_object = self.wrapped_object
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:
-            super(Wrapper, self).__setattr__(attribute, value)
-
-    def __dir__(self):
-        return dir(super(Wrapper, self).__getattribute__("wrapped_object"))
-
-    def __str__(self):
-        try:
-            name = str(super(Wrapper, self).__getattribute__("wrapped_object"))
-        except AttributeError:
-            name = ""
-        return "Wrapped(%s)" % name
-
-    def __repr__(self):
-        return super(Wrapper, self).__repr__()        
+            super(Wrapper, self).__setattr__(attribute, value)      

@@ -1,3 +1,4 @@
+import ast
 import sys
 import dis
 import ast
@@ -250,47 +251,161 @@ class Bytecode(object):
         return opcode_list, code_blocks
 
 
-source = """
-a = "testing"
-def testing(argument):
-    def sub_test():
-        b = a
-        x = 10
-        y = object()
-        return argument
+def attribute_lookup(opcodes, index):
+    position = 0
+    variable_name = opcodes[index][3]
+    names = [variable_name]
+    searching = True
+    
+    while searching:
+        position += 1
+        new_code = opcodes[index - position]
+        new_code_name = new_code[1]
+        new_code_value = new_code[3]
+        
+        if new_code_name in ("LOAD_FAST", "LOAD_GLOBAL", "LOAD_ATTR"):
+            if new_code_value == names[-1]:
+                continue
+            searching = False
+            names.append(new_code_value)
+         #   print "\t{} is an attribute of {}".format(variable_name, new_code[3])                                            
+    return '.'.join(reversed(names))
+    
 
-    if argument:
-        print "This is more complex", argument
-    return sub_test()
-testing()"""
+def next_stored_variable(opcodes, index):
+    position = 0
+    searching = True
+    while searching:
+        position += 1
+        next_code = opcodes[index + position]
+        next_code_name = next_code[1]
+        
+        if next_code_name in ("STORE_FAST", "STORE_GLOBAL", "STORE_ATTR",
+                              "RETURN_VALUE"):
+            searching = False
+            if next_code_name == "STORE_ATTR":
+                value = attribute_lookup(opcodes, index + position)
+            else:
+                value = next_code[3]
+    return value
 
+    
+def type_variables(bytecode):
+    name_types = {}
+    equalities = {}
+    
+    opcodes = bytecode.opcode_list
+    for index, code in enumerate(opcodes):
+        code_name = code[1]
+        variable_name = code[3]
+        
+        top_of_stack = opcodes[index - 1]
+        store_code = top_of_stack[1]
+        store_value = top_of_stack[3]
+            
+        if code_name == "INPLACE_ADD":
+            second_of_stack = opcodes[index - 2]
+            second_code = second_of_stack[1]
+            second_value = second_of_stack[3]
+                        
+            if second_code == 'LOAD_CONST':
+                _type = type(second_value)
+            elif store_code == "LOAD_CONST":
+                _type= type(store_value)
+            
+            variable = next_stored_variable(opcodes, index)
+            name_types[variable] = _type
+            continue
+                
+        if code_name in ("STORE_FAST", "STORE_GLOBAL", "STORE_ATTR",
+                         "RETURN_VALUE"):
+              
+            if code_name == "STORE_ATTR":
+                full_name = attribute_lookup(opcodes, index)
+                equalities[variable_name] = full_name
+                continue
+                
+            if store_code == "LOAD_CONST":
+                if code_name == "RETURN_VALUE":
+                    return_value_info = (type, type(store_value))
+                
+                name_types[variable_name] = type(store_value)
+                
+            if store_code == "LOAD_FAST":
+                print "LOAD_FAST setting equalities[{}] = {}".format(variable_name, store_value)
+                 
+                equalities[variable_name] = store_value
+                
+            if store_code == "LOAD_ATTR":
+                full_name = attribute_lookup(opcodes, index)
+                print "Loaded attribute: ", full_name
+                equalities[variable_name] = full_name
+                
+                if code_name == 'RETURN_VALUE':
+                    return_value_info = ("equality", full_name)
+                    
+    print "types: ", name_types
+    print "equalities: ", equalities
+    print "return value: ", return_value_info        
+    return name_types, equalities, return_value_info
+ 
+def type_names(_dict):
+    return dict((key, type(value)) for key, value in _dict.items())
+    
+def simpletest():
+    x = 1
+    y = 1.0
+    z = "test_string"
+    boolean = True
+    
 
+def compile_source(method):
+    bytecode = Bytecode(method.func_code)
+    types, equalities, return_type = type_variables(bytecode)
+    function_source = inspect.getsource(method)
+    declarations = []
+    declare = "cdef {} {}"
+    
+    type_map = {int : "int",
+                float : "double",
+                bool : "bint",
+                str : "str"}
+                
+    for name, _type in types.items():
+        declarations.append(declare.format(type_map[_type], name))
+        
+    start_of_def = function_source.index("def ")
+    end_of_def = function_source.index("):")
+    
+    indent_level = function_source[:end_of_def].count("    ")
+    if not indent_level:
+        indent_level = function_source[:end_of_def].count("\t")
+    
+    indent = indent_level * "    "
+    code_indent = "\n{}   ".format(indent)
+    
+    def_header = function_source[:end_of_def + 2]
+    cdef_header = indent + 'c' + def_header[start_of_def:] + code_indent + " "
+    
+    partial_source = function_source[end_of_def + 2:]
+    
+    compilable_function = cdef_header + code_indent.join(declarations) + "\n" + partial_source
+    
+    compileable = compilable_function.replace("\t", '    ')    
+    print compileable
+    with open("testconvert.pyx", 'w') as cfile:
+        cfile.write(compileable)
+        cfile.flush()
+        cfile.close()
+
+        
 if __name__ == "__main__":
-    
-    code = compile(source, 'exec', 'exec')
-    def testing(a, z):
-        if z:
-            if a:
-                x = 10
-                while x:
-                    x -= 1
-        else:
-            y = map
-            y(lambda arg: arg, [z, a])
-    code = testing.func_code
-    
+    import inspect
     import mpre.base as base
-    code = base.Base.create.function.func_code
-    
-    dis.dis(code)
-    print "co_code 82:", ord(code.co_code[82]), len(code.co_code)
+    code = base.Base.__init__.func_code
+    global_types = type_names(globals()) 
+
+    print inspect.getsource(base.Base.__init__)
     bytecode = Bytecode(code)
-    
-    
-    print bytecode.jump_table
-    #bytecode.display(co_vars=False)
-    
-    #bytecode.create_paths()
-    
-    #print translator(source)
-    
+    bytecode.display(co_vars=False)
+    compile_source(base.Base.__init__)

@@ -32,11 +32,9 @@ import mpre
 import base
 import defaults
 import utilities
-from stdin import Stdin
 
 Instruction = base.Instruction
 timer_function = utilities.timer_function
-stdin = Stdin()
 
 class Process(base.Base):
     """a base process for processes to subclass from. Processes are managed
@@ -44,18 +42,17 @@ class Process(base.Base):
     the actual code to be executed every frame."""
 
     defaults = defaults.Process
-    parser_ignore = ("auto_start", "network_buffer", "keyboard_input", "stdin_buffer_size")
+    parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
 
     def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)
-        if self.network_packet_size:
-            self.network_buffer = {}
+
         run_instruction = self.run_instruction = Instruction(self.instance_name, "run")
         run_instruction.priority = self.priority
         run_instruction.log_processor_time = True
-        Instruction("Processor", "cache_instruction", run_instruction, self.run).execute()
+
         if self.auto_start:
             self.process("start")
 
@@ -91,62 +88,43 @@ class Thread(base.Base):
         return self.function(*self.args, **self.kwargs)
 
 
-class Hardware_Device(base.Base):
-
-    defaults = defaults.Hardware_Device
-
-    def __init__(self, **kwargs):
-        super(Hardware_Device, self).__init__(**kwargs)
-
-
-class Processor(Hardware_Device):
+class Processor(base.Base):
 
     defaults = defaults.Processor
 
     def __init__(self, **kwargs):
-        self.execution_times = {}
-        self.instruction_cache = {}
         self.running = True
         super(Processor, self).__init__(**kwargs)
         
-    def cache_instruction(self, instruction, method):
-        self.instruction_cache[instruction] = method        
-
-    def uncache(self, instruction):
-        del self.instruction_cache[instruction]
-        
     def run(self):
         instructions = mpre.Instructions
+        parallel_instructions = mpre.Parallel_Instructions
         Component_Resolve = base.Component_Resolve
         processor_name = self.instance_name
-        log_time = self.log_time
-
+        
         sleep = time.sleep
         heappop = heapq.heappop
-        get_attribute = getattr
-
-        cache = self.instruction_cache
+        _getattr = getattr        
         
         component_errors = (AttributeError, KeyError)
-        reraise_exceptions = (SystemExit, KeyboardInterrupt)#, StopIteration)
+        reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
-        component_alert = partial(alert, "{0}: {1} {2}", level=0)
-        exception_alert = partial(alert, "\nException encountered when processing {0}.{1}\n{2}", level=0)
+        component_alert = partial(alert, "{0}: {1} {2} does not exist", level=0)
+        exception_alert = partial(alert, 
+                                  "\nException encountered when processing {0}.{1}\n{2}", 
+                                  level=0)
         
         format_traceback = traceback.format_exc
                 
         while self.running:
             execute_at, instruction = heappop(instructions)            
             try:
-                component = Component_Resolve[instruction.component_name]
-                call = cache[instruction] if instruction in cache else\
-                       getattr(component, instruction.method)
-                       
+                call = _getattr(Component_Resolve[instruction.component_name],
+                                                  instruction.method)               
             except component_errors as error:                
-                _type = str(error).replace("Error", '') if type(error) == AttributeError\
-                        else "component"
-                
-                component_name = instruction.component_name
+                _type = (str(error).replace("Error", '') if 
+                         type(error) == AttributeError else "component")
+                                
                 component_alert((instruction, instruction.component_name, _type)) 
                 continue
                    
@@ -154,32 +132,20 @@ class Processor(Hardware_Device):
             time_until = max(0, (execute_at - timer_function()))
             sleep(time_until)       
             try:
-                start = timer_function()
                 call(*instruction.args, **instruction.kwargs)
-                ended_at = timer_function()
             except BaseException as result:
                 if type(result) in reraise_exceptions:
                     raise
                 exception_alert((instruction.component_name,
                                  instruction.method,
                                  format_traceback()))
-
-            if instruction.log_processor_time:
-                log_time(ended_at - start, str(instruction))
-             
-    def log_time(self, time_taken, call):
-        try:
-            self.execution_times[call].add(time_taken)
-        except KeyError:
-            average = self.execution_times[call] = utilities.Average(name=call, size=10)
-            average.add(time_taken)
-
-    def display_processor_usage(self):
-        print "\n{: <40} {:>}".format("Process name", "Average running time")
-        for process, time_taken in self.execution_times.iteritems():
-            print "{: <40} {:>}".format(process[11:], time_taken.meta_average)
         
+            if parallel_instructions:
+                while parallel_instructions:
+                    instance_name = parallel_instructions.pop(0)
+                    Component_Resolve[instance_name].react()
 
+            
 class System(base.Base):
     """a class for managing components and applications.
 
@@ -215,19 +181,10 @@ class Machine(base.Base):
         for processor_number in range(self.processor_count):
             self.create(Processor)
 
-        for device_name, args, kwargs in self.hardware_configuration:
-            hardware_device = self.create(device_name, *args, **kwargs)
+        self.create("userinput.User_Input")
 
         for system_name, args, kwargs in self.system_configuration:
             system = self.create(system_name, *args, **kwargs)
-
-    def create(self, *args, **kwargs):
-        instance = super(Machine, self).create(*args, **kwargs)
-        hardware_configuration = getattr(instance, "hardware_configuration", None)
-        if hardware_configuration:
-            for hardware_device in hardware_configuration:
-                instance.add(self.objects[hardware_device.split(".")[1]][0])
-        return instance
 
     def run(self):
         processor = self.objects["Processor"][0]

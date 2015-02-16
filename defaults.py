@@ -24,9 +24,6 @@ NO_ARGS = tuple()
 NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
-stdin_FILE_NO = -1
-stdin_BUFFER_SIZE = 16384
-
 # Base
 # you can save memory if you have LOTS of objects but
 # few that actually use their memory. note that for reasonable
@@ -47,47 +44,9 @@ Process.update({"auto_start" : True,
 
 Thread = Base.copy()
 
-Hardware_Device = Base.copy()
-
- # Metapython
-JYTHON = "java -jar jython.jar"
-PYPY = "pypy"
-CPYTHON = "python"
-DEFAULT_IMPLEMENTATION = CPYTHON
-
-Shell = Process.copy()
-Shell.update({"username" : "root",
-"password" : "password",
-"prompt" : ">>> ",
-"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-"traceback" : format_exc,
-"auto_start" : False,
-"auto_login" : True,
-"ip" : "localhost",
-"port" : 40022,
-"startup_definitions" : ''})
-
-Metapython = Process.copy()
-Metapython.update({"command" : "shell_launcher.py",
-"python" : CPYTHON,
-"jython" : JYTHON,
-"pypy" : PYPY,
-"implementation" : DEFAULT_IMPLEMENTATION,
-"environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
-"interface" : "0.0.0.0",
-"port" : 40022,
-"prompt" : ">>> ",
-"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-"traceback" : format_exc,
-"priority" : .04,
-"authentication_scheme" : "networklibrary.Basic_Authentication"})
-#"help" : "Execute a python script or launch a live metapython session"})
-
 # vmlibrary
 
-Stdin = Base.copy()
-
-Processor = Hardware_Device.copy()
+Processor = Base.copy()
 Processor.update({"_cache_flush_interval" : 15})
 
 System = Base.copy()
@@ -98,13 +57,11 @@ System.update({"name" : "system",
 
 Machine = Base.copy()
 Machine.update({"processor_count" : PROCESSOR_COUNT,
-"hardware_configuration" : tuple(),
 "system_configuration" : (("vmlibrary.System", NO_ARGS, NO_KWARGS), )})
 
-# inputlibrary
-Keyboard = Hardware_Device.copy()
+User_Input = Process.copy()
 
-# networklibrary
+# network
 
 Socket = Base.copy()
 Socket.update({"blocking" : 0,
@@ -113,20 +70,25 @@ Socket.update({"blocking" : 0,
 "idle" : True,
 "timeout_after" : 0,
 "add_on_init" : True,
-"memory_size" : MANUALLY_REQUEST_MEMORY})
+"network_packet_size" : 32768,
+"memory_size" : 32768,
+"network_buffer" : '',
+"interface" : "0.0.0.0",
+"port" : 0})
 
 Connection = Socket.copy()
 Connection.update({"socket_family" : socket.AF_INET,
 "socket_type" : socket.SOCK_STREAM})
 
 Server = Connection.copy()
-Server.update({"interface" : "localhost",
-"port" : 80,
+Server.update({"port" : 80,
 "backlog" : 50,
 "name" : "",
 "reuse_port" : 0,
-"inbound_connection_type" : "networklibrary.Inbound_Connection",
+"inbound_connection_type" : "network.Inbound_Connection",
 "share_methods" : ("on_connect", "client_socket_recv", "client_socket_send")})
+
+Udp_Socket = Socket.copy()
 
 Outbound_Connection = Connection.copy()
 Outbound_Connection.update({"ip" : "",
@@ -137,41 +99,46 @@ Outbound_Connection.update({"ip" : "",
 "timeout_notify" : True,
 "add_on_init" : False,
 "bad_target_verbosity" : 0}) # alert verbosity when trying to connect to bad address
+del Outbound_Connection["interface"]
 
 Inbound_Connection = Connection.copy()
 
-Service_Listing = Process.copy()
-Service_Listing.update({"auto_start" : False})
+# network2
+Service = Socket.copy()
+Service.update({"resend_limit" : 10,
+"resend_interval" : .2})
 
-Download = Outbound_Connection.copy()
+Authenticated_Service = Service.copy()
+Authenticated_Service.update({"database_filename" : ":memory:",
+"login_message" : 'login success'})
+
+Authenticated_Client = Service.copy()
+Authenticated_Client.update({"email" : '',
+"username" : "",
+"password" : ''})
+
+Service_Listing = Service.copy()
+
+File_Service = Service.copy()
+File_Service.update({"network_packet_size" : 16384,
+"mmap_threshold" : 16384,
+"timeout_after" : 15})
+
+Download = Service.copy()
 Download.update({"filesize" : 0,
 "filename" :'',
 "filename_prefix" : "Download",
 "download_in_progress" : False,
 "network_packet_size" : 16384,
-"port" : 40021,
 "timeout_after" : 15})
 
-Upload = Inbound_Connection.copy()
-Upload.update({"use_mmap" : False,
-"network_packet_size" : 16384,
-"file" : '',
-"mmap_file" : False,
-"timeout_after" : 15,
-'filename' : ''})
-
-UDP_Socket = Socket.copy()
-UDP_Socket.update({"interface" : "0.0.0.0",
-"port" : 0,
-"timeout" : 10})
-
 # only addresses in the range of 224.0.0.0 to 230.255.255.255 are valid for IP multicast
-Multicast_Beacon = UDP_Socket.copy()
+Multicast_Beacon = Udp_Socket.copy()
 Multicast_Beacon.update({"packet_ttl" : struct.pack("b", 127),
 "multicast_group" : "224.0.0.0",
 "multicast_port" : 1929})
 
-Multicast_Receiver = UDP_Socket.copy()
+Multicast_Receiver = Udp_Socket.copy()
 Multicast_Receiver.update({"interface" : "0.0.0.0",
 "ip" : "224.0.0.0",
 "port" : 0})
@@ -189,14 +156,38 @@ Asynchronous_Network.update({"number_of_sockets" : 0,
 "priority" : .01,
 "update_priority" : 5})
 
-File_Service = Process.copy()
-File_Service.update({"interface" : "0.0.0.0",
-"port" : 40021,
-"network_packet_size" : 16384,
-"asynchronous_server" : True,
-"auto_start" : False})
-
-# Mail Server
+"""# Mail Server
 Mail_Server = Process.copy()
 Mail_Server.update({"address" : "notreal@inbox.com",
-"mail_server_name" : "metapython_email_server"})
+"mail_server_name" : "metapython_email_server"})"""
+
+ # Metapython
+JYTHON = "java -jar jython.jar"
+PYPY = "pypy"
+CPYTHON = "python"
+DEFAULT_IMPLEMENTATION = CPYTHON
+
+Shell_Connection = Outbound_Connection.copy()
+Shell_Connection.update({"login_attempt_interval" : .05})
+    
+Shell = Process.copy()
+Shell.update({"username" : "root",
+"password" : "password",
+"prompt" : ">>> ",
+"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+"auto_start" : False,
+"ip" : "localhost",
+"port" : 40022,
+"startup_definitions" : ''})
+
+Metapython = Process.copy()
+Metapython.update({"command" : "shell_launcher.py",
+"implementation" : DEFAULT_IMPLEMENTATION,
+"environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
+"interface" : "0.0.0.0",
+"port" : 40022,
+"prompt" : ">>> ",
+"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+"priority" : .04,
+"interpreter_enabled" : True})
+#"help" : "Execute a python script or launch a live metapython session"})

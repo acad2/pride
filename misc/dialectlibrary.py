@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     from StringIO import StringIO
     difference = difflib.Differ()
-    filename = "./networklibrary.py"
+    filename = "./network.py"
     _file = open(filename)
     source = _file.read()
     _file.seek(0)

@@ -43,7 +43,7 @@ class Voip_Messenger(vmlibrary.Process):
         options = {"port" : self.port,
                    "socket_recv" : self._socket_recv,
                    "socket_send" : self._socket_send}
-        self.socket = self.create("networklibrary.UDP_Socket", **options)
+        self.socket = self.create("network.Udp_Socket", **options)
         
     def _socket_recv(self, connection):
         data, _from = connection.recvfrom(self.network_packet_size)
@@ -73,7 +73,8 @@ class Voip_Messenger(vmlibrary.Process):
             if self.microphone_name in channel.name and data:
                 for listener in self.listeners:
                     args = (self.socket, channel.audio_data, listener)
-                    self.public_method("Asynchronous_Network", "buffer_data", *args).execute()
+                    self.socket.rpc(listener, channel.audio_data)
+                    
             channel.audio_data = ''
 
     def handle_input(self):
@@ -92,7 +93,7 @@ class Voip_Messenger(vmlibrary.Process):
                 message = getattr(self, "%s_header" % command)
             ip, port = address.split(":")
             to = (ip, int(port))
-            self.public_method("Asynchronous_Network", "buffer_data", self.socket, message, to).execute()
+            self.socket.rpc(to, message)
 
     def handle_socket_recv(self):
         for _from, data in self.network_buffer.items():

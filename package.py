@@ -44,7 +44,22 @@ class Package(base.Base):
     
     def init_filename_in(self, path):
         return os.path.join(path, "__init__.py")
+    
+    @staticmethod
+    def from_directory(top_directory, dirnames):  
+        folder_paths = [(top_directory, os.path.split(top_directory)[-1])]
+        for directory in os.listdir(top_directory):
+            path = os.path.join(top_directory, directory)
+            if os.path.isdir(path):
+                folder_paths.append((path, directory))    
         
+        file_package = {}            
+        for full_path, folder in folder_paths:
+            file_package[folder] = [os.path.join(full_path, _file) for _file in 
+                                    os.listdir(full_path) if "_" != _file[0] and
+                                    os.path.splitext(_file)[-1] == ".py"]
+        return file_package 
+    
     def update_structure(self):
         directory = self.directory
         package_name = self.package_name
@@ -60,11 +75,12 @@ class Package(base.Base):
             subpath = os.path.join(folder_path, subfolder)
             self.make_folder(subfolder, subpath)         
                     
-        self.alert("Finished creating {} file structure", [self.package_name], level='v')
+        self.alert("Finished creating {} folder structure", [self.package_name], level='v')
   
     def make_folder(self, subfolder, folder_path):
         ensure_folder_exists(folder_path)
         ensure_file_exists(self.init_filename_in(folder_path))
+
         if subfolder in self.files:
             self.make_files(subfolder, folder_path, self.files[subfolder])
             
@@ -74,7 +90,9 @@ class Package(base.Base):
             try:
                 filename, file_data = file_info
             except ValueError:
-                assert os.path.exists(file_info)
+                if not os.path.exists(file_info):
+                    print "path does not exist: ", file_info
+                    assert os.path.exists(file_info)
                 path, filename = os.path.split(file_info)
                 
                 with open(file_info, 'r') as source_file:
@@ -84,7 +102,6 @@ class Package(base.Base):
             ensure_file_exists(os.path.join(subpath, filename), data=file_data)
             
             if self.store_source:
-                print "Storing source for", filename
                 new_info.append((filename, file_data))
                 
         if self.store_source:
@@ -104,7 +121,8 @@ class Documentation(base.Base):
                      "ignore_files" : ("build_documentation.py", ),
                      "site_name" : '',
                      "verbosity" : 'vv',
-                     "index_page" : tuple()})
+                     "index_page" : tuple(),
+                     "package" : None})
                     
     def __init__(self, **kwargs):
         super(Documentation, self).__init__(**kwargs)
@@ -117,7 +135,7 @@ class Documentation(base.Base):
             ensure_folder_exists(docs_directory)
             ensure_file_exists(os.path.join(docs_directory, "index.md"),
                                data="{}\n{}".format(package_name, "="*15))
-                
+                  
         if not self.site_name:
             self.site_name = raw_input("Please enter site name: ")
         

@@ -121,7 +121,7 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x028B89B0>
+- pack_modifier            <function <lambda> at 0x029211B0>
 - held                     False
 - pack_mode                vertical
 - memory_size              4096
@@ -194,7 +194,7 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x028B89B0>
+- pack_modifier            <function <lambda> at 0x029211B0>
 - held                     False
 - pack_mode                layer
 - memory_size              4096
@@ -226,7 +226,7 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x028B8AB0>
+- pack_modifier            <function <lambda> at 0x029212B0>
 - held                     False
 - pack_mode                menu_bar
 - memory_size              4096

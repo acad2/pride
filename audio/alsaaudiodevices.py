@@ -46,7 +46,7 @@ class Audio_Device(base.Base):
 
     def handle_data(self, audio_data):
         for client in self.listeners:
-            self.send_to(client, audio_data)
+            self.rpc(client, audio_data)
 
 
 class Audio_Input(Audio_Device):

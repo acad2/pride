@@ -227,7 +227,7 @@ class Audio_Manager(vmlibrary.Process):
             options["sample_size"] = device.sample_size
             channel_info.append(options)
         channel_list = pickle.dumps(channel_info)
-        self.send_to(listener.instance_name, "Channel_Info;;" + channel_list)
+        self.rpc(listener.instance_name, "Channel_Info;;" + channel_list)
 
     def add_listener(self, listener, device_name):
         return self.device_names[device_name].listeners.append(listener.instance_name)

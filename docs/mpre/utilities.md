@@ -6,6 +6,13 @@ Average
 --------
 No documentation available
 
+LRU_Cache
+--------
+A dictionary with a max size that keeps track of
+       key usage and handles key eviction. 
+       
+       currently completely untested
+
 Latency
 --------
 No documentation available
@@ -13,9 +20,3 @@ No documentation available
 Updater
 --------
 No documentation available
-
-deque
---------
-deque([iterable[, maxlen]]) --> deque object
-
-Build an ordered collection with optimized access from its endpoints.

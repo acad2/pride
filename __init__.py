@@ -1,4 +1,6 @@
 Instructions = []
 Component_Resolve = {}
 Component_Memory = {}
-Type_Cache = {}
+Parallel_Instructions = []
+Parents = {}
+References_To = {}

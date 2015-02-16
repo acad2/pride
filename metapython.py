@@ -1,137 +1,191 @@
 #!/usr/bin/env python
+from __future__ import unicode_literals
 
 import sys
 import codeop
 import os
 import tempfile
+import traceback
+import time
+import cStringIO as StringIO
 from contextlib import closing
 
 import base
 import vmlibrary
+import network2
 import utilities
 import defaults
 Instruction = base.Instruction
 
-stdin = vmlibrary.stdin
 
-class Shell(vmlibrary.Process):
-    """(Potentially remote) connection to the interactive Metapython"""
+class Interpreter_Client(network2.Authenticated_Client):
+    
+    defaults = defaults.Authenticated_Client.copy()
+    defaults.update({"username" : "ellaphant",
+                     "password" : "puppydog",
+                     "email" : "notneeded@no.com",
+                     "startup_definitions" : '',
+                     "target" : ("localhost", 40022)})
+                     
+    def __init__(self, **kwargs):
+        super(Interpreter_Client, self).__init__(**kwargs)
+                
+    def login_result(self, sender, packet):
+        response = super(Interpreter_Client, self).login_result(sender, packet)
+        if self.logged_in:
+            sys.stdout.write(">>> ")
+            if self.startup_definitions:
+                try:
+                    compile(self.startup_definitions, "Interpreter_Client", 'exec')
+                except:
+                    self.alert("Startup defintions failed to compile:\n{}",
+                            [traceback.format_exc()],
+                            level=0)
+                else:
+                    self.execute_source(self.startup_definitions) 
+
+        return response
+        
+    def execute_source(self, source):
+        self.rpc(self.target, self.exec_code_request(self.target, source))
+        
+    def exec_code_request(self, sender, source):
+        if not self.logged_in:
+            response = self.login(sender, source)
+        else:
+            response = "return result exec_code " + source
+        return response     
+        
+    def result(self, sender, packet):
+        if packet:
+            sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet + ">>> ")
+        
+        
+class Interpreter_Service(network2.Authenticated_Service):
+    
+    defaults = defaults.Authenticated_Service
+    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                     "port" : 40022,
+                     "interface" : "0.0.0.0"})
+    
+    def __init__(self, **kwargs):
+        self.user_namespaces = {}
+        super(Interpreter_Service, self).__init__(**kwargs)
+        self.log_file = open("Metapython.log", 'a')
+        
+    def login(self, sender, packet):
+        response = super(Interpreter_Service, self).login(sender, packet)
+        if "success" in response.lower():
+            username = self.logged_in[sender]
+            self.user_namespaces[username] = {"__builtins__": __builtins__,
+                                              "__name__" : "__main__",
+                                              "__doc__" : '',
+                                              "Instruction" : Instruction}
+                       
+            string_info = (username, sender,
+                           sys.version, sys.platform, self.copyright)
+        
+            greeting = ("Welcome {} from {}\nPython {} on {}\n{}\n".\
+                        format(*string_info))
+            response = "end_request login_result success " + greeting
+
+        return response
+        
+    @network2.Authenticated
+    def exec_code(self, sender, packet):
+        log = self.log_file
+        
+        username = self.logged_in[sender]
+        log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
+                  packet)
+        result = ''        
+        try:
+            code = compile(packet, "<stdin>", 'exec')
+        except (SyntaxError, OverflowError, ValueError):
+            result = traceback.format_exc()
+           
+        else:                
+            backup = sys.stdout            
+            sys.stdout = StringIO.StringIO()
+            
+            try:
+                exec code in self.user_namespaces[username]
+            except BaseException as error:
+                if type(error) == SystemExit:
+                    raise
+                else:
+                    result = traceback.format_exc()
+            finally:
+                sys.stdout.seek(0)
+                result += sys.stdout.read()
+                
+                sys.stdout.close()
+                sys.stdout = backup
+                
+                log.write("{}\n".format(result))
+        log.flush()
+        return result
+
+        
+class Shell(base.Base):
+    """Captures user input and passes it to Interpreter_Client"""
 
     defaults = defaults.Shell
-    hotkeys = {}
-
+    
     exit_on_help = True
-    parser_ignore = ("copyright", "traceback", "copyright")
-
+    parser_ignore = ("copyright", "traceback")
+    
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
-        self.line = []
-        self.lines = []
-        options = {"target" : (self.ip, self.port),
-                   "on_connect" : self._on_connect,
-                   "socket_send" : self._socket_send,
-                   "socket_recv" : self._socket_recv}
-
-        self.connection = self.create("networklibrary.Outbound_Connection", **options)
-        self.network_buffer[self.connection] = ''
-        self.keyboard = self.create("keyboard.Keyboard")
-        self.definition = False
-
-    def run(self):
-        connection = self.connection
-        if self.network_buffer[connection]:
-            sys.stdout.write(self.network_buffer[connection]+self.prompt)
-            self.network_buffer[connection] = ''
-
-        if self.keyboard.input_waiting():
-            self.keyboard.get_line(self)
-
-        if self.keyboard_input:
-            for character in self.keyboard_input:
-                if character == u'\n':
-                    self._handle_return()
-                else:
-                    self.line.append(character)
-            self.keyboard_input = ''
-
-        self.run_instruction.execute()
-
-    def _handle_return(self):
-        line = ''.join(self.line)
-
-        if line == "": # finished entering defintion
-            self.definition = False
-        self.lines.append(line+"\n")
-        lines = "".join(self.lines)
-        try:
-            code = codeop.compile_command(lines, "<stdin>", "exec")
-        except (SyntaxError, OverflowError, ValueError) as error: # did not compile
-            if type(error) == SyntaxError:
-                sys.stdout.write(self.traceback())
-                self.prompt = ">>> "
-                self.lines = []
-            else:
-                self.prompt = "... "
-        else:
-            if code and not self.definition:
-                self.prompt = ">>> "
-                self.lines = []
-                self.public_method("Asynchronous_Network", "buffer_data", self.connection, lines)
-            else:
-                self.definition = True
-                self.prompt = "... "
-        sys.stdout.write(self.prompt)
-        self.line = []
-
-    def _socket_send(self, connection, data):
-        connection.send(data)
-
-    def _socket_recv(self, connection):
-        self.network_buffer[connection] = connection.recv(self.network_packet_size)
-
-    def _on_connect(self, connection):
-        self.connection = connection
-        options = {"auto_login" : self.auto_login,
-                   "credentials" : (self.username, self.password),
-                   "handle_success" : self._on_login_success,
-                   "wait" : self._on_wait,
-                   "network_buffer" : self.network_buffer,
-                   "connection" : connection}
-
-        self.login_thread = self.create("networklibrary.Basic_Authentication_Client",
-                                        **options)
-        self.process("_login")
-
-    def _on_login_success(self, connection):
-        self.process("run")
-        print self.network_buffer[connection]
-        self.network_buffer[connection] = ''
-        sys.stdout.write(self.prompt)
-        if self.startup_definitions:
+        self.lines = ''
+        self.user_is_entering_definition = False
+        self.interpreter = self.create(Interpreter_Client)
+            
+        self.rpc("User_Input", "add_listener " + self.instance_name)
+        self.definition_finished = False
+                
+    def handle_keystrokes(self, sender, keyboard_input):
+     #   sys.stdout.write(self.instance_name + " received keystrokes " + keyboard_input)
+        self.lines += keyboard_input
+        lines = self.lines
+                
+        if lines != "\n":            
             try:
-                compile(self.startup_definitions, "startup_definition", "exec")
-            except:
-                args = (self.instance_name, self.traceback())
-                self.alert("{0} startup definitions failed to compile\n{1}",
-                           args, 0)
+                code = codeop.compile_command(lines, "<stdin>", "exec")
+            except (SyntaxError, OverflowError, ValueError) as error:
+                sys.stdout.write(traceback.format_exc())
+                raise SystemExit
+                self.prompt = ">>> "
+                self.lines = ''
             else:
-                self.public_method("Asynchronous_Network", "buffer_data", self.connection, self.startup_definitions+"\n")
-
-    def _on_wait(self):
-        self.process("_login")
-
-    def _login(self):
-        self.login_thread.run()
-
-
-class Metapython(vmlibrary.Process):
+                if code:
+                    if self.user_is_entering_definition:
+                        if lines[-2:] == "\n\n":
+                            self.prompt = ">>> "
+                            self.lines = ''
+                            self.interpreter.execute_source(lines)
+                            self.user_is_entering_definition = False
+                        
+                    else:
+                        self.lines = ''
+                        self.interpreter.execute_source(lines)
+                else:
+                    self.user_is_entering_definition = True
+                    self.prompt = "... "
+        else:
+            self.lines = ''
+        
+        sys.stdout.write(self.prompt)
+            
+    
+class Metapython(base.Base):
 
     defaults = defaults.Metapython
 
     parser_ignore = ("environment_setup", "prompt", "copyright", "authentication_scheme",
-                     "auto_start", "keyboard_input", "traceback", "pypy", "jython",
-                     "python", "network_buffer", "stdin_buffer_size", "memory_size",
-                     "network_packet_size", "interface", "port")
+                     "traceback", "memory_size", "network_packet_size", 
+                     "interface", "port")
+                     
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
@@ -140,20 +194,18 @@ class Metapython(vmlibrary.Process):
     exit_on_help = False
 
     def __init__(self, **kwargs):
-        self.process_requests = []
-        self.connected_clients = []
-        self.login_threads = []
-        self.authenticate = {"root" : hash("password")}
-        self.client_namespaces = {}
-        self.swap_file = tempfile.TemporaryFile()
-        self.log_file = open("%s.log" % self.__class__.__name__, "a")
-
         super(Metapython, self).__init__(**kwargs)
-        self.objects.setdefault(self.authentication_scheme.split(".", 1)[-1], [])
-        self.network_buffer = {}
+                
         self.setup_environment()
-        self.start_metapython()
-
+        
+        if self.interpreter_enabled:
+            Instruction(self.instance_name, "start_service").execute()
+       
+        Instruction(self.instance_name, "exec_command").execute()
+        self.start_machine()
+        
+        self.alert("{} shutting down", [self.instance_name], level='v')
+        
     def setup_environment(self):
         modes = {"=" : "equals",
                  "+=" : "__add__", # append strings or add ints
@@ -170,129 +222,29 @@ class Metapython(vmlibrary.Process):
                 method = modes[mode]
                 result = getattr(environment_value, method)(value)
             os.environ[variable] = result
-
-    def start_metapython(self):
-        # construct a server
-        # these are what the accept()-ed connection will call
-        client_options = {"socket_recv" : self._socket_recv,
-                          "socket_send" : self._socket_send}
-
-        server_options = {"client_options" : client_options,
-                   "on_connect" : self._on_connect,
-                   "name" : self.instance_name,
-                   "interface" : self.interface,
-                   "port" : self.port}
-
-        # delay until machine is running
-        Instruction("Asynchronous_Network", "create", "networklibrary.Server", **server_options).execute()
-
+        
+    def exec_command(self):
         module = open(self.command, 'r')
         code = compile(module.read(), 'Metapython', 'exec')
-        print "running", self.command
-        exec code in locals(), globals()
+        
+        exec code in globals(), globals()
 
+    def start_machine(self):
         machine = self.create("vmlibrary.Machine")
-        machine.create("networklibrary.Asynchronous_Network")
-        machine.run()
+        machine.create("network.Asynchronous_Network")
+        machine.run()       
+    
+    def start_service(self):
+        server_options = {"name" : self.instance_name,
+                          "interface" : self.interface,
+                          "port" : self.port}  
+               
+        self.server = self.create(Interpreter_Service, **server_options)      
         
-        self.alert("{} shutting down", [self.instance_name], level='v')
-        
-    def _on_connect(self, connection):
-        self.network_buffer[connection] = ''#connection.recv(self.network_packet_size)
-        options = {"handle_success" : self.handle_login_success,
-                   "connection" : connection,
-                   "network_buffer" : self.network_buffer,
-                   "authenticate" : self.authenticate}
-
-        login_thread = self.create(self.authentication_scheme, **options)
-
-    def _socket_recv(self, connection):
-        self.network_buffer[connection] = connection.recv(8096)
-
-    def _socket_send(self, connection, data):
-        connection.send(data)
-
-    def run(self):
-        self.handle_logins()
-
-        for client in self.connected_clients:
-            input = self.network_buffer[client]
-            self.network_buffer[client] = ''
-            if input:
-                self._main(client, input)
-
-        self.run_instruction.execute()
-
-    def handle_logins(self):
-        for login_thread in self.objects["Basic_Authentication"]:
-            login_thread.run()
-
-    def handle_login_success(self, connection):
-        username = connection.username
-        address = connection.getpeername()
-        prompt = self.prompt
-        string_info = (username, address,
-                       sys.version, sys.platform, self.copyright,
-                       self.__class__.__name__, self.implementation)
-        
-        response = "Welcome {0} from {1}\nPython {2} on {3}\n{4}\n{5} ({6})\n".format(*string_info)
-        self.public_method("Asynchronous_Network", "buffer_data", connection, response)
-
-        self.connected_clients.append(connection)
-        self.network_buffer[connection] = ""
-
-        # controls namespace that clients have access to
-        
-        self.client_namespaces[connection] =\
-        {"__builtins__" : globals()["__builtins__"], 
-         "__doc__" : globals()["__doc__"],
-         "__name__" : "%s __main__" % username,
-         "Instruction" : Instruction}
-        
-        def _globals():
-            return self.client_namespaces[connection]
-        self.client_namespaces["globals"] = _globals()
-        
-    def _main(self, connection, input):
-        backup = sys.stdout
-        sys.stdout = self.swap_file
-        code = self._compile(input)
-        if code:
-            self.execute_code(connection, code)
-
-        sys.stdout.seek(0)
-        results = sys.stdout.read()
-        if results:
-            self.log_file.write("Results: " + results)
-            self.public_method("Asynchronous_Network", "buffer_data", connection, results)
-        sys.stdout.seek(0)
-        sys.stdout.truncate() # delete contents
-        sys.stdout = backup
-
-    def _compile(self, input):
-        try:
-            code = codeop.compile_command(input, "<stdin>", "exec")
-        except (SyntaxError, OverflowError, ValueError) as error:
-            if type(error) == SyntaxError:
-                sys.stdout.write(self.traceback())
-        else:
-            self.log_file.write("Command:\n"+input)
-            return code
-
-    def execute_code(self, connection, code):
-        try:
-            exec code in globals(), self.client_namespaces[connection]
-        except BaseException as error:
-            sys.stdout = self.swap_file # can be changed by code and not changed back
-            if type(error) == SystemExit:
-                raise
-            else:
-                sys.stdout.write(self.traceback())
-
     def exit(self, exit_code=0):
         Instruction("Processor", "attribute_setter", running=False).execute()
         # cleanup/finalizers go here?
 
 
 if __name__ == "__main__":
-    Metapython = Metapython(parse_args=True, parent=__name__)
+    Metapython = Metapython(parse_args=True)

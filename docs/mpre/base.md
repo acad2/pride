@@ -28,15 +28,11 @@ This object defines the following non-private methods:
 
 - **read_messages**(self):
 
-		  No documentation available
-
-
-
-- **get_family_tree**(self):
-
-		  usage: all_objects = object.get_family_tree()
+		  Usage: component.read_messages => [message1, message2, ...]
 		 
-		 returns a dictionary containing all the children/descendants of object
+		 Returns a list of messages. The list contains all messages sent via
+		 the rpc method since the last call to read_messages. Messages in the list
+		 are of the bytes/string type
 
 
 
@@ -67,9 +63,21 @@ This object defines the following non-private methods:
 
 
 
-- **remove**(self, instance):
+- **react**(self):
 
 		  No documentation available
+
+
+
+- **rpc**(self, component_name, message, _response_to='None'):
+
+		  Usage: component.send(component_name, message)
+		 
+		 Writes the supplied message to the memory owned by component_name.
+		 Internally, an index to the end of the message is stored for later retrieval.
+		 
+		     - component_name is a base_object.instance_name
+		     - message can be bytes or a string
 
 
 
@@ -98,26 +106,19 @@ This object defines the following non-private methods:
 
 
 
-- **send_to**(self, component_name, message):
+- **remove**(self, instance):
 
-		  No documentation available
-
-
-
-- **get_children**(self):
-
-		  usage: for child in object.get_children...
+		  Usage: object.remove(instance)
 		 
-		 Creates a generator that yields the immediate children of the object.
-		 WARNING: do not mutate self.objects when using this
+		 Removes an instance from self.objects
 
 
 
 - **add**(self, instance):
 
-		  usage: object.add(other_object)
+		  usage: object.add(instance)
 		 
-		 adds an already existing object to the instances' class name entry in parent.objects.
+		 adds an instance to the instances' class name entry in parent.objects.
 
 
 
@@ -194,8 +195,8 @@ This objects method resolution order is:
 
 Wrapper
 --------
-	a class that will act as the object it wraps and as a base
-	object simultaneously.
+	a class that will act as the object it wraps and as an
+	   Rpc_Enabled Base object simultaneously.
 
 Default values for newly created instances:
 

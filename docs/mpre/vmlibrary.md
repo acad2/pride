@@ -2,24 +2,6 @@ mpre.vmlibrary
 ========
 No documentation available
 
-Hardware_Device
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- deleted                  False
-- verbosity                
-- memory_size              4096
-
-No non-private methods are defined
-
-This objects method resolution order is:
-
-(class 'mpre.vmlibrary.Hardware_Device', class 'mpre.base.Base', type 'object')
-
-
 Instruction
 --------
 No documentation available
@@ -32,7 +14,6 @@ Default values for newly created instances:
 
 - network_packet_size      4096
 - memory_size              4096
-- hardware_configuration   ()
 - deleted                  False
 - verbosity                
 - system_configuration     (('vmlibrary.System', (), {}),)
@@ -42,12 +23,6 @@ This object defines the following non-private methods:
 
 
 - **run**(self):
-
-		  No documentation available
-
-
-
-- **create**(self, *args, **kwargs):
 
 		  No documentation available
 
@@ -119,77 +94,9 @@ This object defines the following non-private methods:
 		  No documentation available
 
 
-
-- **uncache**(self, instruction):
-
-		  No documentation available
-
-
-
-- **display_processor_usage**(self):
-
-		  No documentation available
-
-
-
-- **cache_instruction**(self, instruction, method):
-
-		  No documentation available
-
-
-
-- **log_time**(self, time_taken, call):
-
-		  No documentation available
-
-
 This objects method resolution order is:
 
-(class 'mpre.vmlibrary.Processor', class 'mpre.vmlibrary.Hardware_Device', class 'mpre.base.Base', type 'object')
-
-
-Stdin
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- deleted                  False
-- verbosity                
-- memory_size              4096
-
-This object defines the following non-private methods:
-
-
-- **read**(self, size=None):
-
-		  No documentation available
-
-
-
-- **readline_thread**(self):
-
-		  No documentation available
-
-
-
-- **write**(self, bytes):
-
-		  No documentation available
-
-
-
-- **readline**(self):
-
-		  usage: stdin.readline() => string.
-		 
-		 Will return '' if no full line is available
-
-
-This objects method resolution order is:
-
-(class 'mpre.stdin.Stdin', class 'mpre.base.Base', type 'object')
+(class 'mpre.vmlibrary.Processor', class 'mpre.base.Base', type 'object')
 
 
 System

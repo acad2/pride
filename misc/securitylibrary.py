@@ -69,7 +69,7 @@ class DoS(vmlibrary.Process):
             self.latency.display()
         options = self.options
         for connection_number in xrange(self.salvo_size):
-            self.create("networklibrary.Outbound_Connection", **options)
+            self.create("network.Outbound_Connection", **options)
 
         self.run_instruction.execute()
 
@@ -155,7 +155,7 @@ class Scanner(vmlibrary.Process):
 
         while ports:
             for port in ports[:yield_interval]:
-                self.create("networklibrary.Outbound_Connection", port=port, **options)
+                self.create("network.Outbound_Connection", port=port, **options)
             ports = ports[yield_interval:]
             yield
 

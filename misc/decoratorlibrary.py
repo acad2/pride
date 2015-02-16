@@ -62,23 +62,13 @@ class Pystone_Test(object):
 
 class Timed(object):
 
-    def __init__(self, function, exception_notify=True):
+    def __init__(self, function):
         self.function = function
-        self.exception_notify = exception_notify
-
+        
     def __call__(self, *args, **kwargs):
         start = timer()
-        try:
-            result = self.function(*args, **kwargs)
-        except BaseException as error:
-            end = timer()
-            if self.exception_notify:
-                print "%s when timing %s after %ss" % (type(error), self.function, end-start)
-            raise
-        else:
-            end = timer()
-            run_time = end - start
-            return run_time, result
+        self.result = self.function(*args, **kwargs)
+        return timer() - start
 
 class Tracer(object):
 

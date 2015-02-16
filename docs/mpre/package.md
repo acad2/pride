@@ -14,6 +14,7 @@ Default values for newly created instances:
 
 - network_packet_size      4096
 - site_name                
+- package                  None
 - deleted                  False
 - verbosity                vv
 - ignore_directories       ('docs',)
@@ -86,6 +87,12 @@ This object defines the following non-private methods:
 
 
 - **make_folder**(self, subfolder, folder_path):
+
+		  No documentation available
+
+
+
+- **from_directory**(top_directory, dirnames):
 
 		  No documentation available
 
