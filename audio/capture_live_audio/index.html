@@ -65,15 +65,15 @@
                         <ul class="dropdown-menu">
                         
                             <li >
-                                <a href="../../tutorial/base_tutorial/">Overview</a>
+                                <a href="../../base_tutorial/">Base objects</a>
                             </li>
                         
                             <li >
-                                <a href="../../tutorial/Building_a_Base_object/">Base Features</a>
+                                <a href="../../Building_a_Base_object/">Base objects 2</a>
                             </li>
                         
                             <li >
-                                <a href="../../tutorial/Metaclass_features/">Metaclass Features</a>
+                                <a href="../../Metaclass_features/">Metaclass features</a>
                             </li>
                         
                         </ul>
@@ -94,11 +94,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/installtest/">installtest</a>
+                                <a href="../../mpre/fileio/">fileio</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/keyboard/">keyboard</a>
+                                <a href="../../mpre/metaclass/">metaclass</a>
                             </li>
                         
                             <li >
@@ -106,11 +106,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/networklibrary/">networklibrary</a>
+                                <a href="../../mpre/network/">network</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/networklibrary2/">networklibrary2</a>
+                                <a href="../../mpre/network2/">network2</a>
                             </li>
                         
                             <li >
@@ -122,7 +122,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/stdin/">stdin</a>
+                                <a href="../../mpre/userinput/">userinput</a>
                             </li>
                         
                             <li >
@@ -167,7 +167,7 @@
                             </li>
                         
                             <li >
-                                <a href="../voipmessenger/">voipmessenger</a>
+                                <a href="../utilities/">utilities</a>
                             </li>
                         
                         </ul>
@@ -192,10 +192,6 @@
                             </li>
                         
                             <li >
-                                <a href="../../gui/sdltest/">sdltest</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../gui/widgetlibrary/">widgetlibrary</a>
                             </li>
                         
@@ -207,6 +203,26 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">misc <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../misc/attributetest/">attributetest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/bytecodedis/">bytecodedis</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/bytecodemap/">bytecodemap</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/compile/">compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/compresstest/">compresstest</a>
+                            </li>
                         
                             <li >
                                 <a href="../../misc/convert_bases/">convert_bases</a>
@@ -225,11 +241,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/downloadtest/">downloadtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/mmaptest/">mmaptest</a>
+                                <a href="../../misc/scratch/">scratch</a>
                             </li>
                         
                             <li >
@@ -251,22 +263,6 @@
                         
                             <li >
                                 <a href="../../programs/build_metapython_package/">build_metapython_package</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../programs/bytecodedis/">bytecodedis</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../programs/bytecodemap/">bytecodemap</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../programs/compile/">compile</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../programs/create_package/">create_package</a>
                             </li>
                         
                             <li >
@@ -295,6 +291,39 @@
                         
                             <li >
                                 <a href="../../programs/stupidsend/">stupidsend</a>
+                            </li>
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">tests <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../tests/bytecodedis/">bytecodedis</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/bytecodemap/">bytecodemap</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/hashdicttest/">hashdicttest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/installtest/">installtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/lru_test/">lru_test</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/network2/">network2</a>
                             </li>
                         
                         </ul>
@@ -333,129 +362,12 @@
     
         <li class="main active"><a href="#mpreaudiocapture_live_audio">mpre.audio.capture_live_audio</a></li>
         
-            <li><a href="#base">Base</a></li>
-        
-            <li><a href="#instruction">Instruction</a></li>
-        
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
 <h1 id="mpreaudiocapture_live_audio">mpre.audio.capture_live_audio</h1>
-<p>No documentation available</p>
-<h2 id="base">Base</h2>
-<pre class="prettyprint well"><code>A base object to inherit from. An object that inherits from base
-can have arbitrary attributes set upon object instantiation by specifying
-them as keyword arguments. An object that inherits from base will also
-be able to create/hold arbitrary python objects by specifying them as
-arguments to create. Classes that inherit from base should specify a class.defaults 
-dictionary that will automatically include the specified (attribute, value) pairs on 
-all new instances.
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>network_packet_size      4096</li>
-<li>deleted                  False</li>
-<li>verbosity                </li>
-<li>memory_size              4096</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>read_messages</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>get_family_tree</strong>(self):</p>
-<pre class="prettyprint well"><code>  usage: all_objects = object.get_family_tree()
-
- returns a dictionary containing all the children/descendants of object
-</code></pre>
-</li>
-<li>
-<p><strong>attribute_setter</strong>(self, **kwargs):</p>
-<pre class="prettyprint well"><code>  usage: object.attribute_setter(attr1=value1, attr2=value2).
- called implicitly in __init__ for any object that inherits from Base.
-</code></pre>
-</li>
-<li>
-<p><strong>alert</strong>(self, message='Unspecified alert message', format_args=(), level=0, callback=None, callback_instruction=None):</p>
-<pre class="prettyprint well"><code>  usage: base.alert(message, format_args, level, callback, callback_instruction)
-
- Create an alert. Depending on the level given, the alert may be printed
- for immediate attention and/or logged quietly for later viewing.
-
- -message is a string that will be logged and/or displayed
- -format_args are any string formatting args for message.format()
- -level is a small integer indicating the severity of the alert.
- -callback is an optional tuple of (function, args, kwargs) to be called when
- the alert is triggered
- -callback_instruction is an optional Instruction to be posted when the alert is triggered.
-
- alert severity is relative to the Alert.log_level and Alert.print_level;
- a lower number indicates a less verbose notification, while 0 indicates
- an error or exception and will never be suppressed.
-</code></pre>
-</li>
-<li>
-<p><strong>get_children</strong>(self):</p>
-<pre class="prettyprint well"><code>  usage: for child in object.get_children...
-
- Creates a generator that yields the immediate children of the object.
- WARNING: do not mutate self.objects when using this
-</code></pre>
-</li>
-<li>
-<p><strong>public_method</strong>(self, component_name, method_name, <em>args, </em>*kwargs):</p>
-<pre class="prettyprint well"><code>  usage: base.public_method(component_name, method_name, *args, **kwargs) =&gt;
-        component.method(*args, **kwargs)
-
- Used to call the method of an external object directly without using 
- instructions or message sending/reading. Public methods are designated in
- the public_methods field of a class object. Attempting to call a
- public_method on an object that does not specify the method as public
- will result in a ValueError. This call is not scheduled by the processor
- and happens immediately. The return value from the external method is 
- returned by this call.
-</code></pre>
-</li>
-<li>
-<p><strong>create</strong>(self, instance_type, <em>args, </em>*kwargs):</p>
-<pre class="prettyprint well"><code>  usage: object.create("module_name.object_name", args, kwargs)
-
- The specified python object will be instantiated with the given arguments
- and placed inside object.objects under the created objects class name via
- the add method
-</code></pre>
-</li>
-<li>
-<p><strong>send_to</strong>(self, component_name, message):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>remove</strong>(self, instance):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>add</strong>(self, instance):</p>
-<pre class="prettyprint well"><code>  usage: object.add(other_object)
-
- adds an already existing object to the instances' class name entry in parent.objects.
-</code></pre>
-</li>
-<li>
-<p><strong>delete</strong>(self):</p>
-<pre class="prettyprint well"><code>  usage: object.delete() or object.delete(child). thoroughly untested.
-</code></pre>
-</li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.base.Base', type 'object')</p>
-<h2 id="instruction">Instruction</h2>
 <p>No documentation available</p>
 </div>
         </div>
