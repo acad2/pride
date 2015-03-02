@@ -10,7 +10,7 @@ import alsaaudio
 import mpre.base as base
 import defaults
 
-class Audio_Device(base.Base):
+class Audio_Device(base.Reactor):
 
     possible_options = ("rate", "channels", "format", "sample_size", "period", "type", "card")
     def _get_options(self):
@@ -46,7 +46,7 @@ class Audio_Device(base.Base):
 
     def handle_data(self, audio_data):
         for client in self.listeners:
-            self.rpc(client, audio_data)
+            self.reaction(client, audio_data)
 
 
 class Audio_Input(Audio_Device):

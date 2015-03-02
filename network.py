@@ -57,29 +57,28 @@ class Socket(base.Wrapper):
 
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket())
+        self.network_buffer = {}
         super(Socket, self).__init__(**kwargs)
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         if self.add_on_init:
-            self.public_method("Asynchronous_Network", "add", self)
-    
+            self.parallel_method("Asynchronous_Network", "add", self)
+         
+    def socket_recv(self):
+        data, address = self.recvfrom(self.network_packet_size)
+        try:
+            self.network_buffer[address] += data
+        except KeyError:
+            self.network_buffer[address] = data
+            
+    def send_data(self, data, to=None):
+        self.parallel_method("Asynchronous_Network", "send",
+                           self, data, to)
+                           
     def delete(self):
         self.close()        
         super(Socket, self).delete()
-     
-    def socket_send(self, data):
-        target, message = data
-        self.sendto(message, target)
-                
-    def handle_idle(self):
-        if not self.deleted:
-            if self.idle:
-                self.alert("{0} idle disconnect after {1}s", (self.instance_name, self.timeout_after), 0)
-                self.delete()
-            else:
-                self.idle = True
-                self.idle_instruction.execute()
-        
+                            
         
 class Connection(Socket):
 
@@ -90,11 +89,8 @@ class Connection(Socket):
 
     def socket_recv(self):
         self.network_buffer += self.recv(self.network_packet_size)
-        
-    def socket_send(self, data):
-        self.send(data)
-                
 
+        
 class Server(Connection):
 
     defaults = defaults.Server
@@ -149,7 +145,7 @@ class Outbound_Connection(Connection):
                 self.alert("Attempted to create Outbound_Connection with no host ip or target", tuple(), 0)
             self.target = (self.ip, self.port)
 
-        self.public_method("Connection_Manager", "add", self)
+        self.parallel_method("Connection_Manager", "add", self)
                 
     def unhandled_error(self):
         print "unhandled exception for", self.instance_name
@@ -169,7 +165,7 @@ class Outbound_Connection(Connection):
                 error = socket_error.errno
                 #self.error_handler.get(error.errno, self.unhandled_error)()
                 if error == CONNECTION_IS_CONNECTED: # complete
-                    self.public_method("Asynchronous_Network", "add", self)
+                    self.parallel_method("Asynchronous_Network", "add", self)
                     self.on_connect()
 
                 elif error in (CALL_WOULD_BLOCK, CONNECTION_IN_PROGRESS): # waiting
@@ -213,12 +209,6 @@ class Udp_Socket(Socket):
             
         self.settimeout(self.timeout)                       
              
-    def socket_recv(self):
-        data, address = self.recvfrom(self.network_packet_size)
-        try:
-            self.network_buffer[address] += data
-        except KeyError:
-            self.network_buffer[address] = data
         
         
 class Multicast_Beacon(Udp_Socket):
@@ -244,113 +234,30 @@ class Multicast_Receiver(Udp_Socket):
         self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
 
 
-class Basic_Authentication_Client(vmlibrary.Thread):
+class Connection_Manager(vmlibrary.Process):
 
-    defaults = defaults.Basic_Authentication_Client
-
-    def __init__(self, **kwargs):
-        self.username = ''
-        self.password = ''
-        self.auto_login = None
-        super(Basic_Authentication_Client, self).__init__(**kwargs)
-        self.thread = self._new_thread()
-        instruction = self.wait_instruction = Instruction(self.instance_name, "wait")
-
-    def run(self):
-        try:
-            next(self.thread)
-        except StopIteration:
-            self.delete()
-
-    def wait(self):
-        self.alert("\t{0} waiting for reply", [self.instance_name], level="vvv")
-        
-    def _new_thread(self):
-        connection = self.connection
-        
-        username = self.username
-        password = self.password
-        if username:
-            if password:
-                self.alert("Attempting to automatically log in as {0}...",
-                          (username, ), "v")
-            else:
-                password = getpass.getpass()
-        else:
-            username = self.username if self.username else\
-                       raw_input("Please provide credentials for {0}\nUsername: "\
-                                 .format(self.instance_name))
-            password = password if password else getpass.getpass()
-
-        password = hash(password) # WARNING: not seriously secure!
-        response = username+"\n"+str(password)
-
-        connection.rpc(response)
-        self.wait()
-        yield
-        
-        messages = connection.read_messages()
-        while not messages:
-            self.wait()
-            yield
-            messages = connection.read_messages()
-        
-        reply = messages[0][1].lower()
-        
-        if reply in ("invalid password", "invalid username"):
-            self.alert("{0} supplied in login attempt",
-                      (reply, ), 0)
-            if reply == "invalid password":
-                self.handle_invalid_password()
-            else:
-                self.handle_invalid_username()
-        else:
-            self.handle_success(reply)
-
-    def retry(self):
-        if "y" in raw_input("Retry?: ").lower():
-            self.login_thread = self._new_thread()
-            sefl.wait()
-        else:
-            self.alert("failed to login. Exiting...", level=0)
-
-    def handle_invalid_username(self):
-        self.retry()
-
-    def handle_invalid_password(self):
-        self.retry()
-
-    def handle_success(self, reply=''):
-        Instruction(self.parent, "login_success", reply).execute()
-
-
-class Connection_Manager(vmlibrary.Thread):
-
-    defaults = defaults.Thread.copy()
+    defaults = defaults.Connection_Manager
     
     def _get_buffer(self):
         return self.objects[socket.socket.__name__]
     buffer = property(_get_buffer)
-    
-    public_methods = ("add", )
-    
+        
     def __init__(self, **kwargs):        
         super(Connection_Manager, self).__init__(**kwargs)
         self.objects[socket.socket.__name__] = []
-        self.thread = self._new_thread()
-       # self.running = False
- 
+        self.running = False
+        
+    def add(self, sock):
+        self.running = True
+        super(Connection_Manager, self).add(sock)
+        
     def run(self):
-        return next(self.thread)
-
-    def _new_thread(self):
-        buffer = self.buffer
-        while True:        
-            for connection in buffer:
-                self.remove(connection)
-                if not connection.deleted and not connection.attempt_connection():
-                    self.add(connection)          
-            yield
+        for connection in self.buffer:
+            self.remove(connection)
+            if not connection.deleted and not connection.attempt_connection():
+                self.add(connection)          
+        if not self.buffer:
+            self.running = False
            
 
 class Asynchronous_Network(vmlibrary.Process):
@@ -361,9 +268,7 @@ class Asynchronous_Network(vmlibrary.Process):
         local_names = ("localhost", "0.0.0.0", "127.0.0.1")
         return dict((key, value) for key, value in self.services.items() if key in local_names)
     local_services = property(_get_local_services)
-
-    public_methods = ("buffer_data", "add")
-    
+   
     def __init__(self, **kwargs):
         # minor optimization
         # pre allocated slices and ranges
@@ -373,23 +278,22 @@ class Asynchronous_Network(vmlibrary.Process):
         self._select = select.select
 
         self.write_buffer = {}
+        self.writable = set()
         super(Asynchronous_Network, self).__init__(**kwargs)
+        self.running = False
         self.objects[socket.socket.__name__] = []
                 
         self.connection_manager = self.create(Connection_Manager)
 
-        instruction = self.update_instruction = Instruction("Asynchronous_Network", "_update_range_size")
-        instruction.priority = self.update_priority
-        instruction.execute()
-
-    def buffer_data(self, connection, data, to=None):
-        if to:
-            data = (to, data)
-        try:
-            self.write_buffer[connection].append(data)
-        except KeyError:
-            self.write_buffer[connection] = [data]
-                
+        instruction = self.update_instruction = Instruction("Asynchronous_Network", "_update_range_size")        
+        instruction.execute(self.update_priority)
+  
+    def add(self, sock):
+        super(Asynchronous_Network, self).add(sock)
+        if not self.running:
+            self.run_instruction.execute(priority=self.priority)
+            self.running = True
+            
     def debuffer_data(self, connection):
         try:
             del self.write_buffer[connection]
@@ -398,31 +302,39 @@ class Asynchronous_Network(vmlibrary.Process):
         
     def _update_range_size(self):
         self._socket_range_size = range((len(self.objects[self._socket_name]) / 500) + 1)
-        self.update_instruction.execute()
+        self.update_instruction.execute(self.update_priority)
 
     def run(self):
-        self.run_instruction.execute()
-        self.connection_manager.run()
+        if self.connection_manager.running:
+            self.connection_manager.run()
 
         sockets = self.objects[self._socket_name]
-        for chunk in self._socket_range_size:
-            # select has a max # of file descriptors it can handle, which
-            # is about 500 (at least on windows). We can avoid this limitation
-            # by sliding through the socket list in slices of 500 at a time
-            socket_list = sockets[self._slice_mapping[chunk]]
-
-            readable, writable, errors = self._select(socket_list, socket_list, [], 0.0)
-            if readable:
-                self.handle_reads(readable)
+        
+        if sockets:
+            self_writable = self.writable = set()
+            for chunk in self._socket_range_size:
+                # select has a max # of file descriptors it can handle, which
+                # is about 500 (at least on windows). We can avoid this limitation
+                # by sliding through the socket list in slices of 500 at a time
+                socket_list = sockets[self._slice_mapping[chunk]]
                 
-            if writable:
-                needs_write = ((sock, self.write_buffer.pop(sock)) for sock in 
-                                self.write_buffer.keys() if sock in writable)     
-                self.handle_writes(needs_write)
-
-    def handle_errors(self, socket_list):
-        self.alert("Encountered sockets with errors", level=0)
-
+                readable, writable, errors = self._select(socket_list, socket_list, [], 0.0)
+                        
+                self_writable.update(writable)
+                
+                if readable:
+                    self.handle_reads(readable)                
+            
+            if self.handle_resends:
+                resends = ((sock, self.write_buffer.pop(sock)) for sock, messages in
+                            self.write_buffer.items() if sock in self_writable)
+                    
+                for sender, messages in resends:
+                    for message, to in messages:
+                        self.send(sender, message, to)
+            
+            self.run_instruction.execute(priority=self.priority)
+            
     def handle_reads(self, readable_sockets):
         for sock in readable_sockets:
             try:
@@ -436,20 +348,21 @@ class Asynchronous_Network(vmlibrary.Process):
                               (sock, ), 0)
                 else:
                     raise
-
-    def handle_writes(self, writable_sockets):
-        for sock, messages in writable_sockets:
-            try:
-                for message in messages:                   
-                    sock.socket_send(message)
-            except socket.error as error:            
-                if error.errno == CONNECTION_WAS_ABORTED:
-                    self.alert("Failed to send {0} on {1}\n{2}",
-                          (message, sock, error), 0)
-                    sock.delete()
                     
-                elif error.errno == 11: # EAGAIN on unix
-                    self.alert("EAGAIN error when writing to {0}",
-                            (sock, ), 0)
-                else:
-                    raise
+    def send(self, sock, data, to=None):   
+        if sock in self.writable:
+            if to:
+
+                sock.sendto(data, to)
+            else:
+                sock.send(data)            
+        else:
+            self.handle_resends = True
+            if to:
+                data = (data, to)
+            else:
+                data = (data, None)
+            try:
+                self.write_buffer[sock].append(data)
+            except KeyError:
+                self.write_buffer[sock] = [data]            

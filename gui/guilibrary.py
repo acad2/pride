@@ -6,7 +6,7 @@ from math import floor, sqrt
 
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
-import defaults
+import mpre.gui.defaults as defaults
 import mpre.utilities as utilities
 Instruction = base.Instruction
 
@@ -20,39 +20,16 @@ light_color_scalar = 1.5
 
 
 # provides the pack() functionality
-class Organizer(vmlibrary.Process):
+class Organizer(base.Base):
 
     defaults = defaults.Organizer
 
     def __init__(self, *args, **kwargs):
         super(Organizer, self).__init__(*args, **kwargs)
-        self.queue = []
-        self.running = False
 
     def pack(self, item):
-        #print "adding to pack queue", item
-        self.queue.append(item)
-        if not self.running:
-            self.running = True
-            self.process("run")
-
-    def run(self):
-        queue = self.queue
-        while queue:
-            item = queue.pop(0)
-            print "packing", item.instance_name, item.pack_mode
-            print "stats before: ", item.area, item.layer
-            parent_queue = item.parent.draw_queue
-            try:
-                count = parent_queue.index(item)
-                length = len(parent_queue)
-            except ValueError:
-                count = 0
-                length = 1
-            pack = getattr(self, "pack_{0}".format(item.pack_mode))
-            pack(item, count, length)
-            print "stats after: ", item.area, item.layer
-        self.running = False
+        pack = getattr(self, "pack_{0}".format(item.pack_mode))
+        pack(item, count, length)
 
     def pack_horizontal(self, item, count, length):
         parent = item.parent
@@ -148,7 +125,7 @@ class Window_Object(base.Base):
 
         if hasattr(instance, "draw_texture"):
             self.draw_queue.append(instance)
-            instance.added_to.add(self.instance_name)
+            
         return instance
 
     def press(self, mouse):
@@ -174,7 +151,8 @@ class Window_Object(base.Base):
 
     def mousemotion(self, x_change, y_change):
         if self.held:
-            self.draw("fill", self.area, color=self.parent.color)
+            self.draw("fill", self.area, 
+                      color=getattr(self.parent, 'color', (0, 0, 0)))
             self.x += x_change
             self.y += y_change
             for item in self.draw_queue:
@@ -188,20 +166,23 @@ class Window_Object(base.Base):
                 self.draw_texture()
 
     def draw(self, figure="rect", *args, **kwargs):
-        Instruction(self.sdl_window, "draw", self.instance_name, figure, self.area, self.layer, *args, **kwargs).execute()
+        self.parallel_method(self.sdl_window, "draw", self.instance_name,
+                           figure, self.area, self.layer, 
+                           *args, **kwargs)
 
     def draw_texture(self):
-        area = self.area
-        draw = self.draw
-        draw("fill", area, color=self.color)
-        draw("rect", area, color=self.outline_color)
+        self.draw("fill", self.area, color=self.background_color)
+        self.draw("rect", self.area, color=self.color)
+        self.draw_children()
+        
+    def draw_children(self):
         for item in self.draw_queue:
             item.draw_texture()
 
     def pack(self, reset=False):
         if reset:
             self.x = self.y = 0
-        Instruction("Organizer", "pack", self).execute()
+        self.parallel_method("Organizer", "pack", self)
         for item in self.draw_queue:
             item.pack()
 
@@ -210,6 +191,19 @@ class Window_Object(base.Base):
         super(Window_Object, self).delete()
 
 
+class Theme(Window_Object):
+            
+    defaults = defaults.Window_Object.copy()
+    
+    def __init__(self, **kwargs):
+        super(Theme, self).__init__(**kwargs)
+     
+    def draw_texture(self, window_object):
+        x, y, w, h = window_object.area
+        area = (x + 1, y + 1, w - 1, h - 1)
+        window_object.draw("rect_width", area, color=self.color, width=self.width)
+        
+    
 class Window(Window_Object):
 
     defaults = defaults.Window
@@ -217,10 +211,10 @@ class Window(Window_Object):
     def __init__(self, **kwargs):
         super(Window, self).__init__(**kwargs)
 
-       # if getattr(self, "title_bar", None):
-        #    self.create("widgetlibrary.Title_Bar")
+        #if getattr(self, "title_bar", None):
+        self.create("mpre.gui.widgetlibrary.Title_Bar")
 
-
+    
 class Container(Window_Object):
 
     defaults = defaults.Container

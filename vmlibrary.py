@@ -14,18 +14,9 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import pickle
-import sys
-import os
-import atexit
 import heapq
 import time
 import traceback
-import dis
-from cStringIO import StringIO
-from collections import deque
-from operator import attrgetter
 from functools import partial
 
 import mpre
@@ -36,10 +27,34 @@ import utilities
 Instruction = base.Instruction
 timer_function = utilities.timer_function
 
-class Process(base.Base):
-    """a base process for processes to subclass from. Processes are managed
-    by the system. The start method begins a process while the run method contains
-    the actual code to be executed every frame."""
+class Process(base.Reactor):
+    """ usage: Process(target=function, args=..., kwargs=...) => process_object
+    
+        Create a serial logical process. Note that while Process objects
+        allow for the interface of target=function, the preferred usage
+        is via subclassing.
+        
+        Process objects have a run_instruction attribute. This attribute
+        is a saved instruction: Instruction(self.instance_name, 'run'). 
+        
+        Process objects have a default attribute 'auto_start', which
+        defaults to True. When True, an instruction for process.start
+        will automatically be executed inside __init__.
+        
+        The start method simply calls the run method, but can be overriden 
+        if the entry point would be useful, and keeps a similar interface
+        with the threading/process model.
+        
+        Subclasses should overload the run method. A process may propagate
+        itself by executing a run instruction inside it's run method. While
+        processes support the reaction interface, use of a process presumes
+        the desire for some kind of explicitly timed Instruction. Examples
+        of processes include polling for user input or socket buffers
+        at various intervals.
+        
+        Some people may find the serial style, one frame at a time method
+        offered by processes easier to understand and follow then reactions.
+        Most things can be accomplished by either."""
 
     defaults = defaults.Process
     parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
@@ -50,46 +65,27 @@ class Process(base.Base):
         super(Process, self).__init__(**kwargs)
 
         run_instruction = self.run_instruction = Instruction(self.instance_name, "run")
-        run_instruction.priority = self.priority
-        run_instruction.log_processor_time = True
 
         if self.auto_start:
-            self.process("start")
-
-    def process(self, method_name, *args, **kwargs):
-        instruction = Instruction(self.instance_name, method_name, *args, **kwargs)
-        instruction.priority = self.priority
-        instruction.execute()
-
-    def start(self): # (hopeful) compatibility with multiprocessing.Process
-        self.run()
-
-    def run(self):
-        if self.target:
-            self.target(*self.args, **self.kwargs)
-
-        self.run_instruction.execute()
-            
-
-class Thread(base.Base):
-    """does not run in parallel like threading.thread"""
-    defaults = defaults.Thread
-
-    def __init__(self, **kwargs):
-        self.args = tuple()
-        self.kwargs = dict()
-        self.results = []
-        super(Thread, self).__init__(**kwargs)
+            Instruction(self.instance_name, "start").execute()
 
     def start(self):
         self.run()
 
     def run(self):
-        return self.function(*self.args, **self.kwargs)
+        if self.target:
+            self.target(*self.args, **self.kwargs)
+            
 
-
-class Processor(base.Base):
-
+class Processor(Process):
+    """ Removes enqueued Instructions via heapq.heappop, then
+        performs the specified method call while handling the
+        possibility of the specified component/method not existing,
+        and any exception that could be raised inside the method call
+        itself.
+        
+        Essentially a task manager for launching other processes."""
+        
     defaults = defaults.Processor
 
     def __init__(self, **kwargs):
@@ -97,9 +93,9 @@ class Processor(base.Base):
         super(Processor, self).__init__(**kwargs)
         
     def run(self):
-        instructions = mpre.Instructions
-        parallel_instructions = mpre.Parallel_Instructions
-        Component_Resolve = base.Component_Resolve
+        instructions = self.environment.Instructions
+        parallel_instructions = self.environment.Parallel_Instructions
+        Component_Resolve = self.environment.Component_Resolve
         processor_name = self.instance_name
         
         sleep = time.sleep
@@ -113,10 +109,10 @@ class Processor(base.Base):
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
                                   level=0)
-        
+        execution_alert = partial(alert, "{0} executing code {1}", level="vvv")
         format_traceback = traceback.format_exc
                 
-        while self.running:
+        while self.running:                    
             execute_at, instruction = heappop(instructions)            
             try:
                 call = _getattr(Component_Resolve[instruction.component_name],
@@ -128,7 +124,6 @@ class Processor(base.Base):
                 component_alert((instruction, instruction.component_name, _type)) 
                 continue
                    
-            alert("{0} executing code {1}", (processor_name, instruction), level="vvv")
             time_until = max(0, (execute_at - timer_function()))
             sleep(time_until)       
             try:
@@ -139,53 +134,3 @@ class Processor(base.Base):
                 exception_alert((instruction.component_name,
                                  instruction.method,
                                  format_traceback()))
-        
-            if parallel_instructions:
-                while parallel_instructions:
-                    instance_name = parallel_instructions.pop(0)
-                    Component_Resolve[instance_name].react()
-
-            
-class System(base.Base):
-    """a class for managing components and applications.
-
-    usually holds components such as the instruction handler, network manager, display,
-    and so on. hotkeys set at the system level will be called if the key(s) are
-    pressed and no other active object have the keypress defined."""
-
-    defaults = defaults.System
-    #hotkeys are specified in the form of keycode:Instruction pairs in a dictionary.
-    # currently not implemented - awaiting pysdl
-    hotkeys = {}
-
-    def __init__(self, **kwargs):
-        # sets default attributes
-        super(System, self).__init__(**kwargs)
-
-        self.alert("{0} starting with {1}", (self.instance_name, str(self.startup_processes)), "v")
-        for component, args, kwargs in self.startup_processes:
-            self.alert("creating {0} with {1} {2}", (component, args, kwargs), "vv")
-            self.create(component, *args, **kwargs)
-
-    def run(self):
-        pass
-
-
-class Machine(base.Base):
-
-    defaults = defaults.Machine
-
-    def __init__(self, **kwargs):
-        super(Machine, self).__init__(**kwargs)
-
-        for processor_number in range(self.processor_count):
-            self.create(Processor)
-
-        self.create("userinput.User_Input")
-
-        for system_name, args, kwargs in self.system_configuration:
-            system = self.create(system_name, *args, **kwargs)
-
-    def run(self):
-        processor = self.objects["Processor"][0]
-        processor.run()

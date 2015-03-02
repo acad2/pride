@@ -31,19 +31,7 @@ else:
 def shell(command, shell=False):
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
-
-def ensure_folder_exists(pathname):
-    if not os.path.exists(pathname) or not os.path.isdir(pathname):
-        os.mkdir(pathname)
-  
-def ensure_file_exists(filepath, data=''):
-    if not os.path.exists(filepath) or not os.path.isfile(filepath):
-        with open(filepath, 'w') as _file:
-            if data:
-                _file.write(data)
-                _file.flush()
-            _file.close()
-            
+           
             
 class Latency(object):
 
@@ -303,19 +291,7 @@ class Updater(object):
         super(Updater, self).__init__()
 
     def live_update(self, component_name, source):
-        """Updates base component component_name with a class specified in source."""
-        import mpre.base
+        """Updates base component component_name with a class specified in source.
         
-        new_component_name = source[source.find("class ")+6:source.find("(")] # scoops Name from "class Name(object):"
-        code = compile(source, "update", "exec")
-        old_component = base.Component_Resolve[component_name]
-        exec code in locals(), globals()
-        new_component_class = locals()[new_component_name]
-        options = {"component" : old_component.parent} # for the Instruction, not actually an instance option
-        for attribute_name in dir(old_component):
-            if "__" not in attribute_name:
-                value = getattr(old_component, attribute_name)
-                if not callable(value):
-                    options[attribute_name] = value
-        new_component = old_component.parent.create(new_component_class, **options)
-        base.Component_Resolve[component_name] = new_component
+        outdated and needs rewrite"""
+        raise NotImplementedError

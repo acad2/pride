@@ -16,12 +16,13 @@ Default values for newly created instances:
 - held                     False
 - pack_mode                
 - memory_size              4096
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -41,7 +42,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Display_Wrapper', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Display_Wrapper', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Font_Manager
@@ -57,18 +58,44 @@ Default values for newly created instances:
 - default_color            (15, 180, 35)
 - default_background       (0, 0, 0)
 - memory_size              4096
-- font_path                ./resources/fonts/Aero.ttf
+- font_path                C:\Users\_\pythonbs\mpre\gui\resources\fonts\Aero.ttf
 
 No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Font_Manager', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Font_Manager', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Instruction
 --------
-No documentation available
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Renderer
 --------
@@ -98,7 +125,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Renderer', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Renderer', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 SDL_Component
@@ -116,7 +143,99 @@ No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+SDL_User_Input
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- network_packet_size      4096
+- priority                 0.04
+- memory_size              4096
+- auto_start               True
+- deleted                  False
+- verbosity                
+
+This object defines the following non-private methods:
+
+
+- **handle_unhandled_event**(self, event):
+
+		  No documentation available
+
+
+
+- **run**(self):
+
+		  No documentation available
+
+
+
+- **handle_mousebuttonup**(self, event):
+
+		  No documentation available
+
+
+
+- **handle_mousemotion**(self, event):
+
+		  No documentation available
+
+
+
+- **handle_quit**(self, event):
+
+		  No documentation available
+
+
+
+- **handle_mousebuttondown**(self, event):
+
+		  No documentation available
+
+
+
+- **handle_mousewheel**(self, event):
+
+		  No documentation available
+
+
+
+- **handle_keydown**(self, event):
+
+		  No documentation available
+
+
+
+- **mouse_is_inside**(self, area, mouse_pos_x, mouse_pos_y):
+
+		  No documentation available
+
+
+
+- **add_popup**(self, item):
+
+		  No documentation available
+
+
+
+- **handle_keyup**(self, event):
+
+		  No documentation available
+
+
+
+- **get_hotkey**(self, instance, key_press):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.gui.sdllibrary.SDL_User_Input', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 SDL_Window
@@ -171,7 +290,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.SDL_Window', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.SDL_Window', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Sprite_Factory
@@ -189,101 +308,7 @@ No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Sprite_Factory', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
-
-
-User_Input
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- keyboard_input           
-- deleted                  False
-- verbosity                
-- priority                 0.04
-- memory_size              4096
-- network_buffer           
-- auto_start               True
-
-This object defines the following non-private methods:
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-
-- **handle_mousebuttonup**(self, instruction):
-
-		  No documentation available
-
-
-
-- **handle_mousemotion**(self, instruction):
-
-		  No documentation available
-
-
-
-- **handle_quit**(self, instruction):
-
-		  No documentation available
-
-
-
-- **handle_mousebuttondown**(self, instruction):
-
-		  No documentation available
-
-
-
-- **handle_mousewheel**(self, instruction):
-
-		  No documentation available
-
-
-
-- **handle_keydown**(self, instruction):
-
-		  No documentation available
-
-
-
-- **mouse_is_inside**(self, area, mouse_pos_x, mouse_pos_y):
-
-		  No documentation available
-
-
-
-- **handle_unhandled_instruction**(self, instruction):
-
-		  No documentation available
-
-
-
-- **add_popup**(self, item):
-
-		  No documentation available
-
-
-
-- **handle_keyup**(self, instruction):
-
-		  No documentation available
-
-
-
-- **get_hotkey**(self, instance, key_press):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.sdllibrary.User_Input', class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Sprite_Factory', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 itemgetter

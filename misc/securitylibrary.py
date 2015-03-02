@@ -71,7 +71,7 @@ class DoS(vmlibrary.Process):
         for connection_number in xrange(self.salvo_size):
             self.create("network.Outbound_Connection", **options)
 
-        self.run_instruction.execute()
+        self.run_instruction.execute(self.priority)
 
         
 class Scanner(vmlibrary.Process):
@@ -136,7 +136,7 @@ class Scanner(vmlibrary.Process):
             self.alert("Finished scanning {0}-{1}", self.subnet_range, 'v')
             #Instruction(self.instance_name, "delete").execute()#self.delete()
         else:
-            self.run_instruction.execute()
+            self.run_instruction.execute(self.priority)
 
     def _notify(self, connection):
         address = connection.getpeername()

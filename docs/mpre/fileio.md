@@ -6,6 +6,13 @@ Cached
 --------
 No documentation available
 
+File
+--------
+usage: file_object = File([filename], [mode], [file])
+    
+       Creates a File object. File objects support the reactor
+       interface for reading/writing to the wrapped file.
+
 Mmap
 --------
 Usage: mmap [offset] = fileio.Mmap(filename, 

@@ -6,6 +6,16 @@ import mpre.base as base
 Instruction = base.Instruction
 
 
+class Title_Bar(guilibrary.Container):
+    
+    defaults = defaults.Container.copy()
+    
+    def __init__(self, **kwargs):
+        super(Title_Bar, self).__init__(**kwargs)
+        
+    def draw_texture(self):
+        self.draw("text", self.parent.name, (0, 0, 60, 12), color=self.color)
+        
 class Popup_Menu(guilibrary.Container):
 
     defaults = defaults.Popup_Menu
@@ -38,17 +48,17 @@ class Date_Time_Button(guilibrary.Button):
     defaults = defaults.Date_Time_Button
 
     def __init__(self, **kwargs):
-        super(Date_Time_Button, self).__init__(**kwargs)
-        self.update_time()
-
+        super(Date_Time_Button, self).__init__(**kwargs)        
+        update = self.update_instruction = Instruction(self.instance_name, 
+                                                       "update_time")        
+        self.update_time()        
+        
     def update_time(self):
         self.text = time.asctime()
         instance_name = self.instance_name
-        updater = Instruction(instance_name, "update_time")
-        updater.priority = 1
-        updater.component = self
-        updater.execute()
-        Instruction(instance_name, "draw_texture").execute()
+        self.update_instruction.execute()
+        
+        Instruction(instance_name, "draw_texture").execute(priority=1)
 
 
 class Right_Click_Menu(Popup_Menu):

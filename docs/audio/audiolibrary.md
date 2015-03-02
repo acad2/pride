@@ -17,20 +17,20 @@ Default values for newly created instances:
 This object defines the following non-private methods:
 
 
-- **run**(self):
+- **read**(self, bytes=0):
 
 		  No documentation available
 
 
 
-- **read**(self, bytes=0):
+- **handle_audio**(self, sender, audio):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Channel', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Audio_Channel', class 'mpre.base.Base', type 'object')
 
 
 Audio_Configuration_Utility
@@ -40,15 +40,13 @@ Audio_Configuration_Utility
 Default values for newly created instances:
 
 - network_packet_size      4096
-- keyboard_input           
-- deleted                  False
-- verbosity                
 - priority                 0.04
 - memory_size              4096
-- network_buffer           
+- mode                     ('input',)
 - auto_start               False
 - config_file_name         audiocfg
-- mode                     ('input',)
+- deleted                  False
+- verbosity                
 
 This object defines the following non-private methods:
 
@@ -78,7 +76,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Configuration_Utility', class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Audio_Configuration_Utility', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Audio_Device
@@ -89,15 +87,35 @@ Default values for newly created instances:
 
 - network_packet_size      4096
 - frames_per_buffer        1024
+- data_source              
+- source_name              
 - format                   8
 - deleted                  False
-- frame_count              0
+- data                     
 - verbosity                
 - record_to_disk           False
-- memory_size              65535
-- data                     
+- memory_size              16384
+- frame_count              0
 
 This object defines the following non-private methods:
+
+
+- **handle_audio**(self, sender, packet):
+
+		  No documentation available
+
+
+
+- **open_stream**(self):
+
+		  No documentation available
+
+
+
+- **add_listener**(self, sender, packet):
+
+		  No documentation available
+
 
 
 - **get_data**(self):
@@ -111,15 +129,9 @@ This object defines the following non-private methods:
 		  No documentation available
 
 
-
-- **open_stream**(self):
-
-		  No documentation available
-
-
 This objects method resolution order is:
 
-(class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Audio_Input
@@ -130,23 +142,19 @@ Default values for newly created instances:
 
 - network_packet_size      4096
 - frames_per_buffer        1024
+- data_source              
+- source_name              
 - format                   8
 - deleted                  False
-- data                     
+- frame_count              0
 - verbosity                
 - record_to_disk           False
-- memory_size              65535
+- memory_size              16384
 - input                    True
 - _data                    
-- frame_count              0
+- data                     
 
 This object defines the following non-private methods:
-
-
-- **read**(self, size=0):
-
-		  No documentation available
-
 
 
 - **get_data**(self):
@@ -156,7 +164,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.audio.portaudiodevices.Audio_Input', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.portaudiodevices.Audio_Input', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Audio_Manager
@@ -166,23 +174,15 @@ Audio_Manager
 Default values for newly created instances:
 
 - network_packet_size      4096
-- keyboard_input           
-- use_defaults             True
-- deleted                  False
-- verbosity                
 - priority                 0.01
 - memory_size              4096
-- network_buffer           
+- use_defaults             True
 - auto_start               True
-- config_file_name         audiocfg
+- config_file_name         
+- deleted                  False
+- verbosity                
 
 This object defines the following non-private methods:
-
-
-- **add_listener**(self, listener, device_name):
-
-		  No documentation available
-
 
 
 - **load_default_devices**(self):
@@ -197,7 +197,7 @@ This object defines the following non-private methods:
 
 
 
-- **send_channel_info**(self, listener):
+- **send_channel_info**(self, sender, packet):
 
 		  usage: Instruction("Audio_Manager", "send_channel_info", my_object).execute()
 		 => Message: "Device_Info;;" + pickled list containing dictionaries
@@ -213,7 +213,7 @@ This object defines the following non-private methods:
 
 
 
-- **play_file**(self, file_info, file, to=None, mute=False):
+- **play_file**(self, file, to=None, mute=False):
 
 		  No documentation available
 
@@ -226,7 +226,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Manager', class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Audio_Manager', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Audio_Output
@@ -237,28 +237,35 @@ Default values for newly created instances:
 
 - network_packet_size      4096
 - frames_per_buffer        1024
-- data_source              None
+- data_source              
+- source_name              
 - format                   8
 - deleted                  False
-- data                     
+- frame_count              0
 - verbosity                
 - mute                     False
 - record_to_disk           False
-- memory_size              65535
+- memory_size              16384
 - output                   True
-- frame_count              0
+- data                     
 
 This object defines the following non-private methods:
 
 
-- **get_data**(self):
+- **handle_audio**(self, sender, packet):
+
+		  No documentation available
+
+
+
+- **write_audio**(self):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.audio.portaudiodevices.Audio_Output', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.portaudiodevices.Audio_Output', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Audio_Service
@@ -275,19 +282,45 @@ Default values for newly created instances:
 This object defines the following non-private methods:
 
 
-- **run**(self):
+- **handle_channel_info**(self, sender, packet):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Service', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Audio_Service', class 'mpre.base.Base', type 'object')
 
 
 Instruction
 --------
-No documentation available
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Latency
 --------

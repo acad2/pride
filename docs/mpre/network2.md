@@ -8,24 +8,14 @@ Authenticated_Client
 
 Default values for newly created instances:
 
-- network_packet_size      32768
+- network_packet_size      4096
 - username                 
-- timeout_after            0
+- target                   Authenticated_Service
 - deleted                  False
-- resend_limit             10
 - verbosity                
-- add_on_init              True
-- resend_interval          0.2
-- email                    
-- idle                     True
-- allow_port_zero          True
-- memory_size              32768
-- network_buffer           
-- timeout                  0
-- blocking                 0
-- interface                0.0.0.0
+- memory_size              4096
 - password                 
-- port                     0
+- email                    
 
 This object defines the following non-private methods:
 
@@ -42,14 +32,20 @@ This object defines the following non-private methods:
 
 
 
-- **login**(self, sender, packet):
+- **register_results**(self, sender, packet):
+
+		  No documentation available
+
+
+
+- **login**(self, sender=None, packet=None):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Authenticated_Client', class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Authenticated_Client', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Authenticated_Service
@@ -58,24 +54,12 @@ Authenticated_Service
 
 Default values for newly created instances:
 
-- network_packet_size      32768
+- network_packet_size      4096
 - database_filename        :memory:
-- copyright                Type "help", "copyright", "credits" or "license" for more information.
-- timeout_after            0
+- memory_size              4096
 - deleted                  False
-- resend_limit             10
 - verbosity                
-- add_on_init              True
-- resend_interval          0.2
-- idle                     True
-- allow_port_zero          True
-- memory_size              32768
-- network_buffer           
-- timeout                  0
-- blocking                 0
-- interface                0.0.0.0
 - login_message            login success
-- port                     40022
 
 This object defines the following non-private methods:
 
@@ -105,7 +89,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Authenticated_Service', class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Authenticated_Service', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Download
@@ -115,24 +99,14 @@ Download
 Default values for newly created instances:
 
 - network_packet_size      16384
-- filename_prefix          Download
 - timeout_after            15
 - deleted                  False
-- resend_limit             10
+- filename_prefix          Download
 - verbosity                
-- add_on_init              True
-- resend_interval          0.2
-- download_in_progress     False
-- idle                     True
-- allow_port_zero          True
-- memory_size              32768
-- network_buffer           
-- timeout                  0
-- blocking                 0
-- interface                0.0.0.0
 - filename                 
-- port                     0
+- memory_size              4096
 - filesize                 0
+- download_in_progress     False
 
 This object defines the following non-private methods:
 
@@ -156,7 +130,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Download', class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Download', class 'mpre.base.Base', type 'object')
 
 
 File_Service
@@ -166,21 +140,11 @@ File_Service
 Default values for newly created instances:
 
 - network_packet_size      16384
+- memory_size              4096
 - timeout_after            15
 - deleted                  False
-- resend_limit             10
 - verbosity                
 - mmap_threshold           16384
-- add_on_init              True
-- resend_interval          0.2
-- idle                     True
-- allow_port_zero          True
-- memory_size              32768
-- network_buffer           
-- timeout                  0
-- blocking                 0
-- interface                0.0.0.0
-- port                     0
 
 This object defines the following non-private methods:
 
@@ -198,46 +162,64 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.File_Service', class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.File_Service', class 'mpre.base.Base', type 'object')
 
 
 Instruction
 --------
-No documentation available
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Latency
 --------
 No documentation available
 
-Service
+Network_Service
 --------
 	No docstring found
 
 Default values for newly created instances:
 
 - network_packet_size      32768
-- resend_interval          0.2
 - timeout_after            0
 - deleted                  False
-- resend_limit             10
 - verbosity                
 - add_on_init              True
-- port                     0
 - idle                     True
 - allow_port_zero          True
 - memory_size              32768
 - network_buffer           
 - timeout                  0
-- interface                0.0.0.0
 - blocking                 0
+- interface                0.0.0.0
+- port                     0
 
 This object defines the following non-private methods:
-
-
-- **read_messages**(self):
-
-		  No documentation available
-
 
 
 - **invalid_request**(self, sender, packet):
@@ -252,26 +234,20 @@ This object defines the following non-private methods:
 
 
 
-- **make_packet**(self, response_to, data):
+- **send_data**(self, data, to=None, response_to='None', expect_response=True):
 
 		  No documentation available
 
 
 
-- **react**(self):
-
-		  No documentation available
-
-
-
-- **rpc**(self, target, data, response_to='None', expect_response=True, local=False):
+- **demo_reaction**(self, sender, packet):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Network_Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Service_Listing
@@ -283,18 +259,16 @@ Default values for newly created instances:
 - network_packet_size      32768
 - timeout_after            0
 - deleted                  False
-- resend_limit             10
 - verbosity                
 - add_on_init              True
-- resend_interval          0.2
+- port                     0
 - idle                     True
 - allow_port_zero          True
 - memory_size              32768
 - network_buffer           
 - timeout                  0
-- blocking                 0
 - interface                0.0.0.0
-- port                     0
+- blocking                 0
 
 This object defines the following non-private methods:
 
@@ -318,7 +292,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Service_Listing', class 'mpre.network2.Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Service_Listing', class 'mpre.network2.Network_Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Tcp_Client_Proxy
@@ -359,7 +333,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Tcp_Client_Proxy', class 'mpre.network.Inbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Tcp_Client_Proxy', class 'mpre.network.Inbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Tcp_Service_Proxy
@@ -399,7 +373,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Tcp_Service_Proxy', class 'mpre.network.Server', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Tcp_Service_Proxy', class 'mpre.network.Server', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Tcp_Service_Test
@@ -445,4 +419,4 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network2.Tcp_Service_Test', class 'mpre.network.Outbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network2.Tcp_Service_Test', class 'mpre.network.Outbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')

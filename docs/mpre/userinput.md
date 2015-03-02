@@ -17,13 +17,11 @@ User_Input
 Default values for newly created instances:
 
 - network_packet_size      4096
-- keyboard_input           
-- deleted                  False
-- verbosity                
 - priority                 0.04
 - memory_size              4096
-- network_buffer           
 - auto_start               True
+- deleted                  False
+- verbosity                
 
 This object defines the following non-private methods:
 
@@ -53,4 +51,4 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.userinput.User_Input', class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.userinput.User_Input', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')

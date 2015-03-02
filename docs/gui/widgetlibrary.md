@@ -17,12 +17,13 @@ Default values for newly created instances:
 - held                     False
 - pack_mode                layer
 - memory_size              4096
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -51,13 +52,14 @@ Default values for newly created instances:
 - pack_mode                horizontal
 - memory_size              4096
 - alpha                    1
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
 - shape                    rect
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -89,12 +91,13 @@ Default values for newly created instances:
 - held                     False
 - pack_mode                layer
 - memory_size              4096
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 - background_filename      C:\test.jpg
@@ -108,7 +111,33 @@ This objects method resolution order is:
 
 Instruction
 --------
-No documentation available
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Popup_Menu
 --------
@@ -121,17 +150,18 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x029211B0>
+- pack_modifier            <function <lambda> at 0x02683230>
 - held                     False
 - pack_mode                vertical
 - memory_size              4096
 - alpha                    1
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -160,13 +190,14 @@ Default values for newly created instances:
 - pack_mode                vertical
 - memory_size              4096
 - alpha                    1
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
 - shape                    rect
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -194,17 +225,18 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x029211B0>
+- pack_modifier            <function <lambda> at 0x02683230>
 - held                     False
 - pack_mode                layer
 - memory_size              4096
 - alpha                    1
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     (200, 150)
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -226,17 +258,18 @@ Default values for newly created instances:
 - show_title_bar           False
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x029212B0>
+- pack_modifier            <function <lambda> at 0x02683270>
 - held                     False
 - pack_mode                menu_bar
 - memory_size              4096
 - alpha                    1
+- background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
 - network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
-- color                    (45, 150, 245)
+- color                    (0, 115, 10)
 - y                        0
 - x                        0
 
@@ -245,3 +278,42 @@ No non-private methods are defined
 This objects method resolution order is:
 
 (class 'mpre.gui.widgetlibrary.Task_Bar', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+
+
+Title_Bar
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- layer                    1
+- popup                    False
+- show_title_bar           False
+- deleted                  False
+- outline_width            5
+- pack_modifier            
+- held                     False
+- pack_mode                vertical
+- memory_size              4096
+- alpha                    1
+- background_color         (0, 0, 0)
+- pack_on_init             True
+- size                     [800, 600]
+- network_packet_size      4096
+- color_scalar             0.6
+- verbosity                
+- color                    (0, 115, 10)
+- y                        0
+- x                        0
+
+This object defines the following non-private methods:
+
+
+- **draw_texture**(self):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.gui.widgetlibrary.Title_Bar', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')

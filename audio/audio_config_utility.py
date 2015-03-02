@@ -1,9 +1,6 @@
-#  Metapython.audio_config_utility - create config file for audiolibrary.audio_manager
+import mpre.base
 
-import mpre.base as base
-Instruction = base.Instruction
-
-def metapython_main():
-    Instruction("System", "create", "mpre.audio.audiolibrary.Audio_Configuration_Utility",            exit_when_finished=True).execute()   
+launch_utility = mpre.base.Instruction("Metapython", "create",            
+                             "mpre.audio.audiolibrary.Audio_Configuration_Utility", exit_when_finished=True)
 if __name__ == "__main__":
-    metapython_main()
+    launch_utility.execute()

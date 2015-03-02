@@ -9,23 +9,16 @@ Asynchronous_Network
 Default values for newly created instances:
 
 - network_packet_size      4096
-- keyboard_input           
-- update_priority          5
+- handle_resends           False
 - deleted                  False
 - verbosity                
 - number_of_sockets        0
 - priority                 0.01
 - memory_size              4096
-- network_buffer           
-- auto_start               True
+- auto_start               False
+- update_priority          5
 
 This object defines the following non-private methods:
-
-
-- **handle_writes**(self, writable_sockets):
-
-		  No documentation available
-
 
 
 - **debuffer_data**(self, connection):
@@ -40,13 +33,7 @@ This object defines the following non-private methods:
 
 
 
-- **buffer_data**(self, connection, data, to=None):
-
-		  No documentation available
-
-
-
-- **handle_errors**(self, socket_list):
+- **send**(self, sock, data, to=None):
 
 		  No documentation available
 
@@ -57,69 +44,20 @@ This object defines the following non-private methods:
 		  No documentation available
 
 
+
+- **add**(self, sock):
+
+		  No documentation available
+
+
 This objects method resolution order is:
 
-(class 'mpre.network.Asynchronous_Network', class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Asynchronous_Network', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Average
 --------
 No documentation available
-
-Basic_Authentication_Client
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- memory_size              4096
-- deleted                  False
-- credentials              ()
-- verbosity                
-
-This object defines the following non-private methods:
-
-
-- **retry**(self):
-
-		  No documentation available
-
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-
-- **handle_invalid_username**(self):
-
-		  No documentation available
-
-
-
-- **handle_success**(self, reply=''):
-
-		  No documentation available
-
-
-
-- **handle_invalid_password**(self):
-
-		  No documentation available
-
-
-
-- **wait**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.network.Basic_Authentication_Client', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
-
 
 Connection
 --------
@@ -151,15 +89,9 @@ This object defines the following non-private methods:
 		  No documentation available
 
 
-
-- **socket_send**(self, data):
-
-		  No documentation available
-
-
 This objects method resolution order is:
 
-(class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Connection_Manager
@@ -169,9 +101,11 @@ Connection_Manager
 Default values for newly created instances:
 
 - network_packet_size      4096
+- priority                 0.04
+- memory_size              4096
+- auto_start               False
 - deleted                  False
 - verbosity                
-- memory_size              4096
 
 This object defines the following non-private methods:
 
@@ -181,9 +115,15 @@ This object defines the following non-private methods:
 		  No documentation available
 
 
+
+- **add**(self, sock):
+
+		  No documentation available
+
+
 This objects method resolution order is:
 
-(class 'mpre.network.Connection_Manager', class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Connection_Manager', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Inbound_Connection
@@ -212,12 +152,38 @@ No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.network.Inbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Inbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Instruction
 --------
-No documentation available
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Latency
 --------
@@ -250,7 +216,7 @@ No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.network.Multicast_Beacon', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Multicast_Beacon', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Multicast_Receiver
@@ -278,7 +244,7 @@ No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.network.Multicast_Receiver', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Multicast_Receiver', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Outbound_Connection
@@ -324,7 +290,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network.Outbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Outbound_Connection', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Server
@@ -370,7 +336,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network.Server', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Server', class 'mpre.network.Connection', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Socket
@@ -396,13 +362,13 @@ Default values for newly created instances:
 This object defines the following non-private methods:
 
 
-- **socket_send**(self, data):
+- **socket_recv**(self):
 
 		  No documentation available
 
 
 
-- **handle_idle**(self):
+- **send_data**(self, data, to=None):
 
 		  No documentation available
 
@@ -415,7 +381,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Udp_Socket
@@ -438,14 +404,8 @@ Default values for newly created instances:
 - interface                0.0.0.0
 - blocking                 0
 
-This object defines the following non-private methods:
-
-
-- **socket_recv**(self):
-
-		  No documentation available
-
+No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Base', type 'object')
+(class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')

@@ -9,10 +9,10 @@ def test_authentication():
     options2 = {"verbosity" : verbosity,
                 "target" : ("localhost", 41337)}
                 
-    Instruction("System", "create", 
+    Instruction("Metapython", "create", 
                 "network2.Authenticated_Service", **options).execute()
                 
-    Instruction("System", "create", 
+    Instruction("Metapython", "create", 
                 "network2.Authenticated_Client", **options2).execute()
     
     
@@ -25,5 +25,5 @@ def test_file_service():
                         "filename" : "demofile.exe",
                         "verbosity" : verbosity}
                         
-    Instruction("System", "create", "network2.File_Service", **service_options).execute()
-    Instruction("System", "create", "network2.Download", **download_options).execute()    
+    Instruction("Metapython", "create", "network2.File_Service", **service_options).execute()
+    Instruction("Metapython", "create", "network2.Download", **download_options).execute()    

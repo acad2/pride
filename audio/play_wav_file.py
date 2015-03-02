@@ -3,21 +3,14 @@
 import sys
 
 import mpre.base as base
-import audiolibrary
+import mpre.audio.audiolibrary as audiolibrary
 Instruction = base.Instruction
 
-def metapython_main():
-    constructor = base.Base()
-    try:
-        filename = sys.argv[2]
-    except IndexError:
-        filename = "testrecording.wav"
-    wav_file = constructor.create(audiolibrary.Wav_File, filename=filename, mode='rb')
-    info = {"rate" : wav_file.rate, "channels" : wav_file.channels, "name" : filename, "format" : wav_file.format}
-    
-
-    Instruction("System", "create", audiolibrary.Audio_Manager).execute()
-    Instruction("Audio_Manager", "play_file", info, wav_file).execute()
+constructor = base.Base()
 
 if __name__ == "__main__":
-    metapython_main()
+    wav_file = constructor.create(audiolibrary.Wav_File, parse_args=True, mode='rb')
+    enable_audio = Instruction("Metapython", "create", audiolibrary.Audio_Manager)
+    play_file = Instruction("Audio_Manager", "play_file", wav_file)
+    enable_audio.execute()
+    play_file.execute()

@@ -6,6 +6,34 @@ import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
 
+def ensure_folder_exists(pathname):
+    """usage: ensure_folder_exists(pathname)
+    
+       If the named folder does not exist, it is created"""
+    if not os.path.exists(pathname) or not os.path.isdir(pathname):
+        os.mkdir(pathname)
+  
+def ensure_file_exists(filepath, data=('a', '')):
+    """usage: ensure_file_exists(filepath, [data=('a', '')])
+        
+        filepath is the absolute or relative path of the file.
+        If the file does not exist, it is created
+        
+        data is optional. if specified, data[0] = mode and 
+        data[1] = the data to be written
+        
+        mode should be 'a' or 'w', 'a' is the default. 
+        'w' will truncate the file and the only contents
+        will be the data supplied in data[1]"""
+    if not os.path.exists(filepath) or not os.path.isfile(filepath):
+        mode, file_data = data
+        with open(filepath, mode) as _file:
+            if file_data:
+                _file.write(file_data)
+                _file.flush()
+            _file.close()
+            
+            
 class Cached(object):
     cache = {}
     handles = {}
@@ -41,7 +69,23 @@ class Cached(object):
             print "references remaining for", key
         #self.handles[function][key] = handles[key]
                 
-            
+class File(object):
+    """usage: file_object = File([filename], [mode], [file])
+    
+       Creates a File object. File objects support the reactor
+       interface for reading/writing to the wrapped file."""      
+    def __init__(self, filename='', mode='', file=None):           
+        self.file = file if file else open(filename, mode)
+        
+    def handle_write(self, sender, packet):
+        self.file.write(packet)
+        
+    def handle_read(self, sender, packet):
+        seek, byte_count = packet.split(" ", 1)
+        self.file.seek(seek)
+        return "handle_write " + self.file.read(byte_count)
+        
+        
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 
                                           file_position_or_size=0,
@@ -67,11 +111,15 @@ class Mmap(object):
             - this argument has no effect when used with -1 for the filename
             
             """
-    @Cached
     def __new__(cls, filename, file_position=0, blocks=0):
         if filename is -1:
-            return mmap.mmap(-1, file_position)
-            
+            result = mmap.mmap(-1, file_position)
+        else:
+            result = Mmap.new_mmap(filename, file_position, blocks)
+        return result
+        
+    @Cached
+    def new_mmap(filename, file_position, blocks):
         file_size = os.path.getsize(filename)
         if file_position >= file_size or file_position < 0:
             raise ValueError             

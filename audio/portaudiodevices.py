@@ -5,8 +5,10 @@
 # sudo dpkg -i python-pyaudio_0.2.8-1_i386.deb
 import wave
 import sys
+import mmap
 from contextlib import contextmanager
 from ctypes import *
+
 import pyaudio
 
 import mpre.base as base
@@ -71,12 +73,13 @@ def _formats_to_indices():
     
 format_lookup = _formats_to_indices()
            
-class Audio_Device(vmlibrary.Thread):
+class Audio_Device(base.Reactor):
 
     defaults = defaults.PyAudio_Device
-    possible_options = ("rate", "channels", "format", "input", "output", "input_device_index",
-    "output_device_index", "frames_per_buffer", "start", "input_host_api_specific_stream_info",
-    "output_host_api_specific_stream_info", "stream_callback")
+    possible_options = ("rate", "channels", "format", "input", "output",                    "input_device_index", "output_device_index",                    "frames_per_buffer", "start", "stream_callback",
+                        "input_host_api_specific_stream_info",
+                        "output_host_api_specific_stream_info")
+                        
     # properties are calculated attributes
     def _get_options(self):
         options = {}
@@ -91,15 +94,29 @@ class Audio_Device(vmlibrary.Thread):
     def _get_full_buffer_size(self):
         return self.channels * self.frames_per_buffer * self.sample_size
     full_buffer_size = property(_get_full_buffer_size)
-
+        
     def __init__(self, **kwargs):
         self.listeners = []
+        self.local_listeners = set()
+        self.available = 0
         self._format_error = "{}hz {} channel {} not supported by any api"
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         super(Audio_Device, self).__init__(**kwargs)
-        
+                
     def open_stream(self):
         return PORTAUDIO.open(**self.options)
+    
+    def add_listener(self, sender, packet):
+        if sender in self.environment.Component_Resolve:
+            self.local_listeners.add(sender)
+            self.listeners.append(sender)
+        else:
+            self.listeners.append((packet, sender))
+                
+    def handle_audio(self, sender, packet):
+        available = len(packet)
+        self.available += available
+        self.data_source += packet
         
     def _new_thread(self):
         raise NotImplementederror
@@ -109,9 +126,10 @@ class Audio_Device(vmlibrary.Thread):
 
     def handle_data(self, audio_data):
         for client in self.listeners:
-            self.rpc(client, audio_data)
-        
+            scope = "local" if client in self.local_listeners else "network"
+            self.reaction(client, "handle_audio " + audio_data, scope=scope)
 
+            
 class Audio_Input(Audio_Device):
 
     defaults = defaults.Audio_Input
@@ -126,25 +144,13 @@ class Audio_Input(Audio_Device):
                 raise FormatError(self._format_error.format(self.rate, self.channels, "input"))
        
         self.thread = self._new_thread()
-        
-    def read(self, size=0):
-        byte_count = len(self._data)
-        size = size if size else byte_count
-        
-        if size <= byte_count:
-            result = self._data[:size]
-        else:
-            print "not enough bytes for request {} ({} available)".format(size, byte_count)
-            result = 0
-        return result
-        
+                    
     def _new_thread(self):
         stream = self.open_stream()
         get_read_available = stream.get_read_available
-        read_stream = stream.read
-
-        data_source = getattr(self, "data_source", stream)
-        data_read = getattr(data_source, "read")
+        
+        data_source = self.data_source if self.data_source else stream
+        read_stream = data_source.read
         handle_data = self.handle_data
 
         if data_source is not stream:
@@ -157,7 +163,7 @@ class Audio_Input(Audio_Device):
         frame_counter = self.frame_count
         _data = ''
 
-        while True:
+        while True:            
             frame_count = get_read_available()
             data = read_stream(frame_count * byte_scalar)
             _data += data
@@ -184,55 +190,71 @@ class Audio_Output(Audio_Device):
             try:
                 self.output_device_index = format_lookup[(self.rate, self.channels, "output")][0]
             except KeyError:
-                raise FormatError(self._format_error.format(self.rate, self.channels, "output"))
+                raise FormatError(self._format_error.format(self.rate, self.channels, "output"))        
         
-        self.input_from = self.read_messages 
-        if not self.data_source:
-            self.mute = True    
+        if not self.source_name:
+            print "no source supplied"
+            self.mute = True
         else:
-            try:
-                self.data_source.listeners.append(self.instance_name)
-            except AttributeError:
-                self.input_from = self.data_source.read
-                
-        self.thread = self._new_thread()
-                
+            print "adding {} to {}".format(self.instance_name, self.source_name)
+            self.reaction(self.source_name, "add_listener " + self.instance_name)
+        from mpre.utilities import Latency
+        self.latency = Latency(name="incoming_audio")
+        self.latency.update()
+       # self.thread = self._new_thread()
+        self.stream = self.open_stream()
+        
     def _new_thread(self):
-        stream = self.open_stream()
-        destination = getattr(self, "file", stream)
-        stream_write = destination.write
-        get_write_available = stream.get_write_available
-
-        if destination != stream:
-            byte_scalar = self.sample_size * self.channels
-        else:
-            byte_scalar = 1
+        byte_scalar = self.sample_size * self.channels
                 
         frames_per_buffer = self.frames_per_buffer
         full_write_buffer = byte_scalar * frames_per_buffer
         silence = "\x00" * full_write_buffer
 
-        read_source = self.input_from
         handle_data = self.handle_data
-        
-        format_mismatch = "format mismatch. expected {} bytes, got {} bytes"
-                                
-        while True:
+                                       
+        while True:            
             number_of_frames = get_write_available()
-            if number_of_frames >= frames_per_buffer:               
-                data_packet = read_source()
-                if not data_packet:
-                    yield
+            if number_of_frames >= frames_per_buffer:
+                if not self.available:
+                    self.alert("Buffer underflow", level=0)
+                    yield                    
                     continue
-                             
-                data = silence if self.mute else ''.join(data_packet)
+
+                byte_count = byte_scalar * frames_per_buffer
+                audio_data = silence if self.mute else self.data_source[:byte_count]
                 
-                # rpc listeners here
-                handle_data(data)
+                self.data_source = self.data_source[byte_count:]
+                self.available -= byte_count
+                
+                # reaction listeners here
+                handle_data(audio_data)
                 # write to device/file here
-                stream_write(data)
+                stream_write(audio_data)
                 
             yield
 
-    def get_data(self):
-        return next(self.thread)
+    def handle_audio(self, sender, packet):
+        self.latency.update()
+        self.latency.display()
+        self.available += len(packet)
+        self.data_source += packet
+       
+    def write_audio(self):
+        number_of_frames = self.stream.get_write_available()
+       # self.alert("{} bytes available; {} frames available; {} frames per buffer",
+        #           (self.available, number_of_frames, self.frames_per_buffer),
+         #          level=0)
+        if number_of_frames >= self.frames_per_buffer:        
+            byte_count = min(self.available, self.full_buffer_size)
+            audio_data = ('\x00' * byte_count if self.mute else 
+                          self.data_source[:byte_count])
+            
+            self.data_source = self.data_source[byte_count:]
+            self.available -= byte_count
+            # reaction listeners here
+            self.handle_data(audio_data)
+            # write to device/file here
+            self.stream.write(audio_data) 
+     #   else:
+            #Instruction("Audio_Manager", "handle_delay").execute()

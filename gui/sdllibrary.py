@@ -15,7 +15,7 @@ font_module = sdl2.sdlttf
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.utilities as utilities
-import defaults
+import mpre.gui.defaults as defaults
 Instruction = base.Instruction
 
 
@@ -69,7 +69,7 @@ class SDL_Component(base.Wrapper):
 class SDL_Window(SDL_Component):
 
     defaults = defaults.SDL_Window
-
+        
     def __init__(self, **kwargs):
         self.draw_queue = []
         self.coordinate_tracker = {}
@@ -82,7 +82,7 @@ class SDL_Window(SDL_Component):
         self.wraps(window)
 
         renderer = self.renderer = self.create(Renderer, window=self)
-        self.user_input = self.create(User_Input)
+        self.user_input = self.create(SDL_User_Input)
 
         methods = ("point", "line", "rect", "rect_width", "text")
         names = ("draw_{0}".format(name) for name in methods)
@@ -97,13 +97,10 @@ class SDL_Window(SDL_Component):
         kwargs["sdl_window"] = self.instance_name
         instance = super(SDL_Window, self).create(*args, **kwargs)
         if hasattr(instance, "draw_texture"):
-            instance_name = instance.instance_name
             if getattr(instance, "pack_on_init", False):#instance.pack_on_init:
                 instance.pack()
-            draw_instruction = Instruction(instance_name, "draw_texture")
-            draw_instruction.priority = .05 # draw after being packed
-            draw_instruction.component = instance
-            draw_instruction.execute()
+            instance.draw_texture()
+            
         return instance
 
     def run(self):
@@ -157,7 +154,7 @@ class SDL_Window(SDL_Component):
         self.wraps(font_module.TTF_OpenFont(self.font_path, self.size))"""
 
 
-class User_Input(vmlibrary.Process):
+class SDL_User_Input(vmlibrary.Process):
 
     defaults = defaults.Process.copy()
     coordinate_tracker = {None : ((0, 0, 0, 0), 0)}
@@ -165,7 +162,7 @@ class User_Input(vmlibrary.Process):
     def __init__(self, **kwargs):
         self.active_item = None
         self.popups = []
-        super(User_Input, self).__init__(**kwargs)
+        super(SDL_User_Input, self).__init__(**kwargs)
         self.uppercase_modifiers = (sdl2.KMOD_SHIFT, sdl2.KMOD_CAPS,
                                     sdl2.KMOD_LSHIFT, sdl2.KMOD_RSHIFT)
         uppercase = self.uppercase = {'1' : '!',
@@ -193,7 +190,7 @@ class User_Input(vmlibrary.Process):
             uppercase[character] = letters[index+26]
 
         # for not yet implemented features
-        unhandled = self.handle_unhandled_instruction
+        unhandled = self.handle_unhandled_event
 
         self.instruction_mapping = {sdl2.SDL_DOLLARGESTURE : unhandled,
                               sdl2.SDL_DROPFILE : unhandled,
@@ -221,13 +218,13 @@ class User_Input(vmlibrary.Process):
                               sdl2.SDL_WINDOWEVENT : unhandled}
 
     def run(self):
-        instructions = sdl2.ext.get_instructions()
-        for instruction in instructions:
-            self.instruction_mapping[instruction.type](instruction)
+        events = sdl2.ext.get_events()
+        for event in events:
+            self.instruction_mapping[event.type](event)
         self.process("run")
 
     def _update_coordinates(self, item, area, z):
-        User_Input.coordinate_tracker[item] = (area, z)
+        SDL_User_Input.coordinate_tracker[item] = (area, z)
 
     def mouse_is_inside(self, area, mouse_pos_x, mouse_pos_y):
         x, y, w, h = area
@@ -235,14 +232,14 @@ class User_Input(vmlibrary.Process):
             if mouse_pos_y >= y and mouse_pos_y <= y + h:
                 return True
 
-    def handle_unhandled_instruction(self, instruction):
-        self.alert("{0} passed unhandled", [instruction.type], 'vv')
+    def handle_unhandled_event(self, event):
+        self.alert("{0} passed unhandled", [event.type], 'vv')
 
-    def handle_quit(self, instruction):
+    def handle_quit(self, event):
         sys.exit()
 
-    def handle_mousebuttondown(self, instruction):
-        mouse = instruction.button
+    def handle_mousebuttondown(self, event):
+        mouse = event.button
         mouse_x = mouse.x
         mouse_y = mouse.y
         check = self.mouse_is_inside
@@ -259,19 +256,19 @@ class User_Input(vmlibrary.Process):
             self.active_item = instance
             Instruction(instance, "press", mouse).execute()
 
-    def handle_mousebuttonup(self, instruction):
-        mouse = instruction.button
+    def handle_mousebuttonup(self, event):
+        mouse = event.button
         area, z = self.coordinate_tracker[self.active_item]
         if self.mouse_is_inside(area, mouse.x, mouse.y):
             Instruction(self.active_item, "release", mouse).execute()
         self.active_item = None
 
-    def handle_mousewheel(self, instruction):
-        wheel = instruction.wheel
+    def handle_mousewheel(self, event):
+        wheel = event.wheel
         Instruction(self.active_item, "mousewheel", wheel.x, wheel.y).execute()
 
-    def handle_mousemotion(self, instruction):
-        motion = instruction.motion
+    def handle_mousemotion(self, event):
+        motion = event.motion
         if self.active_item:
             x_change = motion.xrel
             y_change = motion.yrel
@@ -284,15 +281,15 @@ class User_Input(vmlibrary.Process):
                     popups.remove(item)
                     item.delete()
 
-    def handle_keydown(self, instruction):
+    def handle_keydown(self, event):
         try:
-            key = chr(instruction.key.keysym.sym)
+            key = chr(event.key.keysym.sym)
         except ValueError:
             return # key was a modifier key
         else:
             if key == "\r":
                 key = "\n"
-            modifier = instruction.key.keysym.mod
+            modifier = event.key.keysym.mod
             if modifier:
                 if modifier in self.uppercase_modifiers:
                     try:
@@ -319,7 +316,7 @@ class User_Input(vmlibrary.Process):
             hotkey = None
         return hotkey
 
-    def handle_keyup(self, instruction):
+    def handle_keyup(self, event):
         pass
 
     def add_popup(self, item):
@@ -383,3 +380,18 @@ class Font_Manager(SDL_Component):
                    "bg_color" : _defaults["default_background"]}
         kwargs["wrapped_object"] = sdl2.ext.FontManager(**options)
         super(Font_Manager, self).__init__(**kwargs)
+
+
+if __name__ == "__main__":
+    Instruction("Metapython", "create", "mpre.gui.sdllibrary.SDL_Window").execute()
+    
+    Instruction("SDL_Window", "create", "mpre.gui.guilibrary.Organizer").execute()
+    Instruction("SDL_Window", "create", "mpre.gui.widgetlibrary.Homescreen").execute()
+    source = """def draw(shape, *args, **kwargs):
+        Instruction("Homescreen", "draw", shape, *args, **kwargs).execute()
+    
+    white = (255, 255, 255)
+    green = (0, 115, 5)
+    area100 = (100, 100, 200, 200)
+    """
+    Instruction("Metapython", "create", "metapython.Shell", startup_definitions=source).execute()

@@ -4,61 +4,77 @@ No documentation available
 
 Instruction
 --------
-No documentation available
-
-Machine
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- memory_size              4096
-- deleted                  False
-- verbosity                
-- system_configuration     (('vmlibrary.System', (), {}),)
-- processor_count          1
-
-This object defines the following non-private methods:
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.vmlibrary.Machine', class 'mpre.base.Base', type 'object')
-
+ usage: Instruction(component_name, method_name, 
+                           *args, **kwargs).execute(priority=priority)
+                           
+        Creates and executes an instruction object. 
+            - component_name is the string instance_name of the component 
+            - method_name is a string of the component method to be called
+            - Positional and keyword arguments for the method may be
+              supplied after the method_name.
+              
+        A priority attribute can be supplied when executing an instruction.
+        It defaults to 0.0 and is the time in seconds until this instruction
+        will actually be performed.
+        
+        Instructions are useful for serial and explicitly timed tasks. 
+        Instructions are only enqueued when the execute method is called. 
+        At that point they will be marked for execution in 
+        instruction.priority seconds. 
+        
+        Instructions may be saved as an attribute of a component instead
+        of continuously being instantiated. This allows the reuse of
+        instruction objects. The same instruction object can be executed 
+        any number of times.
+        
+        Note that Instructions must be executed to have any effect, and
+        that they do not happen inline, even if priority is 0.0. 
+        Because they do not execute in the current scope, the return value 
+        from the method call is not available through this mechanism.
 
 Process
 --------
-	a base process for processes to subclass from. Processes are managed
-	by the system. The start method begins a process while the run method contains
-	the actual code to be executed every frame.
+	 usage: Process(target=function, args=..., kwargs=...) => process_object
+	
+	Create a serial logical process. Note that while Process objects
+	allow for the interface of target=function, the preferred usage
+	is via subclassing.
+	
+	Process objects have a run_instruction attribute. This attribute
+	is a saved instruction: Instruction(self.instance_name, 'run'). 
+	
+	Process objects have a default attribute 'auto_start', which
+	defaults to True. When True, an instruction for process.start
+	will automatically be executed inside __init__.
+	
+	The start method simply calls the run method, but can be overriden 
+	if the entry point would be useful, and keeps a similar interface
+	with the threading/process model.
+	
+	Subclasses should overload the run method. A process may propagate
+	itself by executing a run instruction inside it's run method. While
+	processes support the reaction interface, use of a process presumes
+	the desire for some kind of explicitly timed Instruction. Examples
+	of processes include polling for user input or socket buffers
+	at various intervals.
+	
+	Some people may find the serial style, one frame at a time method
+	offered by processes easier to understand and follow then reactions.
+	Most things can be accomplished by either.
 
 Default values for newly created instances:
 
 - network_packet_size      4096
-- keyboard_input           
-- deleted                  False
-- verbosity                
 - priority                 0.04
 - memory_size              4096
-- network_buffer           
 - auto_start               True
+- deleted                  False
+- verbosity                
 
 This object defines the following non-private methods:
 
 
 - **run**(self):
-
-		  No documentation available
-
-
-
-- **process**(self, method_name, *args, **kwargs):
 
 		  No documentation available
 
@@ -71,52 +87,28 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.vmlibrary.Process', class 'mpre.base.Base', type 'object')
+(class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Processor
 --------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- _cache_flush_interval    15
-
-This object defines the following non-private methods:
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.vmlibrary.Processor', class 'mpre.base.Base', type 'object')
-
-
-System
---------
-	a class for managing components and applications.
+	 Removes enqueued Instructions via heapq.heappop, then
+	performs the specified method call while handling the
+	possibility of the specified component/method not existing,
+	and any exception that could be raised inside the method call
+	itself.
 	
-	usually holds components such as the instruction handler, network manager, display,
-	and so on. hotkeys set at the system level will be called if the key(s) are
-	pressed and no other active object have the keypress defined.
+	Essentially a task manager for launching other processes.
 
 Default values for newly created instances:
 
 - network_packet_size      4096
-- status                   
-- name                     system
+- priority                 0.04
+- running                  True
+- memory_size              4096
+- auto_start               False
 - deleted                  False
 - verbosity                
-- memory_size              4096
-- startup_processes        ()
-- hardware_configuration   ()
 
 This object defines the following non-private methods:
 
@@ -128,54 +120,8 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.vmlibrary.System', class 'mpre.base.Base', type 'object')
+(class 'mpre.vmlibrary.Processor', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
-
-Thread
---------
-	does not run in parallel like threading.thread
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- deleted                  False
-- verbosity                
-- memory_size              4096
-
-This object defines the following non-private methods:
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-
-- **start**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.vmlibrary.Thread', class 'mpre.base.Base', type 'object')
-
-
-attrgetter
---------
-attrgetter(attr, ...) --> attrgetter object
-
-Return a callable object that fetches the given attribute(s) from its operand.
-After f = attrgetter('name'), the call f(r) returns r.name.
-After g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).
-After h = attrgetter('name.first', 'name.last'), the call h(r) returns
-(r.name.first, r.name.last).
-
-deque
---------
-deque([iterable[, maxlen]]) --> deque object
-
-Build an ordered collection with optimized access from its endpoints.
 
 partial
 --------

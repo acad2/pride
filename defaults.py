@@ -31,33 +31,23 @@ PROCESSOR_COUNT = 1#cpu_count()
 # not worth the loss of convenience
 MANUALLY_REQUEST_MEMORY = 0
 DEFAULT_MEMORY_SIZE = 4096
+
 Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
 "network_packet_size" : 4096,
 "verbosity" : '',
 "deleted" : False}
 
+Reactor = Base.copy()
+
 Process = Base.copy()
 Process.update({"auto_start" : True,
-"network_buffer" : '',
-"keyboard_input" : '',
 "priority" : .04})
-
-Thread = Base.copy()
 
 # vmlibrary
 
-Processor = Base.copy()
-Processor.update({"_cache_flush_interval" : 15})
-
-System = Base.copy()
-System.update({"name" : "system",
-"status" : "",
-"hardware_configuration" : tuple(),
-"startup_processes" : tuple()})
-
-Machine = Base.copy()
-Machine.update({"processor_count" : PROCESSOR_COUNT,
-"system_configuration" : (("vmlibrary.System", NO_ARGS, NO_KWARGS), )})
+Processor = Process.copy()
+Processor.update({"running" : True,
+"auto_start" : False})
 
 User_Input = Process.copy()
 
@@ -103,35 +93,6 @@ del Outbound_Connection["interface"]
 
 Inbound_Connection = Connection.copy()
 
-# network2
-Service = Socket.copy()
-Service.update({"resend_limit" : 10,
-"resend_interval" : .2})
-
-Authenticated_Service = Service.copy()
-Authenticated_Service.update({"database_filename" : ":memory:",
-"login_message" : 'login success'})
-
-Authenticated_Client = Service.copy()
-Authenticated_Client.update({"email" : '',
-"username" : "",
-"password" : ''})
-
-Service_Listing = Service.copy()
-
-File_Service = Service.copy()
-File_Service.update({"network_packet_size" : 16384,
-"mmap_threshold" : 16384,
-"timeout_after" : 15})
-
-Download = Service.copy()
-Download.update({"filesize" : 0,
-"filename" :'',
-"filename_prefix" : "Download",
-"download_in_progress" : False,
-"network_packet_size" : 16384,
-"timeout_after" : 15})
-
 # only addresses in the range of 224.0.0.0 to 230.255.255.255 are valid for IP multicast
 Multicast_Beacon = Udp_Socket.copy()
 Multicast_Beacon.update({"packet_ttl" : struct.pack("b", 127),
@@ -143,23 +104,41 @@ Multicast_Receiver.update({"interface" : "0.0.0.0",
 "ip" : "224.0.0.0",
 "port" : 0})
 
-Basic_Authentication_Client = Thread.copy()
-Basic_Authentication_Client.update({"memory_size" : 4096,
-"credentials" : tuple()})
+Connection_Manager = Process.copy()
+Connection_Manager.update({"auto_start" : False})
 
-Basic_Authentication = Thread.copy()
-Basic_Authentication.update({"invalid_password_string" : "Invalid Password",
-"invalid_username_string" : "Invalid Username"})
 Asynchronous_Network = Process.copy()
-
-Asynchronous_Network.update({"number_of_sockets" : 0,
+Asynchronous_Network.update({"handle_resends" : False,
+"number_of_sockets" : 0,
 "priority" : .01,
-"update_priority" : 5})
+"update_priority" : 5,
+"auto_start" : False})
 
-"""# Mail Server
-Mail_Server = Process.copy()
-Mail_Server.update({"address" : "notreal@inbox.com",
-"mail_server_name" : "metapython_email_server"})"""
+# network2
+Network_Service = Udp_Socket.copy()
+
+Authenticated_Service = Base.copy()
+Authenticated_Service.update({"database_filename" : ":memory:",
+"login_message" : 'login success'})
+
+Authenticated_Client = Base.copy()
+Authenticated_Client.update({"email" : '',
+"username" : "",
+"password" : '',
+"target" : "Authenticated_Service"})
+
+File_Service = Base.copy()
+File_Service.update({"network_packet_size" : 16384,
+"mmap_threshold" : 16384,
+"timeout_after" : 15})
+
+Download = Base.copy()
+Download.update({"filesize" : 0,
+"filename" :'',
+"filename_prefix" : "Download",
+"download_in_progress" : False,
+"network_packet_size" : 16384,
+"timeout_after" : 15})
 
  # Metapython
 JYTHON = "java -jar jython.jar"
@@ -167,18 +146,16 @@ PYPY = "pypy"
 CPYTHON = "python"
 DEFAULT_IMPLEMENTATION = CPYTHON
 
-Shell_Connection = Outbound_Connection.copy()
-Shell_Connection.update({"login_attempt_interval" : .05})
-    
-Shell = Process.copy()
-Shell.update({"username" : "root",
+Shell = Authenticated_Client.copy()
+Shell.update({"email" : '',
+"username" : "root",
 "password" : "password",
 "prompt" : ">>> ",
-"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-"auto_start" : False,
-"ip" : "localhost",
-"port" : 40022,
-"startup_definitions" : ''})
+"startup_definitions" : '',
+"target" : "Interpreter_Service"})
+
+Interpreter_Service = Authenticated_Service.copy()
+Interpreter_Service.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
 
 Metapython = Process.copy()
 Metapython.update({"command" : "shell_launcher.py",
@@ -187,7 +164,11 @@ Metapython.update({"command" : "shell_launcher.py",
 "interface" : "0.0.0.0",
 "port" : 40022,
 "prompt" : ">>> ",
+"_suspended_file_name" : "suspended_interpreter.bin",
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
 "priority" : .04,
-"interpreter_enabled" : True})
+"interpreter_enabled" : True,
+"startup_definitions" : \
+"""Instruction('Metapython', 'create', 'userinput.User_Input').execute()
+Instruction("Metapython", "create", "network.Asynchronous_Network").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})

@@ -6,17 +6,18 @@ import contextlib
 import mpre
 import mpre.base as base
 import mpre.defaults as defaults
+import mpre.fileio as fileio
 import mpre.utilities as utilities
-ensure_file_exists = utilities.ensure_file_exists
-ensure_folder_exists = utilities.ensure_folder_exists
+ensure_file_exists = fileio.ensure_file_exists
+ensure_folder_exists = fileio.ensure_folder_exists
 
 @contextlib.contextmanager
 def ignore_instructions():
-    backup = mpre.Instructions
+    backup = mpre.environment.Instructions
     try:
         yield
     finally:
-        mpre.Instructions = backup
+        mpre.environment.Instructions = backup
         
 
 class Package(base.Base):

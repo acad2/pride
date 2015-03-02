@@ -1,12 +1,17 @@
+import os
 import mpre.defaults as defaults
 Base = defaults.Base
 Process = defaults.Process
 
-SCREEN_SIZE = [800, 600]
-R = 45
-G = 150
-B = 245
+PACKAGE_LOCATION = os.path.dirname(os.path.abspath(__file__))
 
+SCREEN_SIZE = [800, 600]
+#R = 45
+#G = 150
+#B = 245
+R = 0
+G = 115
+B = 10
 # sdllibrary
 
 SDL_Component = Base.copy()
@@ -32,7 +37,8 @@ User_Input = Process.copy()
 Sprite_Factory = SDL_Component.copy()
 
 Font_Manager = SDL_Component.copy()
-Font_Manager.update({"font_path" : "./resources/fonts/Aero.ttf",
+Font_Manager.update({"font_path" : os.path.join(PACKAGE_LOCATION, "resources",
+                                                "fonts", "Aero.ttf"),
 "default_font_size" : 14,
 "default_color" : (15, 180, 35),
 "default_background" : (0, 0, 0)})
@@ -47,6 +53,7 @@ Window_Object.update({'x' : 0,
 'y' : 0,
 'size' : SCREEN_SIZE,
 "layer" : 1,
+"background_color" : (0, 0, 0),
 "color" : (R, G, B),
 "outline_width" : 5,
 "popup" : False,

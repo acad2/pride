@@ -201,17 +201,20 @@ if __name__ == "__main__":
 
     from StringIO import StringIO
     difference = difflib.Differ()
-    filename = "./network.py"
+    filename = "./gui/guilibrary.py"
     _file = open(filename)
     source = _file.read()
     _file.seek(0)
-
+    
     #print source
-    """translated = verbose_dialect.translate(_file)
+    translated = verbose_dialect.translate(_file)
     print translated
-
-    translated_file = StringIO(translated)
-    translated_back = verbose_dialect.translate_from(translated_file)"""
+    f = open("translatedtest.py", 'w')
+    f.write(translated + "\n" + "-"*60 + "\n" + source)
+    f.flush()
+    f.close()
+    #translated_file = StringIO(translated)
+    #translated_back = verbose_dialect.translate_from(translated_file)
 
     """translated = c_dialect.translate(_file)
     translated_flo = StringIO(translated)
