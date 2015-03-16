@@ -22,6 +22,7 @@ import time
 import inspect
 import subprocess
 import collections
+import importlib
 
 if "win" in sys.platform:
     timer_function = time.clock
@@ -29,12 +30,43 @@ else:
     timer_function = time.time
 
 def shell(command, shell=False):
+    """ usage: shell('command string --with args', 
+                     [shell=False]) = > sys.stdout.output from executed command
+                    
+        Launches a process on the physical machine via the operating 
+        system shell. The shell and available commands are OS dependent.
+        
+        Regarding the shell argument; from the python docs on subprocess.Popen:
+            "The shell argument (which defaults to False) specifies whether to use the shell as the program to execute. If shell is True, it is recommended to pass args as a string rather than as a sequence."
+            
+        and also:
+        
+            "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" """        
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
            
-            
-class Latency(object):
+           
+def resolve_string(string):
+    """Given an attribute string of ...x.y.z, import ...x.y and return z"""
+    module_name = string.split(".")   
+    class_name = module_name.pop(-1)
+    module_name = '.'.join(module_name)
+    if not module_name:
+        module_name = "__main__"
+        
+    _from = sys.modules[module_name] if module_name in sys.modules\
+            else importlib.import_module(module_name)
 
+    return getattr(_from, class_name)
+    
+    
+class Latency(object):
+    """ usage: Latency([name="component_name"], 
+                       [average_size=20]) => latency_object
+                       
+        Latency objects possess a latency attribute that marks
+        the average time between calls to latency.update()"""
+                
     def __init__(self, name=None, average_size=20):
         super(Latency, self).__init__()
         self.name = name
@@ -45,6 +77,9 @@ class Latency(object):
         self._position = 0
 
     def update(self):
+        """ usage: latency.update()
+        
+            notes the current time and adds it to the average time."""
         self._position += 1
         time_before = self.time_before = self.now
         now = self.now = timer_function()
@@ -56,6 +91,10 @@ class Latency(object):
         self.latency = latency
 
     def display(self, mode="sys.stdin"):
+        """ usage: latency.display([mode='sys.stdin'])
+        
+            Writes latency information via either sys.stdin.write or print.
+            Information includes the latency average, meta average, and max value""" 
         if "print" in mode:
             print "%s Latency: %0.6f, Average: %0.6f, Max: %0.6f" % \
             (self.name, self.latency, self.average.average, self.max)
@@ -66,7 +105,20 @@ class Latency(object):
 
 
 class Average(object):
-
+    """ usage: Average([name=''], [size=20], 
+                       [values=tuple()], [meta_average=False]) => average_object
+                       
+        Average objects keep a running average via the add method.
+        The size option specifies the maximum number of samples. When
+        this limit is reached, additional samples will result in the
+        oldest sample being removed.
+        
+        values may be used to seed the average.
+        
+        The meta_average boolean flag is used to determine whether or not
+        to keep an average of the average - This is implemented by an
+        additional Average object."""
+        
     def _get_meta_average(self):
         average = self._meta_average.average
         if not average:
@@ -183,11 +235,12 @@ class LRU_Cache(object):
 
         
 def function_header(function, mode="signature"):
-    """function_header(function, [mode]) => "(arg1, default_arg=True, keyword=True...)"
+    """usage: function_header(function, 
+                             [mode]) => "(arg1, default_arg=True, keyword=True...)"
     
     Given a function, return it's signature. mode can be specified as insertable
     to use string format insertions instead of argument names"""
-    spec = args, varargs, keyword_args, default_args = inspect.getargspec(function)    
+    spec = args, varargs, keyword_args, default_args = inspect.getargspec(function)   
     
     header_size = ", ".join("{}" for x in range(len(args)))                
     header_args = [arg for arg in args]
@@ -224,6 +277,11 @@ def function_header(function, mode="signature"):
     
     
 def documentation(instance):
+    """ usage: documentation(object) => augmented_documentation_string
+    
+        Given a python object, attempt to introspect any useful information
+        and include it appended to the objects docstring."""
+        
     if isinstance(instance, type):
         _class = instance
     else:

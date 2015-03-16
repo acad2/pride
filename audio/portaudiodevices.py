@@ -13,11 +13,11 @@ import pyaudio
 
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
+import mpre.audio.audiolibrary as audiolibrary
 from mpre.utilities import Latency
-import defaults
-Instruction = base.Instruction
 
-FormatError = type("FormatError", (BaseException, ), {})
+import mpre.audio.defaults as defaults
+Instruction = base.Instruction
 
 @contextmanager
 def _alsa_errors_suppressed():
@@ -73,14 +73,13 @@ def _formats_to_indices():
     
 format_lookup = _formats_to_indices()
            
-class Audio_Device(base.Reactor):
+class Audio_Device(audiolibrary.Audio_Reactor):
 
     defaults = defaults.PyAudio_Device
     possible_options = ("rate", "channels", "format", "input", "output",                    "input_device_index", "output_device_index",                    "frames_per_buffer", "start", "stream_callback",
                         "input_host_api_specific_stream_info",
                         "output_host_api_specific_stream_info")
                         
-    # properties are calculated attributes
     def _get_options(self):
         options = {}
         for option in self.possible_options:
@@ -95,9 +94,7 @@ class Audio_Device(base.Reactor):
         return self.channels * self.frames_per_buffer * self.sample_size
     full_buffer_size = property(_get_full_buffer_size)
         
-    def __init__(self, **kwargs):
-        self.listeners = []
-        self.local_listeners = set()
+    def __init__(self, **kwargs):        
         self.available = 0
         self._format_error = "{}hz {} channel {} not supported by any api"
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
@@ -105,29 +102,21 @@ class Audio_Device(base.Reactor):
                 
     def open_stream(self):
         return PORTAUDIO.open(**self.options)
-    
-    def add_listener(self, sender, packet):
-        if sender in self.environment.Component_Resolve:
-            self.local_listeners.add(sender)
-            self.listeners.append(sender)
+   
+    def mute(self):
+        if self.is_muted:
+            self.data_source = '\x00' * self.full_buffer_size
+            self.is_muted = True
         else:
-            self.listeners.append((packet, sender))
-                
-    def handle_audio(self, sender, packet):
-        available = len(packet)
-        self.available += available
-        self.data_source += packet
-        
+            self.is_muted = False
+            
     def _new_thread(self):
         raise NotImplementederror
         
     def get_data(self):
         raise NotImplementedError
 
-    def handle_data(self, audio_data):
-        for client in self.listeners:
-            scope = "local" if client in self.local_listeners else "network"
-            self.reaction(client, "handle_audio " + audio_data, scope=scope)
+
 
             
 class Audio_Input(Audio_Device):
@@ -151,12 +140,9 @@ class Audio_Input(Audio_Device):
         
         data_source = self.data_source if self.data_source else stream
         read_stream = data_source.read
-        handle_data = self.handle_data
+        handle_audio_output = self.handle_audio_output
 
-        if data_source is not stream:
-            byte_scalar = self.sample_size * self.channels
-        else:
-            byte_scalar = 1
+        byte_scalar = self.sample_size * self.channels
             
         frames_per_buffer = self.frames_per_buffer
         full_buffer_size = self.full_buffer_size
@@ -165,20 +151,28 @@ class Audio_Input(Audio_Device):
 
         while True:            
             frame_count = get_read_available()
-            data = read_stream(frame_count * byte_scalar)
+            
+            data = stream.read(frame_count)
+            data =  (data if data_source is stream else
+                     data_source.read(min((frame_count * byte_scalar),
+                                           self.full_buffer_size)))  
             _data += data
             frame_counter += frame_count
-            
+                        
             if frame_counter >= frames_per_buffer:
                 frame_counter -= frames_per_buffer
-                handle_data(_data[:full_buffer_size])
-                self._data = _data = _data[full_buffer_size:]
+                handle_audio_output(_data[:full_buffer_size])
+                _data = _data[full_buffer_size:]
             yield
 
     def get_data(self):
         return next(self.thread)
 
-
+    def delete(self):
+        print self.instance_name, "deleting!"
+        super(Audio_Input, self).delete()
+        
+        
 class Audio_Output(Audio_Device):
 
     defaults = defaults.Audio_Output
@@ -192,69 +186,24 @@ class Audio_Output(Audio_Device):
             except KeyError:
                 raise FormatError(self._format_error.format(self.rate, self.channels, "output"))        
         
-        if not self.source_name:
-            print "no source supplied"
-            self.mute = True
-        else:
-            print "adding {} to {}".format(self.instance_name, self.source_name)
-            self.reaction(self.source_name, "add_listener " + self.instance_name)
-        from mpre.utilities import Latency
-        self.latency = Latency(name="incoming_audio")
-        self.latency.update()
-       # self.thread = self._new_thread()
         self.stream = self.open_stream()
-        
-    def _new_thread(self):
-        byte_scalar = self.sample_size * self.channels
-                
-        frames_per_buffer = self.frames_per_buffer
-        full_write_buffer = byte_scalar * frames_per_buffer
-        silence = "\x00" * full_write_buffer
-
-        handle_data = self.handle_data
-                                       
-        while True:            
-            number_of_frames = get_write_available()
-            if number_of_frames >= frames_per_buffer:
-                if not self.available:
-                    self.alert("Buffer underflow", level=0)
-                    yield                    
-                    continue
-
-                byte_count = byte_scalar * frames_per_buffer
-                audio_data = silence if self.mute else self.data_source[:byte_count]
-                
-                self.data_source = self.data_source[byte_count:]
-                self.available -= byte_count
-                
-                # reaction listeners here
-                handle_data(audio_data)
-                # write to device/file here
-                stream_write(audio_data)
-                
-            yield
-
-    def handle_audio(self, sender, packet):
-        self.latency.update()
-        self.latency.display()
-        self.available += len(packet)
-        self.data_source += packet
-       
-    def write_audio(self):
+                 
+    def handle_audio_input(self, sender, audio_data):
+        self.data_source += audio_data
+        available = self.available = len(self.data_source)
+                   
         number_of_frames = self.stream.get_write_available()
-       # self.alert("{} bytes available; {} frames available; {} frames per buffer",
-        #           (self.available, number_of_frames, self.frames_per_buffer),
-         #          level=0)
-        if number_of_frames >= self.frames_per_buffer:        
-            byte_count = min(self.available, self.full_buffer_size)
-            audio_data = ('\x00' * byte_count if self.mute else 
-                          self.data_source[:byte_count])
-            
-            self.data_source = self.data_source[byte_count:]
+   #     self.alert("{} bytes available; {} frames available; {} frames per buffer",
+    #              (available, number_of_frames, self.frames_per_buffer), 0)
+          
+        byte_count = min(number_of_frames * self.channels * self.sample_size,
+                         available)
+                         
+        output_data = self.data_source[:byte_count]
+                
+        self.handle_audio_output(output_data)
+        self.stream.write(output_data)
+        
+        if not self.is_muted:
+            self.data_source = self.data_source[byte_count:]               
             self.available -= byte_count
-            # reaction listeners here
-            self.handle_data(audio_data)
-            # write to device/file here
-            self.stream.write(audio_data) 
-     #   else:
-            #Instruction("Audio_Manager", "handle_delay").execute()

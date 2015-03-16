@@ -12,10 +12,10 @@ constructor = base.Base()
 create = constructor.create
 
 def add_to_network(sock):
-    constructor.parallel_method("Asynchronous_Network", "add", sock).execute()
+    constructor.parallel_method("Network", "add", sock).execute()
 
 def remove_from_network(sock):
-    Instruction("Asynchronous_Network", "remove", sock).execute()
+    Instruction("Network", "remove", sock).execute()
 
 def add_network_service(address, name):
     Instruction("Service_Listing", "add_service", address, name).execute()
@@ -41,6 +41,9 @@ def build_docs(site_name=''):
 
 Instruction("Metapython", "save_state").execute()
                  
+from mpre.misc.attributetest import *
+print "constructing persistent reactor"
+impressive = Persistent_Reactor()
 """
 
 options["startup_definitions"] += definitions

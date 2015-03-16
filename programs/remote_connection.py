@@ -17,7 +17,7 @@
 import mpre.base as base
 
 def metapython_main():
-    base.Instruction("Metapython", "create", "network.Outbound_Connection", parse_args=True).execute()
+    base.Instruction("Metapython", "create", "network.Tcp_Client", parse_args=True).execute()
     
 if __name__ == "__main__":
     metapython_main()

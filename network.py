@@ -46,57 +46,65 @@ except:
     CONNECTION_IS_CONNECTED = errno.EISCONN
     CONNECTION_WAS_ABORTED = errno.ECONNABORTED
 
-        
+HOST = socket.gethostbyname(socket.gethostname())
+
 class Socket(base.Wrapper):
 
     defaults = defaults.Socket
 
-    def _get_address(self):
-        return (self.ip, self.port)
-    address = property(_get_address)
-
+    def _get_recv_method(self):
+        return self.recvfrom
+    _network_recv = property(_get_recv_method)
+    
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket())
-        self.network_buffer = {}
         super(Socket, self).__init__(**kwargs)
+        self.socket = self.wrapped_object
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         if self.add_on_init:
-            self.parallel_method("Asynchronous_Network", "add", self)
+            self.parallel_method("Network", "add", self)
          
-    def socket_recv(self):
-        data, address = self.recvfrom(self.network_packet_size)
-        try:
-            self.network_buffer[address] += data
-        except KeyError:
-            self.network_buffer[address] = data
-            
-    def send_data(self, data, to=None):
-        self.parallel_method("Asynchronous_Network", "send",
-                           self, data, to)
-                           
+    def send(self, data):
+        return self.parallel_method("Network", "send", self, data)
+                             
+    def sendto(self, data, host_info):
+        return self.parallel_method("Network", "sendto", 
+                                    self, data, host_info)
+    def recv(self, buffer_size=0):
+        buffer_size = (self.network_packet_size if not buffer_size else
+                       buffer_size)
+        return self.wrapped_object.recv(buffer_size)
+        
+    def recvfrom(self, buffer_size=0):
+        buffer_size = (self.network_packet_size if not buffer_size else
+                       buffer_size)
+        return self.wrapped_object.recvfrom(buffer_size)
+        
     def delete(self):
         self.close()        
         super(Socket, self).delete()
                             
-        
-class Connection(Socket):
+       
+class Tcp_Socket(Socket):
 
-    defaults = defaults.Connection
-
+    defaults = defaults.Tcp_Socket
+    
+    def _get_recv_method(self):
+        return self.recv
+    _network_recv = property(_get_recv_method)
+    
     def __init__(self, **kwargs):
-        super(Connection, self).__init__(**kwargs)
-
-    def socket_recv(self):
-        self.network_buffer += self.recv(self.network_packet_size)
+        kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
+                                                          socket.SOCK_STREAM))
+        super(Tcp_Socket, self).__init__(**kwargs)
 
         
-class Server(Connection):
+class Server(Tcp_Socket):
 
     defaults = defaults.Server
 
-    def __init__(self, **kwargs):
-        self.client_options = {}
+    def __init__(self, **kwargs):       
         super(Server, self).__init__(**kwargs)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
 
@@ -109,13 +117,12 @@ class Server(Connection):
         if bind_success:
             self.listen(self.backlog)
 
-    def socket_recv(self):
+    def recv(self):
         _socket, address = self.accept()
         
-        connection = self.create(self.inbound_connection_type,
-                                  wrapped_object=_socket,
-                                  peer_address=address,
-                                  **self.client_options)
+        connection = self.create(self.Tcp_Socket_type,
+                                 wrapped_object=_socket)
+        
         self.alert("{} accepted connection {} from {}", 
                   (self.name, connection.instance_name, address),
                   level="v")
@@ -132,17 +139,20 @@ class Server(Connection):
             instruction = Instruction(self.instance_name, "delete")
             instruction.execute()
 
+    def on_connect(self, connection):
+        raise NotImplementedError
+        
+        
+class Tcp_Client(Tcp_Socket):
 
-class Outbound_Connection(Connection):
-
-    defaults = defaults.Outbound_Connection
+    defaults = defaults.Tcp_Client
 
     def __init__(self, **kwargs):
-        super(Outbound_Connection, self).__init__(**kwargs)
+        super(Tcp_Client, self).__init__(**kwargs)
         
         if not self.target:
             if not self.ip:
-                self.alert("Attempted to create Outbound_Connection with no host ip or target", tuple(), 0)
+                self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
             self.target = (self.ip, self.port)
 
         self.parallel_method("Connection_Manager", "add", self)
@@ -165,7 +175,7 @@ class Outbound_Connection(Connection):
                 error = socket_error.errno
                 #self.error_handler.get(error.errno, self.unhandled_error)()
                 if error == CONNECTION_IS_CONNECTED: # complete
-                    self.parallel_method("Asynchronous_Network", "add", self)
+                    self.parallel_method("Network", "add", self)
                     self.on_connect()
 
                 elif error in (CALL_WOULD_BLOCK, CONNECTION_IN_PROGRESS): # waiting
@@ -186,14 +196,6 @@ class Outbound_Connection(Connection):
         return self.stop_connecting
         
 
-class Inbound_Connection(Connection):
-
-    defaults = defaults.Inbound_Connection
-
-    def __init__(self, **kwargs):
-        super(Inbound_Connection, self).__init__(**kwargs)
-
-
 class Udp_Socket(Socket):
 
     defaults = defaults.Udp_Socket
@@ -201,15 +203,13 @@ class Udp_Socket(Socket):
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
         super(Udp_Socket, self).__init__(**kwargs)        
-        self.network_buffer = {}       
-        
-        self.bind((self.interface, self.port))
+               
+        if self.bind_on_init:
+            self.bind((self.interface, self.port))
+            
         if not self.port:
             self.port = self.getsockname()[1]
-            
-        self.settimeout(self.timeout)                       
-             
-        
+                   
         
 class Multicast_Beacon(Udp_Socket):
 
@@ -228,8 +228,7 @@ class Multicast_Receiver(Udp_Socket):
         super(Multicast_Receiver, self).__init__(**kwargs)
 
         # thanks to http://pymotw.com/2/socket/multicast.html for the below
-        self.bind((self.listener_address, self.port))
-        group_option = socket.inet_aton(self.multicast_group)
+        group_option = socket.inet_aton(self.address)
         multicast_configuration = struct.pack("4sL", group_option, socket.INADDR_ANY)
         self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
 
@@ -237,78 +236,73 @@ class Multicast_Receiver(Udp_Socket):
 class Connection_Manager(vmlibrary.Process):
 
     defaults = defaults.Connection_Manager
-    
-    def _get_buffer(self):
-        return self.objects[socket.socket.__name__]
-    buffer = property(_get_buffer)
         
     def __init__(self, **kwargs):        
         super(Connection_Manager, self).__init__(**kwargs)
-        self.objects[socket.socket.__name__] = []
+        self.buffer = []
         self.running = False
         
     def add(self, sock):
         self.running = True
-        super(Connection_Manager, self).add(sock)
+        self.buffer.append(sock)
         
     def run(self):
-        for connection in self.buffer:
-            self.remove(connection)
+        running = False
+        buffer = self.buffer
+        new_buffer = self.buffer = []
+        while buffer:
+            connection = buffer.pop()     
             if not connection.deleted and not connection.attempt_connection():
-                self.add(connection)          
-        if not self.buffer:
-            self.running = False
+                running = True
+                new_buffer.append(connection)          
+        
+        self.running = running
            
 
-class Asynchronous_Network(vmlibrary.Process):
+class Network(vmlibrary.Process):
 
-    defaults = defaults.Asynchronous_Network
-
-    def _get_local_services(self):
-        local_names = ("localhost", "0.0.0.0", "127.0.0.1")
-        return dict((key, value) for key, value in self.services.items() if key in local_names)
-    local_services = property(_get_local_services)
+    defaults = defaults.Network
    
     def __init__(self, **kwargs):
-        # minor optimization
-        # pre allocated slices and ranges
-        self._socket_name = socket.socket.__name__
+        # minor optimization; pre allocated slices and ranges for
+        # sliding through the socket list to sidestep the 500 
+        # file descriptor limit that select has. Produces slice objects
+        # for ranges 0-500, 500-1000, 1000-1500, etc, up to 5000.
+        # assigning select.select as an attribute of the Network instance
+        # results in slightly faster access compared to global lookup.
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for x in xrange(10))
         self._socket_range_size = range(1)
         self._select = select.select
 
-        self.write_buffer = {}
+        self.send_buffer = {}
+        self.sendto_buffer = {}
         self.writable = set()
-        super(Asynchronous_Network, self).__init__(**kwargs)
-        self.running = False
-        self.objects[socket.socket.__name__] = []
-                
+        super(Network, self).__init__(**kwargs)
+        self.sockets = self.objects["Socket_Objects"] = []
+        self.delayed_sendtos = self.delayed_sends = self.running = False
+                        
         self.connection_manager = self.create(Connection_Manager)
-
-        instruction = self.update_instruction = Instruction("Asynchronous_Network", "_update_range_size")        
+        self.sockets.remove(self.connection_manager)
+        
+        instruction = self.update_instruction = Instruction("Network", "_update_range_size")        
         instruction.execute(self.update_priority)
   
     def add(self, sock):
-        super(Asynchronous_Network, self).add(sock)
+        super(Network, self).add(sock)
+        self.sockets.append(sock)
         if not self.running:
             self.run_instruction.execute(priority=self.priority)
             self.running = True
-            
-    def debuffer_data(self, connection):
-        try:
-            del self.write_buffer[connection]
-        except KeyError:
-            pass
-        
+                   
     def _update_range_size(self):
-        self._socket_range_size = range((len(self.objects[self._socket_name]) / 500) + 1)
+        self._socket_range_size = range((len(self.sockets) / 500) + 1)
         self.update_instruction.execute(self.update_priority)
 
     def run(self):
         if self.connection_manager.running:
             self.connection_manager.run()
 
-        sockets = self.objects[self._socket_name]
+        sockets = self.sockets
         
         if sockets:
             self_writable = self.writable = set()
@@ -324,21 +318,38 @@ class Asynchronous_Network(vmlibrary.Process):
                 
                 if readable:
                     self.handle_reads(readable)                
-            
-            if self.handle_resends:
-                resends = ((sock, self.write_buffer.pop(sock)) for sock, messages in
-                            self.write_buffer.items() if sock in self_writable)
-                    
+        #        print "\npolled sockets: ", socket_list
+       #         print readable
+         #       print writable
+            if self.delayed_sends:
+                self.delayed_sends = False
+                resends = ((sock, self.send_buffer.pop(sock)) for sock, messages in
+                            self.send_buffer.items() if sock in self_writable)
+                self.alert("sending delayed tcp sends", level=0)
+                
                 for sender, messages in resends:
-                    for message, to in messages:
-                        self.send(sender, message, to)
+                    for data in messages:
+                        self.alert("Sending {} on {}",
+                                   [data[:128], sender],
+                                   level=0)
+                        self.send(sender, data)
             
+            if self.delayed_sendtos:
+                self.delayed_sendtos = False
+                resends = ((sock, self.sendto_buffer.pop(sock)) for sock, message in
+                            self.sendto_buffer.items() if sock in self_writable)
+                self.alert("sending delayed udp sendto's", level=0)
+                
+                for sender, messages in resends:
+                    for data, host_info in messages:
+                        self.sendto(sender, data, host_info)
+                        
             self.run_instruction.execute(priority=self.priority)
             
     def handle_reads(self, readable_sockets):
         for sock in readable_sockets:
             try:
-                sock.socket_recv()
+                sock._network_recv()
             except socket.error as error:
                 if error.errno == CONNECTION_WAS_ABORTED:
                     sock.close()
@@ -349,20 +360,35 @@ class Asynchronous_Network(vmlibrary.Process):
                 else:
                     raise
                     
-    def send(self, sock, data, to=None):   
+    def send(self, sock, data):   
         if sock in self.writable:
-            if to:
-
-                sock.sendto(data, to)
-            else:
-                sock.send(data)            
+            byte_count = sock.wrapped_object.send(data)          
         else:
-            self.handle_resends = True
-            if to:
-                data = (data, to)
-            else:
-                data = (data, None)
+            self.alert("{} not writable; delaying send of {} bytes",
+                       (sock.instance_name, len(data)),
+                       level=0)
+                       
+            self.delayed_sends = True
+            byte_count = 0
             try:
-                self.write_buffer[sock].append(data)
+                self.send_buffer[sock].append(data)
             except KeyError:
-                self.write_buffer[sock] = [data]            
+                self.send_buffer[sock] = [data]
+        return byte_count
+        
+    def sendto(self, sock, data, host_info):
+        if sock in self.writable:
+            byte_count = sock.wrapped_object.sendto(data, host_info)
+        else:
+            self.alert("{} not writable; delaying send of {} bytes",
+                       (sock.instance_name, len(data)),
+                       level=0)
+                       
+            self.delayed_sendtos = True
+            delayed_sendto = (data, host_info)
+            byte_count = 0
+            try:
+                self.sendto_buffer[sock].append(delayed_sendto)
+            except KeyError:
+                self.sendto_buffer[sock] = [delayed_sendto]
+        return byte_count

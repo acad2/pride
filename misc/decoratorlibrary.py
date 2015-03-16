@@ -62,12 +62,19 @@ class Pystone_Test(object):
 
 class Timed(object):
 
-    def __init__(self, function):
+    def __init__(self, function, iterations=1):
         self.function = function
+        self.iterations = iterations
         
     def __call__(self, *args, **kwargs):
-        start = timer()
-        self.result = self.function(*args, **kwargs)
+        function = self.function
+        if self.iterations > 1:
+            start = timer()
+            for x in xrange(self.iterations):
+                function(*args, **kwargs)
+        else:
+            start = timer()
+            function(*args, **kwargs)
         return timer() - start
 
 class Tracer(object):

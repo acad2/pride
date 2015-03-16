@@ -56,32 +56,28 @@ User_Input = Process.copy()
 Socket = Base.copy()
 Socket.update({"blocking" : 0,
 "timeout" : 0,
-"allow_port_zero" : True,
-"idle" : True,
-"timeout_after" : 0,
 "add_on_init" : True,
 "network_packet_size" : 32768,
 "memory_size" : 32768,
 "network_buffer" : '',
 "interface" : "0.0.0.0",
-"port" : 0})
+"port" : 0,
+"bind_on_init" : False})
 
-Connection = Socket.copy()
-Connection.update({"socket_family" : socket.AF_INET,
+Tcp_Socket = Socket.copy()
+Tcp_Socket.update({"socket_family" : socket.AF_INET,
 "socket_type" : socket.SOCK_STREAM})
 
-Server = Connection.copy()
+Server = Tcp_Socket.copy()
 Server.update({"port" : 80,
 "backlog" : 50,
 "name" : "",
 "reuse_port" : 0,
-"inbound_connection_type" : "network.Inbound_Connection",
+"Tcp_Socket_type" : "network.Tcp_Socket",
 "share_methods" : ("on_connect", "client_socket_recv", "client_socket_send")})
 
-Udp_Socket = Socket.copy()
-
-Outbound_Connection = Connection.copy()
-Outbound_Connection.update({"ip" : "",
+Tcp_Client = Tcp_Socket.copy()
+Tcp_Client.update({"ip" : "",
 "port" : 80,
 "target" : tuple(),
 "as_port" : 0,
@@ -89,9 +85,10 @@ Outbound_Connection.update({"ip" : "",
 "timeout_notify" : True,
 "add_on_init" : False,
 "bad_target_verbosity" : 0}) # alert verbosity when trying to connect to bad address
-del Outbound_Connection["interface"]
+del Tcp_Client["interface"]
 
-Inbound_Connection = Connection.copy()
+Udp_Socket = Socket.copy()
+Udp_Socket.update({"bind_on_init" : True})
 
 # only addresses in the range of 224.0.0.0 to 230.255.255.255 are valid for IP multicast
 Multicast_Beacon = Udp_Socket.copy()
@@ -100,15 +97,13 @@ Multicast_Beacon.update({"packet_ttl" : struct.pack("b", 127),
 "multicast_port" : 1929})
 
 Multicast_Receiver = Udp_Socket.copy()
-Multicast_Receiver.update({"interface" : "0.0.0.0",
-"ip" : "224.0.0.0",
-"port" : 0})
+Multicast_Receiver.update({"address" : "224.0.0.0"})
 
 Connection_Manager = Process.copy()
 Connection_Manager.update({"auto_start" : False})
 
-Asynchronous_Network = Process.copy()
-Asynchronous_Network.update({"handle_resends" : False,
+Network = Process.copy()
+Network.update({"handle_resends" : False,
 "number_of_sockets" : 0,
 "priority" : .01,
 "update_priority" : 5,
@@ -170,5 +165,5 @@ Metapython.update({"command" : "shell_launcher.py",
 "interpreter_enabled" : True,
 "startup_definitions" : \
 """Instruction('Metapython', 'create', 'userinput.User_Input').execute()
-Instruction("Metapython", "create", "network.Asynchronous_Network").execute()"""})
+Instruction("Metapython", "create", "network.Network").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})

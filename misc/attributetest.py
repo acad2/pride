@@ -2,9 +2,11 @@ import mmap
 import struct
 import ast
 import cPickle as pickle
+from itertools import izip
 
-_get_attribute = object.__getattribute__
-_set_attribute = object.__setattr__
+import mpre.base as base
+import mpre.fileio as fileio
+
 
 class Struct(object):
    
@@ -18,169 +20,252 @@ class Struct(object):
                    's' : 0,
                    '?' : 1}
     
-    local_only = set(("dictionary", "_memory", "attribute_locations",
-                      "attribute_byte_offset", "struct", "create_struct",
-                      "pack"))
+    local_only = set(("dictionary", "_memory", "unpacked_index",
+                      "byte_offsets", "struct", "create_struct",
+                      "pack", "metadata_struct", "struct_slice",
+                      "total_size", "create_metadata", "from_dictionary",
+                      "write_to_memory", "attribute_order", "is_pickled"))
                   
-    def __init__(self, dictionary=None, memory_size=8192):
-        self._memory = mmap.mmap(-1, memory_size)
-        self.dictionary = dictionary if dictionary else {}
-        self.create_struct()        
+    def __init__(self, dictionary):
+        self.update(dictionary)
     
+    def update(self, dictionary):
+        self.dictionary = dictionary
+        self.data = self.byte_representation(dictionary)
+        
+    def byte_representation(self, dictionary):
+        (total_size,
+         size_string,
+         packed_data,
+         packed_metadata,
+         self.struct,
+         self.metadata_struct,
+         self.struct_slice,
+         self.unpacked_index,
+         self.byte_offsets,
+         self.attribute_order,
+         self.is_pickled) = self.from_dictionary(dictionary)
+        
+        return size_string + packed_metadata + packed_data
+        
+    def from_dictionary(self, dictionary):
+        (byte_offsets,
+         unpacked_index,
+         attribute_order, 
+         values, 
+         _struct,
+         is_pickled) = self.create_struct(dictionary)
+                 
+        """(packed_metadata, 
+         metadata_struct) = self.create_metadata(attribute_order, 
+                                                 byte_offsets,
+                                                 is_pickled)
+      
+        metadata_size = len(packed_metadata)
+        size_string = str(metadata_size).zfill(64)
+        total_size = 64 + metadata_size + _struct.size
+        
+        struct_slice = slice(metadata_size + 64, total_size)       
+         
+        return (total_size, size_string, _struct.pack(*values),
+                packed_metadata, _struct, metadata_struct, 
+                struct_slice,  unpacked_index, byte_offsets,
+                attribute_order, is_pickled)"""
+        total_size = _struct.size
+        struct_slice = slice(0, total_size)
+        return (total_size, _struct.pack(*values),
+                _struct, struct_slice,  unpacked_index, byte_offsets,
+                attribute_order, is_pickled)
+                
+    def create_metadata(self, attribute_order, byte_offsets, is_pickled):
+        """ create a metadata struct that provides attribute names,
+            the pickled flag, and the associated offset/size."""
+        metadata_layout = ''
+        metadata_values = []
+        for attribute in attribute_order:
+            metadata_layout += str(len(attribute)) + 's?qq'
+            start_pointer, end_pointer = byte_offsets[attribute]
+            
+            metadata_values.extend((attribute,
+                                    is_pickled[attribute],
+                                    start_pointer,
+                                    end_pointer))
+                                               
+        metadata_struct = struct.Struct(metadata_layout)        
+        packed_metadata = metadata_struct.pack(*metadata_values)
+                
+        return packed_metadata, metadata_struct
+                                                       
     def pack(self, value):
         format_character = Struct.format_switch.get(type(value), "pyobject")
         if format_character is "pyobject":
+        #    print "PICKLING: ", type(value), value
             value = pickle.dumps(value)
             format_size = len(value)
-            format_character = str(format_size) + 'c'            
+            format_character = str(format_size) + 's'  
+            is_pickled = True
         else:
             format_size = Struct.format_size[format_character]
             if not format_size:
                 format_size = len(value)
                 format_character = str(format_size) + format_character
-    
-        return format_size, format_character, value
+            is_pickled = False
+            
+       # print "packed {} into {}".format(value, format_character)
+        return format_size, format_character, value, is_pickled
         
-    def create_struct(self):        
+    def create_struct(self, dictionary):        
         struct_layout = ''
         
-        attribute_locations = self.attribute_locations = {}
-        attribute_byte_offset = self.attribute_byte_offset = {}
+        unpacked_index = {}
+        attribute_byte_offset = {}
+        is_pickled = {}
         
         index_count = 0
         byte_index = 0
+        attribute_order = []
         values = []
-        for key, value in self.dictionary.items():
-            attribute_locations[key] = index_count
-            format_size, format_character, value = self.pack(value)
+        for key, value in dictionary.items():
+            attribute_order.append(key)
+            unpacked_index[key] = index_count
+            format_size, format_character, value, pickled_flag = self.pack(value)
             
-            attribute_byte_offset[key] = slice(byte_index, byte_index + format_size)
+            values.append(value)
+            attribute_byte_offset[key] = byte_index, byte_index + format_size
+          #  print '{} PICKLED flag: {}'.format(key, pickled_flag)
+            is_pickled[key] = pickled_flag
             
             index_count += 1            
             struct_layout += format_character
             byte_index += format_size
-            values.append(value)
+                                           
+        return (attribute_byte_offset, unpacked_index,
+                attribute_order, values, struct.Struct(struct_layout),
+                is_pickled)
+        
+        
+class Persistent_Reactor(base.Reactor):
+    
+    local_only = set(('_file', '_memory', "_struct", "dictionary",
+                      "instance_number", "instance_name", "environment",
+                      "local_only", "defaults"))
+    
+    def __init__(self, **kwargs):
+        print Persistent_Reactor, "__init__"
+        super_object = super(Persistent_Reactor, self)
+        set_attribute = super_object.__setattr__
                 
-        _struct = self.struct = struct.Struct(struct_layout)
-        print "creating", values, struct_layout
-        self._memory[:_struct.size] = _struct.pack(*values)   
+        dictionary = {}
+        fileio.ensure_file_exists(self.instance_name)
+        _file = self._file = open(self.instance_name, 'r+b')
+        memory = self._memory = mmap.mmap(_file.fileno(), 65535)
+        
+        _struct = Struct(dictionary)
+        print "setting _struct and dictionary attributes"
+        set_attribute("_struct", _struct)
+        set_attribute("dictionary", dictionary)
+        print self, "pre super"
+        super_object.__init__(**kwargs)
+        print self, "post super"
+     
+
+        packed_attributes = _struct.data
+        memory[len(packed_attributes)] = packed_attributes
+        
+    def __getstate__(self):
+        dict_copy = self.__dict__.copy()
+        for attribute in self.local_only:
+            if attribute in dict_copy:
+                del dict_copy[attribute]
+                
+    #    del dict_copy["_file"]
+     #   del dict_copy["_memory"]
+      #  del dict_copy["_struct"
+        return dict_copy
+        
+    def __setstate__(self, state):
+        self.__init__(**state)
         
     def __getattribute__(self, attribute):
-        get_attribute = _get_attribute
-        if "__" != attribute[:2] and attribute not in Struct.local_only:
-            memory = get_attribute(self, "_memory")
-            _struct = get_attribute(self, "struct")
-            data_index = get_attribute(self, "attribute_locations")[attribute]
-    #        print "retrieving {} at data index {}".format(attribute, data_index)
-     #       print "values: ", _struct.unpack(memory[:_struct.size])
-            value = _struct.unpack(memory[:_struct.size])[data_index]
+        get_attribute = super(Persistent_Reactor, self).__getattribute__
+        try:
+            value = get_attribute(attribute)
+        except AttributeError:
+            
+        if "__" != attribute[:2] and attribute not in get_attribute("local_only"):
+            print "getting shared attribute: ", attribute
+            _struct = get_attribute("_struct")
+            data_index = _struct.unpacked_index[attribute]
+            value = _struct.struct.unpack(get_attribute("_memory")\
+                                         [_struct.struct_slice])[data_index]
         else:
-      #      print "getting regular attribute {}".format(attribute)
-            value = get_attribute(self, attribute)
+            value = get_attribute(attribute)
         return value
         
     def __setattr__(self, attribute, value):
-        get_attribute = _get_attribute
-        
-        if "__" != attribute[:2] and attribute not in Struct.local_only:
-            dictionary = get_attribute(self, "dictionary")
-            dictionary[attribute] = value
-            get_attribute(self, "create_struct")()
-            """memory = get_attribute(self, "_memory")
-            data_slice = get_attribute(self, "attribute_byte_offset")[attribute]
-
-            size, format, packed_data = get_attribute(self, "pack")(value)
+      #  print "Setting {} to {}".format(attribute, value)
+        get_attribute = super(Persistent_Reactor, self).__getattribute__
+        if attribute not in get_attribute("local_only"):
+       #     print "{} is a persistent attribute".format(attribute)
+            _struct = get_attribute("_struct")
             
-            print memory[:32]
-            print "setting {} {} to {} ({} bytes)".format(data_slice, 
-                                                          [ord(char) for char in memory[data_slice]],
-                                                          [ord(char) for char in reversed(packed_data)],
-                                                          size)
-                                         
-            memory[data_slice] = ''.join(reversed(packed_data))
-            print memory[:32]"""
+            _struct.update(self.dictionary)
+            packed_dictionary = _struct.data
+            get_attribute("_memory")[:len(packed_dictionary)] = packed_dictionary            
         else:
-            _set_attribute(self, attribute, value)
+            super(Persistent_Reactor, self).__setattr__(attribute, value)       
             
-            
-class Storage(object):
-    
-    def __init__(self, pyobject):
-        memory = mmap.mmap(-1, 8192)
-        version = '0' * 16
-        memory.write(version)
-        pickle.dump(pyobject, memory)  
-        _set_attribute(self, "memory", memory)        
-        _set_attribute(self, "pyobject", pyobject)
-        _set_attribute(self, "version", version)
                 
-    def __getattribute__(self, attribute):
-        get_attribute = _get_attribute
-        memory = get_attribute(self, "memory")
-        version = memory[:16]
-        if version == get_attribute(self, "version"):
-            pyobject = get_attribute(self, "pyobject")
-        else:
-            memory.seek(16)
-            pyobject = pickle.load(memory)
-            _set_attribute(self, "version", version)
-            _set_attribute(self, "pyobject", pyobject)
-        return getattr(pyobject, attribute)
-            
-    def __setattr__(self, attribute, value):
-        memory = _get_attribute(self, "memory")
-        
-        memory.seek(0)
-        version = memory.read(16)
-        pyobject = pickle.load(memory)
-        setattr(pyobject, attribute, value)
-        
-        memory.seek(0)
-        new_version = str(int(version) + 1).zfill(16)
-        _set_attribute(self, "version_number", new_version)
-        memory.write(new_version)        
-        pickle.dump(pyobject, memory)
-        
-        
 if __name__ == "__main__":
-    struc = Struct({"integer" : 123, 
-                    "string" : "hi, i'm a string",
-                    "float" : 1.0,
-                    "boolean" : True,
-                    "none" : None})
-                    
-                    
-    def test():
-        for x in xrange(10000):
-            struc.integer
+    import unittest
     from mpre.misc.decoratorlibrary import Timed
     from mpre.base import Base
+    b = Base(none=None)
+    struc_attributes = {"integer" : 123, 
+                        "string" : "hi, i'm a string",
+                        "float" : 1.0,
+                        "boolean" : True,
+                        "none" : None}
+        
+    struc = Struct(struc_attributes)    
     
-    time = Timed(test)()
-    print "10000 accesses took: ", time
-    print "time per access: ", time / 10000
-    base = Base(integer=123)
-    storage = Storage(base)
-    def test2():
-        for x in xrange(10000):
-            storage.integer
-                        
-    time2 = Timed(test2)()
-    print "10000 pickle accesses took: ", time2
-    print "time per access: ", time2 / 10000
+    """print '{:+>80}'.format('TIMING COMPARISON')
+    print "struct getattr: ", Timed(lambda: struc.none, iterations=10000)()
+    print "base getattr  :  ", Timed(lambda: b.none, iterations=10000)()
+    print
+    print "struct setattr: ", Timed(lambda: struc.none, iterations=10000)()
+    print "base setattr  : ", Timed(lambda: b.none, iterations=10000)()    
+    print "write_to_memory time: ", Timed(lambda: struc.write_to_memory(struc.dictionary), iterations=10000)()
+    print '{:+>80}'.format('END TIMING COMPARISON')"""
+
     
-    def test3():
-        for x in xrange(10000):
-            base.integer
+    class Test_getsetattr(unittest.TestCase):
+  
+        def test(self):
+            index = 0
+            print "\nTesting getattr and setattr accuracy"
+            modifications = (Base(), None, "a shared memory string!", False, 123)
+            
+            for attribute, value in struc_attributes.items():
+                attr_value = getattr(struc, attribute)
+                print "\n\ntesting initially assigned attribute {} {} is {}".format(attribute, attr_value, value)
+                self.failUnless(attr_value == value)
+                
+                modification = modifications[index]
+                print "Modifying {}; changing {} to {}".format(attribute, 
+                                                               attr_value,
+                                                               modification)
+                                                               
+                setattr(struc, attribute, modification)
+                test = getattr(struc, attribute)
+                
+                print "...testing modification {} is {}".format(test, modification)   
+                
+                if struc.is_pickled[attribute]:
+                    test = type(test)
+                    modification = type(modification)
+
+                self.failUnless(test == modification)
+                index += 1
     
-    time3 = Timed(test3)()
-    print "10000 regular accesses took: ", time3
-    print "time per access: ", time3 / 10000
-    
- 
-    print "unpacked: ", struc.struct.unpack(struc._memory[:struc.struct.size])
-    print "struc.integer before: ", struc.integer
-    struc.integer = 123456
-    
-    print "unpacked again: ", struc.struct.unpack(struc._memory[:struc.struct.size])
-    print "struc.integer : ", struc.integer
+    unittest.main()

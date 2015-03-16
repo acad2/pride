@@ -123,10 +123,7 @@ class Network_Service(network.Udp_Socket):
         if to[0] == "localhost":
             to = ("127.0.0.1", to[1])                            
         
-        self.parallel_method("Asynchronous_Network", "send", 
-                           self,
-                           packet,
-                           to)
+        self.sendto(packet, to)
         
         if expect_response:
             self.expecting_response.append((to, id))
@@ -150,7 +147,7 @@ class Network_Service(network.Udp_Socket):
                            [id],
                            level=0)
                         
-                self.parallel_method("Asynchronous_Network", "send", 
+                self.parallel_method("Network", "send", 
                                 self,
                                 packet,
                                 target)
@@ -162,6 +159,11 @@ class Network_Service(network.Udp_Socket):
                    level=0)
                                     
         return "end_request invalid_request " + packet
+    
+    def _make_packet(self, response_to, data):
+        message = response_to + " " + data
+        id = str(hash(message))
+        return id, id + " " + message
         
     def demo_reaction(self, sender, packet):
         print "im a demo reaction for", sender, packet
@@ -471,10 +473,11 @@ class Tcp_Service_Proxy(network.Server):
         pass
         
         
-class Tcp_Client_Proxy(network.Inbound_Connection):
+class Tcp_Client_Proxy(network.Tcp_Client):
     
-    def socket_recv(self):
-        request = self.recv(self.network_packet_size)        
+    def recv(self):
+        print self.instance_name, "receiving data!"
+        request = self.socket.recv(self.network_packet_size)        
         service_name, command, value = request.split(" ", 2)
         self.respond_with(self.reply)
         request = command + " " + value
@@ -484,12 +487,12 @@ class Tcp_Client_Proxy(network.Inbound_Connection):
         self.send_data(str(sender) + " " + packet)
 
                            
-class Tcp_Service_Test(network.Outbound_Connection):
+class Tcp_Service_Test(network.Tcp_Client):
     
     def on_connect(self):        
         self.send_data("Interpreter_Service login username password")
                            
-    def socket_recv(self):
+    def recv(self):
         self.network_buffer += self.recv(self.network_packet_size)
         print "got results!: ", self.network_buffer
         

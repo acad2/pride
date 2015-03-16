@@ -5,7 +5,10 @@ Reactor = defaults.Reactor
 
 # audiolibrary
 
-Wav_File = Base.copy()
+Audio_Reactor = Reactor.copy()
+Audio_Reactor.update({"source_name" : ''})
+
+Wav_File = Audio_Reactor.copy()
 Wav_File.update({"mode" : "rb",
 "filename" : "",
 "repeat" : False,
@@ -41,25 +44,26 @@ PyAudio_Device.update({"format" : 8,
 "frame_count" : 0,
 "memory_size" : 16384,
 "source_name" : '',
-"data_source" : ''})
+"data_source" : '',
+"is_muted" : False})
 
 Audio_Input = PyAudio_Device.copy()
 Audio_Input.update({"input" : True,
 "_data" : ''})
 
 Audio_Output = PyAudio_Device.copy()
-Audio_Output.update({"output" : True,
-"mute" : False})
+Audio_Output.update({"output" : True})
 
-Audio_Configuration_Utility = Process.copy()
-Audio_Configuration_Utility.update({"config_file_name" : "audiocfg",
+Config_Utility = Process.copy()
+Config_Utility.update({"config_file_name" : "audiocfg",
 "mode" : ("input",),
 "auto_start" : False})
 
 Audio_Manager = Process.copy()
 Audio_Manager.update({"config_file_name" : '',
 "use_defaults" : True,
-"priority" : .01})
+"priority" : .01,
+"configure" : False})
 
 Audio_Channel = Reactor.copy()
 Audio_Channel.update({"audio_data" : '',

@@ -201,8 +201,22 @@ class Base(object):
                        
     environment = mpre.environment
         
+    def __new__(cls, *args, **kwargs):
+        instance = super(Base, cls).__new__(cls)
+                        
+        # register name + number
+        instance_number = instance.instance_number = cls.instance_count
+        cls.instance_tracker[instance_number] = instance
+        cls.instance_count += 1
+        
+        ending = str(instance_number) if instance_number else ''
+        name = instance.instance_name = cls.__name__ + ending
+        
+        instance.environment.modify("Component_Resolve", (name, instance))
+
+        return instance
+
     def __init__(self, **kwargs):
-        super(Base, self).__init__()                
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__
         self.objects = {}
@@ -214,26 +228,20 @@ class Base(object):
             attributes.update(self.parser.get_options(attributes))
                 
         self.attribute_setter(**attributes)
-         
-        # register name + number
-        cls = type(self)
-        
-        instance_number = self.instance_number = cls.instance_count
-        cls.instance_tracker[instance_number] = self
-        cls.instance_count += 1
-        
-        ending = str(instance_number) if instance_number else ''
-        name = self.instance_name = cls.__name__ + ending
-        
-        self.environment.modify("Component_Resolve", (name, self))
         
         if self.memory_size:
             memory_info = (mmap.mmap(-1, self.memory_size), [])            
-            self.environment.modify("Component_Memory", (name, memory_info))           
-
+            self.environment.modify("Component_Memory", 
+                                   (self.instance_name, memory_info)) 
+            
     def attribute_setter(self, **kwargs):
-        """usage: object.attribute_setter(attr1=value1, attr2=value2).
-        called implicitly in __init__ for any object that inherits from Base."""
+        """ usage: object.attribute_setter(attr1=value1, attr2=value2).
+            
+            Each key:value pair specified as keyword arguments will be
+            assigned as attributes of the calling object. Keys are string
+            attribute names and the corresponding values can be anything.
+            
+            This is called implicitly in __init__ for Base objects."""
         [setattr(self, attr, val) for attr, val in kwargs.items()]
 
     def create(self, instance_type, *args, **kwargs):
@@ -245,7 +253,7 @@ class Base(object):
             object will call .add on the created object, which
             performs reference tracking maintainence."""
         if not isinstance(instance_type, type):
-            instance_type = self._resolve_string(instance_type)
+            instance_type = utilities.resolve_string(instance_type)
                     
         # instantiate the new object from a class object
         instance = instance_type(*args, **kwargs)
@@ -260,7 +268,7 @@ class Base(object):
             
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
-            the object can be garbage collected by the regular python collector"""
+            the object can be collected by the python garbage collector"""
         assert not self.deleted
         self.deleted = True
         
@@ -268,10 +276,10 @@ class Base(object):
                 
         del self.instance_tracker[self.instance_number]
        
-        # changing a list while iterating through it produces non intuitive results
-        # copies have to be made
+        # lists are mutatable during iteration, so copies have to be made
         for child_type, children in self.objects.items():
-            children_names = [child.instance_name for child in children]
+            children_names = [getattr(child, 'instance_name', child_type) for 
+                              child in children]
             for _name in children_names:
                 self.environment.modify("Component_Resolve", _name, "remove_item")
                                 
@@ -370,20 +378,7 @@ class Base(object):
             need for an explicit reference to that object."""
         return getattr(self.environment.Component_Resolve[component_name], 
                        method_name)(*args, **kwargs)
-                       
-    def _resolve_string(self, string):
-        """Given a string of ...x.y.z, import ...x.y and return an instance of z"""
-        module_name = string.split(".")   
-        class_name = module_name.pop(-1)
-        module_name = '.'.join(module_name)
-        if not module_name:
-            module_name = "__main__"
-            
-        _from = sys.modules[module_name] if module_name in sys.modules\
-                else importlib.import_module(module_name)
-
-        return getattr(_from, class_name)
-        
+                               
         
 class Reactor(Base):
     """ usage: instance = Reactor(attribute=value, ...)
@@ -443,7 +438,7 @@ class Reactor(Base):
             the component name and a tuple containing the host address port"""
         if scope is 'local':
             self.parallel_method(component_name, "react", 
-                               self.instance_name, message)
+                                 self.instance_name, message)
        
         elif scope is 'global':
             raise NotImplementedError
@@ -484,24 +479,41 @@ class Reactor(Base):
             specified by a reaction returns its response."""
         self._respond_with.append(method)
         
-        
+
 class Wrapper(Reactor):
+    """ A wrapper to allow python objects to function as a Reactor.
+        The attributes on this wrapper will overload the attributes
+        of the wrapped object. """
+    def __init__(self, **kwargs):
+        self.wrapped_object = kwargs.pop("wrapped_object", None)
+        super(Wrapper, self).__init__(**kwargs)
+                            
+    def __getattr__(self, attribute):
+        return getattr(super(Wrapper, self).__getattribute__("wrapped_object"),
+                       attribute)
+                       
+                       
+class Proxy(Reactor):
     """ usage: Wrapper(wrapped_object=my_object) => wrapped_object
     
        Produces an instance that will act as the object it wraps and as an
        Reactor object simultaneously. This facilitates simple integration 
        with 'regular' python objects, providing them with monkey patches and
-       the reaction/parallel_method/alert interfaces for very little effort."""
+       the reaction/parallel_method/alert interfaces for very little effort.
+       
+       Proxy attributes are get/set on the underlying wrapped object first,
+       and if that object does not have the attribute or it cannot be
+       assigned, the action is performed on the proxy instead."""
 
     def __init__(self, **kwargs):
-        wraps = super(Wrapper, self).__getattribute__("wraps")
+        wraps = super(Proxy, self).__getattribute__("wraps")
         try:
             wrapped_object = kwargs.pop("wrapped_object")
         except KeyError:
             pass
         else:
             wraps(wrapped_object)
-        super(Wrapper, self).__init__(**kwargs)
+        super(Proxy, self).__init__(**kwargs)
 
     def wraps(self, obj, set_defaults=False):
         """ usage: wrapper.wraps(object)
@@ -510,7 +522,7 @@ class Wrapper(Reactor):
             by the calling wrapper. If the optional set_defaults
             attribute is True, then the wrapped objects class
             defaults will be applied."""
-        set_attr = super(Wrapper, self).__setattr__
+        set_attr = super(Proxy, self).__setattr__
         if set_defaults:
             for attribute, value in self.defaults.items():
                 set_attr(attribute, value)
@@ -518,15 +530,17 @@ class Wrapper(Reactor):
 
     def __getattribute__(self, attribute):
         try:
-            wrapped_object = super(Wrapper, self).__getattribute__("wrapped_object")
+            wrapped_object = super(Proxy, self).__getattribute__("wrapped_object")
             value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)
         except AttributeError:
-            value = super(Wrapper, self).__getattribute__(attribute)
+            value = super(Proxy, self).__getattribute__(attribute)
         return value
 
     def __setattr__(self, attribute, value):
+        print "setting {} to {} on {}".format(attribute, value, self)
+        super_object = super(Proxy, self)
         try:
-            wrapped_object = self.wrapped_object
+            wrapped_object = super_object.__getattribute__("wrapped_object")
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:
-            super(Wrapper, self).__setattr__(attribute, value)      
+            super_object.__setattr__(attribute, value)

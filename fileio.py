@@ -69,21 +69,35 @@ class Cached(object):
             print "references remaining for", key
         #self.handles[function][key] = handles[key]
                 
-class File(object):
+                
+class File(base.Wrapper):
     """usage: file_object = File([filename], [mode], [file])
     
-       Creates a File object. File objects support the reactor
-       interface for reading/writing to the wrapped file."""      
-    def __init__(self, filename='', mode='', file=None):           
-        self.file = file if file else open(filename, mode)
+       Creates a File object. File objects are pickleable and
+       support the reactor interface for reading/writing to the
+       underlying wrapped file."""
+        
+    def __init__(self, filename='', mode='', file=None, **kwargs):           
+        kwargs.setdefault("wrapped_object", (file if file else 
+                                             open(filename, mode)))
+        super(File, self).__init__(**kwargs)
+        self.filename = filename
+        self.mode = mode
         
     def handle_write(self, sender, packet):
-        self.file.write(packet)
+        self.wrapped_object.write(packet)
         
     def handle_read(self, sender, packet):
         seek, byte_count = packet.split(" ", 1)
-        self.file.seek(seek)
+        self.wrapped_object.seek(seek)
         return "handle_write " + self.file.read(byte_count)
+        
+    def __getstate__(self):
+        return self.filename, self.mode
+        
+    def __setstate__(self, state):
+        self.__init__(*state)
+        return self
         
         
 class Mmap(object):
@@ -110,7 +124,7 @@ class Mmap(object):
               mapping to be of size (blocks * mmap.ALLOCATIONGRANULARITY)
             - this argument has no effect when used with -1 for the filename
             
-            """
+            """    
     def __new__(cls, filename, file_position=0, blocks=0):
         if filename is -1:
             result = mmap.mmap(-1, file_position)
@@ -138,14 +152,15 @@ class Mmap(object):
         else:
             length = request_size
                      
-        file_on_disk = open(filename, 'rb')
-                    
-        args = (file_on_disk.fileno(), length)        
+        with open(filename, 'rb') as file_on_disk:
+            file_number = file_on_disk.fileno()
+        
+        args = (file_number, length)        
         kwargs = {"access" : mmap.ACCESS_READ,
                   "offset" : chunk_number * chunk_size}
         
         memory_map = mmap.mmap(*args, **kwargs)
-                                
+                
         return memory_map, data_offset
 
     
