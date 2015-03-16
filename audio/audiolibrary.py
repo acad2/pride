@@ -120,8 +120,8 @@ class Config_Utility(vmlibrary.Process):
             self.write_config_file(self.selected_devices)
             self.delete()
         else:
-            self.run()
-
+            Instruction(self.instance_name, "run").execute()
+            
     def write_config_file(self, device_list):
         with open(self.config_file_name, "wb") as config_file:
             for device in device_list:
@@ -137,12 +137,13 @@ class Config_Utility(vmlibrary.Process):
     def get_selections(self):
         selection = ""
         self.selected_devices = []
-
+        devices = self.devices
+        
         while "done" not in selection:
             print "\n"*80
             print "type 'done' to finish selecting..."
             print "**************************************"
-            self.print_display_devices(DEVICES)
+            self.print_display_devices(devices)
             print "currently using: ", [str(item) for item in self.selected_devices]
             selection = raw_input("Enter index of input device to use: ")
             try:
@@ -154,7 +155,7 @@ class Config_Utility(vmlibrary.Process):
                     raw_input("Invalid index. Press enter to continue...")
             else:
                 try:
-                    device = DEVICES[index]
+                    device = devices[index]
                 except KeyError:
                     selection = raw_input("Invalid index. press enter to continue to or 'done' to finish")
                     if 'done' in selection:
@@ -202,13 +203,14 @@ class Audio_Manager(vmlibrary.Process):
             except IOError:
                 response = raw_input("No audio config file found\nlaunch Audio_Config_Utility?: (y/n) ").lower()
                 if 'y' in response:
-                    Instruction("System", "create", Config_Utility,        
-                                exit_when_finished=False).execute
+                    self.run_configuration()
 
     def run_configuration(self, exit_when_finished=False):
-        self.create(Audio_Config_Utility,
+        self.create(Config_Utility,
                     default_input=self.default_input,
-                    default_output=self.default_output)
+                    default_output=self.default_output,
+                    devices=self.devices)
+        
         if exit_when_finished:
             Instruction("Metapython", "exit").execute()
         
@@ -218,13 +220,13 @@ class Audio_Manager(vmlibrary.Process):
             self.api = 'alsaaudio'
             
             default_input, default_output = "hw:0,0", "hw:0,0"
-            DEVICES = dict((index, {"card" : "hw:{0},0".format(index), 
+            devices = dict((index, {"card" : "hw:{0},0".format(index), 
                                     "name" : device_name}) for 
                                     index,  device_name in 
                                     enumerate(audio_devices.alsaaudio.cards()))    
-            self.default_input = DEVICES[0]
-            self.default_output = DEVICES[0]
-            
+            self.default_input = devices[0]
+            self.default_output = devices[0]
+            self.devices = devices
         else:
             import portaudiodevices as audio_devices
             self.api = 'portaudio'
@@ -246,13 +248,13 @@ class Audio_Manager(vmlibrary.Process):
             default_output["rate"] = int(default_input["defaultSampleRate"])
             default_output["channels"] = default_input["maxInputChannels"]
             
-            DEVICES = {}
+            self.devices = devices = {}
             for device_number in xrange(PORTAUDIO.get_device_count()):
                 device_info = PORTAUDIO.get_device_info_by_index(device_number)
                 options = {"channels" : max(device_info["maxOutputChannels"], device_info["maxInputChannels"]),
                         "rate" : int(device_info["defaultSampleRate"]),
                         "name" : device_info["name"]}
-                DEVICES[device_number] = options        
+                devices[device_number] = options        
         
             self.default_input = default_input
             self.default_output = default_output

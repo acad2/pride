@@ -295,7 +295,7 @@ class Base(object):
         
         if self.memory_size:
             self.environment.modify("Component_Memory", name, 
-                               mode="remove_item")
+                                    method="remove_item")
             
        # print "\nFinished deleting {}".format(self.instance_name)
 
@@ -318,7 +318,7 @@ class Base(object):
         objects = self.objects
         instance_class = instance.__class__.__name__
         siblings = objects.get(instance_class, [])  
-                        
+        
         if instance not in siblings:
             siblings.append(instance)
             objects[instance_class] = siblings

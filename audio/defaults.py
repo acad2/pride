@@ -49,7 +49,7 @@ PyAudio_Device.update({"format" : 8,
 
 Audio_Input = PyAudio_Device.copy()
 Audio_Input.update({"input" : True,
-"_data" : ''})
+"data" : ''})
 
 Audio_Output = PyAudio_Device.copy()
 Audio_Output.update({"output" : True})

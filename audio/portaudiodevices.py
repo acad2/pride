@@ -109,14 +109,9 @@ class Audio_Device(audiolibrary.Audio_Reactor):
             self.is_muted = True
         else:
             self.is_muted = False
-            
-    def _new_thread(self):
-        raise NotImplementederror
         
     def get_data(self):
         raise NotImplementedError
-
-
 
             
 class Audio_Input(Audio_Device):
@@ -132,45 +127,28 @@ class Audio_Input(Audio_Device):
             except KeyError:
                 raise FormatError(self._format_error.format(self.rate, self.channels, "input"))
        
-        self.thread = self._new_thread()
-                    
-    def _new_thread(self):
-        stream = self.open_stream()
-        get_read_available = stream.get_read_available
+        stream = self.stream = self.open_stream()
+        if not self.data_source:
+            self.data_source = stream
         
-        data_source = self.data_source if self.data_source else stream
-        read_stream = data_source.read
-        handle_audio_output = self.handle_audio_output
-
-        byte_scalar = self.sample_size * self.channels
-            
-        frames_per_buffer = self.frames_per_buffer
-        full_buffer_size = self.full_buffer_size
-        frame_counter = self.frame_count
-        _data = ''
-
-        while True:            
-            frame_count = get_read_available()
-            
-            data = stream.read(frame_count)
-            data =  (data if data_source is stream else
-                     data_source.read(min((frame_count * byte_scalar),
-                                           self.full_buffer_size)))  
-            _data += data
-            frame_counter += frame_count
+    def get_data(self):     
+        stream = self.stream
+        frame_count = stream.get_read_available()
+        data_source = self.data_source
+        data = self.data
+        
+        if data_source is stream:
+            frame_count = min(frame_count, self.frames_per_buffer)
+            old_size = len(data)
+            data += data_source.read(frame_count)
+            byte_count = len(data) - old_size
+        else:
+            byte_count = max((frame_count * self.sample_size * self.channels),
+                              self.full_buffer_size)
+            data += data_source.read(byte_count)
                         
-            if frame_counter >= frames_per_buffer:
-                frame_counter -= frames_per_buffer
-                handle_audio_output(_data[:full_buffer_size])
-                _data = _data[full_buffer_size:]
-            yield
-
-    def get_data(self):
-        return next(self.thread)
-
-    def delete(self):
-        print self.instance_name, "deleting!"
-        super(Audio_Input, self).delete()
+        self.handle_audio_output(data[:byte_count])
+        self.data = data[byte_count:]    
         
         
 class Audio_Output(Audio_Device):
@@ -193,9 +171,7 @@ class Audio_Output(Audio_Device):
         available = self.available = len(self.data_source)
                    
         number_of_frames = self.stream.get_write_available()
-   #     self.alert("{} bytes available; {} frames available; {} frames per buffer",
-    #              (available, number_of_frames, self.frames_per_buffer), 0)
-          
+
         byte_count = min(number_of_frames * self.channels * self.sample_size,
                          available)
                          
