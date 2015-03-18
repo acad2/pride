@@ -1,4 +1,4 @@
-#   mpf.network_library - builds on sockets - basic authentication - asynchronous network
+#   mpf.network_library - Asynchronous socket operations
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -14,19 +14,11 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys
-import os
 import socket
 import select
 import struct
 import errno
-import time
-import mmap
-import contextlib
 import traceback
-import getpass
-import functools
-#import hashlib
 
 import vmlibrary
 import defaults
@@ -63,6 +55,7 @@ class Socket(base.Wrapper):
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         if self.add_on_init:
+            self.added_to_network = True
             self.parallel_method("Network", "add", self)
          
     def send(self, data):
@@ -84,7 +77,12 @@ class Socket(base.Wrapper):
     def delete(self):
         self.close()        
         super(Socket, self).delete()
-                            
+    
+    def close(self):
+        if self.added_to_network:
+            self.parallel_method("Network", "remove", self)
+        self.wrapped_object.close()
+        
        
 class Tcp_Socket(Socket):
 
@@ -138,9 +136,9 @@ class Server(Tcp_Socket):
                        (traceback.format_exc(), self.instance_name), 0)
             instruction = Instruction(self.instance_name, "delete")
             instruction.execute()
-
+ 
     def on_connect(self, connection):
-        raise NotImplementedError
+        raise NotImplementedError 
         
         
 class Tcp_Client(Tcp_Socket):
@@ -154,7 +152,7 @@ class Tcp_Client(Tcp_Socket):
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
             self.target = (self.ip, self.port)
-
+        
         self.parallel_method("Connection_Manager", "add", self)
                 
     def unhandled_error(self):
@@ -173,11 +171,12 @@ class Tcp_Client(Tcp_Socket):
                 self.connect(self.target)
             except socket.error as socket_error:
                 error = socket_error.errno
-                #self.error_handler.get(error.errno, self.unhandled_error)()
+                
                 if error == CONNECTION_IS_CONNECTED: # complete
                     self.parallel_method("Network", "add", self)
-                    self.on_connect()
-
+                    self.added_to_network = True
+                    self.on_connect()                    
+                                        
                 elif error in (CALL_WOULD_BLOCK, CONNECTION_IN_PROGRESS): # waiting
                     self.alert("{0} waiting for connection to {1}", (self.instance_name, self.target), level="vv")
                     self.stop_connecting = False
@@ -185,17 +184,21 @@ class Tcp_Client(Tcp_Socket):
                 elif error == BAD_TARGET: #10022: # WSAEINVALID bad target
                     self.alert("WSAEINVALID bad target for {0}", [self.instance_name], level=self.bad_target_verbosity)
                     self.delete()
-
+                    
                 else:
                     print "unhandled exception for", self.instance_name
                     print traceback.format_exc()
                     self.delete()
             else:
-                self.on_connect(self)
-
+                self.added_to_network = True
+                self.on_connect()                
+                
         return self.stop_connecting
         
-
+    def on_connect(self):
+        raise NotImplementedError
+        
+        
 class Udp_Socket(Socket):
 
     defaults = defaults.Udp_Socket
@@ -245,12 +248,14 @@ class Connection_Manager(vmlibrary.Process):
     def add(self, sock):
         self.running = True
         self.buffer.append(sock)
+        self.parallel_method("Network", "_run")
         
     def run(self):
         running = False
         buffer = self.buffer
         new_buffer = self.buffer = []
         while buffer:
+            
             connection = buffer.pop()     
             if not connection.deleted and not connection.attempt_connection():
                 running = True
@@ -290,6 +295,13 @@ class Network(vmlibrary.Process):
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)
+        self._run()
+    
+    def remove(self, sock):
+        super(Network, self).remove(sock)
+        self.sockets.remove(sock)
+        
+    def _run(self):
         if not self.running:
             self.run_instruction.execute(priority=self.priority)
             self.running = True
@@ -301,7 +313,7 @@ class Network(vmlibrary.Process):
     def run(self):
         if self.connection_manager.running:
             self.connection_manager.run()
-
+        
         sockets = self.sockets
         
         if sockets:
@@ -311,9 +323,12 @@ class Network(vmlibrary.Process):
                 # is about 500 (at least on windows). We can avoid this limitation
                 # by sliding through the socket list in slices of 500 at a time
                 socket_list = sockets[self._slice_mapping[chunk]]
+
+                readable, writable, errors = self._select(socket_list, socket_list, socket_list, 0.0)
                 
-                readable, writable, errors = self._select(socket_list, socket_list, [], 0.0)
-                        
+                if errors:
+                    self.alert("got socket errors!: ", level=0)
+                    raise SystemExit
                 self_writable.update(writable)
                 
                 if readable:
@@ -345,6 +360,8 @@ class Network(vmlibrary.Process):
                         self.sendto(sender, data, host_info)
                         
             self.run_instruction.execute(priority=self.priority)
+        else:
+            self.running = False
             
     def handle_reads(self, readable_sockets):
         for sock in readable_sockets:
@@ -358,7 +375,9 @@ class Network(vmlibrary.Process):
                     self.alert("EAGAIN error reading {0}",
                               (sock, ), 0)
                 else:
-                    raise
+                    self.alert("{}", 
+                               [traceback.format_exc()], 
+                               level=0)
                     
     def send(self, sock, data):   
         if sock in self.writable:

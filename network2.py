@@ -197,14 +197,18 @@ class Authenticated_Service(base.Reactor):
         self._add_user = '''INSERT INTO Credentials VALUES(?, ?, ?, ?)'''
         self._remove_user = "DELETE FROM Credentials WHERE username=:username"
         self._select_user = """SELECT username, password FROM Credentials WHERE username = ?"""
-
+            
     def _sql_encrypt(self, password, salt=None):
         salt = os.urandom(64) if not salt else salt
-        encrypted = hashlib.pbkdf2_hmac('sha512', 
-                                        password.encode('utf-8'), 
-                                        salt, 
-                                        100000)
-        return salt + encrypted
+        iterations = 100000
+        digest = salt + password
+        hash_functions = dict((name, getattr(hashlib, name)) for name in 
+                               hashlib.algorithms if name != "pbkdf2_hmac")         
+        while iterations > 0:
+            for hash_function in hashlib.algorithms:
+                digest = hash_functions[hash_function](digest).digest()
+                iterations -= 1
+        return salt + digest
         
     def __reduce__(self):
         state = self.__dict__.copy()
@@ -238,17 +242,18 @@ class Authenticated_Service(base.Reactor):
             database.rollback()            
         else:
             hashed = self._sql_encrypt(password, correct_password[:64])
-
-            if not hmac.compare_digest(hashed, correct_password):
+            if (hmac.compare_digest(hashed, correct_password) if 
+                hasattr(hmac, "compare_digest") else 
+                hashed == correct_password):
+                     
+                self.logged_in[sender] = username
+                response = "success " + self.login_message
+            else:
                 invalid_attempts = self.invalid_attempts
                 
                 attempts = invalid_attempts.get(sender, 0)
                 invalid_attempts.setdefault(sender, attempts + 1)
-                response = "failed 0"
-
-            else:
-                self.logged_in[sender] = username
-                response = "success " + self.login_message
+                response = "failed 0"            
                 
         return "login_result " + response
         

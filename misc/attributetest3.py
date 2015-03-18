@@ -15,23 +15,26 @@ class Persistent_Reactor(base.Reactor):
         set_attribute = super_object.__setattr__
         get_attribute = super_object.__getattribute__
         
-        fileio.ensure_file_exists(instance.instance_name)
-        _file = fileio.File(instance.instance_name, 'r+b')
+        instance_name = get_attribute("instance_name")
+        fileio.ensure_file_exists(instance_name)
+        _file = open(instance_name, 'r+b')# fileio.File(instance_name, 'r+b')
         memory = mmap.mmap(_file.fileno(), 65535)        
         
-        set_attribute("file", _file)
+       # set_attribute("file", _file)
         Persistent_Reactor.memory[instance] = memory
         
         try:
-            dictionary = pickle.load(memory)
+            dictionary = pickle.load(_file)
         except EOFError:
-            instance.__init__(*args, **kwargs)
             dictionary = get_attribute("__dict__")
-            pickle.dump(dictionary, memory)
-            memory.flush()
+            pickle.dump(dictionary, _file)
+            _file.flush()
+           # print memory[:512]
         else:
             get_attribute("__dict__").update(dictionary)
-
+        print "calling init on ", instance
+        get_attribute("__init__")(*args, **kwargs)
+        print "after init"
         return instance
         
     def __getattribute__(self, attribute):

@@ -93,6 +93,7 @@ class Tracer(object):
                      "line_number" : frame.f_lineno,
                      "called_from" : code.co_filename}
 
+                     
         module = code.co_filename.split("\\")[-1].replace(".py", "")
         source_info = {"function" : inspect.getsource(code),
                        "module" : inspect.getsource(__import__(module))}
@@ -136,6 +137,7 @@ class Tracer(object):
     def __call__(self, *args, **kwargs):
         old_trace = sys.gettrace()
         sys.settrace(self.trace)
+        print "calling ", self.function
         results = self.function(*args, **kwargs)
         sys.settrace(old_trace)
         if "debug" in self.print_mode:

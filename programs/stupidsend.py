@@ -5,7 +5,7 @@ if __name__ == "__main__":
     filename = argv[1]
     
     sender = socket(AF_INET, SOCK_STREAM)
-    sender.connect(("192.168.1.240", 40021))
+    sender.connect(("192.168.77.146", 40021))
     print "connected"
     f = open(filename, "rb")
     data = f.read()

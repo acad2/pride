@@ -32,8 +32,13 @@ PROCESSOR_COUNT = 1#cpu_count()
 MANUALLY_REQUEST_MEMORY = 0
 DEFAULT_MEMORY_SIZE = 4096
 
+# anonymous memory passes -1  as the file descriptor to pythons mmap.mmap.
+# persistent memory opens the file instance.instance_name and opens an
+# mmap.mmap with that files file descriptor
+ANONYMOUS = -1
+PERSISTENT = 0
 Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
-"network_packet_size" : 4096,
+"memory_mode" : ANONYMOUS,
 "verbosity" : '',
 "deleted" : False}
 
@@ -62,7 +67,8 @@ Socket.update({"blocking" : 0,
 "network_buffer" : '',
 "interface" : "0.0.0.0",
 "port" : 0,
-"bind_on_init" : False})
+"bind_on_init" : False,
+"added_to_network" : False})
 
 Tcp_Socket = Socket.copy()
 Tcp_Socket.update({"socket_family" : socket.AF_INET,
@@ -152,7 +158,12 @@ Shell.update({"email" : '',
 Interpreter_Service = Authenticated_Service.copy()
 Interpreter_Service.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
 
-Metapython = Process.copy()
+Alert_Handler = Reactor.copy()
+Alert_Handler.update({"log_level" : 0,
+                      "print_level" : 0,
+                      "log_name" : "Alerts.log"})
+                      
+Metapython = Reactor.copy()
 Metapython.update({"command" : "shell_launcher.py",
 "implementation" : DEFAULT_IMPLEMENTATION,
 "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],

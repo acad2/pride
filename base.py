@@ -27,7 +27,6 @@ import defaults
 import utilities
 timer_function = utilities.timer_function
 
-
 class Instruction(object):
     """ usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
@@ -77,24 +76,6 @@ class Instruction(object):
         kwarg_string = ", ".join("{0}={1}".format(attr, value) for attr, value in kwargs.items())
         format_arguments = (self.component_name, self.method)#, arg_string, kwarg_string)
         return "Instruction {0}.{1}".format(*format_arguments)
-
-
-class Alert(object):
-    """ Utilizes a class as a namespace for holding global alert related
-        configuration. This class is not instantiated anywhere.
-        
-        Contains the log_level and print_level global settings for alerts.
-        The actual log file is Alert.log, which defaults to Alerts.log.
-        The level_map associates alert level symbols with notification level"""
-    log_level = 0
-    print_level = 0
-    log = open("Alerts.log", "a")
-    level_map = {0 : "",
-                'v' : "notification ",
-                'vv' : "verbose notification ",
-                'vvv' : "very verbose notification ",
-                'vvvv' : "extremely verbose notification "}
-
             
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
@@ -230,9 +211,18 @@ class Base(object):
         self.attribute_setter(**attributes)
         
         if self.memory_size:
-            memory_info = (mmap.mmap(-1, self.memory_size), [])            
+            if not self.memory_mode:
+                with open(self.instance_name, 'a') as file_on_disk:
+                    file_descriptor = file_on_disk.fileno()
+                    file_on_disk.close()
+            else:
+                file_descriptor = -1
+                
+            # set environment.Component_Memory[instance_name] to an mmap_object
             self.environment.modify("Component_Memory", 
-                                   (self.instance_name, memory_info)) 
+                                    (self.instance_name,
+                                     mmap.mmap(file_descriptor, 
+                                               self.memory_size)))
             
     def attribute_setter(self, **kwargs):
         """ usage: object.attribute_setter(attr1=value1, attr2=value2).
@@ -273,7 +263,7 @@ class Base(object):
         self.deleted = True
         
         name = self.instance_name
-                
+        environment = self.environment
         del self.instance_tracker[self.instance_number]
        
         # lists are mutatable during iteration, so copies have to be made
@@ -281,21 +271,24 @@ class Base(object):
             children_names = [getattr(child, 'instance_name', child_type) for 
                               child in children]
             for _name in children_names:
-                self.environment.modify("Component_Resolve", _name, "remove_item")
-                                
+                environment.modify("Component_Resolve", _name, "remove_item")
+         
+        environment.modify("Parents", self, "remove_item")
+        
       #  print "deleting references to", self
         names = [instance_name for instance_name in 
-                 self.environment.References_To[self]]
+                 environment.References_To[name]]
                  
         for instance_name in names:
-            instance = self.environment.Component_Resolve[instance_name]
+            instance = environment.Component_Resolve[instance_name]
             instance.remove(self)
-
-        self.environment.modify("Component_Resolve", name, "remove_item")
+        
+        environment.modify("References_To", name, "remove_item")
+        environment.modify("Component_Resolve", name, "remove_item")
         
         if self.memory_size:
-            self.environment.modify("Component_Memory", name, 
-                                    method="remove_item")
+            environment.modify("Component_Memory", name, 
+                               method="remove_item")
             
        # print "\nFinished deleting {}".format(self.instance_name)
 
@@ -305,59 +298,50 @@ class Base(object):
             Removes an instance from self.objects. Modifies object.objects
             and environment.References_To"""
         self.objects[instance.__class__.__name__].remove(instance)
-        self.environment.References_To[instance].remove(self.instance_name)        
+        self.environment.References_To[instance.instance_name].remove(self.instance_name)        
                 
     def add(self, instance):
         """ usage: object.add(instance)
 
-            Adds an object to the calling object. This performs
-            reference bookkeeping so the added object can be 
-            deleted successfully later."""        
-        references = self.environment.References_To.get(instance, set())
+            Adds an object to caller.objects[instance.__class__.__name__]"""        
+        instance_name = instance.instance_name
+        references = self.environment.References_To.get(instance_name, set())
         
         objects = self.objects
         instance_class = instance.__class__.__name__
         siblings = objects.get(instance_class, [])  
         
-        if instance not in siblings:
+        if instance_name not in siblings:
             siblings.append(instance)
             objects[instance_class] = siblings
             references.add(self.instance_name)
             
-            self.environment.modify("References_To", (instance, references))
+            self.environment.modify("References_To", (instance_name, references))
                             
     def alert(self, message="Unspecified alert message",
                     format_args=tuple(),
                     level=0,
-                    callback=None, callback_instruction=None):
-        """usage: base.alert(message, format_args, level, callback, callback_instruction)
+                    callback=None):
+        """usage: base.alert(message, format_args=tuple(), level=0, callback=None)
 
         Create an alert. Depending on the level given, the alert may be printed
         for immediate attention and/or logged quietly for later viewing.
 
         -message is a string that will be logged and/or displayed
         -format_args are any string formatting args for message.format()
-        -level is a small integer indicating the severity of the alert.
+        -level is an integer indicating the severity of the alert.
         -callback is an optional tuple of (function, args, kwargs) to be called when
-        the alert is triggered
-        -callback_instruction is an optional Instruction to be posted when the alert is triggered.
+         the alert is triggered
 
-        alert severity is relative to the Alert.log_level and Alert.print_level;
+        alert severity is relative to Alert_Handler log_level and print_level;
         a lower number indicates a less verbose notification, while 0 indicates
-        an important message that should not and will never be suppressed."""
-
+        an important message that should not be suppressed."""
         if self.verbosity >= level:
-            message = self.instance_name + ": " + message.format(*format_args)
-            if not Alert.print_level or level <= Alert.print_level:
-                sys.stdout.write(message + "\n")
-            if level <= Alert.log_level:
-                severity = Alert.level_map.get(level, str(level))
-                Alert.log.write(severity + message + "\n")
-            if callback_instruction:
-                callback_instruction.execute()
-            if callback:
-                function, args, kwargs = callback
-                return function(*args, **kwargs)
+            if format_args:
+                message = message.format(*format_args)
+            return self.parallel_method("Alert_Handler", "alert",
+                                        self.instance_name + ": " + message,
+                                        level, callback)            
                         
     def parallel_method(self, component_name, method_name, *args, **kwargs):
         """ usage: base.parallel_method(component_name, method_name, 
@@ -443,8 +427,7 @@ class Reactor(Base):
         elif scope is 'global':
             raise NotImplementedError
             memory, pointers = self.environment.Component_Memory[component_name]
-            self.environment.modify("Parallel_Instructions", 
-                                    component_name, "append")                
+                                                              
             memory.write(packet)
             pointers.append((self.instance_name, memory.tell()))
             

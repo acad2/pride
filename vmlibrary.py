@@ -94,7 +94,6 @@ class Processor(Process):
         
     def run(self):
         instructions = self.environment.Instructions
-        parallel_instructions = self.environment.Parallel_Instructions
         Component_Resolve = self.environment.Component_Resolve
         processor_name = self.instance_name
         

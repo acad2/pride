@@ -41,9 +41,6 @@ def build_docs(site_name=''):
 
 Instruction("Metapython", "save_state").execute()
                  
-from mpre.misc.attributetest import *
-print "constructing persistent reactor"
-impressive = Persistent_Reactor()
 """
 
 options["startup_definitions"] += definitions

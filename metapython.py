@@ -16,6 +16,7 @@ import base
 import vmlibrary
 import network2
 import utilities
+import fileio
 import defaults
 Instruction = base.Instruction            
             
@@ -102,7 +103,7 @@ class Interpreter_Service(network2.Authenticated_Service):
         self.user_namespaces = {}
         super(Interpreter_Service, self).__init__(**kwargs)
         self.log_file = open("Metapython.log", 'a')
-                
+        
     def login(self, sender, packet):
         response = super(Interpreter_Service, self).login(sender, packet)
         if "success" in response.lower():
@@ -157,6 +158,33 @@ class Interpreter_Service(network2.Authenticated_Service):
         
         return "result " + result
                 
+
+class Alert_Handler(base.Reactor):
+    
+    level_map = {0 : "",
+                'v' : "notification ",
+                'vv' : "verbose notification ",
+                'vvv' : "very verbose notification ",
+                'vvvv' : "extremely verbose notification "}
+                
+    defaults = defaults.Alert_Handler
+             
+    def __init__(self, **kwargs):
+        kwargs["parse_args"] = True
+        super(Alert_Handler, self).__init__(**kwargs)
+        self.log = fileio.File(self.log_name, 'a')
+        
+    def alert(self, message, level, callback):      
+        if not self.print_level or level <= self.print_level:
+            sys.stdout.write(message + "\n")
+        if level <= self.log_level:
+            severity = self.level_map.get(level, str(level))
+            self.log.write(severity + message + "\n")
+
+        if callback:
+            function, args, kwargs = callback
+            return function(*args, **kwargs)
+
             
 class Metapython(base.Reactor):
 
@@ -175,8 +203,9 @@ class Metapython(base.Reactor):
 
     def __init__(self, **kwargs):
         super(Metapython, self).__init__(**kwargs)
-        self.processor = self.create("vmlibrary.Processor")
         self.setup_os_environ()
+        self.processor = self.create("vmlibrary.Processor")        
+        self.alert_handler = self.create(Alert_Handler)
         
         if self.interpreter_enabled:
             Instruction(self.instance_name, "start_service").execute()
