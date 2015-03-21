@@ -91,7 +91,7 @@ class Runtime_Decorator(object):
 
     def _handle_monkey_patch(self, monkey_patch):
         if isinstance(monkey_patch, str):
-            monkey_patch = utilities.resolve_string(patch_info)
+            monkey_patch = utilities.resolve_string(monkey_patch)
         try:
             monkey_patch = functools.partial(monkey_patch, self.function.im_self)
         finally: # function has no attribute im_self (not a method)
@@ -274,6 +274,7 @@ class Metaclass(Documented):
     metaclasses = [Instance_Tracker, Parser_Metaclass, Method_Hook]
     
     def __new__(cls, name, bases, attributes):
+        # create a new metaclass that uses Metaclass.metaclasses as it's bases.
         new_metaclass = type(Metaclass.__name__,
                              tuple(Metaclass.metaclasses),
                              {})

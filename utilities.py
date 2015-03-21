@@ -204,7 +204,7 @@ class LRU_Cache(object):
         if len(deque) > self.size:
             # change to a slightly different implementation that
             # doesn't do this check when the cache becomes full
-            self.add = _full_add
+            self.add = self._full_add
         
         return self.no_eviction
         

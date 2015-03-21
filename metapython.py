@@ -9,15 +9,15 @@ import time
 import cStringIO as StringIO
 import importlib
 import copy
-
 import pickle
 
-import base
-import vmlibrary
-import network2
-import utilities
-import fileio
-import defaults
+import mpre.base as base
+import mpre.vmlibrary as vmlibrary
+import mpre.network2 as network2
+import mpre.utilities as utilities
+import mpre.fileio as fileio
+import mpre.defaults as defaults
+
 Instruction = base.Instruction            
             
 class Shell(network2.Authenticated_Client):
@@ -206,7 +206,11 @@ class Metapython(base.Reactor):
         self.setup_os_environ()
         self.processor = self.create("vmlibrary.Processor")        
         self.alert_handler = self.create(Alert_Handler)
-        
+ 
+        if self.startup_definitions:
+            Instruction(self.instance_name, "exec_command", 
+                        self.startup_definitions).execute() 
+                        
         if self.interpreter_enabled:
             Instruction(self.instance_name, "start_service").execute()
                        
@@ -236,44 +240,77 @@ class Metapython(base.Reactor):
         with open(self.command, 'r') as user_module:
             source = user_module.read()
             user_module.close()
-
-        if self.startup_definitions:
-            Instruction(self.instance_name, "exec_command", 
-                        self.startup_definitions).execute()            
+           
         Instruction(self.instance_name, "exec_command", source).execute()
-                    
+                   
         self.processor.run()       
     
     def start_service(self):
         server_options = {"name" : self.instance_name,
                           "interface" : self.interface,
                           "port" : self.port}  
-
+        
         self.server = self.create(Interpreter_Service, **server_options)      
         
     def exit(self, exit_code=0):
         Instruction("Processor", "attribute_setter", running=False).execute()
         # cleanup/finalizers go here?
 
-    def save_state(self):        
+    def save_state(self):
+        """ usage: metapython.save_state()
+        
+            Stores a snapshot of the current runtime environment. 
+            This file is saved as metapython._suspended_file_name, which
+            defaults to "suspended_interpreter.bin"."""            
         with open(self._suspended_file_name, 'wb') as pickle_file:
-            pickle.dump(self.environment, pickle_file)
-            pickle.dump(self, pickle_file)
+            pickle.dump(self.environment, pickle_file)            
             pickle_file.flush()
             pickle_file.close()
             
     @staticmethod
     def load_state(pickle_filename):
+        """ usage: from metapython import *
+                    Metapython.load_state(pickle_filename) => interpreter
+                    
+            Load an environment that was saved by Metapython.save_state.
+            The package global mpre.environment is updated with the
+            contents of the restored environment, and the component at
+            environment.Component_Resolve["Metapython"] is returned by this
+            method.
+            
+            """
+        import mpre
+        
         with open(pickle_filename, 'rb') as pickle_file:
-            environment = pickle.load(pickle_file)
-            interpreter = pickle.load(pickle_file)
+            mpre.environment.update(pickle.load(pickle_file))
             pickle_file.close()
-        interpreter.environment.update(environment)
-        interpreter.processor = interpreter.create("vmlibrary.Processor")
+
+        interpreter = mpre.environment.Component_Resolve["Metapython"]
         interpreter.setup_os_environ()            
         return interpreter
         
+ 
+class Restored_Interpreter(Metapython):
+    """ usage: Restored_Intepreter(filename="suspended_interpreter.bin") => interpreter
     
+        Restores an interpreter environment that has been suspended via
+        metapython.Metapython.save_state. This is a convenience class
+        over Metapython.load_state; instances produced by instantiating
+        Restored_Interpreter will be of the type of instance returned by
+        Metapython.load_state and not Restored_Interpreter"""
+        
+    defaults = defaults.Metapython.copy()
+    defaults.update({"filename" : 'suspended_interpreter.bin'})
+    
+    def __new__(cls, *args, **kwargs):
+        instance = super(Restored_Interpreter, cls).__new__(cls, *args, **kwargs)
+        attributes = cls.defaults.copy()
+        if kwargs.get("parse_args"):
+            attributes.update(instance.parser.get_options(cls.defaults))       
+        
+        return Metapython.load_state(attributes["filename"])
+
+        
 if __name__ == "__main__":
     metapython = Metapython(parse_args=True)
     metapython.start_machine()

@@ -1,28 +1,18 @@
 from sys import platform
 import subprocess
 
+import mpre.fileio as fileio
+
 COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}." if "win" in platform else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}. "
 
 def convert_to_pyx(file_list):
     new_names = []
-
+    
     for filename in file_list:
-        #filepath = directory + "\\" + filename
-        #new_path = filepath + 'x'
-        filepath = filename
-        new_path = filename + 'x'
         
-        old_file = open(filepath, 'rb')
-        new_file = open(new_path, 'wb')
-        new_file.write(old_file.read())
-        new_file.flush()
-        new_file.close()
-        old_file.close()
-        
-        new_name = new_path.split("\\")[-1]
-        new_names.append(new_name)
-        #print "{} converted to {}".format(filename, new_name)
-    #print
+        with open(filename, 'r') as py_file:
+            fileio.ensure_file_exists(filename + 'x', ('w', py_file.read()))
+            new_names.append(filename + 'x')
     return new_names
 
     

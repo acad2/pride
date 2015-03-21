@@ -20,26 +20,54 @@ import struct
 import errno
 import traceback
 
-import vmlibrary
-import defaults
-import base
+import mpre.vmlibrary as vmlibrary
+import mpre.defaults as defaults
+import mpre.base as base
 from utilities import Latency, Average
 Instruction = base.Instruction
 
+ERROR_CODES = {}
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
     BAD_TARGET = errno.WSAEINVAL
     CONNECTION_IN_PROGRESS = errno.WSAEWOULDBLOCK
     CONNECTION_IS_CONNECTED = errno.WSAEISCONN
     CONNECTION_WAS_ABORTED = errno.WSAECONNABORTED
+    CONNECTION_RESET = errno.WSAECONNRESET
+    
+    ERROR_CODES[BAD_TARGET] = "BAD_TARGET"
+    
 except:
     CALL_WOULD_BLOCK = errno.EWOULDBLOCK
     CONNECTION_IN_PROGRESS = errno.EINPROGRESS
     CONNECTION_IS_CONNECTED = errno.EISCONN
     CONNECTION_WAS_ABORTED = errno.ECONNABORTED
-
+    CONNECTION_RESET = errno.ECONNRESET
+ 
+ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
+                    CONNECTION_IN_PROGRESS : "CONNECTION_IN_PROGRESS",
+                    CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
+                    CONNECTION_WAS_ABORTED : "CONNECTION_WAS_ABORTED",
+                    CONNECTION_RESET  : "CONNECTION_RESET"})
+               
 HOST = socket.gethostbyname(socket.gethostname())
 
+class Error_Handler(object):
+            
+    def connection_reset(self, sock, error):
+        sock.handle_connection_reset()
+        
+    def connection_was_aborted(self, sock, error):
+        sock.close()
+        sock.delete()
+        
+    def eagain(self, sock, error):
+        sock.alert("{}", [error], level=0)
+        
+    def unhandled(self, sock, error):
+        sock.alert("Unhandled error:\n{}", [error], level=0)
+        
+        
 class Socket(base.Wrapper):
 
     defaults = defaults.Socket
@@ -54,6 +82,7 @@ class Socket(base.Wrapper):
         self.socket = self.wrapped_object
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
+        self.error_handler = Error_Handler()
         if self.add_on_init:
             self.added_to_network = True
             self.parallel_method("Network", "add", self)
@@ -367,17 +396,10 @@ class Network(vmlibrary.Process):
         for sock in readable_sockets:
             try:
                 sock._network_recv()
-            except socket.error as error:
-                if error.errno == CONNECTION_WAS_ABORTED:
-                    sock.close()
-                    sock.delete()
-                elif error.errno == 11: # EAGAIN on unix
-                    self.alert("EAGAIN error reading {0}",
-                              (sock, ), 0)
-                else:
-                    self.alert("{}", 
-                               [traceback.format_exc()], 
-                               level=0)
+            except socket.error as error:       
+                handler = getattr(sock.error_handler, 
+                                  ERROR_CODES[error.errno].lower(),
+                                  sock.error_handler.unhandled)
                     
     def send(self, sock, data):   
         if sock in self.writable:

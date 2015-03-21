@@ -297,7 +297,8 @@ class Authenticated_Service(base.Reactor):
         cursor = database.cursor()
         
         if mode == "remove":
-            cursor.execute(self._remove_user, {"Username" : username})
+            cursor.execute(self._remove_user, 
+                          {"Username" : self.logged_in[sender]})
             database.commit()
             del self.logged_in[user]
 
@@ -454,7 +455,7 @@ class Download(base.Base):
             return self.make_request()            
         else:
             self.alert("File {} was not available for download from {}",
-                       [filename, self.target])        
+                       [self.filename, self.target])        
         
     def record_data(self, sender, data):
         file_position, file_data = data.split(" ", 1)

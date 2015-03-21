@@ -1,3 +1,4 @@
+import zipfile
 import mpre.base as base
 import mpre.defaults as defaults
 

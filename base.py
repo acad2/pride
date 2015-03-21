@@ -65,18 +65,18 @@ class Instruction(object):
         self.kwargs = kwargs
         
     def execute(self, priority=0.0):
+        execute_at = self.execute_at = timer_function() + priority
         heapq.heappush(Base.environment.Instructions, 
-                      (timer_function() + priority, self))
+                      (execute_at, self))
             
     def __str__(self):
-        args = self.args
-        kwargs = self.kwargs
-        number_of_formats = len(args)
-        arg_string = ", ".join("{0}".format(args[index]) for index in xrange(number_of_formats))
-        kwarg_string = ", ".join("{0}={1}".format(attr, value) for attr, value in kwargs.items())
-        format_arguments = (self.component_name, self.method)#, arg_string, kwarg_string)
-        return "Instruction {0}.{1}".format(*format_arguments)
-            
+        args = ', '.join(getattr(self, "args", ''))
+        kwargs = ', '.join(getattr(self, "kwargs", ''))
+        component = getattr(self, "component_name", '')
+        method = getattr(self, "method", '')
+        return "{}({}, {}, {}, {})".format(type(self), component, method, args, kwargs)       
+        
+        
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
     
@@ -181,27 +181,23 @@ class Base(object):
     parent = property(_get_parent)
                        
     environment = mpre.environment
-        
-    def __new__(cls, *args, **kwargs):
-        instance = super(Base, cls).__new__(cls)
-                        
-        # register name + number
-        instance_number = instance.instance_number = cls.instance_count
-        cls.instance_tracker[instance_number] = instance
+
+    def __init__(self, **kwargs):
+        # register instance_name and instance_number
+        cls = type(self)
+        instance_number = self.instance_number = cls.instance_count
+        cls.instance_tracker[instance_number] = self
         cls.instance_count += 1
         
         ending = str(instance_number) if instance_number else ''
-        name = instance.instance_name = cls.__name__ + ending
+        name = self.instance_name = cls.__name__ + ending
         
-        instance.environment.modify("Component_Resolve", (name, instance))
-
-        return instance
-
-    def __init__(self, **kwargs):
+        self.environment.modify("Component_Resolve", (name, self))
+        
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__
         self.objects = {}
-
+        
         # instance attributes are assigned via kwargs
         attributes = self.defaults.copy()
         attributes.update(kwargs)
@@ -223,7 +219,7 @@ class Base(object):
                                     (self.instance_name,
                                      mmap.mmap(file_descriptor, 
                                                self.memory_size)))
-            
+    
     def attribute_setter(self, **kwargs):
         """ usage: object.attribute_setter(attr1=value1, attr2=value2).
             
@@ -363,6 +359,12 @@ class Base(object):
         return getattr(self.environment.Component_Resolve[component_name], 
                        method_name)(*args, **kwargs)
                                
+    def __getstate__(self):
+        return self.__dict__
+        
+    def __setstate__(self, state):
+        return self.attribute_setter(**state)
+        
         
 class Reactor(Base):
     """ usage: instance = Reactor(attribute=value, ...)
@@ -470,7 +472,7 @@ class Wrapper(Reactor):
     def __init__(self, **kwargs):
         self.wrapped_object = kwargs.pop("wrapped_object", None)
         super(Wrapper, self).__init__(**kwargs)
-                            
+                
     def __getattr__(self, attribute):
         return getattr(super(Wrapper, self).__getattribute__("wrapped_object"),
                        attribute)
@@ -520,7 +522,6 @@ class Proxy(Reactor):
         return value
 
     def __setattr__(self, attribute, value):
-        print "setting {} to {} on {}".format(attribute, value, self)
         super_object = super(Proxy, self)
         try:
             wrapped_object = super_object.__getattribute__("wrapped_object")

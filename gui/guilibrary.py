@@ -29,6 +29,7 @@ class Organizer(base.Base):
 
     def pack(self, item):
         pack = getattr(self, "pack_{0}".format(item.pack_mode))
+        raise NotImplementedError
         pack(item, count, length)
 
     def pack_horizontal(self, item, count, length):

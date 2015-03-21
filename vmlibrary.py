@@ -19,10 +19,9 @@ import time
 import traceback
 from functools import partial
 
-import mpre
-import base
-import defaults
-import utilities
+import mpre.base as base
+import mpre.defaults as defaults
+import mpre.utilities as utilities
 
 Instruction = base.Instruction
 timer_function = utilities.timer_function
@@ -108,11 +107,11 @@ class Processor(Process):
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
                                   level=0)
-        execution_alert = partial(alert, "{0} executing code {1}", level="vvv")
+        execution_alert = partial(alert, "executing instruction {}", level="vvv")
         format_traceback = traceback.format_exc
                 
         while self.running:                    
-            execute_at, instruction = heappop(instructions)            
+            execute_at, instruction = heappop(instructions)           
             try:
                 call = _getattr(Component_Resolve[instruction.component_name],
                                                   instruction.method)               
@@ -124,7 +123,7 @@ class Processor(Process):
                 continue
                    
             time_until = max(0, (execute_at - timer_function()))
-            sleep(time_until)       
+            sleep(time_until)
             try:
                 call(*instruction.args, **instruction.kwargs)
             except BaseException as result:

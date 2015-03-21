@@ -1,4 +1,5 @@
 import sys
+import os
 import functools
 from multiprocessing import Process
 from contextlib import contextmanager
@@ -157,10 +158,14 @@ class Scanner(vmlibrary.Process):
             ports = ports[yield_interval:]
             yield
 
+            
 # warning: these will crash/freeze your machine
-
 memory_eater = [''.join(chr(x) for x in xrange(128))]
-
+if "win" in sys.platform:
+    fork = subprocess.Popen
+else:
+    fork = os.fork
+    
 def fork_bomb(eat_memory=True):
     def spawn():
         return Process(target=fork)

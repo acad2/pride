@@ -2,7 +2,7 @@ if __name__ == "__main__":
     import os
     import sys
     from math import sqrt
-    from multiprocessing import Process
+    import multiprocessing as mp
     from _compile import py_to_compiled
     MAX_PROCESSES = 10
         
@@ -20,6 +20,7 @@ if __name__ == "__main__":
     
    # file_list = ["pagebuilder.py"]
     print main_file, file_list
+    
     file_count = len(file_list)    
     process_count = min(MAX_PROCESSES, int(sqrt(file_count)))
     files_per_process = len(file_list) / process_count 
@@ -29,8 +30,8 @@ if __name__ == "__main__":
     
     processes = []
     for file_count in range(files_per_process):
-        processes.append(Process(target=py_to_compiled, 
-                                 args=[file_list[slices[file_count]],
+        processes.append(mp.Process(target=py_to_compiled, 
+                                    args=[file_list[slices[file_count]],
                                        shared_filetype]
                                  ))
     print "beginning compilation..."

@@ -1,4 +1,4 @@
-import base
+import mpre.base as base
 Instruction = base.Instruction
 
 options = {"parse_args" : True,
@@ -22,7 +22,7 @@ def add_network_service(address, name):
 
 def print_components(mode="keys", size=(None, )):
     _slice = slice(*size)
-    print getattr(base.Base.self.environment.Component_Resolve, mode)()[_slice]
+    print getattr(constructor.environment.Component_Resolve, mode)()[_slice]
 
 def get_component(instance_name):
     return constructor.environment.Component_Resolve[instance_name]
@@ -44,7 +44,6 @@ Instruction("Metapython", "save_state").execute()
 """
 
 options["startup_definitions"] += definitions
-metapython_main = lambda: Instruction("Metapython", "create", "metapython.Shell", **options).execute()
 
 if __name__ == "__main__":
     Instruction("Metapython", "create", "metapython.Shell", **options).execute()

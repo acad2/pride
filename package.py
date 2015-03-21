@@ -40,7 +40,7 @@ class Package(base.Base):
             self.package_name = raw_input("Please provide the package name: ")
         self.update_structure()
         
-        if self.make_docs == True:
+        if self.make_docs:
             self.create(Documentation, package=self)
     
     def init_filename_in(self, path):
@@ -108,7 +108,7 @@ class Package(base.Base):
         if self.store_source:
             self.files[subfolder] = new_info
 
-            
+           
 class Documentation(base.Base):
     """
     Generates restructed text .md files from python modules.
@@ -119,7 +119,7 @@ class Documentation(base.Base):
     defaults.update({"directory" : os.getcwd(),
                      "subfolders" : tuple(),
                      "ignore_directories" : ("docs", ),
-                     "ignore_files" : ("build_documentation.py", ),
+                     "ignore_files" : tuple(),
                      "site_name" : '',
                      "verbosity" : 'vv',
                      "index_page" : tuple(),
