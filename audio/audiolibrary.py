@@ -1,20 +1,19 @@
-import array
 import pickle
-import struct
 import wave
 import sys
-import atexit
 import os
+import contextlib
 
+import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.fileio as fileio
 import mpre.audio.defaults as defaults
 from mpre.utilities import Latency
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
-
+       
 class Audio_Reactor(base.Reactor):
     
     defaults = defaults.Audio_Reactor
@@ -28,7 +27,7 @@ class Audio_Reactor(base.Reactor):
             
     def set_input_device(self, target_instance_name):
         self_name = self.instance_name
-        if self.source_name:            
+        if self.source_name:
             self.parallel_method(self.source_name, "remove_listener", self_name)
             self.source_name = target_instance_name
         
@@ -41,14 +40,18 @@ class Audio_Reactor(base.Reactor):
         for client in self.listeners:
             self.parallel_method(client, "handle_audio_input", 
                                  self.instance_name, audio_data)
-            
+    
+    def handle_end_of_stream(self):
+        self.alert("end of stream", level=0)
+        raise NotImplementedError
+        
     def add_listener(self, instance_name):
         self.listeners.append(instance_name)
             
     def remove_listener(self, instance_name):
-        self.listeners.remove(instance_name)
-
-        
+        self.listeners.remove(instance_name)    
+            
+            
 class Audio_File(fileio.File):
 
     def handle_audio_input(self, sender, audio_data):
@@ -87,7 +90,7 @@ class Wav_File(Audio_Reactor):
     def handle_audio_input(self, sender, audio_data):
         self.write(audio_data)
         
-    def read(self, size): # accepts size in bytes and converts to frame count   
+    def read(self, size=None): # accepts size in bytes and converts to frame count   
         size = (size / 4) if size is not None else (self.audio_size / 4)
         
         data = self.file.readframes(size)
@@ -118,9 +121,9 @@ class Config_Utility(vmlibrary.Process):
             self.selected_devices.append(self.default_input)
             self.selected_devices.append(self.default_output)
             self.write_config_file(self.selected_devices)
-            self.delete()
+            Instruction(self.instance_name, "delete").execute()
         else:
-            Instruction(self.instance_name, "run").execute()
+            self.run()
             
     def write_config_file(self, device_list):
         with open(self.config_file_name, "wb") as config_file:
@@ -171,12 +174,14 @@ class Config_Utility(vmlibrary.Process):
     def run(self):
         self.get_selections()
         self.write_config_file(self.selected_devices)
-        self.delete()
+        
         if getattr(self, "exit_when_finished", None):
             exit()
+        else:
+            Instruction(self.instance_name, "delete").execute()
 
-
-class Audio_Manager(vmlibrary.Process):
+            
+class Audio_Manager(base.Reactor):
 
     defaults = defaults.Audio_Manager
 
@@ -188,7 +193,8 @@ class Audio_Manager(vmlibrary.Process):
     def __init__(self, **kwargs):
         device_names = self.device_names = {}
         super(Audio_Manager, self).__init__(**kwargs)
-                
+        self.objects.setdefault("Audio_Input", [])
+        
         self.load_api()
         
         if self.configure:
@@ -205,6 +211,8 @@ class Audio_Manager(vmlibrary.Process):
                 if 'y' in response:
                     self.run_configuration()
 
+        self.alert("Finished loading", level='v')
+        
     def run_configuration(self, exit_when_finished=False):
         self.create(Config_Utility,
                     default_input=self.default_input,
@@ -280,54 +288,11 @@ class Audio_Manager(vmlibrary.Process):
                 device = self.create(self.Audio_Input, **device_info)
                 self.device_names[device.instance_name] = device
                 self.device_names[device.name] = device
-                
-    def send_channel_info(self, sender, packet):
-        """usage: Instruction("Audio_Manager", "send_channel_info", my_object).execute()
-        => Message: "Device_Info;;" + pickled list containing dictionaries
-
-        Request a listing of available audio channels to the specified instances
-        memory. This message can be retrieved via instance.read_messages()"""
-        channel_info = []
-        for device in self.audio_devices:
-            options = dict(**device.options)
-            del options["start"]
-            options["name"] = device.name
-            options["device_name"] = device.instance_name
-            options["sample_size"] = device.sample_size
-            channel_info.append(options)
-        channel_list = pickle.dumps(channel_info)
-        self.reaction(sender, "handle_channel_info " + channel_list)
-
-    def run(self):
-        for device in self.objects["Audio_Input"]:
-            device.get_data()
-        self.run_instruction.execute(self.priority)     
-        
-    def play_file(self, file, listeners=("Audio_Output", ), mute=False):
-        _format = file.format # in bytes, pyaudio needs it's own constant instead
-        try:
-            format_name = self.portaudio.format_mapping[_format]
-            constant = getattr(self.pyaudio, format_name)
-            _format = constant
-            sample_size = int(format_name[-2:])            
-        except NameError:
-            pass
-        
-        filename = file.filename
-        options = {"data_source" : file,
-                   "available" : os.path.getsize(filename),
-                   "format" : _format,
-                   "rate" : file.rate,
-                   "channels" : file.channels,
-                   "name" : file.name}
-        
-        device = self.create(self.Audio_Input, **options)
-               
-        for listener in listeners:
-            device.add_listener(listener)
-   
-        return device.instance_name
-        
+                         
+    def get_devices(self, devices="Audio_Input"):
+        return [(instance.name, instance.instance_name) for 
+                instance in self.objects[devices]]
+                        
     def record(self, device_name, file, channels=2, rate=48000):  
         device_name = self.device_names[device_name].instance_name
                
@@ -338,43 +303,3 @@ class Audio_Manager(vmlibrary.Process):
                                 listeners=[reactor_file], 
                                 channels=channels,
                                 rate=rate)
-
-
-class Audio_Channel(base.Base):
-
-    defaults = defaults.Audio_Channel
-
-    def __init__(self, **kwargs):
-        super(Audio_Channel, self).__init__(**kwargs)
-       
-    def handle_audio(self, sender, audio):
-        self.audio_data = audio
-        
-    def read(self, bytes=0):
-        if not bytes:
-            bytes = len(self.audio_data)
-        data = self.audio_data[:bytes]
-        self.audio_data[bytes:]
-        return data
-
-
-class Audio_Service(base.Base):
-
-    defaults = defaults.Audio_Service
-
-    def _get_channels(self):
-        return self.objects["Audio_Channel"]
-    channels = property(_get_channels)
-
-    def __init__(self, **kwargs):
-        super(Audio_Service, self).__init__(**kwargs)
-        self.objects["Audio_Channel"] = []
-        self.reaction("Audio_Manager", "send_channel_info " + self.instance_name)
-
-    def handle_channel_info(self, sender, packet):
-        channel_configuration = pickle.loads(packet)
-        for channel_info in channel_configuration:
-            device_name = channel_info["device_name"]
-                        
-            channel = self.create(Audio_Channel, **channel_info)
-            self.reaction(device_name, "add_listener " + channel.instance_name)

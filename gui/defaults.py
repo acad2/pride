@@ -61,7 +61,8 @@ Window_Object.update({'x' : 0,
 "held" : False,
 "pack_modifier" : '',
 "color_scalar" : .6,
-"pack_on_init" : True})
+"pack_on_init" : True,
+"sdl_window" : "SDL_Window"})
 
 Window = Window_Object.copy()
 Window.update({"show_title_bar" : False,

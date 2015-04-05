@@ -1,5 +1,6 @@
-import mpre.base as base
-Instruction = base.Instruction
+import mpre
+
+Instruction = mpre.Instruction
 
 options = {"parse_args" : True,
            "startup_definitions" : ''}
@@ -9,6 +10,8 @@ definitions = \
 """import base
 
 constructor = base.Base()
+environment = constructor.environment
+    
 create = constructor.create
 
 def add_to_network(sock):
@@ -41,6 +44,7 @@ def build_docs(site_name=''):
 
 Instruction("Metapython", "save_state").execute()
                  
+Instruction("Network", "update").execute()                 
 """
 
 options["startup_definitions"] += definitions

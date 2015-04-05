@@ -11,6 +11,7 @@ import importlib
 import copy
 import pickle
 
+import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.network2 as network2
@@ -18,7 +19,7 @@ import mpre.utilities as utilities
 import mpre.fileio as fileio
 import mpre.defaults as defaults
 
-Instruction = base.Instruction            
+Instruction = mpre.Instruction            
             
 class Shell(network2.Authenticated_Client):
     
@@ -35,17 +36,19 @@ class Shell(network2.Authenticated_Client):
         if self.logged_in:
             sys.stdout.write(">>> ")
             if self.startup_definitions:
-                try:
-                    compile(self.startup_definitions, "Shell", 'exec')
-                except:
-                    self.alert("Startup defintions failed to compile:\n{}",
-                            [traceback.format_exc()],
-                            level=0)
-                else:
-                    self.execute_source(self.startup_definitions) 
-
+                self.handle_startup_definitions()                
         return response
-        
+     
+    def handle_startup_definitions(self):
+        try:
+            compile(self.startup_definitions, "Shell", 'exec')
+        except:
+            self.alert("Startup defintions failed to compile:\n{}",
+                    [traceback.format_exc()],
+                    level=0)
+        else:
+            self.execute_source(self.startup_definitions) 
+                    
     def handle_keystrokes(self, sender, keyboard_input):
         if not self.logged_in:
             return
@@ -94,7 +97,11 @@ class Shell(network2.Authenticated_Client):
         if packet:
             sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet)
 
-            
+    def __setstate__(self, state):
+        super(Shell, self).__setstate__(state)
+        Instruction(self.instance_name, "handle_startup_definitions").execute()
+        
+        
 class Interpreter_Service(network2.Authenticated_Service):
     
     defaults = defaults.Interpreter_Service
@@ -108,10 +115,10 @@ class Interpreter_Service(network2.Authenticated_Service):
         response = super(Interpreter_Service, self).login(sender, packet)
         if "success" in response.lower():
             username = self.logged_in[sender]
-            """self.user_namespaces[username] = {"__builtins__": __builtins__,
-                                              "__name__" : "__main__",
-                                              "__doc__" : '',
-                                              "Instruction" : Instruction}"""
+            #self.user_namespaces[username] = {"__builtins__": __builtins__,
+             #                                 "__name__" : "__main__",
+              #                                "__doc__" : '',
+               #                               "Instruction" : Instruction}
                        
             string_info = (username, sender,
                            sys.version, sys.platform, self.copyright)
@@ -140,7 +147,7 @@ class Interpreter_Service(network2.Authenticated_Service):
             sys.stdout = StringIO.StringIO()
             
             try:
-                exec code in globals()#self.user_namespaces[username]
+                exec code in globals() #self.user_namespaces[username]
             except BaseException as error:
                 if type(error) == SystemExit:
                     raise
@@ -157,8 +164,8 @@ class Interpreter_Service(network2.Authenticated_Service):
         log.flush()
         
         return "result " + result
-                
-
+    
+    
 class Alert_Handler(base.Reactor):
     
     level_map = {0 : "",
@@ -206,7 +213,7 @@ class Metapython(base.Reactor):
         self.setup_os_environ()
         self.processor = self.create("vmlibrary.Processor")        
         self.alert_handler = self.create(Alert_Handler)
- 
+
         if self.startup_definitions:
             Instruction(self.instance_name, "exec_command", 
                         self.startup_definitions).execute() 
@@ -239,8 +246,7 @@ class Metapython(base.Reactor):
     def start_machine(self):
         with open(self.command, 'r') as user_module:
             source = user_module.read()
-            user_module.close()
-           
+                       
         Instruction(self.instance_name, "exec_command", source).execute()
                    
         self.processor.run()       
@@ -253,7 +259,7 @@ class Metapython(base.Reactor):
         self.server = self.create(Interpreter_Service, **server_options)      
         
     def exit(self, exit_code=0):
-        Instruction("Processor", "attribute_setter", running=False).execute()
+        Instruction("Processor", "set_attributes", running=False).execute()
         # cleanup/finalizers go here?
 
     def save_state(self):
@@ -266,7 +272,7 @@ class Metapython(base.Reactor):
             pickle.dump(self.environment, pickle_file)            
             pickle_file.flush()
             pickle_file.close()
-            
+                    
     @staticmethod
     def load_state(pickle_filename):
         """ usage: from metapython import *
@@ -286,7 +292,7 @@ class Metapython(base.Reactor):
             pickle_file.close()
 
         interpreter = mpre.environment.Component_Resolve["Metapython"]
-        interpreter.setup_os_environ()            
+        interpreter.setup_os_environ()
         return interpreter
         
  
@@ -309,9 +315,8 @@ class Restored_Interpreter(Metapython):
             attributes.update(instance.parser.get_options(cls.defaults))       
         
         return Metapython.load_state(attributes["filename"])
-
         
 if __name__ == "__main__":
-    metapython = Metapython(parse_args=True)
+    metapython = Metapython(verbosity='vvv', parse_args=True)
     metapython.start_machine()
     metapython.alert("{} shutting down", [metapython.instance_name], level='v')

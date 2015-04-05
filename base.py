@@ -1,4 +1,4 @@
-#   mpf.base - root inheritance objects, many framework features are defined here
+#   mpre.base - Instructions and root inheritance objects
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -20,63 +20,13 @@ import sys
 import traceback
 import heapq
 import importlib
+import cPickle as pickle
 
 import mpre
 import mpre.metaclass
-import defaults
-import utilities
-timer_function = utilities.timer_function
+import mpre.utilities as utilities
+import mpre.defaults as defaults
 
-class Instruction(object):
-    """ usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
-                           
-        Creates and executes an instruction object. 
-            - component_name is the string instance_name of the component 
-            - method_name is a string of the component method to be called
-            - Positional and keyword arguments for the method may be
-              supplied after the method_name.
-              
-        A priority attribute can be supplied when executing an instruction.
-        It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
-        
-        Instructions are useful for serial and explicitly timed tasks. 
-        Instructions are only enqueued when the execute method is called. 
-        At that point they will be marked for execution in 
-        instruction.priority seconds. 
-        
-        Instructions may be saved as an attribute of a component instead
-        of continuously being instantiated. This allows the reuse of
-        instruction objects. The same instruction object can be executed 
-        any number of times.
-        
-        Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism."""
-              
-    def __init__(self, component_name, method, *args, **kwargs):
-        super(Instruction, self).__init__()
-        self.created_at = timer_function()
-        self.component_name = component_name
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-        
-    def execute(self, priority=0.0):
-        execute_at = self.execute_at = timer_function() + priority
-        heapq.heappush(Base.environment.Instructions, 
-                      (execute_at, self))
-            
-    def __str__(self):
-        args = ', '.join(getattr(self, "args", ''))
-        kwargs = ', '.join(getattr(self, "kwargs", ''))
-        component = getattr(self, "component_name", '')
-        method = getattr(self, "method", '')
-        return "{}({}, {}, {}, {})".format(type(self), component, method, args, kwargs)       
-        
-        
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
     
@@ -156,7 +106,7 @@ class Base(object):
         by pythons mmap.mmap. This memory attribute can be useful because 
         it supports both the file-style read/write/seek interface and 
         string-style slicing"""
-    __metaclass__ = mpre.metaclass.Metaclass
+    __metaclass__ = mpre.metaclass.Metaclass#._metaclass
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -166,7 +116,7 @@ class Base(object):
     parser_ignore = ("network_packet_size", "memory_size")
         
     # the default attributes an instance will initialize with.
-    # storing them here and using the attribute_setter method
+    # storing them here and using the set_attributes method
     # makes them modifiable at runtime and eliminates the need
     # to type out the usual self.attribute = value statements
     defaults = defaults.Base
@@ -181,47 +131,24 @@ class Base(object):
     parent = property(_get_parent)
                        
     environment = mpre.environment
-
+        
     def __init__(self, **kwargs):
-        # register instance_name and instance_number
-        cls = type(self)
-        instance_number = self.instance_number = cls.instance_count
-        cls.instance_tracker[instance_number] = self
-        cls.instance_count += 1
-        
-        ending = str(instance_number) if instance_number else ''
-        name = self.instance_name = cls.__name__ + ending
-        
-        self.environment.modify("Component_Resolve", (name, self))
-        
+      #  self = super(Base, cls).__new__(cls, *args, **kwargs)
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__
         self.objects = {}
         
-        # instance attributes are assigned via kwargs
         attributes = self.defaults.copy()
         attributes.update(kwargs)
         if kwargs.get("parse_args"):
             attributes.update(self.parser.get_options(attributes))
                 
-        self.attribute_setter(**attributes)
+        self.set_attributes(**attributes)
         
-        if self.memory_size:
-            if not self.memory_mode:
-                with open(self.instance_name, 'a') as file_on_disk:
-                    file_descriptor = file_on_disk.fileno()
-                    file_on_disk.close()
-            else:
-                file_descriptor = -1
-                
-            # set environment.Component_Memory[instance_name] to an mmap_object
-            self.environment.modify("Component_Memory", 
-                                    (self.instance_name,
-                                     mmap.mmap(file_descriptor, 
-                                               self.memory_size)))
-    
-    def attribute_setter(self, **kwargs):
-        """ usage: object.attribute_setter(attr1=value1, attr2=value2).
+        self.environment.add(self)
+              
+    def set_attributes(self, **kwargs):
+        """ usage: object.set_attributes(attr1=value1, attr2=value2).
             
             Each key:value pair specified as keyword arguments will be
             assigned as attributes of the calling object. Keys are string
@@ -240,13 +167,11 @@ class Base(object):
             performs reference tracking maintainence."""
         if not isinstance(instance_type, type):
             instance_type = utilities.resolve_string(instance_type)
-                    
-        # instantiate the new object from a class object
+
         instance = instance_type(*args, **kwargs)
 
         self.add(instance)
-        self.environment.modify("Parents", (instance, self.instance_name))
-        
+        self.environment.modify("Parents", (instance, self.instance_name))        
         return instance
 
     def delete(self):
@@ -255,38 +180,7 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
-        assert not self.deleted
-        self.deleted = True
-        
-        name = self.instance_name
-        environment = self.environment
-        del self.instance_tracker[self.instance_number]
-       
-        # lists are mutatable during iteration, so copies have to be made
-        for child_type, children in self.objects.items():
-            children_names = [getattr(child, 'instance_name', child_type) for 
-                              child in children]
-            for _name in children_names:
-                environment.modify("Component_Resolve", _name, "remove_item")
-         
-        environment.modify("Parents", self, "remove_item")
-        
-      #  print "deleting references to", self
-        names = [instance_name for instance_name in 
-                 environment.References_To[name]]
-                 
-        for instance_name in names:
-            instance = environment.Component_Resolve[instance_name]
-            instance.remove(self)
-        
-        environment.modify("References_To", name, "remove_item")
-        environment.modify("Component_Resolve", name, "remove_item")
-        
-        if self.memory_size:
-            environment.modify("Component_Memory", name, 
-                               method="remove_item")
-            
-       # print "\nFinished deleting {}".format(self.instance_name)
+        self.environment.delete(self)
 
     def remove(self, instance):
         """ Usage: object.remove(instance)
@@ -294,26 +188,28 @@ class Base(object):
             Removes an instance from self.objects. Modifies object.objects
             and environment.References_To"""
         self.objects[instance.__class__.__name__].remove(instance)
-        self.environment.References_To[instance.instance_name].remove(self.instance_name)        
-                
+        self.environment.References_To[instance.instance_name].remove(self.instance_name)
+        
     def add(self, instance):
         """ usage: object.add(instance)
 
-            Adds an object to caller.objects[instance.__class__.__name__]"""        
-        instance_name = instance.instance_name
-        references = self.environment.References_To.get(instance_name, set())
-        
+            Adds an object to caller.objects[instance.__class__.__name__]"""   
         objects = self.objects
         instance_class = instance.__class__.__name__
-        siblings = objects.get(instance_class, [])  
-        
-        if instance_name not in siblings:
+        siblings = objects.get(instance_class, [])
+        if instance not in siblings:
             siblings.append(instance)
             objects[instance_class] = siblings
-            references.add(self.instance_name)
+        else:
+       #     self.alert("Ignoring add of " + str(instance), level=0)
+            raise type("AddException", (BaseException, ), 
+                       {"message" : "attempted to add an object that has already been added"})
+        if hasattr(instance, "instance_name"):
+            instance_name = instance.instance_name
+            references_to = self.environment.References_To.get(instance_name, set())
+            references_to.add(self.instance_name)
+            self.environment.References_To[instance_name] = references_to
             
-            self.environment.modify("References_To", (instance_name, references))
-                            
     def alert(self, message="Unspecified alert message",
                     format_args=tuple(),
                     level=0,
@@ -332,11 +228,12 @@ class Base(object):
         alert severity is relative to Alert_Handler log_level and print_level;
         a lower number indicates a less verbose notification, while 0 indicates
         an important message that should not be suppressed."""
-        if self.verbosity >= level:
-            if format_args:
-                message = message.format(*format_args)
+        if self.verbosity >= level:            
+            message = (self.instance_name + ": " + message.format(*format_args) if
+                       format_args else self.instance_name + ": " + message)
+
             return self.parallel_method("Alert_Handler", "alert",
-                                        self.instance_name + ": " + message,
+                                        message,
                                         level, callback)            
                         
     def parallel_method(self, component_name, method_name, *args, **kwargs):
@@ -363,11 +260,51 @@ class Base(object):
         return self.__dict__
         
     def __setstate__(self, state):
-        return self.attribute_setter(**state)
+        self.set_attributes(**state)
+        self.environment.add(self)
+        return self
+        
+    def update(self):
+        """usage: base.update() => updated_base
+        
+           Reloads the module that defines base and returns an updated instance. 
+           The environment is updated with the new component information. Further
+           references to the object via instance_name will be directed to the
+           new, updated object. Attributes of the original object will be assigned
+           to the new, updated object.
+           
+           This is the bleeding edge. not solid in terms of object deletion yet."""
+           
+        """found_metaclasses = set()       
+        for cls in reversed(type(self).__mro__): # will get weird with wrappers
+        
+            # reload the module of the metaclass of the class
+            metaclass = getattr(cls, "__metaclass__", None)
+            if metaclass and metaclass not in found_metaclasses:
+                found_metaclasses.add(metaclass)
+                utilities.reload_module(metaclass.__module__)
+                
+            class_module = cls.__module__
+            if class_module != "__main__":
+                utilities.reload_module(class_module)
+                
+        stats = self.__dict__.copy()
+        new_self = getattr(sys.modules[self.__module__], self.__class__.__name__)()
+        self.environment.replace(self, new_self)
+        new_self.set_attributes(**stats)"""
+        self.alert("Updating", level=0)
+        stats = self.__dict__.copy()
+        module = sys.modules[self.__module__]
+        reload(module)
+        new_self = getattr(module, self.__class__.__name__)()
+        new_self.alert("new instance created, replacing old instance", level=0)
+        self.environment.replace(self, new_self)
+        new_self.set_attributes(**stats)
+        return new_self
         
         
 class Reactor(Base):
-    """ usage: instance = Reactor(attribute=value, ...)
+    """ usage: Reactor(attribute=value, ...) => reactor_instance
     
         Adds reaction framework on top of a Base object. 
         Reactions are event triggered chains of method calls
@@ -474,12 +411,13 @@ class Wrapper(Reactor):
         super(Wrapper, self).__init__(**kwargs)
                 
     def __getattr__(self, attribute):
+      #  print self, "getting attribute", attribute
         return getattr(super(Wrapper, self).__getattribute__("wrapped_object"),
                        attribute)
                        
                        
 class Proxy(Reactor):
-    """ usage: Wrapper(wrapped_object=my_object) => wrapped_object
+    """ usage: Proxy(wrapped_object=my_object) => proxied_object
     
        Produces an instance that will act as the object it wraps and as an
        Reactor object simultaneously. This facilitates simple integration 
@@ -488,7 +426,7 @@ class Proxy(Reactor):
        
        Proxy attributes are get/set on the underlying wrapped object first,
        and if that object does not have the attribute or it cannot be
-       assigned, the action is performed on the proxy instead."""
+       assigned, the action is performed on the proxy wrapper instead."""
 
     def __init__(self, **kwargs):
         wraps = super(Proxy, self).__getattribute__("wraps")

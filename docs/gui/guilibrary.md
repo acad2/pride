@@ -11,6 +11,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - text                     Button
 - outline_width            5
@@ -23,11 +24,12 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
+- color                    (0, 115, 10)
 - verbosity                
 - shape                    rect
-- color                    (0, 115, 10)
+- sdl_window               SDL_Window
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -53,6 +55,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -63,10 +66,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -113,10 +117,11 @@ Organizer
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - priority                 0
 - memory_size              4096
+- memory_mode              -1
 - auto_start               True
+- update_flag              False
 - deleted                  False
 - verbosity                
 
@@ -124,12 +129,6 @@ This object defines the following non-private methods:
 
 
 - **pack_menu_bar**(self, item, count, length):
-
-		  No documentation available
-
-
-
-- **pack_horizontal**(self, item, count, length):
 
 		  No documentation available
 
@@ -159,6 +158,12 @@ This object defines the following non-private methods:
 
 
 
+- **pack_horizontal**(self, item, count, length):
+
+		  No documentation available
+
+
+
 - **pack**(self, item):
 
 		  No documentation available
@@ -181,6 +186,7 @@ Default values for newly created instances:
 
 - layer                    1
 - popup                    False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -190,10 +196,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
-- verbosity                
 - color                    (0, 115, 10)
+- verbosity                
+- sdl_window               SDL_Window
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -219,6 +226,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -228,10 +236,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
-- verbosity                
 - color                    (0, 115, 10)
+- verbosity                
+- sdl_window               SDL_Window
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -250,6 +259,7 @@ Default values for newly created instances:
 
 - layer                    1
 - popup                    False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -259,32 +269,15 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
 This object defines the following non-private methods:
-
-
-- **mousewheel**(self, x_amount, y_amount):
-
-		  No documentation available
-
-
-
-- **draw**(self, figure='rect', *args, **kwargs):
-
-		  No documentation available
-
-
-
-- **press**(self, mouse):
-
-		  No documentation available
-
 
 
 - **click**(self, mouse):
@@ -311,6 +304,36 @@ This object defines the following non-private methods:
 
 
 
+- **add**(self, instance):
+
+		  No documentation available
+
+
+
+- **draw_texture**(self):
+
+		  No documentation available
+
+
+
+- **draw**(self, figure='rect', *args, **kwargs):
+
+		  No documentation available
+
+
+
+- **mousewheel**(self, x_amount, y_amount):
+
+		  No documentation available
+
+
+
+- **press**(self, mouse):
+
+		  No documentation available
+
+
+
 - **release**(self, mouse):
 
 		  No documentation available
@@ -318,12 +341,6 @@ This object defines the following non-private methods:
 
 
 - **pack**(self, reset=False):
-
-		  No documentation available
-
-
-
-- **draw_texture**(self):
 
 		  No documentation available
 

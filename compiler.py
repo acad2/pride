@@ -4,23 +4,39 @@ import sys
 from math import sqrt
 import multiprocessing as mp
 
-import mpre.base as base
-import mpre.defaults as defaults
-import mpre.misc._compile as _compile
+import _compile
 
-class Compiler(base.Base):
+class Compiler(object):
     
-    defaults = defaults.Base.copy()
-    defaults.update({"shared_file_type" : "pyd" if "win" in sys.platform else "so",
-                     "directory" : os.getcwd(),
-                     "subfolders" : tuple(),
-                     "main_file" : '',
-                     "ignore_files" : tuple(),
-                     "max_processes" : 10})
+    def __init__(self, shared_file_type="pyd" if "win" in sys.platform else "so",
+                       directory=os.getcwd(),
+                       subfolders=tuple(),
+                       main_file='',
+                       ignore_files=tuple(),
+                       max_processes=10):
+        self.shared_file_type = shared_file_type
+        self.directory = directory
+        self.subfolders = subfolders
+        self.main_file = main_file
+        self.ignore_files = ignore_files
+        self.max_processes = max_processes
                      
-    def __init__(self, **kwargs):
-        super(Compiler, self).__init__(**kwargs)               
-            
+    def cleanup_compiled_files(self, file_types=("pyx", "c")):  
+        directory = self.directory
+        _, _, file_list = next(os.walk(directory))
+        file_list = [('', file_list)]
+        
+        for subfolder in self.subfolders:
+            folder_path = os.path.join(directory, subfolder)
+            file_list.append((folder_path,
+                              next(os.walk(folder_path))[2]))
+         
+        for filetype in file_types:
+            for folder, _files in file_list:
+                for _file in _files:
+                    if os.path.splitext(_file)[-1] == '.' + filetype:
+                        os.remove(os.path.join(folder, _file))
+                     
     def get_py_files(self, directory):
         _, _, file_list = next(os.walk(directory))
         return [os.path.join(directory, _file) for _file in file_list if 
@@ -71,6 +87,7 @@ class Compiler(base.Base):
             
 if __name__ == "__main__":
     compiler = Compiler(subfolders=("audio", "gui", "misc", "programs"),
-                        main_file='',#"metapython.py",
+                        main_file="metapython.py",
                         ignore_files=["compiler.py", "_compile.py"])
     compiler.compile()
+    compiler.cleanup_compiled_files(file_types=("pyx", "pyd", 'c'))

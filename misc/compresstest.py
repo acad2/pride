@@ -21,30 +21,44 @@ def convert(old_value, old_base, new_base):
         decimal_value += result
         #print "cumulative after: ", decimal_value
 
-    while decimal_value >= 1:
-        decimal_value, digit = divmod(decimal_value, new_base_size)
-        digit = new_base[digit]
-        new_value.append(digit)
+    if decimal_value == 1:
+        new_value = '1'
+    else:
+        while decimal_value > 1:
+            decimal_value, digit = divmod(decimal_value, new_base_size)
+            digit = new_base[digit]
+            new_value.append(digit)
 
-    new_value = ''.join(str(item) for item in reversed(new_value))
+        new_value = ''.join(str(item) for item in reversed(new_value))
 
     return new_value
   
 def interpret(bit_string):
     new = convert(bit_string, base_256, base_2)
-    bits = len(new)
-    print bits, divmod(bits, 8)
     return new
 
+#def find_binary_b256(input_bytes):
+    
     
 if __name__ == "__main__":
     base_256 = ''.join(str(x) for x in xrange(256))
     base_2 = ''.join(str(x) for x in xrange(2))
     base_1 = '0'
-    test_bits = "00000001"
-    b2to1 = convert(test_bits, base_2, base_1)
-    print b2to1, len(b2to1)
-  #  for x in xrange(4):
-   #     test_bits = interpret(test_bits)
+    test_bits = "10000001"
+    test_bitsize = len(test_bits)
+    
+    """b2to256 = convert(test_bits, base_2, base_256)
+    print "original bit length: {}; original bits: {}".format(len(test_bits), test_bits)
+    print "new bit length: {}; difference between input/output bit length: {}".format(len(b2to256), len(b2to256) - len(test_bits))"""
+    """print "interpreting test_bits as if it was a base_256 number..."
+    inflated = interpret(test_bits)
+    inflated_size = len(inflated)
+    print "Output bits: {}; input bits: {}; difference {}".format(inflated_size, test_bitsize, inflated_size - test_bitsize)
+    for x in xrange(4):
+        test_bits = interpret(test_bits)
         
-    #print "{} bits went in, {} bits came out".format(8, len(test_bits))
+    print "{} bits went in, {} bits came out".format(8, len(test_bits))"""
+    test_file = open("testfile.py", 'rb')
+    test_data = test_file.read()
+    
+    

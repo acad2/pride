@@ -20,11 +20,12 @@ import struct
 import errno
 import traceback
 
+import mpre
 import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
 from utilities import Latency, Average
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 ERROR_CODES = {}
 try:
@@ -76,8 +77,9 @@ class Socket(base.Wrapper):
         return self.recvfrom
     _network_recv = property(_get_recv_method)
     
-    def __init__(self, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket())
+    def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
+                       proto=0, **kwargs):
+        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
         super(Socket, self).__init__(**kwargs)
         self.socket = self.wrapped_object
         self.setblocking(self.blocking)
@@ -207,11 +209,11 @@ class Tcp_Client(Tcp_Socket):
                     self.on_connect()                    
                                         
                 elif error in (CALL_WOULD_BLOCK, CONNECTION_IN_PROGRESS): # waiting
-                    self.alert("{0} waiting for connection to {1}", (self.instance_name, self.target), level="vv")
+                    self.alert("waiting for connection to {}", (self.target, ), level="vv")
                     self.stop_connecting = False
 
                 elif error == BAD_TARGET: #10022: # WSAEINVALID bad target
-                    self.alert("WSAEINVALID bad target for {0}", [self.instance_name], level=self.bad_target_verbosity)
+                    self.alert("WSAEINVALID bad target", [self.instance_name], level=self.bad_target_verbosity)
                     self.delete()
                     
                 else:
@@ -302,18 +304,16 @@ class Network(vmlibrary.Process):
         # sliding through the socket list to sidestep the 500 
         # file descriptor limit that select has. Produces slice objects
         # for ranges 0-500, 500-1000, 1000-1500, etc, up to 5000.
-        # assigning select.select as an attribute of the Network instance
-        # results in slightly faster access compared to global lookup.
-        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for x in xrange(10))
+        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
+                                    x in xrange(10))
         self._socket_range_size = range(1)
-        self._select = select.select
-
+        
         self.send_buffer = {}
         self.sendto_buffer = {}
         self.writable = set()
         super(Network, self).__init__(**kwargs)
         self.sockets = self.objects["Socket_Objects"] = []
-        self.delayed_sendtos = self.delayed_sends = self.running = False
+        self.late_sends = self.delayed_sendtos = self.delayed_sends = self.running = False
                         
         self.connection_manager = self.create(Connection_Manager)
         self.sockets.remove(self.connection_manager)
@@ -346,52 +346,51 @@ class Network(vmlibrary.Process):
         sockets = self.sockets
         
         if sockets:
-            self_writable = self.writable = set()
             for chunk in self._socket_range_size:
                 # select has a max # of file descriptors it can handle, which
                 # is about 500 (at least on windows). We can avoid this limitation
                 # by sliding through the socket list in slices of 500 at a time
                 socket_list = sockets[self._slice_mapping[chunk]]
 
-                readable, writable, errors = self._select(socket_list, socket_list, socket_list, 0.0)
+                readable, writable, errors = select.select(socket_list, socket_list, [], 0.0)
                 
-                if errors:
-                    self.alert("got socket errors!: ", level=0)
-                    raise SystemExit
-                self_writable.update(writable)
+                self.writable = writable
                 
                 if readable:
                     self.handle_reads(readable)                
-        #        print "\npolled sockets: ", socket_list
-       #         print readable
-         #       print writable
-            if self.delayed_sends:
-                self.delayed_sends = False
-                resends = ((sock, self.send_buffer.pop(sock)) for sock, messages in
-                            self.send_buffer.items() if sock in self_writable)
-                self.alert("sending delayed tcp sends", level=0)
-                
-                for sender, messages in resends:
-                    for data in messages:
-                        self.alert("Sending {} on {}",
-                                   [data[:128], sender],
-                                   level=0)
-                        self.send(sender, data)
-            
-            if self.delayed_sendtos:
-                self.delayed_sendtos = False
-                resends = ((sock, self.sendto_buffer.pop(sock)) for sock, message in
-                            self.sendto_buffer.items() if sock in self_writable)
-                self.alert("sending delayed udp sendto's", level=0)
-                
-                for sender, messages in resends:
-                    for data, host_info in messages:
-                        self.sendto(sender, data, host_info)
-                        
+
+            if self.late_sends:
+                self.handle_delayed_sends(writable)
+                                        
             self.run_instruction.execute(priority=self.priority)
         else:
             self.running = False
+       
+    def handle_delayed_sends(self, writable):
+        self.late_sends = False
+        if self.delayed_sends:
+            self.delayed_sends = False
+            resends = ((sock, self.send_buffer.pop(sock)) for sock, messages in
+                        self.send_buffer.items() if sock in writable)
+            self.alert("sending delayed tcp sends", level=0)
             
+            for sender, messages in resends:
+                for data in messages:
+                    self.alert("Sending {} on {}",
+                               [data[:128], sender],
+                               level=0)
+                    self.send(sender, data)
+        
+        if self.delayed_sendtos:
+            self.delayed_sendtos = False
+            resends = ((sock, self.sendto_buffer.pop(sock)) for sock, message in
+                        self.sendto_buffer.items() if sock in writable)
+            self.alert("sending delayed udp sendto's", level=0)
+            
+            for sender, messages in resends:
+                for data, host_info in messages:
+                    self.sendto(sender, data, host_info)
+                    
     def handle_reads(self, readable_sockets):
         for sock in readable_sockets:
             try:
@@ -409,7 +408,7 @@ class Network(vmlibrary.Process):
                        (sock.instance_name, len(data)),
                        level=0)
                        
-            self.delayed_sends = True
+            self.late_sends = self.delayed_sends = True
             byte_count = 0
             try:
                 self.send_buffer[sock].append(data)
@@ -425,7 +424,7 @@ class Network(vmlibrary.Process):
                        (sock.instance_name, len(data)),
                        level=0)
                        
-            self.delayed_sendtos = True
+            self.late_sends = self.delayed_sendtos = True
             delayed_sendto = (data, host_info)
             byte_count = 0
             try:

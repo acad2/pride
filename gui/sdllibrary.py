@@ -12,11 +12,12 @@ sdl2.ext.init()
 sdl2.sdlttf.TTF_Init()
 font_module = sdl2.sdlttf
 
+import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.utilities as utilities
 import mpre.gui.defaults as defaults
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 
 class Display_Wrapper(base.Wrapper):
@@ -58,7 +59,7 @@ class Display_Wrapper(base.Wrapper):
         pass
 
 
-class SDL_Component(base.Wrapper):
+class SDL_Component(base.Proxy):
 
     defaults = defaults.SDL_Component
 
@@ -94,7 +95,6 @@ class SDL_Window(SDL_Component):
             self.show()
 
     def create(self, *args, **kwargs):
-        kwargs["sdl_window"] = self.instance_name
         instance = super(SDL_Window, self).create(*args, **kwargs)
         if hasattr(instance, "draw_texture"):
             if getattr(instance, "pack_on_init", False):#instance.pack_on_init:
@@ -108,7 +108,7 @@ class SDL_Window(SDL_Component):
         heappop = heapq.heappop
         instructions = self.instructions
         draw_queue = self.draw_queue
-
+        current_layer = 0
         while draw_queue:
             layer, entry_no, instruction, item = heappop(draw_queue)
             method, args, kwargs = instruction
@@ -221,7 +221,7 @@ class SDL_User_Input(vmlibrary.Process):
         events = sdl2.ext.get_events()
         for event in events:
             self.instruction_mapping[event.type](event)
-        self.process("run")
+        self.run_instruction.execute(self.priority)
 
     def _update_coordinates(self, item, area, z):
         SDL_User_Input.coordinate_tracker[item] = (area, z)
@@ -272,7 +272,8 @@ class SDL_User_Input(vmlibrary.Process):
         if self.active_item:
             x_change = motion.xrel
             y_change = motion.yrel
-            Instruction(self.active_item, "mousemotion", x_change, y_change).execute()
+            self.parallel_method(self.active_item, "mousemotion", x_change, y_change)
+            
         if self.popups:
             popups = self.popups
             for item in popups:

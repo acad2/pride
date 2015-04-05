@@ -1,10 +1,8 @@
 import time
 import wave
+import contextlib
 
-# install requires python-dev and libasound2:
-# sudo apt-get install python-dev
-# sudo apt-get install libasound2
-# sudo pip install pyalsaaudio
+# to install alsaaudio, use mpre.audio.utilities.install_pyalsaaudio
 import alsaaudio
 
 import mpre.base as base
@@ -58,17 +56,43 @@ class Audio_Input(Audio_Device):
     def __init__(self, **kwargs):
         super(Audio_Input, self).__init__(**kwargs)
         if not self.data_source:
-            self.data_source = self.pcm
-            
+            self.data_source = self.pcm            
         self.byte_scalar = self.sample_size / 8
-        
+    
+    @contextlib.contextmanager
+    def listeners_preserved(self):
+        old_listeners = self.listeners
+        try:
+            yield
+        finally:
+            self.listeners = old_listeners 
+            
     def get_data(self):
-        frame_count, data = pcm_read()
-        if self.data_source is not self.pcm:
-            data = self.data_source.read(frame_count * self.byte_scalar)
+        frame_count, data = self.pcm.read()
         self.handle_audio_output(data)
         
+        if self.playing_files:
+            byte_count = frame_count * self.byte_scalar
+            for _file in self.playing_files:
+                file_data = _file.read(byte_count)
+                for listener in self.playing_to[_file]:
+                    self.parallel_method(listener, "handle_audio_input",
+                                         _file.name, file_data)
+                                                 
+    def play_file(self, _file, listeners=("Audio_Output", )):
+        self.playing_files.append(_file)
+        self.playing_to[_file] = listeners
+        for listener in listeners:
+            self.parallel_method(listener, "set_input_device", self.instance_name)
 
+    def stop_file(self, _file):
+        self.playing_files.remove(_file)
+        
+        for listener in self.playing_to[_file]:
+            self.parallel_method(listener, "handle_end_of_stream")        
+        del self.playing_to[_file]
+        
+        
 class Audio_Output(Audio_Device):
 
     defaults = defaults.AlsaAudio_Output

@@ -8,10 +8,39 @@ No documentation available
 
 File
 --------
-usage: file_object = File([filename], [mode], [file])
-    
-       Creates a File object. File objects support the reactor
-       interface for reading/writing to the wrapped file.
+	usage: file_object = File([filename], [mode], [file])
+	
+	   Creates a File object. File objects are pickleable and
+	   support the reactor interface for reading/writing to the
+	   underlying wrapped file.
+
+Default values for newly created instances:
+
+- memory_size              4096
+- memory_mode              -1
+- update_flag              False
+- deleted                  False
+- verbosity                
+- storage_mode             dont_copy
+
+This object defines the following non-private methods:
+
+
+- **handle_write**(self, sender, packet):
+
+		  No documentation available
+
+
+
+- **handle_read**(self, sender, packet):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
 
 Mmap
 --------

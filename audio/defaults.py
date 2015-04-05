@@ -16,7 +16,7 @@ Wav_File.update({"mode" : "rb",
 "rate" : 48000,
 "sample_width" : 2})
 
-AlsaAudio_Device = Base.copy()
+AlsaAudio_Device = Audio_Reactor.copy()
 AlsaAudio_Device.update({"channels" : 1,
 "rate" : 48000,
 "format" : 2, # alsaaudio.PCM_FORMAT_S16_LE
@@ -24,6 +24,7 @@ AlsaAudio_Device.update({"channels" : 1,
 "period_size" : 1024,
 "card" : "hw:0,0",
 "data" : '',
+"data_source" : None,
 "frame_count" : 0,
 "mute" : False})
 
@@ -45,11 +46,13 @@ PyAudio_Device.update({"format" : 8,
 "memory_size" : 16384,
 "source_name" : '',
 "data_source" : '',
-"is_muted" : False})
+"mute" : False,
+"silence" : b"\x00" * 65535})
 
 Audio_Input = PyAudio_Device.copy()
 Audio_Input.update({"input" : True,
-"data" : ''})
+"data" : '',
+"priority" : .015})
 
 Audio_Output = PyAudio_Device.copy()
 Audio_Output.update({"output" : True})
@@ -59,10 +62,9 @@ Config_Utility.update({"config_file_name" : "audiocfg",
 "mode" : ("input",),
 "auto_start" : False})
 
-Audio_Manager = Process.copy()
+Audio_Manager = Reactor.copy()
 Audio_Manager.update({"config_file_name" : '',
 "use_defaults" : True,
-"priority" : .01,
 "configure" : False})
 
 Audio_Channel = Reactor.copy()

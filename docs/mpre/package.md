@@ -12,15 +12,16 @@ Documentation
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - site_name                
+- memory_mode              -1
 - package                  None
 - deleted                  False
 - verbosity                vv
 - ignore_directories       ('docs',)
 - subfolders               ()
 - memory_size              4096
-- ignore_files             ('build_documentation.py',)
+- ignore_files             ()
+- update_flag              False
 - directory                C:\Users\_\pythonbs\mpre
 - index_page               ()
 
@@ -41,7 +42,7 @@ This object defines the following non-private methods:
 
 - **generate_md_file**(self, module_name):
 
-		  Generates an .md file from a python module
+		  usage: documentation.generate_md_file(module_name) => documentation
 
 
 This objects method resolution order is:
@@ -55,14 +56,15 @@ Package
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - package_name             
+- memory_mode              -1
 - make_docs                True
 - deleted                  False
 - verbosity                
 - store_source             True
 - subfolders               ()
 - memory_size              4096
+- update_flag              False
 - directory                
 
 This object defines the following non-private methods:

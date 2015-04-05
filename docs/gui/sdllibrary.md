@@ -10,6 +10,7 @@ Default values for newly created instances:
 
 - layer                    1
 - popup                    False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -19,23 +20,24 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
 This object defines the following non-private methods:
 
 
-- **click**(self):
+- **press**(self):
 
 		  No documentation available
 
 
 
-- **press**(self):
+- **click**(self):
 
 		  No documentation available
 
@@ -51,20 +53,21 @@ Font_Manager
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - default_font_size        14
+- memory_mode              -1
 - deleted                  False
 - verbosity                
 - default_color            (15, 180, 35)
 - default_background       (0, 0, 0)
 - memory_size              4096
-- font_path                C:\Users\_\pythonbs\mpre\gui\resources\fonts\Aero.ttf
+- font_path                c:\users\_\pythonbs\mpre\gui\resources\fonts\Aero.ttf
+- update_flag              False
 
 No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Font_Manager', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Font_Manager', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Instruction
@@ -103,10 +106,11 @@ Renderer
 
 Default values for newly created instances:
 
-- network_packet_size      4096
+- memory_size              4096
+- memory_mode              -1
+- update_flag              False
 - deleted                  False
 - verbosity                
-- memory_size              4096
 - componenttypes           ()
 
 This object defines the following non-private methods:
@@ -125,7 +129,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Renderer', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Renderer', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 SDL_Component
@@ -134,16 +138,17 @@ SDL_Component
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - deleted                  False
 - verbosity                
 - memory_size              4096
+- memory_mode              -1
+- update_flag              False
 
 No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 SDL_User_Input
@@ -152,10 +157,11 @@ SDL_User_Input
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - priority                 0.04
 - memory_size              4096
+- memory_mode              -1
 - auto_start               True
+- update_flag              False
 - deleted                  False
 - verbosity                
 
@@ -244,13 +250,14 @@ SDL_Window
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - layer                    0
 - name                     Metapython
+- memory_mode              -1
 - deleted                  False
 - verbosity                
 - color                    (0, 0, 0)
 - memory_size              4096
+- update_flag              False
 - y                        0
 - x                        0
 - showing                  True
@@ -290,7 +297,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.SDL_Window', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.SDL_Window', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Sprite_Factory
@@ -299,16 +306,17 @@ Sprite_Factory
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - deleted                  False
 - verbosity                
 - memory_size              4096
+- memory_mode              -1
+- update_flag              False
 
 No non-private methods are defined
 
 This objects method resolution order is:
 
-(class 'mpre.gui.sdllibrary.Sprite_Factory', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+(class 'mpre.gui.sdllibrary.Sprite_Factory', class 'mpre.gui.sdllibrary.SDL_Component', class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 itemgetter

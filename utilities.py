@@ -44,8 +44,10 @@ def shell(command, shell=False):
             "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" """        
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
-           
-           
+                       
+def reload_module(module_name):
+    reload(sys.modules[module_name])
+        
 def resolve_string(string):
     """Given an attribute string of ...x.y.z, import ...x.y and return z"""
     module_name = string.split(".")   
@@ -67,13 +69,13 @@ class Latency(object):
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()"""
                 
-    def __init__(self, name=None, average_size=20):
+    def __init__(self, name=None, size=20):
         super(Latency, self).__init__()
         self.name = name
         self.latency = 0.0
         self.now = timer_function()
         self.max = 0.0
-        self.average = Average(size=average_size)
+        self.average = Average(size=size)
         self._position = 0
 
     def update(self):

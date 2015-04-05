@@ -1,5 +1,5 @@
 import mpre.base
-Instruction = mpre.base.Instruction
+Instruction = mpre.Instruction
 
 def test_authentication():
     verbosity = 'vv'

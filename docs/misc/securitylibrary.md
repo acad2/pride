@@ -8,17 +8,18 @@ DoS
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - count                    0
+- timeout_notify           False
 - display_progress         False
 - salvo_size               100
-- timeout_notify           False
+- memory_mode              -1
 - deleted                  False
 - ip                       localhost
 - verbosity                
 - priority                 0.04
 - memory_size              4096
 - auto_start               True
+- update_flag              False
 - display_latency          False
 - port                     80
 - target                   None
@@ -27,12 +28,6 @@ This object defines the following non-private methods:
 
 
 - **run**(self):
-
-		  No documentation available
-
-
-
-- **socket_recv**(self, connection):
 
 		  No documentation available
 
@@ -74,7 +69,52 @@ Instruction
 
 Latency
 --------
-No documentation available
+ usage: Latency([name="component_name"], 
+                       [average_size=20]) => latency_object
+                       
+        Latency objects possess a latency attribute that marks
+        the average time between calls to latency.update()
+
+Null_Connection
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- timeout                  0
+- memory_mode              -1
+- deleted                  False
+- ip                       
+- add_on_init              False
+- memory_size              0
+- socket_family            2
+- as_port                  0
+- added_to_network         False
+- network_packet_size      32768
+- timeout_notify           True
+- connect_attempts         10
+- target                   ()
+- verbosity                
+- bind_on_init             False
+- socket_type              1
+- port                     80
+- bad_target_verbosity     0
+- network_buffer           
+- blocking                 0
+- update_flag              False
+
+This object defines the following non-private methods:
+
+
+- **on_connect**(self):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.misc.securitylibrary.Null_Connection', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
 
 Process
 --------
@@ -90,9 +130,9 @@ Scanner
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - subnet                   127.0.0.1
 - scan_size                1
+- memory_mode              -1
 - deleted                  False
 - verbosity                
 - timeout                  0
@@ -100,6 +140,7 @@ Default values for newly created instances:
 - range                    (0, 0, 0, 254)
 - memory_size              4096
 - auto_start               True
+- update_flag              False
 - yield_interval           50
 - ports                    (22,)
 
@@ -126,3 +167,49 @@ This object defines the following non-private methods:
 This objects method resolution order is:
 
 (class 'mpre.misc.securitylibrary.Scanner', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+Tcp_Port_Tester
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- timeout                  0
+- memory_mode              -1
+- deleted                  False
+- ip                       
+- add_on_init              False
+- memory_size              0
+- socket_family            2
+- as_port                  0
+- added_to_network         False
+- network_packet_size      32768
+- timeout_notify           True
+- connect_attempts         10
+- target                   ()
+- verbosity                
+- bind_on_init             False
+- socket_type              1
+- port                     80
+- bad_target_verbosity     vv
+- network_buffer           
+- blocking                 0
+- update_flag              False
+
+This object defines the following non-private methods:
+
+
+- **on_connect**(self):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.misc.securitylibrary.Tcp_Port_Tester', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+fork
+--------
+No documentation available

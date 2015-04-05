@@ -64,10 +64,11 @@ Process
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - priority                 0.04
 - memory_size              4096
 - auto_start               True
+- memory_mode              -1
+- update_flag              False
 - deleted                  False
 - verbosity                
 
@@ -102,11 +103,12 @@ Processor
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - priority                 0.04
 - running                  True
 - memory_size              4096
+- memory_mode              -1
 - auto_start               False
+- update_flag              False
 - deleted                  False
 - verbosity                
 

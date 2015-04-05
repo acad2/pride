@@ -77,6 +77,9 @@ class File(base.Wrapper):
        support the reactor interface for reading/writing to the
        underlying wrapped file."""
         
+    defaults = defaults.Reactor.copy()
+    defaults.update({"storage_mode" : "dont_copy"})
+    
     def __init__(self, filename='', mode='', file=None, **kwargs):           
         kwargs.setdefault("wrapped_object", (file if file else 
                                              open(filename, mode)))
@@ -93,10 +96,17 @@ class File(base.Wrapper):
         return "handle_write " + self.file.read(byte_count)
         
     def __getstate__(self):
-        return self.filename, self.mode
+        if self.storage_mode == "copy":
+            self.seek(0)
+            data = self.read()
+        else:
+            data = ''
+        return self.filename, self.mode, data
         
     def __setstate__(self, state):
-        self.__init__(*state)
+        self.__init__(*state[:2]) # (filename, smode)
+        if state[2] and self.storage_mode == "copy": # data
+            self.handle_write(None, state[2])
         return self
         
         

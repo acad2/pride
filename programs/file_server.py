@@ -1,7 +1,4 @@
-import mpre.base as base
-
-def metapython_main():
-    base.Instruction("Metapython", "create", "network2.File_Service", parse_args=True).execute()
+import mpre
 
 if __name__ == "__main__":
-    metapython_main()
+    mpre.Instruction("Metapython", "create", "network2.File_Service", parse_args=True).execute()

@@ -7,12 +7,13 @@ import sqlite3
 import binascii
 import functools
 
+import mpre
 import mpre.base as base
 import mpre.defaults as defaults
 import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
-Instruction = base.Instruction
+Instruction = mpre.Instruction
            
 def Authenticated(function):
     def call(instance, sender, packet):
@@ -200,7 +201,7 @@ class Authenticated_Service(base.Reactor):
             
     def _sql_encrypt(self, password, salt=None):
         salt = os.urandom(64) if not salt else salt
-        iterations = 100000
+        iterations = self.hash_rounds
         digest = salt + password
         hash_functions = dict((name, getattr(hashlib, name)) for name in 
                                hashlib.algorithms if name != "pbkdf2_hmac")         
@@ -387,7 +388,7 @@ class Service_Listing(Network_Service):
                         in self.services.items())
             
            
-class File_Service(base.Base):
+class File_Service(base.Reactor):
     defaults = defaults.File_Service
     
     def __init__(self, **kwargs):
@@ -421,7 +422,7 @@ class File_Service(base.Base):
         return "set_filesize " + response
                   
   
-class Download(base.Base):
+class Download(base.Reactor):
     
     defaults = defaults.Download
     

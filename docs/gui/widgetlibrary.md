@@ -11,6 +11,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -20,10 +21,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
-- verbosity                
 - color                    (0, 115, 10)
+- verbosity                
+- sdl_window               SDL_Window
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -43,6 +45,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - text                     Button
 - outline_width            5
@@ -55,11 +58,12 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - shape                    rect
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -85,6 +89,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -94,10 +99,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 - background_filename      C:\test.jpg
@@ -107,6 +113,50 @@ No non-private methods are defined
 This objects method resolution order is:
 
 (class 'mpre.gui.widgetlibrary.Homescreen', class 'mpre.gui.guilibrary.Window', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+
+
+Indicator
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- layer                    1
+- popup                    False
+- show_title_bar           False
+- memory_mode              -1
+- deleted                  False
+- text                     Button
+- outline_width            5
+- text_color               (255, 130, 25)
+- pack_modifier            
+- held                     False
+- pack_mode                vertical
+- memory_size              4096
+- alpha                    1
+- background_color         (0, 0, 0)
+- pack_on_init             True
+- size                     [800, 600]
+- color_scalar             0.6
+- color                    (0, 115, 10)
+- verbosity                
+- shape                    rect
+- sdl_window               SDL_Window
+- update_flag              False
+- y                        0
+- x                        0
+
+This object defines the following non-private methods:
+
+
+- **draw_texture**(self):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.gui.widgetlibrary.Indicator', class 'mpre.gui.guilibrary.Button', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
 
 
 Instruction
@@ -148,9 +198,10 @@ Default values for newly created instances:
 - layer                    1
 - popup                    True
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x02683230>
+- pack_modifier            <function <lambda> at 0x024B8A30>
 - held                     False
 - pack_mode                vertical
 - memory_size              4096
@@ -158,10 +209,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
-- verbosity                
 - color                    (0, 115, 10)
+- verbosity                
+- sdl_window               SDL_Window
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -181,6 +233,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - text                     Button
 - outline_width            5
@@ -193,11 +246,12 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - shape                    rect
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -223,9 +277,10 @@ Default values for newly created instances:
 - layer                    1
 - popup                    True
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x02683230>
+- pack_modifier            <function <lambda> at 0x024B8A30>
 - held                     False
 - pack_mode                layer
 - memory_size              4096
@@ -233,10 +288,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     (200, 150)
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -256,9 +312,10 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
-- pack_modifier            <function <lambda> at 0x02683270>
+- pack_modifier            <function <lambda> at 0x024B8A70>
 - held                     False
 - pack_mode                menu_bar
 - memory_size              4096
@@ -266,10 +323,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 
@@ -289,6 +347,7 @@ Default values for newly created instances:
 - layer                    1
 - popup                    False
 - show_title_bar           False
+- memory_mode              -1
 - deleted                  False
 - outline_width            5
 - pack_modifier            
@@ -299,10 +358,11 @@ Default values for newly created instances:
 - background_color         (0, 0, 0)
 - pack_on_init             True
 - size                     [800, 600]
-- network_packet_size      4096
 - color_scalar             0.6
 - verbosity                
+- sdl_window               SDL_Window
 - color                    (0, 115, 10)
+- update_flag              False
 - y                        0
 - x                        0
 

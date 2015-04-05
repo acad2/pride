@@ -263,32 +263,44 @@ class Instance_Tracker(type):
 
         return super(Instance_Tracker, cls).__new__(cls, name, bases, attributes)
 
-        
-class Metaclass(Documented):
+       
+class Metaclass(Documented, Instance_Tracker, Parser_Metaclass, Method_Hook):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 
         new single inheritance metaclass that utilizes each entry. 
         The methods insert_metaclass and remove_metaclass may be used
-        to alter the contents of this list."""
+        to alter the contents of this list.
         
-    metaclasses = [Instance_Tracker, Parser_Metaclass, Method_Hook]
-    
+        Implementation currently under examination due to compiling with
+        cython being broken"""
+        
+    #metaclasses = [Documented, Instance_Tracker, Parser_Metaclass, Method_Hook]
+   # _metaclass = type("Metaclass",
+     #                 tuple(metaclasses),
+      #                {})
+                      
     def __new__(cls, name, bases, attributes):
         # create a new metaclass that uses Metaclass.metaclasses as it's bases.
-        new_metaclass = type(Metaclass.__name__,
-                             tuple(Metaclass.metaclasses),
-                             {})
-        new_class = new_metaclass.__new__(new_metaclass, name, bases, attributes)
-        return new_class
-        
-    @classmethod
-    def insert_metaclass(metaclass, index=-1):
-        Metaclass.metaclasses.insert(index, metaclass)
+        #new_metaclass = cls._metaclass
+        return super(Metaclass, cls).__new__(cls, name, bases, attributes)
+       # return new_class
     
     @classmethod
-    def remove_metaclass(metaclass):
-        Metaclass.metaclasses.remove(metaclass)
-
+    def update_metaclass(cls):
+        cls._metaclass = type(cls.__name__,
+                              tuple(cls.metaclasses),
+                              {})
+               
+    @classmethod
+    def insert_metaclass(cls, metaclass, index=-1):
+        cls.metaclasses.insert(index, metaclass)
+        cls.update_metaclass()
+        
+    @classmethod
+    def remove_metaclass(cls, metaclass):
+        cls.metaclasses.remove(metaclass)
+        cls.update_metaclass()
+        
         
 if __name__ == "__main__":
     import unittest

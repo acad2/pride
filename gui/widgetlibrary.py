@@ -1,20 +1,30 @@
 import time
 
+import mpre
 import guilibrary
 import defaults
 import mpre.base as base
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 
+class Indicator(guilibrary.Button):  
+        
+    def draw_texture(self):
+        super(Indicator, self).draw_texture()
+        parent = self.parent
+        x, y, w, h = parent.area
+
+        area = self.area = (self.x, self.y, len(self.parent.instance_name) * 7, 16)
+        # draw a line from the top left corner of self to the midpoint of parent
+        self.draw("line", (self.x, self.y, x + (w / 2), y + (h / 2)), color=self.outline_color)
+        self.draw("text", parent.instance_name, area, color=(255, 255, 255))
+                       
+        
 class Title_Bar(guilibrary.Container):
-    
-    defaults = defaults.Container.copy()
-    
-    def __init__(self, **kwargs):
-        super(Title_Bar, self).__init__(**kwargs)
         
     def draw_texture(self):
         self.draw("text", self.parent.name, (0, 0, 60, 12), color=self.color)
+        
         
 class Popup_Menu(guilibrary.Container):
 

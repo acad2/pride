@@ -19,11 +19,12 @@ import time
 import traceback
 from functools import partial
 
+import mpre
 import mpre.base as base
 import mpre.defaults as defaults
 import mpre.utilities as utilities
 
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 timer_function = utilities.timer_function
 
 class Process(base.Reactor):
@@ -103,27 +104,30 @@ class Processor(Process):
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
-        component_alert = partial(alert, "{0}: {1} {2} does not exist", level=0)
+        component_alert = partial(alert, "{0}: {1}", level=0)
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
                                   level=0)
         execution_alert = partial(alert, "executing instruction {}", level="vvv")
         format_traceback = traceback.format_exc
-                
-        while self.running:                    
+               
+        while self.running:            
             execute_at, instruction = heappop(instructions)           
             try:
                 call = _getattr(Component_Resolve[instruction.component_name],
                                                   instruction.method)               
-            except component_errors as error:                
-                _type = (str(error).replace("Error", '') if 
-                         type(error) == AttributeError else "component")
-                                
-                component_alert((instruction, instruction.component_name, _type)) 
+            except component_errors as error:
+                if isinstance(error, KeyError):
+                    error = "'{}' component does not exist".format(instruction.component_name)
+                component_alert((str(instruction), error)) 
                 continue
                    
             time_until = max(0, (execute_at - timer_function()))
-            sleep(time_until)
+            if time_until:
+                sleep(time_until)
+                
+            execution_alert([str(instruction)])
+            
             try:
                 call(*instruction.args, **instruction.kwargs)
             except BaseException as result:
@@ -132,3 +136,5 @@ class Processor(Process):
                 exception_alert((instruction.component_name,
                                  instruction.method,
                                  format_traceback()))
+                                 
+        

@@ -16,10 +16,11 @@ User_Input
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - priority                 0.04
 - memory_size              4096
+- memory_mode              -1
 - auto_start               True
+- update_flag              False
 - deleted                  False
 - verbosity                
 

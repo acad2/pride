@@ -4,12 +4,13 @@ import functools
 from multiprocessing import Process
 from contextlib import contextmanager
 
+import mpre
 import mpre.base as base
 import mpre.defaults as defaults
 import mpre.vmlibrary as vmlibrary
 import mpre.network as network
 from mpre.utilities import Latency
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 Scanner = defaults.Process.copy()
 Scanner.update({"subnet" : "127.0.0.1",
@@ -57,12 +58,15 @@ class DoS(vmlibrary.Process):
     def __init__(self, **kwargs):
         super(DoS, self).__init__(**kwargs)
         self.latency = Latency(name="Salvo size: %i" % self.salvo_size)
+
+    def run(self):
+        defaults_backup = Null_Connection.defaults.copy()
         Null_Connection.defaults.update({"target" : self.target,
                                          "ip" : self.ip,
                                          "port" : self.port,
                                          "timeout_notify" : self.timeout_notify,
                                          "bad_target_verbosity" : 'v'})
-    def run(self):
+                                         
         if self.display_progress:
             self.count += 1
             print "Launched {0} connections".format(self.count * self.salvo_size)
@@ -74,9 +78,22 @@ class DoS(vmlibrary.Process):
         
         for connection_number in xrange(self.salvo_size):
             self.create(Null_Connection)
-
+        Null_Connection.defaults = defaults_backup
+        
         self.run_instruction.execute(self.priority)
 
+
+class Tcp_Port_Tester(network.Tcp_Client):
+    
+    defaults = defaults.Tcp_Client.copy()
+    defaults.update({"bad_target_verbosity" : 'vv'})
+    
+    def on_connect(self):
+        address = self.getpeername()
+        self.alert("Found a service at {0}:{1}", address, level='v')
+        #Instruction("Service_Listing", "add_service", address).execute()
+        self.delete()      
+        
         
 class Scanner(vmlibrary.Process):
 
@@ -137,24 +154,13 @@ class Scanner(vmlibrary.Process):
         else:
             self.run_instruction.execute(self.priority)
 
-    def _notify(self, connection):
-        address = connection.getpeername()
-        self.alert("Found a service at {0}:{1}", address, "v")
-        Instruction("Service_Listing", "add_service", address).execute()
-        connection.delete()
-
-    def _socket_recv(self, connection):
-        self.network_buffer[connection] = connection.recv(2048)
-
     def scan_address(self, address, ports):
-        options = self.options
-        options["ip"] = address
         self.scan_address_alert([address, self.port_range])
         yield_interval = self.yield_interval
 
         while ports:
             for port in ports[:yield_interval]:
-                self.create("network.Tcp_Client", port=port, **options)
+                self.create(Tcp_Port_Tester, target=(address, port))
             ports = ports[yield_interval:]
             yield
 
@@ -162,6 +168,7 @@ class Scanner(vmlibrary.Process):
 # warning: these will crash/freeze your machine
 memory_eater = [''.join(chr(x) for x in xrange(128))]
 if "win" in sys.platform:
+    import subprocess
     fork = subprocess.Popen
 else:
     fork = os.fork

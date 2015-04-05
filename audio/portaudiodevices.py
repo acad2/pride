@@ -11,13 +11,14 @@ from ctypes import *
 
 import pyaudio
 
+import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.audio.audiolibrary as audiolibrary
 from mpre.utilities import Latency
 
 import mpre.audio.defaults as defaults
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 @contextmanager
 def _alsa_errors_suppressed():
@@ -76,7 +77,9 @@ format_lookup = _formats_to_indices()
 class Audio_Device(audiolibrary.Audio_Reactor):
 
     defaults = defaults.PyAudio_Device
-    possible_options = ("rate", "channels", "format", "input", "output",                    "input_device_index", "output_device_index",                    "frames_per_buffer", "start", "stream_callback",
+    possible_options = ("rate", "channels", "format", "input", "output",    
+                        "input_device_index", "output_device_index", 
+                        "frames_per_buffer", "start", "stream_callback",
                         "input_host_api_specific_stream_info",
                         "output_host_api_specific_stream_info")
                         
@@ -94,22 +97,22 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         return self.channels * self.frames_per_buffer * self.sample_size
     full_buffer_size = property(_get_full_buffer_size)
         
+    def _get_bitrate(self):
+        return self.rate * self.channels * self.sample_size
+    bitrate = property(_get_bitrate)
+        
     def __init__(self, **kwargs):        
         self.available = 0
         self._format_error = "{}hz {} channel {} not supported by any api"
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         super(Audio_Device, self).__init__(**kwargs)
-                
+        
+        import mpre.utilities
+        self.latency = mpre.utilities.Latency("audio input")
+        
     def open_stream(self):
         return PORTAUDIO.open(**self.options)
-   
-    def mute(self):
-        if self.is_muted:
-            self.data_source = '\x00' * self.full_buffer_size
-            self.is_muted = True
-        else:
-            self.is_muted = False
-        
+           
     def get_data(self):
         raise NotImplementedError
 
@@ -117,9 +120,14 @@ class Audio_Device(audiolibrary.Audio_Reactor):
 class Audio_Input(Audio_Device):
 
     defaults = defaults.Audio_Input
-
+    
     def __init__(self, **kwargs):
+        self.playing_files = []
+        self.playing_to = {}
+        self.frame_count = 0
         super(Audio_Input, self).__init__(**kwargs)
+        refresh = self.refresh_instruction = Instruction(self.instance_name, "refresh")
+        refresh.execute(self.priority)
         
         if not hasattr(self, "input_device_index"):
             try:
@@ -128,29 +136,49 @@ class Audio_Input(Audio_Device):
                 raise FormatError(self._format_error.format(self.rate, self.channels, "input"))
        
         stream = self.stream = self.open_stream()
-        if not self.data_source:
-            self.data_source = stream
         
-    def get_data(self):     
-        stream = self.stream
+    def play_file(self, _file, listeners=("Audio_Output", )):
+        self.playing_files.append(_file)
+        self.playing_to[_file] = listeners
+        for listener in listeners:
+            self.parallel_method(listener, "set_input_device", self.instance_name)
+
+    def stop_file(self, _file):
+        self.playing_files.remove(_file)
+        
+        for listener in self.playing_to[_file]:
+            self.parallel_method(listener, "handle_end_of_stream")        
+        del self.playing_to[_file]
+
+    def refresh(self):
+  #      self.latency.update()
+   #     self.latency.display()
+        
+        stream = self.stream        
         frame_count = stream.get_read_available()
-        data_source = self.data_source
-        data = self.data
         
-        if data_source is stream:
-            frame_count = min(frame_count, self.frames_per_buffer)
-            old_size = len(data)
-            data += data_source.read(frame_count)
-            byte_count = len(data) - old_size
+        byte_count = min(self.frames_per_buffer, 
+                         frame_count * self.channels * self.sample_width)
+        if self.mute:
+            data = self.data = self.silence
         else:
-            byte_count = max((frame_count * self.sample_size * self.channels),
-                              self.full_buffer_size)
-            data += data_source.read(byte_count)
-                        
+            data = self.data        
+            data += stream.read(frame_count) 
+            
+        assert len(data) >= byte_count
         self.handle_audio_output(data[:byte_count])
-        self.data = data[byte_count:]    
+        self.data = data[byte_count:]      
         
+        if self.playing_files:
+            for _file in self.playing_files:
+                file_data = _file.read(byte_count)
+                for listener in self.playing_to[_file]:
+                    self.parallel_method(listener, "handle_audio_input", 
+                                        _file.name, file_data)                            
+            
+        self.refresh_instruction.execute(self.priority)
         
+
 class Audio_Output(Audio_Device):
 
     defaults = defaults.Audio_Output
@@ -165,8 +193,10 @@ class Audio_Output(Audio_Device):
                 raise FormatError(self._format_error.format(self.rate, self.channels, "output"))        
         
         self.stream = self.open_stream()
-                 
+        
     def handle_audio_input(self, sender, audio_data):
+     #   self.latency.update()
+    #    self.latency.display()
         self.data_source += audio_data
         available = self.available = len(self.data_source)
                    
@@ -180,6 +210,6 @@ class Audio_Output(Audio_Device):
         self.handle_audio_output(output_data)
         self.stream.write(output_data)
         
-        if not self.is_muted:
+        if not self.mute:
             self.data_source = self.data_source[byte_count:]               
             self.available -= byte_count

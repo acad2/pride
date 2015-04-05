@@ -35,18 +35,15 @@ class Struct(object):
         
     def byte_representation(self, dictionary):
         (total_size,
-         size_string,
          packed_data,
-         packed_metadata,
          self.struct,
-         self.metadata_struct,
          self.struct_slice,
          self.unpacked_index,
          self.byte_offsets,
          self.attribute_order,
          self.is_pickled) = self.from_dictionary(dictionary)
         
-        return size_string + packed_metadata + packed_data
+        return packed_data
         
     def from_dictionary(self, dictionary):
         (byte_offsets,
@@ -191,6 +188,7 @@ class Persistent_Reactor(base.Reactor):
         try:
             value = get_attribute(attribute)
         except AttributeError:
+            pass
             
         if "__" != attribute[:2] and attribute not in get_attribute("local_only"):
             print "getting shared attribute: ", attribute

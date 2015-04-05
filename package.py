@@ -216,22 +216,26 @@ class Documentation(base.Base):
         return file_data        
         
     def generate_md_file(self, module_name):
-        """Generates an .md file from a python module"""
-        with ignore_instructions():
-            module = importlib.import_module(module_name)
-            
+        """usage: documentation.generate_md_file(module_name) => documentation"""
         null_docstring = 'No documentation available'
-        module_docstring = module.__doc__ if module.__doc__ else null_docstring
-            
-        documentation = [''.join((module_name, "\n========\n", module_docstring))]
-        _from = getattr(module, "__all__", dir(module))
-            
-        for attribute in getattr(module, "__all__", dir(module)):
-            module_object = getattr(module, attribute)
-            if isinstance(module_object, type) and attribute[0] != "_":
-                docstring = module_object.__doc__ if module_object.__doc__ else null_docstring
-                documentation.append("\n" + ''.join((attribute, "\n--------\n", docstring)))
+        with ignore_instructions():
+            try:
+                module = importlib.import_module(module_name)
+            except:
+                print traceback.format_exc()
+                documentation = null_docstring
+            else:
+                module_docstring = module.__doc__ if module.__doc__ else null_docstring
                     
+                documentation = [''.join((module_name, "\n========\n", module_docstring))]
+                _from = getattr(module, "__all__", dir(module))
+                    
+                for attribute in getattr(module, "__all__", dir(module)):
+                    module_object = getattr(module, attribute)
+                    if isinstance(module_object, type) and attribute[0] != "_":
+                        docstring = module_object.__doc__ if module_object.__doc__ else null_docstring
+                        documentation.append("\n" + ''.join((attribute, "\n--------\n", docstring)))
+                            
         return "\n".join(documentation)
         
     def write_yml_file(self, file_data):

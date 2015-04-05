@@ -4,11 +4,12 @@ from operator import attrgetter
 from sys import modules
 from math import floor, sqrt
 
+import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.gui.defaults as defaults
 import mpre.utilities as utilities
-Instruction = base.Instruction
+Instruction = mpre.Instruction
 
 import sdl2
 import sdl2.ext
@@ -77,11 +78,6 @@ class Organizer(base.Base):
         parent = item.parent
         item.layer = parent.layer + 1
 
-    #def pack_center(self, item):
-     #   item.x = Display.SCREEN_SIZE[0]/2
-      #  item.y = Display.SCREEN_SIZE[1]/2
-
-
 
 class Window_Object(base.Base):
 
@@ -94,11 +90,16 @@ class Window_Object(base.Base):
         self.x, self.y = position
     position = property(_get_position, _set_position)
 
+    def _get_size(self):
+        return (self.w, self.h)
+    def _set_size(self, size):
+        self.w, self.h = size
+    size = property(_get_size, _set_size)
+    
     def _get_area(self):
-        size = self.size
-        return (self.x, self.y, size[0], size[1])
+        return (self.x, self.y, self.w, self.h)
     def _set_area(self, rect):
-        self.position, self.size = rect
+        self.x, self.y, self.w, self.h = rect
     area = property(_get_area, _set_area)
 
     # calculates the outline color
@@ -120,14 +121,13 @@ class Window_Object(base.Base):
       #      self.draw_texture()
 
     def create(self, *args, **kwargs):
-        kwargs["sdl_window"] = self.sdl_window
         kwargs["layer"] = self.layer + 1
-        instance = super(Window_Object, self).create(*args, **kwargs)
-
+        return super(Window_Object, self).create(*args, **kwargs)
+                
+    def add(self, instance):
         if hasattr(instance, "draw_texture"):
             self.draw_queue.append(instance)
-            
-        return instance
+        super(Window_Object, self).add(instance)
 
     def press(self, mouse):
         self.held = True
@@ -138,15 +138,9 @@ class Window_Object(base.Base):
 
     def click(self, mouse):
         if mouse.button == 3:
-            args = (self.instance_name, "create", "widgetlibrary.Right_Click_Menu")
-            options = {"x" : mouse.x,
-                       "y" : mouse.y,
-                       "target" : self}
-            Instruction(*args, **options).execute()
-            draw = Instruction(self.instance_name, "draw_texture")
-            draw.component = self
-            draw.execute()
-
+            self.create("mpre.gui.widgetlibrary.Right_Click_Menu", x=mouse.x, y=mouse.y)
+            self.draw_texture()
+    
     def mousewheel(self, x_amount, y_amount):
         pass
 
@@ -168,8 +162,8 @@ class Window_Object(base.Base):
 
     def draw(self, figure="rect", *args, **kwargs):
         self.parallel_method(self.sdl_window, "draw", self.instance_name,
-                           figure, self.area, self.layer, 
-                           *args, **kwargs)
+                             figure, self.area, self.layer, 
+                             *args, **kwargs)
 
     def draw_texture(self):
         self.draw("fill", self.area, color=self.background_color)

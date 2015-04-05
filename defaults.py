@@ -25,10 +25,6 @@ NO_KWARGS = dict()
 PROCESSOR_COUNT = 1#cpu_count()
 
 # Base
-# you can save memory if you have LOTS of objects but
-# few that actually use their memory. note that for reasonable
-# amounts of objects the difference is negligible and
-# not worth the loss of convenience
 MANUALLY_REQUEST_MEMORY = 0
 DEFAULT_MEMORY_SIZE = 4096
 
@@ -40,7 +36,8 @@ PERSISTENT = 0
 Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
 "memory_mode" : ANONYMOUS,
 "verbosity" : '',
-"deleted" : False}
+"deleted" : False,
+"update_flag" : False}
 
 Reactor = Base.copy()
 
@@ -63,7 +60,7 @@ Socket.update({"blocking" : 0,
 "timeout" : 0,
 "add_on_init" : True,
 "network_packet_size" : 32768,
-"memory_size" : 32768,
+"memory_size" : 0,
 "network_buffer" : '',
 "interface" : "0.0.0.0",
 "port" : 0,
@@ -120,7 +117,8 @@ Network_Service = Udp_Socket.copy()
 
 Authenticated_Service = Base.copy()
 Authenticated_Service.update({"database_filename" : ":memory:",
-"login_message" : 'login success'})
+"login_message" : 'login success',
+"hash_rounds" : 100000})
 
 Authenticated_Client = Base.copy()
 Authenticated_Client.update({"email" : '',

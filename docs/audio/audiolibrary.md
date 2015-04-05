@@ -2,51 +2,161 @@ mpre.audio.audiolibrary
 ========
 No documentation available
 
-Audio_Channel
+Audio_File
 --------
 	No docstring found
 
 Default values for newly created instances:
 
-- network_packet_size      4096
-- memory_size              65535
-- audio_data               
+- memory_size              4096
+- memory_mode              -1
+- update_flag              False
 - deleted                  False
 - verbosity                
+- storage_mode             dont_copy
 
 This object defines the following non-private methods:
 
 
-- **read**(self, bytes=0):
-
-		  No documentation available
-
-
-
-- **handle_audio**(self, sender, audio):
+- **handle_audio_input**(self, sender, audio_data):
 
 		  No documentation available
 
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Channel', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Audio_File', class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
-Audio_Configuration_Utility
+Audio_Manager
 --------
 	No docstring found
 
 Default values for newly created instances:
 
-- network_packet_size      4096
-- priority                 0.04
-- memory_size              4096
-- mode                     ('input',)
-- auto_start               False
-- config_file_name         audiocfg
+- configure                False
+- memory_mode              -1
 - deleted                  False
 - verbosity                
+- config_file_name         
+- memory_size              4096
+- update_flag              False
+- use_defaults             True
+
+This object defines the following non-private methods:
+
+
+- **load_api**(self):
+
+		  No documentation available
+
+
+
+- **load_default_devices**(self):
+
+		  No documentation available
+
+
+
+- **record**(self, device_name, file, channels=2, rate=48000):
+
+		  No documentation available
+
+
+
+- **run_configuration**(self, exit_when_finished=False):
+
+		  No documentation available
+
+
+
+- **load_config_file**(self):
+
+		  No documentation available
+
+
+
+- **get_devices**(self, devices='Audio_Input'):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.audio.audiolibrary.Audio_Manager', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+Audio_Reactor
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- memory_size              4096
+- memory_mode              -1
+- update_flag              False
+- deleted                  False
+- source_name              
+- verbosity                
+
+This object defines the following non-private methods:
+
+
+- **add_listener**(self, instance_name):
+
+		  No documentation available
+
+
+
+- **handle_audio_output**(self, audio_data):
+
+		  No documentation available
+
+
+
+- **handle_audio_input**(self, sender, audio_data):
+
+		  No documentation available
+
+
+
+- **set_input_device**(self, target_instance_name):
+
+		  No documentation available
+
+
+
+- **handle_end_of_stream**(self):
+
+		  No documentation available
+
+
+
+- **remove_listener**(self, instance_name):
+
+		  No documentation available
+
+
+This objects method resolution order is:
+
+(class 'mpre.audio.audiolibrary.Audio_Reactor', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+Config_Utility
+--------
+	No docstring found
+
+Default values for newly created instances:
+
+- priority                 0.04
+- memory_size              4096
+- memory_mode              -1
+- auto_start               False
+- update_flag              False
+- deleted                  False
+- verbosity                
+- config_file_name         audiocfg
+- mode                     ('input',)
 
 This object defines the following non-private methods:
 
@@ -76,220 +186,7 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Audio_Configuration_Utility', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
-Audio_Device
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- frames_per_buffer        1024
-- data_source              
-- source_name              
-- format                   8
-- deleted                  False
-- data                     
-- verbosity                
-- record_to_disk           False
-- memory_size              16384
-- frame_count              0
-
-This object defines the following non-private methods:
-
-
-- **handle_audio**(self, sender, packet):
-
-		  No documentation available
-
-
-
-- **open_stream**(self):
-
-		  No documentation available
-
-
-
-- **add_listener**(self, sender, packet):
-
-		  No documentation available
-
-
-
-- **get_data**(self):
-
-		  No documentation available
-
-
-
-- **handle_data**(self, audio_data):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
-Audio_Input
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- frames_per_buffer        1024
-- data_source              
-- source_name              
-- format                   8
-- deleted                  False
-- frame_count              0
-- verbosity                
-- record_to_disk           False
-- memory_size              16384
-- input                    True
-- _data                    
-- data                     
-
-This object defines the following non-private methods:
-
-
-- **get_data**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.audio.portaudiodevices.Audio_Input', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
-Audio_Manager
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- priority                 0.01
-- memory_size              4096
-- use_defaults             True
-- auto_start               True
-- config_file_name         
-- deleted                  False
-- verbosity                
-
-This object defines the following non-private methods:
-
-
-- **load_default_devices**(self):
-
-		  No documentation available
-
-
-
-- **run**(self):
-
-		  No documentation available
-
-
-
-- **send_channel_info**(self, sender, packet):
-
-		  usage: Instruction("Audio_Manager", "send_channel_info", my_object).execute()
-		 => Message: "Device_Info;;" + pickled list containing dictionaries
-		 
-		 Request a listing of available audio channels to the specified instances
-		 memory. This message can be retrieved via instance.read_messages()
-
-
-
-- **record**(self, device_name, file, channels=2, rate=48000):
-
-		  No documentation available
-
-
-
-- **play_file**(self, file, to=None, mute=False):
-
-		  No documentation available
-
-
-
-- **load_config_file**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.audio.audiolibrary.Audio_Manager', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
-Audio_Output
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- frames_per_buffer        1024
-- data_source              
-- source_name              
-- format                   8
-- deleted                  False
-- frame_count              0
-- verbosity                
-- mute                     False
-- record_to_disk           False
-- memory_size              16384
-- output                   True
-- data                     
-
-This object defines the following non-private methods:
-
-
-- **handle_audio**(self, sender, packet):
-
-		  No documentation available
-
-
-
-- **write_audio**(self):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.audio.portaudiodevices.Audio_Output', class 'mpre.audio.portaudiodevices.Audio_Device', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
-Audio_Service
---------
-	No docstring found
-
-Default values for newly created instances:
-
-- network_packet_size      4096
-- deleted                  False
-- verbosity                
-- memory_size              65535
-
-This object defines the following non-private methods:
-
-
-- **handle_channel_info**(self, sender, packet):
-
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.audio.audiolibrary.Audio_Service', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Config_Utility', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
 
 
 Instruction
@@ -324,7 +221,11 @@ Instruction
 
 Latency
 --------
-No documentation available
+ usage: Latency([name="component_name"], 
+                       [average_size=20]) => latency_object
+                       
+        Latency objects possess a latency attribute that marks
+        the average time between calls to latency.update()
 
 Wav_File
 --------
@@ -332,8 +233,9 @@ Wav_File
 
 Default values for newly created instances:
 
-- network_packet_size      4096
 - repeat                   False
+- source_name              
+- memory_mode              -1
 - deleted                  False
 - verbosity                
 - filename                 
@@ -341,9 +243,16 @@ Default values for newly created instances:
 - rate                     48000
 - memory_size              4096
 - mode                     rb
+- update_flag              False
 - sample_width             2
 
 This object defines the following non-private methods:
+
+
+- **handle_audio_input**(self, sender, audio_data):
+
+		  No documentation available
+
 
 
 - **write**(self, data):
@@ -352,7 +261,7 @@ This object defines the following non-private methods:
 
 
 
-- **read**(self, size=0):
+- **read**(self, size=None):
 
 		  No documentation available
 
@@ -371,4 +280,4 @@ This object defines the following non-private methods:
 
 This objects method resolution order is:
 
-(class 'mpre.audio.audiolibrary.Wav_File', class 'mpre.base.Base', type 'object')
+(class 'mpre.audio.audiolibrary.Wav_File', class 'mpre.audio.audiolibrary.Audio_Reactor', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
