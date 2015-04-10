@@ -2,6 +2,9 @@ import heapq
 import mmap
 import itertools
 import pprint
+import pickle
+import contextlib
+import copy
 
 import utilities
 timer_function = utilities.timer_function  
@@ -30,29 +33,30 @@ class Environment(object):
     def replace(self, component, new_component):
         components = self.Component_Resolve
         if isinstance(component, unicode):
-            component = components[component]
-            
-        old_name = component.instance_name
-        components[old_name] = components.pop(new_component, new_component)
+            component = self.Component_Resolve[component]
 
+        old_component_name = component.instance_name
+        
+        self.Component_Resolve[old_component_name] = self.Component_Resolve.pop(new_component.instance_name, new_component)
+        
         self.Instance_Name[new_component] = self.Instance_Name.pop(component)
         self.Instance_Number[new_component] = self.Instance_Number.pop(component)
         
         memory = self.Component_Memory
-        if component in memory:
-            memory[new_component] = memory.pop(component)
+        if new_component.instance_name in memory:
+            memory[old_component_name] = memory.pop(new_component.instance_name)
         
         parents = self.Parents
         if component in parents:
             parents[new_component] = parents.pop(component)
                 
-        references = self.References_To.pop(component, tuple())
-        for referrer in references:
-            instance = self.Component_Resolve[instance]
-            instance.remove(component)
-            instance.add(new_component)
+        new_component.instance_name = old_component_name
+        references = self.References_To.get(old_component_name, set()).copy()
         
-        new_component.instance_name = old_name
+        for referrer in references:
+            instance = self.Component_Resolve[referrer]
+            instance.remove(component)
+            instance.add(new_component)       
         
     def delete(self, instance):
         for child in itertools.chain(*instance.objects.values()):
@@ -84,7 +88,6 @@ class Environment(object):
        
         instance_name = instance_class + str(count) if count else instance_class
         self.Component_Resolve[instance_name] = instance
-     #   print "Adding self.Instance_Name[{}] = {}".format(instance, instance_name)
         try:
             self.Instance_Name[instance] = instance.instance_name = instance_name
             self.Instance_Number[instance] = instance.instance_number = count
@@ -94,15 +97,14 @@ class Environment(object):
         
         memory_size = getattr(instance, "memory_size")
         if memory_size:
-            self.add_memory(instance.instance_name, instance.memory_mode, memory_size)        
-                
+            self.add_memory(instance.instance_name, instance.memory_mode, memory_size)                        
     def add_memory(self, instance_name, memory_mode, memory_size):
         if not memory_mode:
             file_on_disk = open(instance_name, 'a+')
             file_descriptor = file_on_disk.fileno()
         else:
             file_descriptor = -1
-        self.Component_Memory[instance_name] = mmap.mmap(file_descriptor, memory_size)      
+        self.Component_Memory[instance_name] = mmap.mmap(file_descriptor, memory_size)     
         
     def __getstate__(self):
         # mmaps are not pickle-able, but strings are.
@@ -141,7 +143,19 @@ class Environment(object):
         self.Component_Memory.update(environment.Component_Memory)
         self.Parents.update(environment.Parents)
         self.References_To.update(environment.References_To)
-        
+    
+    @contextlib.contextmanager
+    def preserved(self):
+        backups = [self.Instructions]        
+        for field in self.fields:
+            backups.append(getattr(self, field).copy())
+        try:
+            yield
+        finally:
+            self.Instructions = backups.pop(0)
+            for field in self.fields:
+                setattr(self, field, backups.pop(0))
+                        
     def modify(self, container_name, item, method="add_key"):
         container = getattr(self, container_name)
         if method == "add_key":
@@ -153,6 +167,28 @@ class Environment(object):
             getattr(container, method)(item)
             
             
+class Reference(object):
+    
+    references = {}
+    
+    def __new__(cls, base_object):
+        name = base_object.instance_name
+        references = cls.references
+        if name not in references:
+            self = super(Reference, cls).__new__(cls)
+            self.id = name
+            references[name] = self
+        else:
+            self = references[name]
+        return self
+    
+    def __getattr__(self, attribute):
+        return getattr(environment.Component_Resolve[self.id], attribute)
+
+    def dereference(self):
+        return environment.Component_Resolve[self.id]
+               
+        
 class Instruction(object):
     """ usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
@@ -178,12 +214,10 @@ class Instruction(object):
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism."""
-    
-  #  __metaclass__ = mpre.metaclass.Metaclass
-    
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided."""
+        
     def __init__(self, component_name, method, *args, **kwargs):
         super(Instruction, self).__init__()
         self.created_at = timer_function()
@@ -192,10 +226,15 @@ class Instruction(object):
         self.args = args
         self.kwargs = kwargs
         
-    def execute(self, priority=0.0):
+    def execute(self, priority=0.0, callback=None):
+        """ usage: instruction.execute(priority=0.0, callback=None)
+        
+            Submits an instruction to the processing queue. The instruction
+            will be executed in priority seconds. An optional callback function 
+            can be provided if the return value of the instruction is needed."""
         execute_at = self.execute_at = timer_function() + priority
         heapq.heappush(environment.Instructions, 
-                      (execute_at, self))
+                      (execute_at, self, callback))
             
     def __str__(self):
         args = str(getattr(self, "args", ''))

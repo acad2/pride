@@ -27,7 +27,8 @@ import mpre.base as base
 from utilities import Latency, Average
 Instruction = mpre.Instruction
 
-ERROR_CODES = {}
+NotWritableError = type("NotWritableError", (IOError, ), {"errno" : -1})
+ERROR_CODES = {-1 : "NotWritableError"}
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
     BAD_TARGET = errno.WSAEINVAL
@@ -56,10 +57,11 @@ HOST = socket.gethostbyname(socket.gethostname())
 class Error_Handler(object):
             
     def connection_reset(self, sock, error):
-        sock.handle_connection_reset()
+        sock.alert("Connection reset\n{}", [error], level=0)
+        sock.delete()
         
     def connection_was_aborted(self, sock, error):
-        sock.close()
+        sock.alert("Connection was aborted\n{}", [error], level=0)
         sock.delete()
         
     def eagain(self, sock, error):
@@ -73,9 +75,9 @@ class Socket(base.Wrapper):
 
     defaults = defaults.Socket
 
-    def _get_recv_method(self):
-        return self.recvfrom
-    _network_recv = property(_get_recv_method)
+    def _get_address(self):
+        return (self.ip, self.port)
+    address = property(_get_address)
     
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
@@ -85,16 +87,26 @@ class Socket(base.Wrapper):
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         self.error_handler = Error_Handler()
+        
         if self.add_on_init:
             self.added_to_network = True
             self.parallel_method("Network", "add", self)
          
+    def on_select(self):
+        self.recvfrom(self.network_packet_size)
+        
     def send(self, data):
-        return self.parallel_method("Network", "send", self, data)
+        if self.parallel_method("Network", "is_writable", self):
+            return self.wrapped_object.send(data)
+        else:
+            raise NotWritableError
                              
     def sendto(self, data, host_info):
-        return self.parallel_method("Network", "sendto", 
-                                    self, data, host_info)
+        if self.parallel_method("Network", "is_writable", self):
+            return self.wrapped_object.sendto(data, host_info)
+        else:
+            raise NotWritableError
+
     def recv(self, buffer_size=0):
         buffer_size = (self.network_packet_size if not buffer_size else
                        buffer_size)
@@ -104,30 +116,47 @@ class Socket(base.Wrapper):
         buffer_size = (self.network_packet_size if not buffer_size else
                        buffer_size)
         return self.wrapped_object.recvfrom(buffer_size)
+      
+    def connect(self, address):
+        try:
+            self.wrapped_object.connect(address)
+        except socket.error:
+            self.parallel_method("Network", "connect", self)   
+        
+    def on_connect(self):
+        self.alert("Connected", level=0)
+        #raise NotImplementedError
         
     def delete(self):
-        self.close()        
+        if not self.closed:
+            self.close()        
         super(Socket, self).delete()
     
     def close(self):
         if self.added_to_network:
             self.parallel_method("Network", "remove", self)
         self.wrapped_object.close()
+        self.closed = True
+    
+    def __getstate__(self):
+        stats = super(Socket, self).__getstate__()
+        del stats["wrapped_object"]
+        del stats["socket"]
+        return stats
         
        
 class Tcp_Socket(Socket):
 
     defaults = defaults.Tcp_Socket
     
-    def _get_recv_method(self):
-        return self.recv
-    _network_recv = property(_get_recv_method)
-    
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
                                                           socket.SOCK_STREAM))
         super(Tcp_Socket, self).__init__(**kwargs)
 
+    def on_select(self):
+        self.recv(self.network_packet_size)
+        
         
 class Server(Tcp_Socket):
 
@@ -183,52 +212,7 @@ class Tcp_Client(Tcp_Socket):
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
             self.target = (self.ip, self.port)
-        
-        self.parallel_method("Connection_Manager", "add", self)
-                
-    def unhandled_error(self):
-        print "unhandled exception for", self.instance_name
-        self.delete()
-
-    def attempt_connection(self):
-        self.stop_connecting = True
-        if not self.connect_attempts:
-            self.alert("{0} to {1} timed out after {2} frames", (self.instance_name, self.target, self.timeout), 0)
-            self.delete()
-
-        else:
-            self.connect_attempts -= 1
-            try: # non blocking connect
-                self.connect(self.target)
-            except socket.error as socket_error:
-                error = socket_error.errno
-                
-                if error == CONNECTION_IS_CONNECTED: # complete
-                    self.parallel_method("Network", "add", self)
-                    self.added_to_network = True
-                    self.on_connect()                    
-                                        
-                elif error in (CALL_WOULD_BLOCK, CONNECTION_IN_PROGRESS): # waiting
-                    self.alert("waiting for connection to {}", (self.target, ), level="vv")
-                    self.stop_connecting = False
-
-                elif error == BAD_TARGET: #10022: # WSAEINVALID bad target
-                    self.alert("WSAEINVALID bad target", [self.instance_name], level=self.bad_target_verbosity)
-                    self.delete()
-                    
-                else:
-                    print "unhandled exception for", self.instance_name
-                    print traceback.format_exc()
-                    self.delete()
-            else:
-                self.added_to_network = True
-                self.on_connect()                
-                
-        return self.stop_connecting
-        
-    def on_connect(self):
-        raise NotImplementedError
-        
+                        
         
 class Udp_Socket(Socket):
 
@@ -265,34 +249,6 @@ class Multicast_Receiver(Udp_Socket):
         group_option = socket.inet_aton(self.address)
         multicast_configuration = struct.pack("4sL", group_option, socket.INADDR_ANY)
         self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
-
-
-class Connection_Manager(vmlibrary.Process):
-
-    defaults = defaults.Connection_Manager
-        
-    def __init__(self, **kwargs):        
-        super(Connection_Manager, self).__init__(**kwargs)
-        self.buffer = []
-        self.running = False
-        
-    def add(self, sock):
-        self.running = True
-        self.buffer.append(sock)
-        self.parallel_method("Network", "_run")
-        
-    def run(self):
-        running = False
-        buffer = self.buffer
-        new_buffer = self.buffer = []
-        while buffer:
-            
-            connection = buffer.pop()     
-            if not connection.deleted and not connection.attempt_connection():
-                running = True
-                new_buffer.append(connection)          
-        
-        self.running = running
            
 
 class Network(vmlibrary.Process):
@@ -303,132 +259,81 @@ class Network(vmlibrary.Process):
         # minor optimization; pre allocated slices and ranges for
         # sliding through the socket list to sidestep the 500 
         # file descriptor limit that select has. Produces slice objects
-        # for ranges 0-500, 500-1000, 1000-1500, etc, up to 5000.
+        # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(10))
+                                    x in xrange(100))
         self._socket_range_size = range(1)
         
-        self.send_buffer = {}
-        self.sendto_buffer = {}
-        self.writable = set()
+        self._writable = set()
+        self.connecting = set()
         super(Network, self).__init__(**kwargs)
-        self.sockets = self.objects["Socket_Objects"] = []
-        self.late_sends = self.delayed_sendtos = self.delayed_sends = self.running = False
-                        
-        self.connection_manager = self.create(Connection_Manager)
-        self.sockets.remove(self.connection_manager)
         
-        instruction = self.update_instruction = Instruction("Network", "_update_range_size")        
-        instruction.execute(self.update_priority)
-  
+        self.sockets = []
+        self.running = False
+        self.update_instruction = Instruction("Network", "_update_range_size")        
+          
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)
-        self._run()
+        if not self.running:
+            self.run_instruction.execute(priority=self.priority)
+            self.running = True        
     
     def remove(self, sock):
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
+                
+    def delete(self):
+        super(Network, self).delete()
+        del self.sockets
         
-    def _run(self):
-        if not self.running:
-            self.run_instruction.execute(priority=self.priority)
-            self.running = True
-                   
     def _update_range_size(self):
         self._socket_range_size = range((len(self.sockets) / 500) + 1)
         self.update_instruction.execute(self.update_priority)
 
     def run(self):
-        if self.connection_manager.running:
-            self.connection_manager.run()
-        
         sockets = self.sockets
-        
         if sockets:
             for chunk in self._socket_range_size:
                 # select has a max # of file descriptors it can handle, which
                 # is about 500 (at least on windows). We can avoid this limitation
                 # by sliding through the socket list in slices of 500 at a time
                 socket_list = sockets[self._slice_mapping[chunk]]
-
                 readable, writable, errors = select.select(socket_list, socket_list, [], 0.0)
                 
-                self.writable = writable
-                
-                if readable:
-                    self.handle_reads(readable)                
+                writable = self._writable = set(writable)
+                connecting = self.connecting
+                if connecting:
+                    for accepted in connecting.intersection(writable):
+                        accepted.on_connect()
+                    
+                    self.connecting = still_connecting = connecting.difference(writable)
+                    for connection in still_connecting:
+                        connection.connection_attempts -= 1
+                        if not connection.connection_attempts:
+                            try:
+                                connection.connect(connection.address)
+                            except socket.error:
+                                handler = getattr(sock.error_handler, 
+                                    ERROR_CODES[error.errno].lower(),
+                                    sock.error_handler.unhandled)
+                                handler(sock, error)                               
+                                    
+                for sock in readable:
+                    try:
+                        sock.on_select()
+                    except socket.error as error:
+                        handler = getattr(sock.error_handler, 
+                                  ERROR_CODES[error.errno].lower(),
+                                  sock.error_handler.unhandled)
+                        handler(sock, error)         
 
-            if self.late_sends:
-                self.handle_delayed_sends(writable)
-                                        
             self.run_instruction.execute(priority=self.priority)
         else:
             self.running = False
-       
-    def handle_delayed_sends(self, writable):
-        self.late_sends = False
-        if self.delayed_sends:
-            self.delayed_sends = False
-            resends = ((sock, self.send_buffer.pop(sock)) for sock, messages in
-                        self.send_buffer.items() if sock in writable)
-            self.alert("sending delayed tcp sends", level=0)
-            
-            for sender, messages in resends:
-                for data in messages:
-                    self.alert("Sending {} on {}",
-                               [data[:128], sender],
-                               level=0)
-                    self.send(sender, data)
+                   
+    def connect(self, sock):
+        self.connecting.add(sock)
         
-        if self.delayed_sendtos:
-            self.delayed_sendtos = False
-            resends = ((sock, self.sendto_buffer.pop(sock)) for sock, message in
-                        self.sendto_buffer.items() if sock in writable)
-            self.alert("sending delayed udp sendto's", level=0)
-            
-            for sender, messages in resends:
-                for data, host_info in messages:
-                    self.sendto(sender, data, host_info)
-                    
-    def handle_reads(self, readable_sockets):
-        for sock in readable_sockets:
-            try:
-                sock._network_recv()
-            except socket.error as error:       
-                handler = getattr(sock.error_handler, 
-                                  ERROR_CODES[error.errno].lower(),
-                                  sock.error_handler.unhandled)
-                    
-    def send(self, sock, data):   
-        if sock in self.writable:
-            byte_count = sock.wrapped_object.send(data)          
-        else:
-            self.alert("{} not writable; delaying send of {} bytes",
-                       (sock.instance_name, len(data)),
-                       level=0)
-                       
-            self.late_sends = self.delayed_sends = True
-            byte_count = 0
-            try:
-                self.send_buffer[sock].append(data)
-            except KeyError:
-                self.send_buffer[sock] = [data]
-        return byte_count
-        
-    def sendto(self, sock, data, host_info):
-        if sock in self.writable:
-            byte_count = sock.wrapped_object.sendto(data, host_info)
-        else:
-            self.alert("{} not writable; delaying send of {} bytes",
-                       (sock.instance_name, len(data)),
-                       level=0)
-                       
-            self.late_sends = self.delayed_sendtos = True
-            delayed_sendto = (data, host_info)
-            byte_count = 0
-            try:
-                self.sendto_buffer[sock].append(delayed_sendto)
-            except KeyError:
-                self.sendto_buffer[sock] = [delayed_sendto]
-        return byte_count
+    def is_writable(self, sock):
+        return sock not in self.connecting and sock in self._writable

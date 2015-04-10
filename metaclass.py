@@ -22,7 +22,7 @@ class Documented(type):
     """ A metaclass that uses the Docstring object to supply
         abundant documentation for classes"""
     def __new__(cls, name, bases, attributes):
-        Documented.make_docstring(attributes)
+        cls.make_docstring(attributes)
         return super(Documented, cls).__new__(cls, name, bases, attributes)
         
     @staticmethod
@@ -98,7 +98,7 @@ class Runtime_Decorator(object):
             return monkey_patch
 
     def _handle_decorator(self, decorator_type):
-        if isinstance(decorator_type, str):
+        if isinstance(decorator_type, unicode) or isinstance(decorator_type, str):
             decorator_type = utilities.resolve_string(decorator_type)
         return decorator_type(self.function)
 
@@ -282,8 +282,11 @@ class Metaclass(Documented, Instance_Tracker, Parser_Metaclass, Method_Hook):
     def __new__(cls, name, bases, attributes):
         # create a new metaclass that uses Metaclass.metaclasses as it's bases.
         #new_metaclass = cls._metaclass
-        return super(Metaclass, cls).__new__(cls, name, bases, attributes)
-       # return new_class
+       # print "\nCreating new class: ", name, bases
+        new_class = super(Metaclass, cls).__new__(cls, name, bases, attributes)
+       # print "New class bases: ", new_class.__bases__
+        #print "new class mro: ", new_class.__mro__
+        return new_class
     
     @classmethod
     def update_metaclass(cls):
@@ -304,17 +307,17 @@ class Metaclass(Documented, Instance_Tracker, Parser_Metaclass, Method_Hook):
         
 if __name__ == "__main__":
     import unittest
-    import mpre.base
+    import mpre.base as base
     import mpre.defaults      
     
     class Test_Metaclass(unittest.TestCase):
         
         def testdocumentation(self):
-            print mpre.base.Base.__doc__[:256] + "..."
+            print base.Base.__doc__[:256] + "..."
             print "End documentation test"
             
         def testdecoration(self):
-            test_base = mpre.base.Base()
+            test_base = base.Base()
             
             def test_decorator1(function):
                 def wrapped_function(*args, **kwargs):
@@ -349,7 +352,7 @@ if __name__ == "__main__":
             sys.argv = list(arguments)
             print len(sys.argv)
 
-            class TestBase(mpre.base.Base):
+            class TestBase(base.Base):
                 defaults = mpre.defaults.Base.copy()
                 
                 arg_index = 1

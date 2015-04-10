@@ -36,8 +36,7 @@ PERSISTENT = 0
 Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
 "memory_mode" : ANONYMOUS,
 "verbosity" : '',
-"deleted" : False,
-"update_flag" : False}
+"deleted" : False}
 
 Reactor = Base.copy()
 
@@ -64,7 +63,9 @@ Socket.update({"blocking" : 0,
 "network_buffer" : '',
 "interface" : "0.0.0.0",
 "port" : 0,
+"connection_attempts" : 10,
 "bind_on_init" : False,
+"closed" : False,
 "added_to_network" : False})
 
 Tcp_Socket = Socket.copy()
@@ -84,7 +85,6 @@ Tcp_Client.update({"ip" : "",
 "port" : 80,
 "target" : tuple(),
 "as_port" : 0,
-"connect_attempts" : 10,
 "timeout_notify" : True,
 "add_on_init" : False,
 "bad_target_verbosity" : 0}) # alert verbosity when trying to connect to bad address
@@ -92,6 +92,7 @@ del Tcp_Client["interface"]
 
 Udp_Socket = Socket.copy()
 Udp_Socket.update({"bind_on_init" : True})
+del Udp_Socket["connection_attempts"]
 
 # only addresses in the range of 224.0.0.0 to 230.255.255.255 are valid for IP multicast
 Multicast_Beacon = Udp_Socket.copy()
@@ -110,6 +111,7 @@ Network.update({"handle_resends" : False,
 "number_of_sockets" : 0,
 "priority" : .01,
 "update_priority" : 5,
+"_updating" : False,
 "auto_start" : False})
 
 # network2
@@ -174,5 +176,6 @@ Metapython.update({"command" : "shell_launcher.py",
 "interpreter_enabled" : True,
 "startup_definitions" : \
 """Instruction('Metapython', 'create', 'userinput.User_Input').execute()
-Instruction("Metapython", "create", "network.Network").execute()"""})
+Instruction("Metapython", "create", "network.Network").execute()
+Instruction("Network", "_update_range_size").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})

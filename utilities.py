@@ -23,6 +23,7 @@ import inspect
 import subprocess
 import collections
 import importlib
+import types
 
 if "win" in sys.platform:
     timer_function = time.clock
@@ -39,15 +40,27 @@ def shell(command, shell=False):
         Regarding the shell argument; from the python docs on subprocess.Popen:
             "The shell argument (which defaults to False) specifies whether to use the shell as the program to execute. If shell is True, it is recommended to pass args as a string rather than as a sequence."
             
-        and also:
-        
+        and also:        
             "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" """        
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
                        
+def load_module(module_name, module_path, source_file=None):
+    if not source_file:
+        with open(module_path, 'r') as source_file:
+            source_file.flush()
+            source = source_file.read()
+    else:
+        source = source_file.read()
+        
+    module_code = compile(source, module_name, 'exec')
+    new_module = types.ModuleType(module_name)
+    exec module_code in new_module.__dict__
+    return new_module
+    
 def reload_module(module_name):
     reload(sys.modules[module_name])
-        
+    
 def resolve_string(string):
     """Given an attribute string of ...x.y.z, import ...x.y and return z"""
     module_name = string.split(".")   
@@ -268,8 +281,7 @@ def function_header(function, mode="signature"):
         insert = "**{}" if mode == "signature" else "**{}"
         header_size += ", " + insert
         header_args.append(keyword_args)
-     #   print header_size
-        
+             
     answer = inserts = "({})".format(header_size)
     
     if mode == "signature":
@@ -343,15 +355,3 @@ def documentation(instance):
         docstring += "\nThis objects method resolution order is:\n\n"
         docstring += mro + "\n"
     return docstring
-
-
-class Updater(object):
-
-    def __init__(self):
-        super(Updater, self).__init__()
-
-    def live_update(self, component_name, source):
-        """Updates base component component_name with a class specified in source.
-        
-        outdated and needs rewrite"""
-        raise NotImplementedError

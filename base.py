@@ -1,4 +1,4 @@
-#   mpre.base - Instructions and root inheritance objects
+#   mpre.base - root inheritance objects
 #
 #    Copyright (C) 2014  Ella Rose
 #
@@ -26,6 +26,8 @@ import mpre
 import mpre.metaclass
 import mpre.utilities as utilities
 import mpre.defaults as defaults
+
+__all__ = ["Base", "Reactor", "Wrapper", "Proxy"]
 
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
@@ -131,9 +133,13 @@ class Base(object):
     parent = property(_get_parent)
                        
     environment = mpre.environment
+               
+   # def __new__(cls, **kwargs):
+   #     print "new new!"
+    #    return super(Base, cls).__new__(cls)
         
     def __init__(self, **kwargs):
-      #  self = super(Base, cls).__new__(cls, *args, **kwargs)
+       #  self = super(Base, cls).__new__(cls, *args, **kwargs)
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__
         self.objects = {}
@@ -146,7 +152,7 @@ class Base(object):
         self.set_attributes(**attributes)
         
         self.environment.add(self)
-              
+                
     def set_attributes(self, **kwargs):
         """ usage: object.set_attributes(attr1=value1, attr2=value2).
             
@@ -180,6 +186,7 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
+        self.deleted = True
         self.environment.delete(self)
 
     def remove(self, instance):
@@ -200,15 +207,17 @@ class Base(object):
         if instance not in siblings:
             siblings.append(instance)
             objects[instance_class] = siblings
-        else:
+            
+            if hasattr(instance, "instance_name"):
+                instance_name = instance.instance_name
+                references_to = self.environment.References_To.get(instance_name, set())
+                references_to.add(self.instance_name)
+                self.environment.References_To[instance_name] = references_to            
+     #   else:
        #     self.alert("Ignoring add of " + str(instance), level=0)
-            raise type("AddException", (BaseException, ), 
-                       {"message" : "attempted to add an object that has already been added"})
-        if hasattr(instance, "instance_name"):
-            instance_name = instance.instance_name
-            references_to = self.environment.References_To.get(instance_name, set())
-            references_to.add(self.instance_name)
-            self.environment.References_To[instance_name] = references_to
+        #    raise type("AddException", (BaseException, ), 
+          #             {"message" : "attempted to add an object that has already been added"})
+
             
     def alert(self, message="Unspecified alert message",
                     format_args=tuple(),
@@ -252,19 +261,19 @@ class Base(object):
             method is made available as the return value of parallel_method.
             
             parallel_method allows for the use of an object without the
-            need for an explicit reference to that object."""
+            need for a reference to that object in the current scope."""
         return getattr(self.environment.Component_Resolve[component_name], 
                        method_name)(*args, **kwargs)
                                
     def __getstate__(self):
-        return self.__dict__
+        return self.__dict__.copy()
         
     def __setstate__(self, state):
         self.set_attributes(**state)
         self.environment.add(self)
         return self
         
-    def update(self):
+    def update(self, source_file=None):
         """usage: base.update() => updated_base
         
            Reloads the module that defines base and returns an updated instance. 
@@ -273,36 +282,38 @@ class Base(object):
            new, updated object. Attributes of the original object will be assigned
            to the new, updated object.
            
-           This is the bleeding edge. not solid in terms of object deletion yet."""
-           
-        """found_metaclasses = set()       
-        for cls in reversed(type(self).__mro__): # will get weird with wrappers
+           4/8/15: not solid in terms of object deletion yet. leaks ~250kb per update"""
+        self.alert("Updating", level='v')        
+        class_mro = self.__class__.__mro__[:-1]
+        class_base = self.__class__.__mro__[-1]
+        required_modules = []        
+        preserved_modules = {}
         
-            # reload the module of the metaclass of the class
-            metaclass = getattr(cls, "__metaclass__", None)
-            if metaclass and metaclass not in found_metaclasses:
-                found_metaclasses.add(metaclass)
-                utilities.reload_module(metaclass.__module__)
+        for cls in reversed(class_mro):
+            module_name = cls.__module__
+            current_module = sys.modules.pop(module_name)
+            preserved_modules[module_name] = current_module
+            importlib.import_module(module_name)
+            required_modules.append(sys.modules[module_name])
+
+        class_base = getattr(required_modules[-1], self.__class__.__name__)
+        # breaks if this is not done. maybe modules are garbage collected otherwise?
+        class_base.required_modules = required_modules
+        
+        new_self = class_base.__new__(class_base)
                 
-            class_module = cls.__module__
-            if class_module != "__main__":
-                utilities.reload_module(class_module)
-                
-        stats = self.__dict__.copy()
-        new_self = getattr(sys.modules[self.__module__], self.__class__.__name__)()
-        self.environment.replace(self, new_self)
-        new_self.set_attributes(**stats)"""
-        self.alert("Updating", level=0)
-        stats = self.__dict__.copy()
-        module = sys.modules[self.__module__]
-        reload(module)
-        new_self = getattr(module, self.__class__.__name__)()
-        new_self.alert("new instance created, replacing old instance", level=0)
+        # a mini replacement __init__
+        attributes = new_self.defaults.copy()
+        new_self.set_attributes(**attributes)
+        self.environment.add(new_self)        
+     
+        stats = self.__dict__
         self.environment.replace(self, new_self)
         new_self.set_attributes(**stats)
+        sys.modules.update(preserved_modules)
         return new_self
         
-        
+
 class Reactor(Base):
     """ usage: Reactor(attribute=value, ...) => reactor_instance
     
@@ -320,16 +331,16 @@ class Reactor(Base):
         self._respond_with = []
     
     def __getstate__(self):
-        attributes = self.__dict__.copy()
+        attributes = super(Reactor, self).__getstate__()
         attributes["_respond_with"] = [method.function.func_name for method in
                                        attributes["_respond_with"]]
-        
         return attributes
         
     def __setstate__(self, state):
         state["_respond_with"] = [getattr(self, name) for name in
                                   state["_respond_with"]]
-        self.__dict__.update(state)
+        super(Reactor, self).__setstate__(state)
+        return self
         
     def reaction(self, component_name, message,
                  _response_to="None",
@@ -411,9 +422,7 @@ class Wrapper(Reactor):
         super(Wrapper, self).__init__(**kwargs)
                 
     def __getattr__(self, attribute):
-      #  print self, "getting attribute", attribute
-        return getattr(super(Wrapper, self).__getattribute__("wrapped_object"),
-                       attribute)
+        return getattr(self.wrapped_object, attribute)
                        
                        
 class Proxy(Reactor):

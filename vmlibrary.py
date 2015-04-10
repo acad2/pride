@@ -111,8 +111,8 @@ class Processor(Process):
         execution_alert = partial(alert, "executing instruction {}", level="vvv")
         format_traceback = traceback.format_exc
                
-        while self.running:            
-            execute_at, instruction = heappop(instructions)           
+        while instructions and self.running:            
+            execute_at, instruction, callback = heappop(instructions)           
             try:
                 call = _getattr(Component_Resolve[instruction.component_name],
                                                   instruction.method)               
@@ -129,12 +129,14 @@ class Processor(Process):
             execution_alert([str(instruction)])
             
             try:
-                call(*instruction.args, **instruction.kwargs)
+                result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:
                 if type(result) in reraise_exceptions:
                     raise
                 exception_alert((instruction.component_name,
                                  instruction.method,
                                  format_traceback()))
-                                 
+            else:
+                if callback:
+                    callback(result)
         
