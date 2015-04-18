@@ -269,15 +269,19 @@ class Network(vmlibrary.Process):
         super(Network, self).__init__(**kwargs)
         
         self.sockets = []
+        self._sockets = set()
         self.running = False
-        self.update_instruction = Instruction("Network", "_update_range_size")        
-          
+        print self.instance_name, "initializing"
+        self.update_instruction = Instruction(self.instance_name, "_update_range_size")
+        
     def add(self, sock):
         super(Network, self).add(sock)
-        self.sockets.append(sock)
-        if not self.running:
-            self.run_instruction.execute(priority=self.priority)
-            self.running = True        
+        if sock not in self._sockets:
+            self.sockets.append(sock)
+            self._sockets.add(sock)
+            if not self.running:
+                self.run_instruction.execute(priority=self.priority)
+                self.running = True        
     
     def remove(self, sock):
         super(Network, self).remove(sock)

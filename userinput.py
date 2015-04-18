@@ -41,15 +41,18 @@ class User_Input(vmlibrary.Process):
             self.input = ''
             
         self.run_instruction.execute(priority=self.priority)
-        
+    
     def __getstate__(self):
-        dict_copy = self.__dict__.copy()
-        del dict_copy["thread"]
-        return dict_copy
+        attributes = super(User_Input, self).__getstate__()
+        del attributes["thread"]
+        return attributes
+    
+    def on_load(self, attributes):
+        super(User_Input, self).on_load(attributes)
+        self.thread = Thread(target=self.read_input)
+        self.thread_started = False
+        self.input = ''
         
-    def __setstate__(self, state):
-        self.__init__(**state)
-                
     def add_listener(self, sender, argument):
         self.listeners.append(sender)
         

@@ -17,11 +17,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-import os
 import time
 import inspect
 import subprocess
 import collections
+import contextlib
 import importlib
 import types
 
@@ -29,7 +29,67 @@ if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
+                
+def resolve_string(string):
+    """Given an attribute string of ...x.y.z, import ...x.y and return z"""
+    module_name = string.split(".")   
+    class_name = module_name.pop(-1)
+    module_name = '.'.join(module_name)
+    if not module_name:
+        module_name = "__main__"
+        
+    _from = sys.modules[module_name] if module_name in sys.modules\
+            else importlib.import_module(module_name)
 
+    return getattr(_from, class_name)
+    
+def load_module_source(module_path, source_file=None):
+    module_path = module_path if module_path[-1] != 'c' else module_path[:-1]
+    with open(module_path, 'r') as module_file:
+        source_file = source_file if source_file else module_file
+        source_file.flush()
+        source = source_file.read()
+    return source
+    
+def create_module(module_name, source):
+    module_code = compile(source, module_name, 'exec')
+    new_module = types.ModuleType(module_name)
+    exec module_code in new_module.__dict__
+    return new_module
+    
+def reload_module(module_name):
+    reload(sys.modules[module_name])
+     
+@contextlib.contextmanager
+def modules_preserved(keys=tuple()):
+    backup = {}
+    for module_name in keys:
+        backup[module_name] = sys.modules[module_name]
+    try:
+        yield
+    finally:
+        sys.modules.update(backup)
+
+@contextlib.contextmanager
+def modules_switched(module_dict):    
+    modules = {}
+    with utilities.modules_preserved(module_dict.keys()):
+        print "Modules have been preserved"
+        for module_name, source_code in module_dict.items():
+            module = sys.modules.pop(module_name)
+            filepath = (module.__file__ if module.__file__[-1] != 'c' else
+                        module.__file__[:-1])
+            with fileio.file_contents_swapped(source_code, filepath):
+                print "File contents have been swapped"
+                importlib.import_module(module_name)
+            print "File contents restored"
+            modules[module_name] = sys.modules[module_name]
+        try:
+            yield
+        except:
+            pass
+    
+    
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 
                      [shell=False]) = > sys.stdout.output from executed command
@@ -44,36 +104,112 @@ def shell(command, shell=False):
             "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" """        
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
-                       
-def load_module(module_name, module_path, source_file=None):
-    if not source_file:
-        with open(module_path, 'r') as source_file:
-            source_file.flush()
-            source = source_file.read()
+    
+def function_header(function, mode="signature"):
+    """usage: function_header(function, 
+                             [mode]) => "(arg1, default_arg=True, keyword=True...)"
+    
+    Given a function, return it's signature. mode can be specified as insertable
+    to use string format insertions instead of argument names"""
+    spec = args, varargs, keyword_args, default_args = inspect.getargspec(function)   
+    
+    header_size = ", ".join("{}" for x in range(len(args)))                
+    header_args = [arg for arg in args]
+    
+    if default_args: 
+        new_args = []
+        for arg in default_args:
+            if isinstance(arg, str):
+                new_arg = repr(arg)
+            else:
+                new_arg = arg
+            new_args.append(new_arg)
+        default_args = new_args
+        non_defaults = len(args) - len(default_args)
+        len(default_args)
+        header_args = header_args[:non_defaults] + ["{}={}".format(arg_name, default_args[index]) for index, arg_name in enumerate(header_args[non_defaults:])]
+        
+    if varargs:
+        header_size += ", *{}"
+        header_args.append(varargs)    
+    
+    if keyword_args: 
+        insert = "**{}" if mode == "signature" else "**{}"
+        header_size += ", " + insert
+        header_args.append(keyword_args)
+             
+    answer = inserts = "({})".format(header_size)
+    
+    if mode == "signature":
+        answer = inserts.format(*header_args)
+    
+    return answer    
+    
+def documentation(instance):
+    """ usage: documentation(object) => augmented_documentation_string
+    
+        Given a python object, attempt to introspect any useful information
+        and include it appended to the objects docstring."""
+        
+    if isinstance(instance, type):
+        _class = instance
     else:
-        source = source_file.read()
-        
-    module_code = compile(source, module_name, 'exec')
-    new_module = types.ModuleType(module_name)
-    exec module_code in new_module.__dict__
-    return new_module
+        _class = instance.__class__
     
-def reload_module(module_name):
-    reload(sys.modules[module_name])
-    
-def resolve_string(string):
-    """Given an attribute string of ...x.y.z, import ...x.y and return z"""
-    module_name = string.split(".")   
-    class_name = module_name.pop(-1)
-    module_name = '.'.join(module_name)
-    if not module_name:
-        module_name = "__main__"
+    options_text = 'Default values for newly created instances:\n\n'
+    try: # gather the default attribute names and values (base objects only)
+        options = ""
+        for key, value in _class.defaults.items():
+            options += "- {0: <25}{1}\n".format(key, value)
+        if not options:
+            options_text = "\nNo defaults are assigned to new instances\n"
+        else:
+            options_text += options
+    except AttributeError: # does not have defaults
+        options_text = "\n\n"
         
-    _from = sys.modules[module_name] if module_name in sys.modules\
-            else importlib.import_module(module_name)
+    docstring = ""
+    class_docstring = getattr(_class, "__doc", '')
+    if not class_docstring:
+        class_docstring = getattr(_class, "__doc__", '')
+    docstring += "\t" + class_docstring.replace("    ", '').replace("\n", "\n\t") + "\n\n" + options_text + "\n"
+    beginning = docstring    
+        
+    docstring = "This object defines the following non-private methods:\n"
+    found = False
+    for attribute_name in _class.__dict__.keys():
+        if "_" != attribute_name[0]:
+            attribute = getattr(_class, attribute_name)
+            if callable(attribute):
+                attribute = getattr(attribute, "function", attribute)
+                found = True
 
-    return getattr(_from, class_name)
-    
+                docstring += "\n\n- **" + attribute_name + "**"
+                                
+                function_docstring = inspect.getdoc(attribute)
+                function_docstring = function_docstring if function_docstring else "No documentation available"
+
+                try:
+                    method_header = function_header(attribute)
+                except:
+                    print "Could not find header for", attribute
+                    raise SystemExit
+                docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
+                docstring += "\n"          
+                
+    if found:
+        docstring = beginning + docstring
+    else:
+        docstring = beginning + "No non-private methods are defined\n"
+    try:
+        mro = str(_class.__mro__).replace("<", "").replace(">", '')
+        
+    except AttributeError:
+        docstring += "\n No method resolution order detected...\n"
+    else:
+        docstring += "\nThis objects method resolution order is:\n\n"
+        docstring += mro + "\n"
+    return docstring
     
 class Latency(object):
     """ usage: Latency([name="component_name"], 
@@ -249,109 +385,3 @@ class LRU_Cache(object):
         self.contains.add(key)
 
         
-def function_header(function, mode="signature"):
-    """usage: function_header(function, 
-                             [mode]) => "(arg1, default_arg=True, keyword=True...)"
-    
-    Given a function, return it's signature. mode can be specified as insertable
-    to use string format insertions instead of argument names"""
-    spec = args, varargs, keyword_args, default_args = inspect.getargspec(function)   
-    
-    header_size = ", ".join("{}" for x in range(len(args)))                
-    header_args = [arg for arg in args]
-    
-    if default_args: 
-        new_args = []
-        for arg in default_args:
-            if isinstance(arg, str):
-                new_arg = repr(arg)
-            else:
-                new_arg = arg
-            new_args.append(new_arg)
-        default_args = new_args
-        non_defaults = len(args) - len(default_args)
-        len(default_args)
-        header_args = header_args[:non_defaults] + ["{}={}".format(arg_name, default_args[index]) for index, arg_name in enumerate(header_args[non_defaults:])]
-        
-    if varargs:
-        header_size += ", *{}"
-        header_args.append(varargs)    
-    
-    if keyword_args: 
-        insert = "**{}" if mode == "signature" else "**{}"
-        header_size += ", " + insert
-        header_args.append(keyword_args)
-             
-    answer = inserts = "({})".format(header_size)
-    
-    if mode == "signature":
-        answer = inserts.format(*header_args)
-    
-    return answer
-    
-    
-def documentation(instance):
-    """ usage: documentation(object) => augmented_documentation_string
-    
-        Given a python object, attempt to introspect any useful information
-        and include it appended to the objects docstring."""
-        
-    if isinstance(instance, type):
-        _class = instance
-    else:
-        _class = instance.__class__
-    
-    options_text = 'Default values for newly created instances:\n\n'
-    try: # gather the default attribute names and values (base objects only)
-        options = ""
-        for key, value in _class.defaults.items():
-            options += "- {0: <25}{1}\n".format(key, value)
-        if not options:
-            options_text = "\nNo defaults are assigned to new instances\n"
-        else:
-            options_text += options
-    except AttributeError: # does not have defaults
-        options_text = "\n\n"
-        
-    docstring = ""
-    class_docstring = getattr(_class, "__doc", '')
-    if not class_docstring:
-        class_docstring = getattr(_class, "__doc__", '')
-    docstring += "\t" + class_docstring.replace("    ", '').replace("\n", "\n\t") + "\n\n" + options_text + "\n"
-    beginning = docstring    
-        
-    docstring = "This object defines the following non-private methods:\n"
-    found = False
-    for attribute_name in _class.__dict__.keys():
-        if "_" != attribute_name[0]:
-            attribute = getattr(_class, attribute_name)
-            if callable(attribute):
-                attribute = getattr(attribute, "function", attribute)
-                found = True
-
-                docstring += "\n\n- **" + attribute_name + "**"
-                                
-                function_docstring = inspect.getdoc(attribute)
-                function_docstring = function_docstring if function_docstring else "No documentation available"
-
-                try:
-                    method_header = function_header(attribute)
-                except:
-                    print "Could not find header for", attribute
-                    raise SystemExit
-                docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
-                docstring += "\n"          
-                
-    if found:
-        docstring = beginning + docstring
-    else:
-        docstring = beginning + "No non-private methods are defined\n"
-    try:
-        mro = str(_class.__mro__).replace("<", "").replace(">", '')
-        
-    except AttributeError:
-        docstring += "\n No method resolution order detected...\n"
-    else:
-        docstring += "\nThis objects method resolution order is:\n\n"
-        docstring += mro + "\n"
-    return docstring

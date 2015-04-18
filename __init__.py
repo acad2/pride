@@ -29,10 +29,10 @@ class Environment(object):
                           "References_To"):
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
-                
+    
     def replace(self, component, new_component):
         components = self.Component_Resolve
-        if isinstance(component, unicode):
+        if isinstance(component, unicode) or isinstance(component, str):
             component = self.Component_Resolve[component]
 
         old_component_name = component.instance_name
@@ -59,21 +59,27 @@ class Environment(object):
             instance.add(new_component)       
         
     def delete(self, instance):
-        for child in itertools.chain(*instance.objects.values()):
-            child.delete()
-        
-        instance_name = instance.instance_name
+        try:
+            for child in itertools.chain(*instance.objects.values()):
+                child.delete()
+        except AttributeError: # non base objects have no .objects dictionary
+            instance_name = self.Instance_Name[instance]
+            parent = self.Component_Resolve[self.Parents[instance]]
+            parent.objects[instance.__class__.__name__].remove(instance)          
+        else:
+            instance_name = instance.instance_name
         
         if instance in self.Parents:
             del self.Parents[instance]
         if instance_name in self.Component_Memory:
             self.Component_Memory.pop(instance_name).close()    
         
-        referrers = [name for name in self.References_To[instance_name]]
-        for referrer in referrers:
-            self.Component_Resolve[referrer].remove(instance)
-        
-        del self.References_To[instance_name]        
+        if instance_name in self.References_To:
+            referrers = [name for name in self.References_To[instance_name]]
+            for referrer in referrers:
+                self.Component_Resolve[referrer].remove(instance)
+            del self.References_To[instance_name]
+            
         del self.Component_Resolve[instance_name]
         del self.Instance_Name[instance]
         del self.Instance_Number[instance]
@@ -95,7 +101,7 @@ class Environment(object):
             self.Instance_Name[instance] = instance_name
             self.Instance_Number[instance] = count
         
-        memory_size = getattr(instance, "memory_size")
+        memory_size = getattr(instance, "memory_size", 0)
         if memory_size:
             self.add_memory(instance.instance_name, instance.memory_mode, memory_size)                        
     def add_memory(self, instance_name, memory_mode, memory_size):
@@ -105,36 +111,12 @@ class Environment(object):
         else:
             file_descriptor = -1
         self.Component_Memory[instance_name] = mmap.mmap(file_descriptor, memory_size)     
+                            
+    def __contains__(self, component):
+        if (component in self.Component_Resolve.keys() or
+            component in itertools.chain(self.Component_Resolve.values())):
+            return True
         
-    def __getstate__(self):
-        # mmaps are not pickle-able, but strings are.
-        # return a dictionary of component:memory_contents pairs
-        # which is pickle-able instead of Component_Memory, which is not
-        return (self.Instructions, 
-                self.Component_Resolve,
-                (dict((owner, memory_chunk[:]) for 
-                       owner, memory_chunk in
-                       self.Component_Memory.items())),
-                self.Parents,
-                self.References_To)
-        
-    def __setstate__(self, state):   
-        (self.Instructions, 
-         self.Component_Resolve,
-         self.Component_Memory,
-         self.Parents,
-         self.References_To) = state
-
-        component_memory = self.Component_Memory
-        component_resolve = self.Component_Resolve
-        for component_name, stored_memory in component_memory.items():
-            component = component_resolve[component_name]
-            memory = mmap.mmap(-1, component.memory_size)
-            memory[:len(stored_memory)] = stored_memory
-            component_memory[component_name] = memory
-        
-        return self
-    
     def update(self, environment):       
         for instruction in environment.Instructions:
             heapq.heappush(self.Instructions, instruction)
@@ -143,7 +125,9 @@ class Environment(object):
         self.Component_Memory.update(environment.Component_Memory)
         self.Parents.update(environment.Parents)
         self.References_To.update(environment.References_To)
-    
+        self.Instance_Number.update(environment.Instance_Number)
+        self.Instance_Count.update(environment.Instance_Count)
+        
     @contextlib.contextmanager
     def preserved(self):
         backups = [self.Instructions]        
@@ -165,29 +149,7 @@ class Environment(object):
             del container[item]
         else:
             getattr(container, method)(item)
-            
-            
-class Reference(object):
-    
-    references = {}
-    
-    def __new__(cls, base_object):
-        name = base_object.instance_name
-        references = cls.references
-        if name not in references:
-            self = super(Reference, cls).__new__(cls)
-            self.id = name
-            references[name] = self
-        else:
-            self = references[name]
-        return self
-    
-    def __getattr__(self, attribute):
-        return getattr(environment.Component_Resolve[self.id], attribute)
-
-    def dereference(self):
-        return environment.Component_Resolve[self.id]
-               
+                           
         
 class Instruction(object):
     """ usage: Instruction(component_name, method_name, 

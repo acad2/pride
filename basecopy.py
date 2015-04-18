@@ -21,7 +21,6 @@ import traceback
 import heapq
 import importlib
 import cPickle as pickle
-import operator
 
 import mpre
 import mpre.metaclass
@@ -67,9 +66,10 @@ class Base(object):
                   information in the environment
             
             - The alert method, which makes logging and statements 
-              of varying verbosity simple and straight forward.
+              of varying verbosity simple and straight forward. Alerts
+              also include options for callback methods and instructions
               
-            - parallel_method calls. This method is used in a 
+            - The method known as parallel_method. This method is used in a 
               similar capacity to Instruction objects, but the
               call happens immediately and the return value from the
               specified method is available
@@ -108,7 +108,7 @@ class Base(object):
         by pythons mmap.mmap. This memory attribute can be useful because 
         it supports both the file-style read/write/seek interface and 
         string-style slicing"""
-    __metaclass__ = mpre.metaclass.Metaclass
+    __metaclass__ = mpre.metaclass.Metaclass#._metaclass
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -117,7 +117,10 @@ class Base(object):
     parser_modifiers = {}
     parser_ignore = ("network_packet_size", "memory_size")
         
-    # the default attributes new instances will initialize with.
+    # the default attributes an instance will initialize with.
+    # storing them here and using the set_attributes method
+    # makes them modifiable at runtime and eliminates the need
+    # to type out the usual self.attribute = value statements
     defaults = defaults.Base
     
     def _get_parent_name(self):
@@ -128,8 +131,12 @@ class Base(object):
         environment = self.environment
         return environment.Component_Resolve[environment.Parents[self]]
     parent = property(_get_parent)
-
+                       
     environment = mpre.environment
+               
+   # def __new__(cls, **kwargs):
+   #     print "new new!"
+    #    return super(Base, cls).__new__(cls)
         
     def __init__(self, **kwargs):
        #  self = super(Base, cls).__new__(cls, *args, **kwargs)
@@ -235,7 +242,8 @@ class Base(object):
         if self.verbosity >= level:            
             message = (self.instance_name + ": " + message.format(*format_args) if
                        format_args else self.instance_name + ": " + message)
-            return self.parallel_method("Alert_Handler", "_alert",
+
+            return self.parallel_method("Alert_Handler", "alert",
                                         message,
                                         level, callback)            
                         
@@ -260,80 +268,66 @@ class Base(object):
                        method_name)(*args, **kwargs)
                                
     def __getstate__(self):
+      #  print self, "pickling"
         return self.__dict__.copy()
         
     def __setstate__(self, state):
         self.set_attributes(**state)
-              
-    def save(self, attributes=None, _file=None, mode='file'):
-        self.alert("Saving", level=0)#'v')
-        attributes = self.__getstate__() if attributes is None else attributes
-        
-        saved_names = attributes["_saved_names"] = set()        
-        objects = attributes.pop("objects", {})
-        saved_objects = attributes["objects"] = {}
-        for component_type in objects.keys():
-            order = sorted((instance for instance in objects[component_type] if
-                            hasattr(instance, 'save')), 
-                            key=operator.attrgetter("instance_name"))
-            
-            saved_objects[component_type] = [component.save() for component in order]
-                    
-        if "_required_modules" in attributes: # modules are not pickle-able            
-            attributes["_required_modules"] = dict((name, (source, None)) for 
-                                                    name, source, module in
-                                                    attributes["_required_modules"])
-        else:
-            attributes["_required_module"] = (self.__module__, self.__class__.__name__)
-            
+        self.environment.add(self)
+        return self
+
+    def save(self, _file=None, attributes=None):
+        attributes = self.__dict__.copy() if not attributes else attributes
+        print "Beginning {}.save".format(self.instance_name)
+        for key, value in attributes.items():
+            if hasattr(value, 'save'):# and isinstance([cls for cls in self.__mro__ if
+                                       #               "Base" in cls.__name__][0]):
+                print "Saving a Base object", value
+                attributes[key] = value.save()
+                print "Finished saving;"                
+        if "required_modules" in attributes:
+            attributes["required_modules"] = [(name, source) for name, source, module in                                  attributes["required_modules"]]
         if _file:
+            print self.instance_name, "pickling for save"
             pickle.dump(attributes, _file)
         else:
-            return pickle.dumps(attributes)     
-            
+            print self.instance_name, 'Returning pickled bytes'
+            return pickle.dumps(attributes)
+    
     @classmethod
     def load(cls, attributes=None, _file=None):
-        assert attributes or _file            
-        attributes = attributes if attributes is not None else pickle.load(_file)
-        backup = attributes["objects"].copy()
-        
-        saved_objects = attributes["objects"]
-        objects = attributes["objects"] = {}
-        for instance_type, saved_instances in saved_objects.items():            
-            objects[instance_type] = [cls.load(pickle.loads(instance)) for instance in
-                                      saved_instances]
-                                      
-        if "_required_modules" in attributes:
-            module_list = attributes["_required_attributes"]
-            class_name = module_list[-1]
-            module_name = module_list[-2][0]
-            module_info = dict((module_name, source) for 
-                                module_name, source, none in module_list)
-            with utilities.modules_switched(module_info):
-                class_module = sys.modules[module_name]
-                module_info[module_name] += (class_module, )
-                self_class = getattr(class_module, class_name)
-                required_modules = [(name, module_info[name], sys.modules[name]) for 
-                                    name in module_info]
-                print "Created new class with required modules: ", required_modules
-                attributes["_required_modules"] = required_modules         
+        if not attributes:
+            if _file:
+                attributes = pickle.load(_file)
+            else:
+                with open(cls.__name__, 'rb') as _file:
+                    attributes = pickle.load(_file)
+                    
+        if "required_modules" in attributes:
+            module_backup = {}
+            for module_name, source_code in attributes["required_modules"]:
+                module_backup[module_name] = module = sys.modules.pop(module_name)
+                filepath = (module.__file__ if module.__file__[-1] != 'c' else
+                            module.__file__[:-1])
+                utilities.swap_file_contents(source_code, filepath)
+                    
+                    importlib.import_module(module_name)
+                    module_file.seek(0)
+                    module_file.truncate()
+                    module_file.write(original_source)
+                    module_file.flush()
+                    
+            class_module = sys.modules[module_name]
+            new_class = getattr(class_module, cls.__name__)
+            self = new_class.__new__(new_class)
+                    
+
+            sys.modules.update(module_backup)
         else:
-            module_name, class_name = attributes["_required_module"]
-            importlib.import_module(module_name)
-            self_class = getattr(sys.modules[module_name], class_name)
-            
-        self = self_class.__new__(self_class)
-        self.on_load(attributes)
-        self.alert("Loaded", level=0)
-        attributes["objects"] = backup
-        return self
-        
-    def on_load(self, attributes):
+            self = cls.__new__(cls)
         self.set_attributes(**attributes)
-        self.environment.add(self)
-        if self.instance_name != attributes["instance_name"]:
-            self.environment.replace(attributes["instance_name"], self)
-                
+        return self
+            
     def update(self):
         """usage: base.update() => updated_base
         
@@ -361,9 +355,7 @@ class Base(object):
 
         class_base = getattr(module, self.__class__.__name__)
         # breaks if this is not done. maybe modules are garbage collected otherwise?
-        class_base._required_modules = required_modules
-        required_modules.append(self.__class__.__name__)
-        
+        class_base.required_modules = required_modules        
         new_self = class_base.__new__(class_base)
                 
         # a mini replacement __init__
@@ -393,7 +385,19 @@ class Reactor(Base):
     def __init__(self, **kwargs):
         super(Reactor, self).__init__(**kwargs)        
         self._respond_with = []
-                
+    
+    def __getstate__(self):
+        attributes = super(Reactor, self).__getstate__()
+        attributes["_respond_with"] = [method.function.func_name for method in
+                                       attributes["_respond_with"]]
+        return attributes
+        
+    def __setstate__(self, state):
+        state["_respond_with"] = [getattr(self, name) for name in
+                                  state["_respond_with"]]
+        super(Reactor, self).__setstate__(state)
+        return self
+        
     def reaction(self, component_name, message,
                  _response_to="None",
                  scope="local"):
@@ -446,8 +450,9 @@ class Reactor(Base):
                    [command, value[:32]],
                    level='vv')
         
-        method = (getattr(self, self._respond_with.pop(0)) if 
-                  self._respond_with else getattr(self, command))                  
+        method = (self._respond_with.pop(0) if self._respond_with else
+                  getattr(self, command))
+                  
         response = method(sender, value)
         
         if response:                                
@@ -456,12 +461,12 @@ class Reactor(Base):
                        level='vvv')
             self.reaction(sender, response)                    
     
-    def respond_with(self, method_name):
+    def respond_with(self, method):
         """ usage: self.respond_with(method)
         
             Specifies what method should be called when the component
             specified by a reaction returns its response."""
-        self._respond_with.append(method_name)
+        self._respond_with.append(method)
         
 
 class Wrapper(Reactor):

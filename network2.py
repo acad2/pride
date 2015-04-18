@@ -211,11 +211,14 @@ class Authenticated_Service(base.Reactor):
                 iterations -= 1
         return salt + digest
         
-    def __reduce__(self):
-        state = self.__dict__.copy()
+    def __getstate__(self):
+        state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
-        del state["log_file"]
-        return (self.__class__, tuple(), state, None, None)
+        return state
+        
+    def on_load(self, attributes):
+        super(Authenticated_Service, self).on_load(attributes)
+        self.database = sqlite3.connect(self.database_filename)
         
     def login(self, sender, packet):
         username, password = packet.split(" ", 1)
@@ -486,7 +489,7 @@ class Tcp_Client_Proxy(network.Tcp_Client):
         print self.instance_name, "receiving data!"
         request = self.socket.recv(self.network_packet_size)        
         service_name, command, value = request.split(" ", 2)
-        self.respond_with(self.reply)
+        self.respond_with("reply")
         request = command + " " + value
         self.reaction(service_name, request)
               

@@ -3,7 +3,7 @@ import codeop
 import os
 import traceback
 import time
-import cStringIO as StringIO
+import cStringIO
 import pickle
 import contextlib
 
@@ -85,7 +85,7 @@ class Shell(network2.Authenticated_Client):
         if not self.logged_in:
             response = self.login(sender, source)
         else:
-            self.respond_with(self.result)
+            self.respond_with("result")
             response = "exec_code " + source
         return response     
         
@@ -102,7 +102,8 @@ class Interpreter_Service(network2.Authenticated_Service):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter_Service, self).__init__(**kwargs)
-        self.log_file = open("Metapython.log", 'a')
+        self.log_file = self.create("fileio.File", 
+                                    "{}.log".format(self.instance_name), 'a')
         
     def login(self, sender, packet):
         response = super(Interpreter_Service, self).login(sender, packet)
@@ -125,8 +126,7 @@ class Interpreter_Service(network2.Authenticated_Service):
         log = self.log_file        
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
-                  packet)
-                  
+                  packet)                  
         result = ''                
         try:
             code = compile(packet, "<stdin>", 'exec')
@@ -134,7 +134,7 @@ class Interpreter_Service(network2.Authenticated_Service):
             result = traceback.format_exc()           
         else:                
             backup = sys.stdout            
-            sys.stdout = StringIO.StringIO()
+            sys.stdout = cStringIO.StringIO()
             
             namespace = (globals() if username == "root" else 
                          self.user_namespaces[username])
@@ -155,7 +155,7 @@ class Interpreter_Service(network2.Authenticated_Service):
                 if remove_builtins:
                     del namespace["__builtins__"]
                 sys.stdout.seek(0)
-                result += sys.stdout.read()
+                result = sys.stdout.read() + result
                 log.write("{}\n".format(result))
                 
                 sys.stdout.close()
@@ -185,19 +185,18 @@ class Alert_Handler(base.Reactor):
     def __init__(self, **kwargs):
         kwargs["parse_args"] = True
         super(Alert_Handler, self).__init__(**kwargs)
-        self.log = fileio.File(self.log_name, 'a')
-        
-    def alert(self, message, level, callback):      
+        self.log = self.create("fileio.File", self.log_name, 'a')
+            
+    def _alert(self, message, level, callback):
         if not self.print_level or level <= self.print_level:
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
             severity = self.level_map.get(level, str(level))
             self.log.write(severity + message + "\n")
-
         if callback:
             function, args, kwargs = callback
             return function(*args, **kwargs)
-
+       
             
 class Metapython(base.Reactor):
 

@@ -1,11 +1,28 @@
 import mmap
 import os
-from contextlib import closing
+from contextlib import closing, contextmanager
 
 import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
 
+@contextmanager
+def file_contents_swapped(contents, filepath='', _file=None):
+    if not _file:
+        _file = open(filepath, 'r+b')
+    original_contents = file.read()
+    _file.truncate(0)
+    _file.write(contents)
+    _file.flush()
+    try:
+        yield
+    finally:
+        print "Restoring file contents..."
+        _file.truncate(0)
+        _file.write(original_contents)
+        _file.flush()
+        _file.close()
+    
 def ensure_folder_exists(pathname):
     """usage: ensure_folder_exists(pathname)
     
@@ -31,8 +48,7 @@ def ensure_file_exists(filepath, data=('a', '')):
             if file_data:
                 _file.write(file_data)
                 _file.flush()
-            _file.close()
-            
+                        
             
 class Cached(object):
     cache = {}
@@ -95,20 +111,28 @@ class File(base.Wrapper):
         self.wrapped_object.seek(seek)
         return "handle_write " + self.file.read(byte_count)
         
+    def save(self, attributes=None, _file=None):
+        attributes, data = self.__getstate__()
+        attributes["_file_data"] = data
+        return super(File, self).save(attributes, _file)
+                
     def __getstate__(self):
         if self.storage_mode == "copy":
             self.seek(0)
             data = self.read()
         else:
             data = ''
-        return self.filename, self.mode, data
+        attributes = super(File, self).__getstate__()
+        del attributes["wrapped_object"]
+        return attributes, data
         
     def __setstate__(self, state):
-        self.__init__(*state[:2]) # (filename, smode)
-        if state[2] and self.storage_mode == "copy": # data
-            self.handle_write(None, state[2])
-        return self
-        
+        print self, "Setting state"
+        attributes, data = state
+        self.__init__(**attributes)
+        if data and self.storage_mode == "copy": # data
+            self.handle_write(None, data)
+                
         
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 
@@ -141,7 +165,7 @@ class Mmap(object):
         else:
             result = Mmap.new_mmap(filename, file_position, blocks)
         return result
-        
+    
     @Cached
     def new_mmap(filename, file_position, blocks):
         file_size = os.path.getsize(filename)

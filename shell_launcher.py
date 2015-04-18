@@ -29,13 +29,16 @@ def build_docs(site_name=''):
     
     Instruction("Metapython", "create", "mpre.docbuilder.Documentation_Builder",
                  site_name=site_name).execute()
-
-Instruction("Metapython", "save_state").execute()
                  
 def update(component="Network"):
     Instruction(component, "update").execute()
-#n = get_component("Network")
-#s = n.create("network.Socket")    
+
+m = get_component("Metapython")
+pickled_state = m.save()
+state = pickle.loads(pickled_state)
+
+m2 = m.load(state)
+#m2 = m2.load(state)
 """
 
 options["startup_definitions"] += definitions
