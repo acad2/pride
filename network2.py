@@ -22,8 +22,7 @@ def Authenticated(function):
         else:
             response = "login_result 0"
         return response
-    return call
-    
+    return call    
     
 class Network_Service(network.Udp_Socket):
     

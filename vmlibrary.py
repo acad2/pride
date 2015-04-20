@@ -138,5 +138,4 @@ class Processor(Process):
                                  format_traceback()))
             else:
                 if callback:
-                    callback(result)
-        
+                    callback(result)        

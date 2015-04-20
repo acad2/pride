@@ -12,7 +12,8 @@ timer_function = utilities.timer_function
 class Environment(object):
     
     fields = ("Component_Resolve", "Instance_Count", "Instance_Name",
-              "Instance_Number", "Component_Memory", "Parents", "References_To")
+              "Instance_Number", "Component_Memory", "Parents", "References_To",
+              "Reference_Location")
               
     def __init__(self):
         super(Environment, self).__init__()
@@ -26,7 +27,7 @@ class Environment(object):
         
         for attribute in ("Component_Resolve", "Instance_Count", "Instance_Name",
                           "Instance_Number", "Component_Memory", "Parents",
-                          "References_To"):
+                          "References_To", "Reference_Location"):
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
     

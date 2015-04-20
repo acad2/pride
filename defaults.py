@@ -16,13 +16,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import struct
 import socket
-from traceback import format_exc
-from multiprocessing import cpu_count
-from StringIO import StringIO
+import os
 
 NO_ARGS = tuple()
 NO_KWARGS = dict()
-PROCESSOR_COUNT = 1#cpu_count()
+FILEPATH = os.path.split(__file__)[0]
 
 # Base
 MANUALLY_REQUEST_MEMORY = 0
@@ -164,7 +162,7 @@ Alert_Handler.update({"log_level" : 0,
                       "log_name" : "Alerts.log"})
                       
 Metapython = Reactor.copy()
-Metapython.update({"command" : "shell_launcher.py",
+Metapython.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
 "implementation" : DEFAULT_IMPLEMENTATION,
 "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
 "interface" : "0.0.0.0",

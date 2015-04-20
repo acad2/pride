@@ -20,9 +20,13 @@ import sys
 import traceback
 import heapq
 import importlib
-import cPickle as pickle
 import operator
-
+import inspect
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+    
 import mpre
 import mpre.metaclass
 import mpre.utilities as utilities
@@ -207,7 +211,7 @@ class Base(object):
                 instance_name = instance.instance_name
                 references_to = self.environment.References_To.get(instance_name, set())
                 references_to.add(self.instance_name)
-                self.environment.References_To[instance_name] = references_to            
+                self.environment.References_To[instance_name] = references_to      
      #   else:
        #     self.alert("Ignoring add of " + str(instance), level=0)
         #    raise type("AddException", (BaseException, ), 
@@ -263,26 +267,39 @@ class Base(object):
         return self.__dict__.copy()
         
     def __setstate__(self, state):
-        self.set_attributes(**state)
+        self.on_load(state)
               
     def save(self, attributes=None, _file=None, mode='file'):
-        self.alert("Saving", level=0)#'v')
-        attributes = self.__getstate__() if attributes is None else attributes
+        self.alert("Saving", level='v')
+        # avoid mutating original in case attributes was passed via interpreter session
+        attributes = (self.__getstate__() if attributes is None else attributes).copy()
         
-        saved_names = attributes["_saved_names"] = set()        
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
-        for component_type in objects.keys():
-            order = sorted((instance for instance in objects[component_type] if
-                            hasattr(instance, 'save')), 
-                            key=operator.attrgetter("instance_name"))
-            
-            saved_objects[component_type] = [component.save() for component in order]
-                    
-        if "_required_modules" in attributes: # modules are not pickle-able            
-            attributes["_required_modules"] = dict((name, (source, None)) for 
-                                                    name, source, module in
-                                                    attributes["_required_modules"])
+        found_objects = []
+        for component_type, values in objects.items():
+            new_values = []
+            for value in sorted(values, key=operator.attrgetter("instance_name")):
+                if hasattr(value, "save"):     
+                    found_objects.append(value)
+                    new_values.append(value.save())
+            saved_objects[component_type] = new_values
+        
+        attribute_type = attributes["_attribute_type"] = {}
+        for key, value in attributes.items():
+            if value in found_objects:
+                attributes[key] = value.instance_name
+                attribute_type[key] = "reference"
+            elif hasattr(value, "save"):
+                attributes[key] = value.save()
+                attribute_type[key] = "saved"
+                
+        if "_required_modules" in attributes: # modules are not pickle-able
+            module_info = attributes.pop("_required_modules")
+            attributes["_required_modules"] = modules = []
+            for name, source, module in module_info[:-1]:
+                modules.append((name, source, None))
+            modules.append(module_info[-1])
         else:
             attributes["_required_module"] = (self.__module__, self.__class__.__name__)
             
@@ -294,38 +311,43 @@ class Base(object):
     @classmethod
     def load(cls, attributes=None, _file=None):
         assert attributes or _file            
-        attributes = attributes if attributes is not None else pickle.load(_file)
-        backup = attributes["objects"].copy()
-        
+        attributes = (attributes if attributes is not None else pickle.load(_file)).copy()
+                
         saved_objects = attributes["objects"]
         objects = attributes["objects"] = {}
         for instance_type, saved_instances in saved_objects.items():            
             objects[instance_type] = [cls.load(pickle.loads(instance)) for instance in
                                       saved_instances]
-                                      
+
         if "_required_modules" in attributes:
-            module_list = attributes["_required_attributes"]
-            class_name = module_list[-1]
-            module_name = module_list[-2][0]
-            module_info = dict((module_name, source) for 
-                                module_name, source, none in module_list)
-            with utilities.modules_switched(module_info):
-                class_module = sys.modules[module_name]
-                module_info[module_name] += (class_module, )
-                self_class = getattr(class_module, class_name)
-                required_modules = [(name, module_info[name], sys.modules[name]) for 
-                                    name in module_info]
-                print "Created new class with required modules: ", required_modules
-                attributes["_required_modules"] = required_modules         
+            _required_modules = []
+            incomplete_modules = attributes["_required_modules"]
+            module_sources = dict((module_name, source) for module_name, source, none in
+                                   incomplete_modules[:-1])
+            with utilities.modules_switched(module_sources):
+                for module_name, source, none in incomplete_modules[:-1]:
+                    _required_modules.append((module_name, source, 
+                                              utilities.create_module(module_name, source)))
+                class_name = incomplete_modules[-1]
+                module_name = incomplete_modules[-2][0]
+                self_class = getattr(sys.modules[module_name], class_name)
+            attributes["_required_modules"] = _required_modules        
         else:
             module_name, class_name = attributes["_required_module"]
             importlib.import_module(module_name)
-            self_class = getattr(sys.modules[module_name], class_name)
-            
+            self_class = getattr(sys.modules[module_name], class_name)            
         self = self_class.__new__(self_class)
+        
+        attribute_modifier = attributes.pop("_attribute_type")
+        for key, value in attributes.items():
+            modifier = attribute_modifier.get(key, '')
+            if modifier == "reference":
+                attributes[key] = self.environment.Component_Resolve[value]
+            elif modifier == "save":
+                attributes[key] = cls.load(pickle.loads(value))
+                
         self.on_load(attributes)
-        self.alert("Loaded", level=0)
-        attributes["objects"] = backup
+        self.alert("Loaded", level='v')
         return self
         
     def on_load(self, attributes):
@@ -341,40 +363,35 @@ class Base(object):
            The environment is updated with the new component information. Further
            references to the object via instance_name will be directed to the
            new, updated object. Attributes of the original object will be assigned
-           to the new, updated object.
-           
-           4/8/15: not solid in terms of object deletion yet. leaks ~250kb per update"""
-        self.alert("Updating", level='v')        
-        class_mro = self.__class__.__mro__[:-1]
-        class_base = self.__class__.__mro__[-1]
-        required_modules = []    
-        preserved_modules = {}
+           to the new, updated object."""
+        self.alert("Updating", level='v') 
+        # modules are garbage collected if not kept alive        
+        required_modules = []        
+        class_mro = self.__class__.__mro__[:-1] # don't update object
+        class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]
         
-        for cls in reversed(class_mro):
-            module_name = cls.__module__
-            current_module = sys.modules.pop(module_name)
-            preserved_modules[module_name] = current_module
-            importlib.import_module(module_name)
-            module = sys.modules[module_name]
-            source = utilities.load_module_source(module.__file__)
-            required_modules.append((module_name, source, module))
+        with utilities.modules_preserved(info[1] for info in class_info):
+            for cls, module_name in class_info:
+                del sys.modules[module_name]
+                importlib.import_module(module_name)
+                module = sys.modules[module_name]                
+                source = inspect.getsource(module)
+                required_modules.append((module_name, source, module))
 
         class_base = getattr(module, self.__class__.__name__)
-        # breaks if this is not done. maybe modules are garbage collected otherwise?
-        class_base._required_modules = required_modules
-        required_modules.append(self.__class__.__name__)
-        
+     #   class_base._required_modules = required_modules
+        required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
                 
         # a mini replacement __init__
         attributes = new_self.defaults.copy()
+        attributes["_required_modules"] = required_modules
         new_self.set_attributes(**attributes)
         self.environment.add(new_self)        
      
         attributes = self.__dict__
         self.environment.replace(self, new_self)
         new_self.set_attributes(**attributes)
-        sys.modules.update(preserved_modules)
         return new_self
         
 

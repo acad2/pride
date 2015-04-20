@@ -102,9 +102,8 @@ class Interpreter_Service(network2.Authenticated_Service):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter_Service, self).__init__(**kwargs)
-        self.log_file = self.create("fileio.File", 
-                                    "{}.log".format(self.instance_name), 'a')
-        
+        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+')
+                
     def login(self, sender, packet):
         response = super(Interpreter_Service, self).login(sender, packet)
         if "success" in response.lower():
@@ -123,7 +122,7 @@ class Interpreter_Service(network2.Authenticated_Service):
         
     @network2.Authenticated
     def exec_code(self, sender, packet):
-        log = self.log_file        
+        log = self.log        
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
                   packet)                  
@@ -185,13 +184,15 @@ class Alert_Handler(base.Reactor):
     def __init__(self, **kwargs):
         kwargs["parse_args"] = True
         super(Alert_Handler, self).__init__(**kwargs)
-        self.log = self.create("fileio.File", self.log_name, 'a')
-            
+        self.log = self.create("fileio.File", self.log_name, 'a+')
+        
     def _alert(self, message, level, callback):
         if not self.print_level or level <= self.print_level:
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
             severity = self.level_map.get(level, str(level))
+            # windows will complain about a file in + mode if this isn't done sometimes
+            self.log.seek(0, 1)
             self.log.write(severity + message + "\n")
         if callback:
             function, args, kwargs = callback
@@ -226,10 +227,15 @@ class Metapython(base.Reactor):
         if self.interpreter_enabled:
             Instruction(self.instance_name, "start_service").execute()
      
-        with open(self.command, 'r') as user_module:
-            source = user_module.read()            
+        with open(self.command, 'r') as module_file:
+            source = module_file.read()
         Instruction(self.instance_name, "exec_command", source).execute()
-        
+     
+    def exec_command(self, source):
+        code = compile(source, 'Metapython', 'exec')
+        with self.main_as_name():
+            exec code in globals(), globals()
+            
     @contextlib.contextmanager
     def main_as_name(self):
         backup = globals()["__name__"]        
@@ -238,11 +244,6 @@ class Metapython(base.Reactor):
             yield
         finally:
             globals()["__name__"] = backup
-            
-    def exec_command(self, source):
-        code = compile(source, 'Metapython', 'exec')
-        with self.main_as_name():
-            exec code in globals(), globals()
              
     def setup_os_environ(self):
         modes = {"=" : "equals",
@@ -262,55 +263,19 @@ class Metapython(base.Reactor):
             os.environ[variable] = result
             
     def start_machine(self):
-        self.processor.run()       
+        self.processor.run()
     
     def start_service(self):
         server_options = {"name" : self.instance_name,
                           "interface" : self.interface,
-                          "port" : self.port}  
-        
+                          "port" : self.port}        
         self.server = self.create(Interpreter_Service, **server_options)      
         
     def exit(self, exit_code=0):
         self.parallel_method("Processor", "set_attributes", running=False)
         # cleanup/finalizers go here?
         sys.exit(exit_code)
-                
-    def save_state(self):
-        """ 4/9/15: does not work with update mechanism
-        
-            usage: metapython.save_state()
-        
-            Stores a snapshot of the current runtime environment. 
-            This file is saved as metapython._suspended_file_name, which
-            defaults to "suspended_interpreter.bin"."""        
-        with open(self._suspended_file_name, 'wb') as pickle_file:
-            pickle.dump(self.environment, pickle_file)            
-            pickle_file.flush()
-            pickle_file.close()
-                    
-    @staticmethod
-    def load_state(pickle_filename):
-        """ usage: from metapython import *
-                    Metapython.load_state(pickle_filename) => interpreter
-                    
-            Load an environment that was saved by Metapython.save_state.
-            The package global mpre.environment is updated with the
-            contents of the restored environment, and the component at
-            environment.Component_Resolve["Metapython"] is returned by this
-            method.
-            
-            """
-        import mpre
-        
-        with open(pickle_filename, 'rb') as pickle_file:
-            mpre.environment.update(pickle.load(pickle_file))
-            pickle_file.close()
-
-        interpreter = mpre.environment.Component_Resolve["Metapython"]
-        interpreter.setup_os_environ()
-        return interpreter
-        
+                        
         
 class Restored_Interpreter(Metapython):
     """ usage: Restored_Intepreter(filename="suspended_interpreter.bin") => interpreter
@@ -322,7 +287,7 @@ class Restored_Interpreter(Metapython):
         Metapython.load_state and not Restored_Interpreter"""
         
     defaults = defaults.Metapython.copy()
-    defaults.update({"filename" : 'suspended_interpreter.bin'})
+    defaults.update({"filename" : 'Metapython.state'})
     
     def __new__(cls, *args, **kwargs):
         instance = super(Restored_Interpreter, cls).__new__(cls, *args, **kwargs)
@@ -330,4 +295,7 @@ class Restored_Interpreter(Metapython):
         if kwargs.get("parse_args"):
             attributes.update(instance.parser.get_options(cls.defaults))       
         
-        return Metapython.load_state(attributes["filename"])
+        with open(attributes["filename"], 'rb') as save_file:
+            interpreter = pickle.load(save_file)
+        
+        return interpreter

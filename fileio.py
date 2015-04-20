@@ -5,23 +5,6 @@ from contextlib import closing, contextmanager
 import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
-
-@contextmanager
-def file_contents_swapped(contents, filepath='', _file=None):
-    if not _file:
-        _file = open(filepath, 'r+b')
-    original_contents = file.read()
-    _file.truncate(0)
-    _file.write(contents)
-    _file.flush()
-    try:
-        yield
-    finally:
-        print "Restoring file contents..."
-        _file.truncate(0)
-        _file.write(original_contents)
-        _file.flush()
-        _file.close()
     
 def ensure_folder_exists(pathname):
     """usage: ensure_folder_exists(pathname)
@@ -94,7 +77,7 @@ class File(base.Wrapper):
        underlying wrapped file."""
         
     defaults = defaults.Reactor.copy()
-    defaults.update({"storage_mode" : "dont_copy"})
+    defaults.update({"storage_mode" : "local"})
     
     def __init__(self, filename='', mode='', file=None, **kwargs):           
         kwargs.setdefault("wrapped_object", (file if file else 
@@ -110,29 +93,24 @@ class File(base.Wrapper):
         seek, byte_count = packet.split(" ", 1)
         self.wrapped_object.seek(seek)
         return "handle_write " + self.file.read(byte_count)
-        
-    def save(self, attributes=None, _file=None):
-        attributes, data = self.__getstate__()
-        attributes["_file_data"] = data
-        return super(File, self).save(attributes, _file)
-                
+                        
     def __getstate__(self):
-        if self.storage_mode == "copy":
+        if self.storage_mode == "persistent":
             self.seek(0)
             data = self.read()
         else:
             data = ''
         attributes = super(File, self).__getstate__()
         del attributes["wrapped_object"]
-        return attributes, data
+        attributes["_file_data"] = data
+        return attributes
         
-    def __setstate__(self, state):
-        print self, "Setting state"
-        attributes, data = state
-        self.__init__(**attributes)
-        if data and self.storage_mode == "copy": # data
-            self.handle_write(None, data)
-                
+    def on_load(self, attributes):        
+        super(File, self).on_load(attributes)
+        _file = self.wrapped_object = open(self.filename, self.mode)
+        if self.storage_mode == "persistent":
+            _file.write(self.__dict__.pop("_file_data"))
+                        
         
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 

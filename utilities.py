@@ -29,7 +29,25 @@ if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
-                
+
+@contextlib.contextmanager
+def file_contents_swapped(contents, filepath='', _file=None):
+    if not _file:
+        _file = open(filepath, 'r+b')
+    original_contents = _file.read()
+    _file.truncate(0)
+    _file.seek(0)
+    _file.write(contents)
+    _file.flush()
+    try:
+        yield
+    finally:
+        _file.truncate(0)
+        _file.seek(0)
+        _file.write(original_contents)
+        _file.flush()
+        _file.close()
+        
 def resolve_string(string):
     """Given an attribute string of ...x.y.z, import ...x.y and return z"""
     module_name = string.split(".")   
@@ -42,28 +60,26 @@ def resolve_string(string):
             else importlib.import_module(module_name)
 
     return getattr(_from, class_name)
-    
-def load_module_source(module_path, source_file=None):
-    module_path = module_path if module_path[-1] != 'c' else module_path[:-1]
-    with open(module_path, 'r') as module_file:
-        source_file = source_file if source_file else module_file
-        source_file.flush()
-        source = source_file.read()
-    return source
-    
+        
 def create_module(module_name, source):
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
     exec module_code in new_module.__dict__
     return new_module
+  
+def get_module_source(module_name):
+    with modules_preserved([module_name]):
+        reload_module(module_name)
+        source = inspect.getsource(sys.modules[module_name])
+    return source
     
 def reload_module(module_name):
     reload(sys.modules[module_name])
      
 @contextlib.contextmanager
-def modules_preserved(keys=tuple()):
+def modules_preserved(modules=tuple()):
     backup = {}
-    for module_name in keys:
+    for module_name in modules:
         backup[module_name] = sys.modules[module_name]
     try:
         yield
@@ -73,22 +89,19 @@ def modules_preserved(keys=tuple()):
 @contextlib.contextmanager
 def modules_switched(module_dict):    
     modules = {}
-    with utilities.modules_preserved(module_dict.keys()):
-        print "Modules have been preserved"
+    with modules_preserved(module_dict.keys()):
         for module_name, source_code in module_dict.items():
             module = sys.modules.pop(module_name)
             filepath = (module.__file__ if module.__file__[-1] != 'c' else
                         module.__file__[:-1])
-            with fileio.file_contents_swapped(source_code, filepath):
-                print "File contents have been swapped"
+            with file_contents_swapped(source_code, filepath):
                 importlib.import_module(module_name)
-            print "File contents restored"
             modules[module_name] = sys.modules[module_name]
         try:
             yield
         except:
-            pass
-    
+            raise
+            pass    
     
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 
@@ -383,5 +396,3 @@ class LRU_Cache(object):
     def __setitem__(self, key, value):
         self.dict[key] = value
         self.contains.add(key)
-
-        
