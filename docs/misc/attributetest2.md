@@ -8,11 +8,10 @@ Persistent_Reactor
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 This object defines the following non-private methods:
 

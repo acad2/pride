@@ -14,7 +14,7 @@ except:
         
         
 class User_Input(vmlibrary.Process):
-
+    """ Captures user input and provides the input to any listening component"""
     defaults = defaults.User_Input
     
     def __init__(self, **kwargs):
@@ -54,6 +54,8 @@ class User_Input(vmlibrary.Process):
         self.input = ''
         
     def add_listener(self, sender, argument):
+        """ Adds a component to listeners. Components added this way should support a    
+            handle_keystrokes method"""
         self.listeners.append(sender)
         
     def remove_listener(self, sender, argument):

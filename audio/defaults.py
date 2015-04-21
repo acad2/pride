@@ -52,7 +52,7 @@ PyAudio_Device.update({"format" : 8,
 Audio_Input = PyAudio_Device.copy()
 Audio_Input.update({"input" : True,
 "data" : '',
-"priority" : .015})
+"priority" : .01})
 
 Audio_Output = PyAudio_Device.copy()
 Audio_Output.update({"output" : True})

@@ -34,6 +34,7 @@ def ensure_file_exists(filepath, data=('a', '')):
                         
             
 class Cached(object):
+    """ A memoization decorator that should work with any method and argument structure"""
     cache = {}
     handles = {}
     
@@ -74,7 +75,12 @@ class File(base.Wrapper):
     
        Creates a File object. File objects are pickleable and
        support the reactor interface for reading/writing to the
-       underlying wrapped file."""
+       underlying wrapped file. 
+       
+       Regarding pickle-ability; if the storage_mode attribute is set
+       to "persistent", when pickled the contents of the file will be saved as well.
+       This may fail with a memory error for very large files. The default storage mode
+       is "local", which will not copy file data when pickling."""
         
     defaults = defaults.Reactor.copy()
     defaults.update({"storage_mode" : "local"})
@@ -120,7 +126,7 @@ class Mmap(object):
         Return an mmap.mmap object. Use of this class presumes a
         need for a slice into a potentially large file at an arbitrary
         point without loading the entire file contents. These slices
-        are cached, and the size of the cache may be altered.
+        are cached so that further requests for the same chunk will return the same mmap.
         
             - if filename is -1 (a chunk of anonymous memory), then no 
               offset is returned. the second argument is interpreted
@@ -134,8 +140,7 @@ class Mmap(object):
             
             - the blocks argument may be specified to request the
               mapping to be of size (blocks * mmap.ALLOCATIONGRANULARITY)
-            - this argument has no effect when used with -1 for the filename
-            
+            - this argument has no effect when used with -1 for the filename            
             """    
     def __new__(cls, filename, file_position=0, blocks=0):
         if filename is -1:

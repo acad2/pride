@@ -107,8 +107,8 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         super(Audio_Device, self).__init__(**kwargs)
         
-        import mpre.utilities
-        self.latency = mpre.utilities.Latency("audio input")
+     #   import mpre.utilities
+       # self.latency = mpre.utilities.Latency("audio input")
         
     def open_stream(self):
         return PORTAUDIO.open(**self.options)
@@ -124,6 +124,7 @@ class Audio_Input(Audio_Device):
     def __init__(self, **kwargs):
         self.playing_files = []
         self.playing_to = {}
+        self.preserved_listeners = []
         self.frame_count = 0
         super(Audio_Input, self).__init__(**kwargs)
         refresh = self.refresh_instruction = Instruction(self.instance_name, "refresh")
@@ -140,25 +141,36 @@ class Audio_Input(Audio_Device):
     def play_file(self, _file, listeners=("Audio_Output", )):
         self.playing_files.append(_file)
         self.playing_to[_file] = listeners
+        
         for listener in listeners:
             self.parallel_method(listener, "set_input_device", self.instance_name)
-
+            if listener in self.listeners:
+                self.listeners.remove(listener)
+                self.preserved_listeners.append(listener)
+                
     def stop_file(self, _file):
         self.playing_files.remove(_file)
         
         for listener in self.playing_to[_file]:
             self.parallel_method(listener, "handle_end_of_stream")        
+            if listener in self.preserved_listeners:
+                self.preserved_listeners.remove(listener)
+                self.listeners.append(listener)
         del self.playing_to[_file]
 
     def refresh(self):
-  #      self.latency.update()
-   #     self.latency.display()
+    #    self.latency.update()
+     #   self.latency.display()
         
         stream = self.stream        
         frame_count = stream.get_read_available()
-        
-        byte_count = min(self.frames_per_buffer, 
-                         frame_count * self.channels * self.sample_width)
+        if not frame_count: 
+            return self.refresh_instruction.execute(self.priority)
+            
+        channels = self.channels
+        sample_size = self.sample_size
+        byte_count = min(self.frames_per_buffer * channels * sample_size,
+                         frame_count * channels * sample_size)
         if self.mute:
             data = self.data = self.silence
         else:
@@ -197,19 +209,21 @@ class Audio_Output(Audio_Device):
     def handle_audio_input(self, sender, audio_data):
      #   self.latency.update()
     #    self.latency.display()
+        self.alert("Received {} bytes of data from {}", (len(audio_data), sender), level=0)
         self.data_source += audio_data
         available = self.available = len(self.data_source)
                    
         number_of_frames = self.stream.get_write_available()
-
+        if not number_of_frames:
+            return
+            
         byte_count = min(number_of_frames * self.channels * self.sample_size,
                          available)
-                         
         output_data = self.data_source[:byte_count]
-                
-        self.handle_audio_output(output_data)
-        self.stream.write(output_data)
         
+        self.stream.write(output_data)        
+        self.handle_audio_output(output_data)
+                
         if not self.mute:
             self.data_source = self.data_source[byte_count:]               
             self.available -= byte_count

@@ -26,6 +26,7 @@ class Package(base.Base):
     defaults.update({"package_name" : '',
                      "subfolders" : tuple(),
                      "directory" : '',
+                     "ignore_directories" : tuple(),
                      "store_source" : True,
                      "make_docs" : True})
                      
@@ -47,11 +48,11 @@ class Package(base.Base):
         return os.path.join(path, "__init__.py")
     
     @staticmethod
-    def from_directory(top_directory, dirnames):  
+    def from_directory(top_directory, dirnames, ignore_directories=tuple()):  
         folder_paths = [(top_directory, os.path.split(top_directory)[-1])]
         for directory in os.listdir(top_directory):
             path = os.path.join(top_directory, directory)
-            if os.path.isdir(path):
+            if os.path.isdir(path) and path not in ignore_directories:
                 folder_paths.append((path, directory))    
         
         file_package = {}            
@@ -129,6 +130,7 @@ class Documentation(base.Base):
         super(Documentation, self).__init__(**kwargs)
         if self.package:
             package = self.package
+            self.ignore_directories += package.ignore_directories
             package_name = self.site_name = package.package_name
             directory = self.directory = os.path.join(package.directory, package_name)
             os.chdir(self.directory)

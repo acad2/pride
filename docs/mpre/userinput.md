@@ -12,24 +12,24 @@ A class that represents a thread of control.
 
 User_Input
 --------
-	No docstring found
+	 Captures user input and provides the input to any listening component
 
 Default values for newly created instances:
 
-- priority                 0.04
-- memory_size              4096
-- memory_mode              -1
-- auto_start               True
-- update_flag              False
-- deleted                  False
-- verbosity                
+- priority                 : 0.04
+- memory_size              : 4096
+- memory_mode              : -1
+- auto_start               : True
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 
 
 - **add_listener**(self, sender, argument):
 
-		  No documentation available
+		  Adds a component to listeners. Components added this way should support a    
+		 handle_keystrokes method
 
 
 
@@ -40,6 +40,12 @@ This object defines the following non-private methods:
 
 
 - **read_input**(self):
+
+		  No documentation available
+
+
+
+- **on_load**(self, attributes):
 
 		  No documentation available
 

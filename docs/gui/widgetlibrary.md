@@ -8,26 +8,25 @@ Attribute_Displayer
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                layer
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : layer
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -42,30 +41,29 @@ Date_Time_Button
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- text                     Button
-- outline_width            5
-- text_color               (255, 130, 25)
-- pack_modifier            
-- held                     False
-- pack_mode                horizontal
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- shape                    rect
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- text                     : Button
+- outline_width            : 5
+- text_color               : (255, 130, 25)
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : horizontal
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- shape                    : rect
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -86,27 +84,26 @@ Homescreen
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                layer
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
-- background_filename      C:\test.jpg
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : layer
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
+- background_filename      : C:\test.jpg
 
 No non-private methods are defined
 
@@ -121,30 +118,29 @@ Indicator
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- text                     Button
-- outline_width            5
-- text_color               (255, 130, 25)
-- pack_modifier            
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- shape                    rect
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- text                     : Button
+- outline_width            : 5
+- text_color               : (255, 130, 25)
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- shape                    : rect
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -185,9 +181,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Popup_Menu
 --------
@@ -195,27 +191,26 @@ Popup_Menu
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    True
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            <function <lambda> at 0x024B8A30>
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : True
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : <function <lambda> at 0x025126F0>
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -230,30 +225,29 @@ Right_Click_Button
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- text                     Button
-- outline_width            5
-- text_color               (255, 130, 25)
-- pack_modifier            
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- shape                    rect
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- text                     : Button
+- outline_width            : 5
+- text_color               : (255, 130, 25)
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- shape                    : rect
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -274,27 +268,26 @@ Right_Click_Menu
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    True
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            <function <lambda> at 0x024B8A30>
-- held                     False
-- pack_mode                layer
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     (200, 150)
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : True
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : <function <lambda> at 0x025126F0>
+- held                     : False
+- pack_mode                : layer
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : (200, 150)
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -309,27 +302,26 @@ Task_Bar
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            <function <lambda> at 0x024B8A70>
-- held                     False
-- pack_mode                menu_bar
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : <function <lambda> at 0x02512730>
+- held                     : False
+- pack_mode                : menu_bar
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -344,27 +336,26 @@ Title_Bar
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 

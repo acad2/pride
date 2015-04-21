@@ -1,21 +1,3 @@
-#   mpf.utilities - shell commands, latency measurement,
-#                    documentation, running average
-#
-#    Copyright (C) 2014  Ella Rose
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import sys
 import time
 import inspect
@@ -32,6 +14,8 @@ else:
 
 @contextlib.contextmanager
 def file_contents_swapped(contents, filepath='', _file=None):
+    """ Enters a context where the data of the supplied file/filepath are the 
+        contents specified in the contents argument."""
     if not _file:
         _file = open(filepath, 'r+b')
     original_contents = _file.read()
@@ -62,22 +46,26 @@ def resolve_string(string):
     return getattr(_from, class_name)
         
 def create_module(module_name, source):
+    """ Creates a module with the supplied name and source"""
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
     exec module_code in new_module.__dict__
     return new_module
   
 def get_module_source(module_name):
+    """ Retrieves the source code of a module specified by name"""
     with modules_preserved([module_name]):
         reload_module(module_name)
         source = inspect.getsource(sys.modules[module_name])
     return source
     
 def reload_module(module_name):
+    """ Reloads the module specified by module_name"""
     reload(sys.modules[module_name])
      
 @contextlib.contextmanager
 def modules_preserved(modules=tuple()):
+    """ Enter a context where the modules specified will be backed up + restored upon exit"""
     backup = {}
     for module_name in modules:
         backup[module_name] = sys.modules[module_name]
@@ -87,7 +75,9 @@ def modules_preserved(modules=tuple()):
         sys.modules.update(backup)
 
 @contextlib.contextmanager
-def modules_switched(module_dict):    
+def modules_switched(module_dict):
+    """ Enters a context where the modules in module_dict.keys are replaced by the source
+        specified in module_dict[key]. The original modules will be restored upon exit."""
     modules = {}
     with modules_preserved(module_dict.keys()):
         for module_name, source_code in module_dict.items():
@@ -173,7 +163,9 @@ def documentation(instance):
     try: # gather the default attribute names and values (base objects only)
         options = ""
         for key, value in _class.defaults.items():
-            options += "- {0: <25}{1}\n".format(key, value)
+            if value is None:
+                value = "None"
+            options += "- {0: <25}: {1}\n".format(key, value)
         if not options:
             options_text = "\nNo defaults are assigned to new instances\n"
         else:

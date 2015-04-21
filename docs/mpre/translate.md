@@ -1,3 +1,3 @@
-mpre.game.defaults
+mpre.translate
 ========
 No documentation available

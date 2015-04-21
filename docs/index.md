@@ -1,57 +1,34 @@
 Metapython
 =========================
-The short version
--------------------------
 
-What is it?
-  
-    A python virtual machine that provides a structured environment where any number
-    of arbitrarily complex logical processes can run concurrently. Processes
-    can be paused/deleted, launched via other python modules, created at runtime from source, 
-    and are scheduled to run according to their priority.
+A dynamic runtime environment for python
+
+Q: What is it?
+
+A: A pacakge that provides various features aimed at increasing productivity and
+   speed of development for those seeking to write applications in python. Features
+   are mostly implemented via subclassing from an alternative base class
+   then pythons built in object class. 
+    
+Q: What features does it offer?
+
+A: Most features are aimed at productivity and improving the minimum standard for application quality and capability. Currently, any application that inherits from base instead of object has:
+
+1. Automatically generated documentation (docstrings and websites)
+2. Automatically generated command line argument parser
+3. Automatic verbosity handling and logging 
+4. Simple concurrency mechanisms which seldom require locking primitives of any kind 
+5. The ability to be updated from source at runtime without pausing or stopping execution
+6. The ability to take snapshots of application state, and restore snapshots at any point
+7. An interactive interpreter usable from your application (or remotely if enabled)
    
-    Optional modules provide beginning support for low level audio manipulation, SDL2, 
-    and compiled cython extensions may be avialable at some point in addition to the
-    pure python version.
- 
-What features does it offer?
-    
-    1. Automatically generated documentation (docstrings and websites)
-    2. Automatically generated command line argument parser
-    3. Automatic verbosity handling 
-     
-    4. Effortless concurrency for nonblocking tasks. Processes are cooperatively
-       scheduled and processed one frame at a time. Little reliance on global
-       data structures makes locking mechanisms seldom needed. 
-     
-    5. An interactive interpreter that runs as process on the virtual machine. 
-       Allows for remote login (but has a juvenile authentication scheme!). 
-       The ability to execute Instruction objects and arbitrary python code via the interpreter
-       allows for powerful process management. This includes the ability
-       to update a running process without stopping or (potentially) even pausing it
-     
-     Objects that inherit from the Base object type have a number of builtin features:
-     
-     1. Abundant docstrings - even if the author neglected or declined to write one.
-     2. Programmatic object instantiation via the create method, and explicit
-        object deletion via the delete method
-     3. Specify decorators and monkey patches via keyword argument to any method call.
-     4. The simple message passing mechanisms send_to and read_messages can be used to
-        send raw bytes to memory accessible by another process (physical or logical)
-     5. The alert method, which allows assignment of verbosity level to messages.
-        Messages are logged and/or printed according to message level and user settings.
-        Alerts also provides callback method and callback Instruction options.
-         
-Where can I learn more?
+Q: Where can I learn more?
 
-    Investigate https://github.com/erose1337/Metaprogramming_Framework
+A: Investigate https://github.com/erose1337/Metapython or jump straight into the documentation at http://erose1337.github.io/Metapython/
   
-What are the dependencies?
-    
-    Python 2.7 compatible
-    - (optional) audio utilizes the PyAudio module, or pyalsaaudio on linux
-    - (optional) gui utilizes pysdl2 and SDL2
-    
-The long version
-===================
-Start reading the tutorial at 
+Q: What are the dependencies?
+
+A: Python 2.7+ is required. optional modules require additional dependencies:
+
+1. Low level audio support requires pyalsaaudio on linux or pyaudio otherwise
+2. SDL support requires SDL2.0 and pysdl2

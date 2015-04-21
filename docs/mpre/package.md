@@ -12,18 +12,17 @@ Documentation
 
 Default values for newly created instances:
 
-- site_name                
-- memory_mode              -1
-- package                  None
-- deleted                  False
-- verbosity                vv
-- ignore_directories       ('docs',)
-- subfolders               ()
-- memory_size              4096
-- ignore_files             ()
-- update_flag              False
-- directory                C:\Users\_\pythonbs\mpre
-- index_page               ()
+- site_name                : 
+- memory_mode              : -1
+- package                  : None
+- deleted                  : False
+- verbosity                : vv
+- ignore_directories       : ('docs',)
+- subfolders               : ()
+- memory_size              : 4096
+- ignore_files             : ()
+- directory                : C:\Users\_\pythonbs\mpre
+- index_page               : ()
 
 This object defines the following non-private methods:
 
@@ -56,16 +55,16 @@ Package
 
 Default values for newly created instances:
 
-- package_name             
-- memory_mode              -1
-- make_docs                True
-- deleted                  False
-- verbosity                
-- store_source             True
-- subfolders               ()
-- memory_size              4096
-- update_flag              False
-- directory                
+- package_name             : 
+- memory_mode              : -1
+- make_docs                : True
+- deleted                  : False
+- verbosity                : 
+- ignore_directories       : ()
+- store_source             : True
+- subfolders               : ()
+- memory_size              : 4096
+- directory                : 
 
 This object defines the following non-private methods:
 
@@ -94,7 +93,7 @@ This object defines the following non-private methods:
 
 
 
-- **from_directory**(top_directory, dirnames):
+- **from_directory**(top_directory, dirnames, ignore_directories=()):
 
 		  No documentation available
 

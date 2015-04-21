@@ -28,15 +28,15 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Process
 --------
 	 usage: Process(target=function, args=..., kwargs=...) => process_object
 	
-	Create a serial logical process. Note that while Process objects
+	Create a logical process. Note that while Process objects
 	allow for the interface of target=function, the preferred usage
 	is via subclassing.
 	
@@ -49,7 +49,7 @@ Process
 	
 	The start method simply calls the run method, but can be overriden 
 	if the entry point would be useful, and keeps a similar interface
-	with the threading/process model.
+	with the standard library threading/process model.
 	
 	Subclasses should overload the run method. A process may propagate
 	itself by executing a run instruction inside it's run method. While
@@ -60,17 +60,17 @@ Process
 	
 	Some people may find the serial style, one frame at a time method
 	offered by processes easier to understand and follow then reactions.
-	Most things can be accomplished by either.
+	Most things can be accomplished by either, though processes may be
+	less performant then parallel_methods/reactions
 
 Default values for newly created instances:
 
-- priority                 0.04
-- memory_size              4096
-- auto_start               True
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- verbosity                
+- priority                 : 0.04
+- memory_size              : 4096
+- auto_start               : True
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 
@@ -98,19 +98,16 @@ Processor
 	possibility of the specified component/method not existing,
 	and any exception that could be raised inside the method call
 	itself.
-	
-	Essentially a task manager for launching other processes.
 
 Default values for newly created instances:
 
-- priority                 0.04
-- running                  True
-- memory_size              4096
-- memory_mode              -1
-- auto_start               False
-- update_flag              False
-- deleted                  False
-- verbosity                
+- priority                 : 0.04
+- running                  : True
+- memory_size              : 4096
+- memory_mode              : -1
+- auto_start               : False
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 

@@ -4,7 +4,7 @@ No documentation available
 
 Cached
 --------
-No documentation available
+ A memoization decorator that should work with any method and argument structure
 
 File
 --------
@@ -12,21 +12,31 @@ File
 	
 	   Creates a File object. File objects are pickleable and
 	   support the reactor interface for reading/writing to the
-	   underlying wrapped file.
+	   underlying wrapped file. 
+	   
+	   Regarding pickle-ability; if the storage_mode attribute is set
+	   to "persistent", when pickled the contents of the file will be saved as well.
+	   This may fail with a memory error for very large files. The default storage mode
+	   is "local", which will not copy file data when pickling.
 
 Default values for newly created instances:
 
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- verbosity                
-- storage_mode             dont_copy
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
+- storage_mode             : local
 
 This object defines the following non-private methods:
 
 
 - **handle_write**(self, sender, packet):
+
+		  No documentation available
+
+
+
+- **on_load**(self, attributes):
 
 		  No documentation available
 
@@ -51,7 +61,7 @@ Usage: mmap [offset] = fileio.Mmap(filename,
         Return an mmap.mmap object. Use of this class presumes a
         need for a slice into a potentially large file at an arbitrary
         point without loading the entire file contents. These slices
-        are cached, and the size of the cache may be altered.
+        are cached so that further requests for the same chunk will return the same mmap.
         
             - if filename is -1 (a chunk of anonymous memory), then no 
               offset is returned. the second argument is interpreted
@@ -65,8 +75,7 @@ Usage: mmap [offset] = fileio.Mmap(filename,
             
             - the blocks argument may be specified to request the
               mapping to be of size (blocks * mmap.ALLOCATIONGRANULARITY)
-            - this argument has no effect when used with -1 for the filename
-            
+            - this argument has no effect when used with -1 for the filename            
             
 
 closing

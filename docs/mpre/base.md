@@ -40,10 +40,9 @@ Base
 	  information in the environment
 	
 	- The alert method, which makes logging and statements 
-	  of varying verbosity simple and straight forward. Alerts
-	  also include options for callback methods and instructions
+	  of varying verbosity simple and straight forward.
 	  
-	- The method known as parallel_method. This method is used in a 
+	- parallel_method calls. This method is used in a 
 	  similar capacity to Instruction objects, but the
 	  call happens immediately and the return value from the
 	  specified method is available
@@ -85,13 +84,31 @@ Base
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 This object defines the following non-private methods:
+
+
+- **load**(cls, attributes=None, _file=None):
+
+		  usage: base_object.load([attributes], [_file]) => restored_instance
+		 
+		 Loads state preserved by the save method. The attributes argument, if specified,
+		 should be a dictionary created by unpickling the bytestream returned by the 
+		 save method. Alternatively the _file argument may be supplied. _file should be
+		 a file like object that has previously been supplied to the save method.
+		 
+		 Note that unlike save, this method requires either attributes or _file to be
+		 specified. Also note that if attributes are specified, it should be a dictionary
+		 that was produced by the save method - simply passing an objects __dict__ will
+		 result in exceptions.
+		 
+		 To customize the behavior of an object after it has been loaded, one should
+		 extend the on_load method instead of load.
+
 
 
 - **set_attributes**(self, **kwargs):
@@ -108,34 +125,31 @@ This object defines the following non-private methods:
 
 - **update**(self):
 
-		  usage: base.update() => updated_base
+		  usage: base_instance.update() => updated_base
 		 
-		 Reloads the module that defines base and returns an updated instance. 
-		 The environment is updated with the new component information. Further
-		 references to the object via instance_name will be directed to the
+		 Reloads the module that defines base and returns an updated instance. The
+		 old component is replaced by the updated component in the environment.
+		 Further references to the object via instance_name will be directed to the
 		 new, updated object. Attributes of the original object will be assigned
-		 to the new, updated object.
+		 to the updated object.
+
+
+
+- **alert**(self, message='Unspecified alert message', format_args=(), level=0):
+
+		  usage: base.alert(message, format_args=tuple(), level=0)
 		 
-		 This is the bleeding edge. not solid in terms of object deletion yet.
-
-
-
-- **alert**(self, message='Unspecified alert message', format_args=(), level=0, callback=None):
-
-		  usage: base.alert(message, format_args=tuple(), level=0, callback=None)
-		 
-		 Create an alert. Depending on the level given, the alert may be printed
+		 Display/log a message according to the level given. The alert may be printed
 		 for immediate attention and/or logged quietly for later viewing.
 		 
 		 -message is a string that will be logged and/or displayed
 		 -format_args are any string formatting args for message.format()
 		 -level is an integer indicating the severity of the alert.
-		 -callback is an optional tuple of (function, args, kwargs) to be called when
-		  the alert is triggered
 		 
 		 alert severity is relative to Alert_Handler log_level and print_level;
-		 a lower number indicates a less verbose notification, while 0 indicates
-		 an important message that should not be suppressed.
+		 a lower verbosity indicates a less verbose notification, while 0 indicates
+		 a message that should not be suppressed. log_level and print_level
+		 may passed in as command line arguments to globally control verbosity.
 
 
 
@@ -156,7 +170,33 @@ This object defines the following non-private methods:
 		 method is made available as the return value of parallel_method.
 		 
 		 parallel_method allows for the use of an object without the
-		 need for an explicit reference to that object.
+		 need for a reference to that object in the current scope.
+
+
+
+- **save**(self, attributes=None, _file=None):
+
+		  usage: base.save([attributes], [_file])
+		 
+		 Saves the state of the calling objects __dict__. If _file is not specified,
+		 a pickled stream is returned. If _file is specified, the stream is written
+		 to the supplied file like object via pickle.dump.
+		 
+		 The attributes argument, if specified, should be a dictionary containing 
+		 the attribute:value pairs to be pickled instead of the objects __dict__.
+		 
+		 If the calling object is one that has been created via the update method, the 
+		 returned state will include any required source code to rebuild the object.
+
+
+
+- **on_load**(self, attributes):
+
+		  usage: base.on_load(attributes)
+		 
+		 Implements the behavior of an object after it has been loaded. This method 
+		 may be extended by subclasses to customize functionality for instances created
+		 by the load method.
 
 
 
@@ -168,7 +208,11 @@ This object defines the following non-private methods:
 		 Given a type or string reference to a type, and arguments,
 		 return an instance of the specified type. The creating
 		 object will call .add on the created object, which
-		 performs reference tracking maintainence.
+		 performs reference tracking maintainence. 
+		 
+		 Use of the create method over direct instantiation can allow even 
+		 'regular' python objects to have a reference and be usable via parallel_methods 
+		 and Instruction objects.
 
 
 
@@ -185,7 +229,8 @@ This object defines the following non-private methods:
 
 		  usage: object.add(instance)
 		 
-		 Adds an object to caller.objects[instance.__class__.__name__]
+		 Adds an object to caller.objects[instance.__class__.__name__] and
+		 performs bookkeeping operations for the environment.
 
 
 
@@ -203,45 +248,6 @@ This objects method resolution order is:
 (class 'mpre.base.Base', type 'object')
 
 
-Proxy
---------
-	 usage: Proxy(wrapped_object=my_object) => proxied_object
-	
-	   Produces an instance that will act as the object it wraps and as an
-	   Reactor object simultaneously. This facilitates simple integration 
-	   with 'regular' python objects, providing them with monkey patches and
-	   the reaction/parallel_method/alert interfaces for very little effort.
-	   
-	   Proxy attributes are get/set on the underlying wrapped object first,
-	   and if that object does not have the attribute or it cannot be
-	   assigned, the action is performed on the proxy wrapper instead.
-
-Default values for newly created instances:
-
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-
-This object defines the following non-private methods:
-
-
-- **wraps**(self, obj, set_defaults=False):
-
-		  usage: wrapper.wraps(object)
-		 
-		 Makes the supplied object the object that is wrapped
-		 by the calling wrapper. If the optional set_defaults
-		 attribute is True, then the wrapped objects class
-		 defaults will be applied.
-
-
-This objects method resolution order is:
-
-(class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
-
-
 Reactor
 --------
 	 usage: Reactor(attribute=value, ...) => reactor_instance
@@ -249,17 +255,14 @@ Reactor
 	Adds reaction framework on top of a Base object. 
 	Reactions are event triggered chains of method calls
 	
-	This class is a recent addition and may not be completely
-	final in it's api and/or implementation.
-	TODO: add transparent remote reaction support!
+	This class is a recent addition and is not final in it's api or implementation.
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 This object defines the following non-private methods:
 
@@ -294,7 +297,7 @@ This object defines the following non-private methods:
 
 
 
-- **respond_with**(self, method):
+- **respond_with**(self, method_name):
 
 		  usage: self.respond_with(method)
 		 
@@ -315,20 +318,58 @@ This objects method resolution order is:
 
 Wrapper
 --------
-	 A wrapper to allow python objects to function as a Reactor.
+	 A wrapper to allow 'regular' python objects to function as a Reactor.
 	The attributes on this wrapper will overload the attributes
-	of the wrapped object. 
+	of the wrapped object. Any attributes not present on the wrapper object
+	will be gotten from the underlying wrapped object. This class
+	acts primarily as a wrapper and secondly as the wrapped object.
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 No non-private methods are defined
 
 This objects method resolution order is:
 
 (class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')
+
+
+Proxy
+--------
+	 usage: Proxy(wrapped_object=my_object) => proxied_object
+	
+	   Produces an instance that will act as the object it wraps and as an
+	   Reactor object simultaneously. The object will act primarily as
+	   the wrapped object and secondly as a proxy object. This means that   
+	   Proxy attributes are get/set on the underlying wrapped object first,
+	   and if that object does not have the attribute or it cannot be
+	   assigned, the action is performed on the proxy instead. This
+	   prioritization is the opposite of the Wrapper class.
+
+Default values for newly created instances:
+
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
+
+This object defines the following non-private methods:
+
+
+- **wraps**(self, obj, set_defaults=False):
+
+		  usage: wrapper.wraps(object)
+		 
+		 Makes the supplied object the object that is wrapped
+		 by the calling wrapper. If the optional set_defaults
+		 attribute is True, then the wrapped objects class
+		 defaults will be applied.
+
+
+This objects method resolution order is:
+
+(class 'mpre.base.Proxy', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')

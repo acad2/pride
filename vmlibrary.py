@@ -30,7 +30,7 @@ timer_function = utilities.timer_function
 class Process(base.Reactor):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
-        Create a serial logical process. Note that while Process objects
+        Create a logical process. Note that while Process objects
         allow for the interface of target=function, the preferred usage
         is via subclassing.
         
@@ -43,7 +43,7 @@ class Process(base.Reactor):
         
         The start method simply calls the run method, but can be overriden 
         if the entry point would be useful, and keeps a similar interface
-        with the threading/process model.
+        with the standard library threading/process model.
         
         Subclasses should overload the run method. A process may propagate
         itself by executing a run instruction inside it's run method. While
@@ -54,7 +54,8 @@ class Process(base.Reactor):
         
         Some people may find the serial style, one frame at a time method
         offered by processes easier to understand and follow then reactions.
-        Most things can be accomplished by either."""
+        Most things can be accomplished by either, though processes may be
+        less performant then parallel_methods/reactions"""
 
     defaults = defaults.Process
     parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
@@ -82,9 +83,7 @@ class Processor(Process):
         performs the specified method call while handling the
         possibility of the specified component/method not existing,
         and any exception that could be raised inside the method call
-        itself.
-        
-        Essentially a task manager for launching other processes."""
+        itself."""
         
     defaults = defaults.Processor
 

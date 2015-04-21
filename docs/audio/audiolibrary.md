@@ -8,12 +8,11 @@ Audio_File
 
 Default values for newly created instances:
 
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- verbosity                
-- storage_mode             dont_copy
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
+- storage_mode             : local
 
 This object defines the following non-private methods:
 
@@ -34,14 +33,13 @@ Audio_Manager
 
 Default values for newly created instances:
 
-- configure                False
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- config_file_name         
-- memory_size              4096
-- update_flag              False
-- use_defaults             True
+- use_defaults             : True
+- memory_size              : 4096
+- configure                : False
+- memory_mode              : -1
+- config_file_name         : 
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 
@@ -92,12 +90,11 @@ Audio_Reactor
 
 Default values for newly created instances:
 
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- source_name              
-- verbosity                
+- deleted                  : False
+- source_name              : 
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 This object defines the following non-private methods:
 
@@ -148,15 +145,14 @@ Config_Utility
 
 Default values for newly created instances:
 
-- priority                 0.04
-- memory_size              4096
-- memory_mode              -1
-- auto_start               False
-- update_flag              False
-- deleted                  False
-- verbosity                
-- config_file_name         audiocfg
-- mode                     ('input',)
+- priority                 : 0.04
+- memory_size              : 4096
+- memory_mode              : -1
+- auto_start               : False
+- config_file_name         : audiocfg
+- deleted                  : False
+- verbosity                : 
+- mode                     : ('input',)
 
 This object defines the following non-private methods:
 
@@ -215,9 +211,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Latency
 --------
@@ -233,18 +229,17 @@ Wav_File
 
 Default values for newly created instances:
 
-- repeat                   False
-- source_name              
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- filename                 
-- channels                 2
-- rate                     48000
-- memory_size              4096
-- mode                     rb
-- update_flag              False
-- sample_width             2
+- repeat                   : False
+- source_name              : 
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- filename                 : 
+- channels                 : 2
+- rate                     : 48000
+- memory_size              : 4096
+- mode                     : rb
+- sample_width             : 2
 
 This object defines the following non-private methods:
 

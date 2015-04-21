@@ -8,15 +8,14 @@ Authenticated_Client
 
 Default values for newly created instances:
 
-- username                 
-- target                   Authenticated_Service
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- update_flag              False
-- password                 
-- email                    
+- username                 : 
+- target                   : Authenticated_Service
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- password                 : 
+- email                    : 
 
 This object defines the following non-private methods:
 
@@ -55,16 +54,21 @@ Authenticated_Service
 
 Default values for newly created instances:
 
-- database_filename        :memory:
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- update_flag              False
-- login_message            login success
-- hash_rounds              100000
+- database_filename        : :memory:
+- memory_size              : 4096
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- hash_rounds              : 100000
+- login_message            : login success
 
 This object defines the following non-private methods:
+
+
+- **on_load**(self, attributes):
+
+		  No documentation available
+
 
 
 - **register**(self, sender, packet):
@@ -101,17 +105,16 @@ Download
 
 Default values for newly created instances:
 
-- network_packet_size      16384
-- memory_mode              -1
-- timeout_after            15
-- deleted                  False
-- filename_prefix          Download
-- verbosity                
-- filename                 
-- memory_size              4096
-- filesize                 0
-- update_flag              False
-- download_in_progress     False
+- network_packet_size      : 16384
+- memory_mode              : -1
+- timeout_after            : 15
+- deleted                  : False
+- filename_prefix          : Download
+- verbosity                : 
+- filename                 : 
+- memory_size              : 4096
+- filesize                 : 0
+- download_in_progress     : False
 
 This object defines the following non-private methods:
 
@@ -144,14 +147,13 @@ File_Service
 
 Default values for newly created instances:
 
-- network_packet_size      16384
-- memory_mode              -1
-- timeout_after            15
-- deleted                  False
-- verbosity                
-- mmap_threshold           16384
-- memory_size              4096
-- update_flag              False
+- network_packet_size      : 16384
+- memory_size              : 4096
+- memory_mode              : -1
+- timeout_after            : 15
+- deleted                  : False
+- verbosity                : 
+- mmap_threshold           : 16384
 
 This object defines the following non-private methods:
 
@@ -198,9 +200,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Latency
 --------
@@ -216,20 +218,21 @@ Network_Service
 
 Default values for newly created instances:
 
-- network_packet_size      32768
-- added_to_network         False
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- blocking                 0
-- bind_on_init             True
-- add_on_init              True
-- memory_size              0
-- network_buffer           
-- timeout                  0
-- update_flag              False
-- interface                0.0.0.0
-- port                     0
+- network_packet_size      : 32768
+- added_to_network         : False
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- bind_on_init             : True
+- _connecting              : False
+- add_on_init              : True
+- memory_size              : 0
+- network_buffer           : 
+- timeout                  : 0
+- blocking                 : 0
+- interface                : 0.0.0.0
+- port                     : 0
+- closed                   : False
 
 This object defines the following non-private methods:
 
@@ -268,20 +271,21 @@ Service_Listing
 
 Default values for newly created instances:
 
-- network_packet_size      32768
-- added_to_network         False
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- bind_on_init             True
-- add_on_init              True
-- port                     0
-- memory_size              0
-- network_buffer           
-- timeout                  0
-- update_flag              False
-- interface                0.0.0.0
-- blocking                 0
+- network_packet_size      : 32768
+- added_to_network         : False
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- bind_on_init             : True
+- _connecting              : False
+- add_on_init              : True
+- port                     : 0
+- memory_size              : 0
+- network_buffer           : 
+- timeout                  : 0
+- interface                : 0.0.0.0
+- blocking                 : 0
+- closed                   : False
 
 This object defines the following non-private methods:
 
@@ -314,27 +318,29 @@ Tcp_Client_Proxy
 
 Default values for newly created instances:
 
-- as_port                  0
-- memory_mode              -1
-- deleted                  False
-- ip                       
-- add_on_init              False
-- memory_size              0
-- socket_family            2
-- port                     80
-- target                   ()
-- network_packet_size      32768
-- timeout_notify           True
-- connect_attempts         10
-- added_to_network         False
-- verbosity                
-- bind_on_init             False
-- socket_type              1
-- blocking                 0
-- bad_target_verbosity     0
-- network_buffer           
-- timeout                  0
-- update_flag              False
+- as_port                  : 0
+- closed                   : False
+- memory_mode              : -1
+- deleted                  : False
+- ip                       : 
+- add_on_init              : True
+- memory_size              : 0
+- socket_family            : 2
+- port                     : 80
+- connection_attempts      : 10
+- target                   : ()
+- network_packet_size      : 32768
+- timeout_notify           : True
+- added_to_network         : False
+- verbosity                : 
+- bind_on_init             : False
+- socket_type              : 1
+- _connecting              : False
+- blocking                 : 0
+- bad_target_verbosity     : 0
+- auto_connect             : True
+- network_buffer           : 
+- timeout                  : 0
 
 This object defines the following non-private methods:
 
@@ -361,27 +367,29 @@ Tcp_Service_Proxy
 
 Default values for newly created instances:
 
-- reuse_port               0
-- memory_mode              -1
-- Tcp_Socket_type          network.Tcp_Socket
-- deleted                  False
-- add_on_init              True
-- memory_size              0
-- interface                0.0.0.0
-- socket_family            2
-- port                     80
-- name                     
-- network_packet_size      32768
-- added_to_network         False
-- verbosity                
-- share_methods            ('on_connect', 'client_socket_recv', 'client_socket_send')
-- bind_on_init             False
-- socket_type              1
-- blocking                 0
-- network_buffer           
-- timeout                  0
-- update_flag              False
-- backlog                  50
+- reuse_port               : 0
+- closed                   : False
+- memory_mode              : -1
+- Tcp_Socket_type          : network.Tcp_Socket
+- deleted                  : False
+- add_on_init              : True
+- memory_size              : 0
+- interface                : 0.0.0.0
+- socket_family            : 2
+- port                     : 80
+- connection_attempts      : 10
+- name                     : 
+- network_packet_size      : 32768
+- added_to_network         : False
+- verbosity                : 
+- share_methods            : ('on_connect', 'client_socket_recv', 'client_socket_send')
+- bind_on_init             : False
+- socket_type              : 1
+- _connecting              : False
+- blocking                 : 0
+- network_buffer           : 
+- timeout                  : 0
+- backlog                  : 50
 
 This object defines the following non-private methods:
 
@@ -402,27 +410,29 @@ Tcp_Service_Test
 
 Default values for newly created instances:
 
-- as_port                  0
-- memory_mode              -1
-- deleted                  False
-- ip                       
-- add_on_init              False
-- memory_size              0
-- socket_family            2
-- port                     80
-- target                   ()
-- network_packet_size      32768
-- timeout_notify           True
-- connect_attempts         10
-- added_to_network         False
-- verbosity                
-- bind_on_init             False
-- socket_type              1
-- blocking                 0
-- bad_target_verbosity     0
-- network_buffer           
-- timeout                  0
-- update_flag              False
+- as_port                  : 0
+- closed                   : False
+- memory_mode              : -1
+- deleted                  : False
+- ip                       : 
+- add_on_init              : True
+- memory_size              : 0
+- socket_family            : 2
+- port                     : 80
+- connection_attempts      : 10
+- target                   : ()
+- network_packet_size      : 32768
+- timeout_notify           : True
+- added_to_network         : False
+- verbosity                : 
+- bind_on_init             : False
+- socket_type              : 1
+- _connecting              : False
+- blocking                 : 0
+- bad_target_verbosity     : 0
+- auto_connect             : True
+- network_buffer           : 
+- timeout                  : 0
 
 This object defines the following non-private methods:
 

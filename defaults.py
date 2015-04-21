@@ -64,6 +64,7 @@ Socket.update({"blocking" : 0,
 "connection_attempts" : 10,
 "bind_on_init" : False,
 "closed" : False,
+"_connecting" : False,
 "added_to_network" : False})
 
 Tcp_Socket = Socket.copy()
@@ -84,7 +85,7 @@ Tcp_Client.update({"ip" : "",
 "target" : tuple(),
 "as_port" : 0,
 "timeout_notify" : True,
-"add_on_init" : False,
+"auto_connect" : True,
 "bad_target_verbosity" : 0}) # alert verbosity when trying to connect to bad address
 del Tcp_Client["interface"]
 

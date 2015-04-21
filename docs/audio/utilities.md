@@ -28,6 +28,6 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.

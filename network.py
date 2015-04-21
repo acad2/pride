@@ -35,10 +35,8 @@ try:
     CONNECTION_IN_PROGRESS = errno.WSAEWOULDBLOCK
     CONNECTION_IS_CONNECTED = errno.WSAEISCONN
     CONNECTION_WAS_ABORTED = errno.WSAECONNABORTED
-    CONNECTION_RESET = errno.WSAECONNRESET
-    
-    ERROR_CODES[BAD_TARGET] = "BAD_TARGET"
-    
+    CONNECTION_RESET = errno.WSAECONNRESET    
+    ERROR_CODES[BAD_TARGET] = "BAD_TARGET"    
 except:
     CALL_WOULD_BLOCK = errno.EWOULDBLOCK
     CONNECTION_IN_PROGRESS = errno.EINPROGRESS
@@ -66,13 +64,20 @@ class Error_Handler(object):
         
     def eagain(self, sock, error):
         sock.alert("{}", [error], level=0)
+    
+    def bad_target(self, sock, error):
+        sock.alert("Invalid target {}; {} {}", 
+                   [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
+                   level='v')
         
     def unhandled(self, sock, error):
-        sock.alert("Unhandled error:\n{}", [error], level=0)
+        sock.alert("Unhandled error:{} {}", [errno.errorcode[error.errno], error], level=0)
         
         
 class Socket(base.Wrapper):
-
+    """ Provides a mostly transparent asynchronous socket interface by applying a 
+        Wrapper to a _socketobject. The default socket family is socket.AF_INET and
+        the default socket type is socket.SOCK_STREAM (a.k.a. a tcp socket)."""
     defaults = defaults.Socket
 
     def _get_address(self):
@@ -93,37 +98,62 @@ class Socket(base.Wrapper):
             self.parallel_method("Network", "add", self)
          
     def on_select(self):
+        """ Used to customize behavior when a socket is readable according to select.select.
+            It is not likely that one would overload this method; End users probably want
+            to overload recv/recvfrom instead."""
         self.recvfrom(self.network_packet_size)
         
     def send(self, data):
+        """ Sends data via the underlying _socketobject. The socket is first checked to
+            ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
         if self.parallel_method("Network", "is_writable", self):
             return self.wrapped_object.send(data)
         else:
             raise NotWritableError
                              
     def sendto(self, data, host_info):
+        """ Sends data via the underlying _socketobject to the specified address. The socket
+            is first checked to ensure writability before sending. If the socket is not
+            writable, NotWritableError is raised."""
         if self.parallel_method("Network", "is_writable", self):
             return self.wrapped_object.sendto(data, host_info)
         else:
             raise NotWritableError
 
     def recv(self, buffer_size=0):
+        """ Receives data from a remote endpoint. This method is event triggered and called
+            when the socket becomes readable according to select.select. Subclasses should
+            extend this method to customize functionality for when data is received. This
+            method is called for Tcp sockets and requires a connection."""
         buffer_size = (self.network_packet_size if not buffer_size else
                        buffer_size)
         return self.wrapped_object.recv(buffer_size)
         
     def recvfrom(self, buffer_size=0):
+        """ Receives data from a host. For Udp sockets this method is event triggered
+            and called when the socket becomes readable according to select.select. Subclasses
+            should extend this method to customize functionality for when data is received."""
         buffer_size = (self.network_packet_size if not buffer_size else
                        buffer_size)
         return self.wrapped_object.recvfrom(buffer_size)
       
     def connect(self, address):
+        """ Perform a non blocking connect to the specified address. The on_connect method
+            is called when the connection succeeds, or the appropriate error handler method
+            is called if the connection fails. Subclasses should overload on_connect instead
+            of this method."""
         try:
             self.wrapped_object.connect(address)
-        except socket.error:
-            self.parallel_method("Network", "connect", self)   
-        
+        except socket.error as error:
+            if error.errno != 10035:
+                raise
+            if not self._connecting:
+                self._connecting = True
+                self.parallel_method("Network", "connect", self)            
+            
     def on_connect(self):
+        """ Performs any logic required when a Tcp connection succeeds. This method should
+            be overloaded by subclasses."""
         self.alert("Connected", level=0)
         #raise NotImplementedError
         
@@ -198,6 +228,8 @@ class Server(Tcp_Socket):
             instruction.execute()
  
     def on_connect(self, connection):
+        """ Connection logic that the server should apply when a new client has connected.
+            This method should be overloaded by subclasses"""
         raise NotImplementedError 
         
         
@@ -212,7 +244,9 @@ class Tcp_Client(Tcp_Socket):
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
             self.target = (self.ip, self.port)
-                        
+        if self.auto_connect:
+            self.connect(self.target)
+                
         
 class Udp_Socket(Socket):
 
@@ -252,7 +286,10 @@ class Multicast_Receiver(Udp_Socket):
            
 
 class Network(vmlibrary.Process):
-
+    """ Manages socket objects and is responsible for calling select.select to determine
+        readability/writability of sockets. Also responsible for non blocking connect logic. 
+        This component is created by default upon application startup, and in most cases will
+        not require user interaction."""
     defaults = defaults.Network
    
     def __init__(self, **kwargs):
@@ -271,7 +308,6 @@ class Network(vmlibrary.Process):
         self.sockets = []
         self._sockets = set()
         self.running = False
-        print self.instance_name, "initializing"
         self.update_instruction = Instruction(self.instance_name, "_update_range_size")
         
     def add(self, sock):
@@ -280,9 +316,9 @@ class Network(vmlibrary.Process):
             self.sockets.append(sock)
             self._sockets.add(sock)
             if not self.running:
-                self.run_instruction.execute(priority=self.priority)
                 self.running = True        
-    
+                self.run()
+                
     def remove(self, sock):
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
@@ -298,6 +334,7 @@ class Network(vmlibrary.Process):
     def run(self):
         sockets = self.sockets
         if sockets:
+            #print "running"
             for chunk in self._socket_range_size:
                 # select has a max # of file descriptors it can handle, which
                 # is about 500 (at least on windows). We can avoid this limitation
@@ -307,26 +344,32 @@ class Network(vmlibrary.Process):
                 
                 writable = self._writable = set(writable)
                 connecting = self.connecting
-                if connecting:
+                
+                if connecting:    
+                    # if a tcp client is writable, it's connected
                     for accepted in connecting.intersection(writable):
                         accepted.on_connect()
-                    
-                    self.connecting = still_connecting = connecting.difference(writable)
+                    # if not, then it's still connecting or the connection failed
+                    still_connecting = connecting.difference(writable)
+                    expired = set() # sets can't be mutated during iteration
                     for connection in still_connecting:
                         connection.connection_attempts -= 1
                         if not connection.connection_attempts:
                             try:
-                                connection.connect(connection.address)
-                            except socket.error:
-                                handler = getattr(sock.error_handler, 
+                                connection.connect(connection.target)
+                            except socket.error as error:
+                                handler = getattr(connection.error_handler, 
                                     ERROR_CODES[error.errno].lower(),
-                                    sock.error_handler.unhandled)
-                                handler(sock, error)                               
-                                    
+                                    connection.error_handler.unhandled)
+                                handler(connection, error)
+                                expired.add(connection)
+                    self.connecting = still_connecting.intersection(expired)
+                    
                 for sock in readable:
                     try:
                         sock.on_select()
                     except socket.error as error:
+                        print error
                         handler = getattr(sock.error_handler, 
                                   ERROR_CODES[error.errno].lower(),
                                   sock.error_handler.unhandled)
@@ -337,7 +380,11 @@ class Network(vmlibrary.Process):
             self.running = False
                    
     def connect(self, sock):
-        self.connecting.add(sock)
-        
+        if sock not in self.connecting:
+            self.connecting.add(sock)
+            if not self.running:
+                self.running = True
+                self.run()
+                                
     def is_writable(self, sock):
         return sock not in self.connecting and sock in self._writable

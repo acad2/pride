@@ -167,7 +167,11 @@ class Base(object):
             Given a type or string reference to a type, and arguments,
             return an instance of the specified type. The creating
             object will call .add on the created object, which
-            performs reference tracking maintainence."""
+            performs reference tracking maintainence. 
+            
+            Use of the create method over direct instantiation can allow even 
+            'regular' python objects to have a reference and be usable via parallel_methods 
+            and Instruction objects."""
         if not isinstance(instance_type, type):
             instance_type = utilities.resolve_string(instance_type)
 
@@ -199,7 +203,8 @@ class Base(object):
     def add(self, instance):
         """ usage: object.add(instance)
 
-            Adds an object to caller.objects[instance.__class__.__name__]"""   
+            Adds an object to caller.objects[instance.__class__.__name__] and
+            performs bookkeeping operations for the environment."""   
         objects = self.objects
         instance_class = instance.__class__.__name__
         siblings = objects.get(instance_class, [])
@@ -212,36 +217,25 @@ class Base(object):
                 references_to = self.environment.References_To.get(instance_name, set())
                 references_to.add(self.instance_name)
                 self.environment.References_To[instance_name] = references_to      
-     #   else:
-       #     self.alert("Ignoring add of " + str(instance), level=0)
-        #    raise type("AddException", (BaseException, ), 
-          #             {"message" : "attempted to add an object that has already been added"})
-
             
-    def alert(self, message="Unspecified alert message",
-                    format_args=tuple(),
-                    level=0,
-                    callback=None):
-        """usage: base.alert(message, format_args=tuple(), level=0, callback=None)
+    def alert(self, message="Unspecified alert message", format_args=tuple(), level=0):
+        """usage: base.alert(message, format_args=tuple(), level=0)
 
-        Create an alert. Depending on the level given, the alert may be printed
+        Display/log a message according to the level given. The alert may be printed
         for immediate attention and/or logged quietly for later viewing.
 
         -message is a string that will be logged and/or displayed
         -format_args are any string formatting args for message.format()
         -level is an integer indicating the severity of the alert.
-        -callback is an optional tuple of (function, args, kwargs) to be called when
-         the alert is triggered
 
         alert severity is relative to Alert_Handler log_level and print_level;
-        a lower number indicates a less verbose notification, while 0 indicates
-        an important message that should not be suppressed."""
+        a lower verbosity indicates a less verbose notification, while 0 indicates
+        a message that should not be suppressed. log_level and print_level
+        may passed in as command line arguments to globally control verbosity."""
         if self.verbosity >= level:            
             message = (self.instance_name + ": " + message.format(*format_args) if
                        format_args else self.instance_name + ": " + message)
-            return self.parallel_method("Alert_Handler", "_alert",
-                                        message,
-                                        level, callback)            
+            return self.parallel_method("Alert_Handler", "_alert", message, level)            
                         
     def parallel_method(self, component_name, method_name, *args, **kwargs):
         """ usage: base.parallel_method(component_name, method_name, 
@@ -269,7 +263,19 @@ class Base(object):
     def __setstate__(self, state):
         self.on_load(state)
               
-    def save(self, attributes=None, _file=None, mode='file'):
+    def save(self, attributes=None, _file=None):
+        """ usage: base.save([attributes], [_file])
+            
+            Saves the state of the calling objects __dict__. If _file is not specified,
+            a pickled stream is returned. If _file is specified, the stream is written
+            to the supplied file like object via pickle.dump.
+            
+            The attributes argument, if specified, should be a dictionary containing 
+            the attribute:value pairs to be pickled instead of the objects __dict__.
+            
+            If the calling object is one that has been created via the update method, the 
+            returned state will include any required source code to rebuild the object."""
+            
         self.alert("Saving", level='v')
         # avoid mutating original in case attributes was passed via interpreter session
         attributes = (self.__getstate__() if attributes is None else attributes).copy()
@@ -310,8 +316,22 @@ class Base(object):
             
     @classmethod
     def load(cls, attributes=None, _file=None):
+        """ usage: base_object.load([attributes], [_file]) => restored_instance
+        
+            Loads state preserved by the save method. The attributes argument, if specified,
+            should be a dictionary created by unpickling the bytestream returned by the 
+            save method. Alternatively the _file argument may be supplied. _file should be
+            a file like object that has previously been supplied to the save method.
+            
+            Note that unlike save, this method requires either attributes or _file to be
+            specified. Also note that if attributes are specified, it should be a dictionary
+            that was produced by the save method - simply passing an objects __dict__ will
+            result in exceptions.
+            
+            To customize the behavior of an object after it has been loaded, one should
+            extend the on_load method instead of load."""
         assert attributes or _file            
-        attributes = (attributes if attributes is not None else pickle.load(_file)).copy()
+        attributes = attributes.copy() if attributes is not None else pickle.load(_file)
                 
         saved_objects = attributes["objects"]
         objects = attributes["objects"] = {}
@@ -351,19 +371,24 @@ class Base(object):
         return self
         
     def on_load(self, attributes):
+        """ usage: base.on_load(attributes)
+        
+            Implements the behavior of an object after it has been loaded. This method 
+            may be extended by subclasses to customize functionality for instances created
+            by the load method."""
         self.set_attributes(**attributes)
         self.environment.add(self)
         if self.instance_name != attributes["instance_name"]:
             self.environment.replace(attributes["instance_name"], self)
                 
     def update(self):
-        """usage: base.update() => updated_base
+        """usage: base_instance.update() => updated_base
         
-           Reloads the module that defines base and returns an updated instance. 
-           The environment is updated with the new component information. Further
-           references to the object via instance_name will be directed to the
+           Reloads the module that defines base and returns an updated instance. The
+           old component is replaced by the updated component in the environment.
+           Further references to the object via instance_name will be directed to the
            new, updated object. Attributes of the original object will be assigned
-           to the new, updated object."""
+           to the updated object."""
         self.alert("Updating", level='v') 
         # modules are garbage collected if not kept alive        
         required_modules = []        
@@ -379,7 +404,7 @@ class Base(object):
                 required_modules.append((module_name, source, module))
 
         class_base = getattr(module, self.__class__.__name__)
-     #   class_base._required_modules = required_modules
+        class_base._required_modules = required_modules
         required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
                 
@@ -401,9 +426,7 @@ class Reactor(Base):
         Adds reaction framework on top of a Base object. 
         Reactions are event triggered chains of method calls
         
-        This class is a recent addition and may not be completely
-        final in it's api and/or implementation.
-        TODO: add transparent remote reaction support!"""
+        This class is a recent addition and is not final in it's api or implementation."""
     
     defaults = defaults.Reactor
     
@@ -482,28 +505,29 @@ class Reactor(Base):
         
 
 class Wrapper(Reactor):
-    """ A wrapper to allow python objects to function as a Reactor.
+    """ A wrapper to allow 'regular' python objects to function as a Reactor.
         The attributes on this wrapper will overload the attributes
-        of the wrapped object. """
+        of the wrapped object. Any attributes not present on the wrapper object
+        will be gotten from the underlying wrapped object. This class
+        acts primarily as a wrapper and secondly as the wrapped object."""
     def __init__(self, **kwargs):
         self.wrapped_object = kwargs.pop("wrapped_object", None)
         super(Wrapper, self).__init__(**kwargs)
                 
     def __getattr__(self, attribute):
-        return getattr(self.wrapped_object, attribute)
+        return getattr(self.wrapped_object, attribute)        
                        
                        
 class Proxy(Reactor):
     """ usage: Proxy(wrapped_object=my_object) => proxied_object
     
        Produces an instance that will act as the object it wraps and as an
-       Reactor object simultaneously. This facilitates simple integration 
-       with 'regular' python objects, providing them with monkey patches and
-       the reaction/parallel_method/alert interfaces for very little effort.
-       
+       Reactor object simultaneously. The object will act primarily as
+       the wrapped object and secondly as a proxy object. This means that       
        Proxy attributes are get/set on the underlying wrapped object first,
        and if that object does not have the attribute or it cannot be
-       assigned, the action is performed on the proxy wrapper instead."""
+       assigned, the action is performed on the proxy instead. This
+       prioritization is the opposite of the Wrapper class."""
 
     def __init__(self, **kwargs):
         wraps = super(Proxy, self).__getattribute__("wraps")

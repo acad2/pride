@@ -32,7 +32,3 @@ Latency
                        
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()
-
-Updater
---------
-No documentation available

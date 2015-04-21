@@ -8,30 +8,29 @@ Button
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- text                     Button
-- outline_width            5
-- text_color               (255, 130, 25)
-- pack_modifier            
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- shape                    rect
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- text                     : Button
+- outline_width            : 5
+- text_color               : (255, 130, 25)
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- shape                    : rect
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -52,27 +51,26 @@ Container
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                vertical
-- memory_size              4096
-- alpha                    1
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : vertical
+- memory_size              : 4096
+- alpha                    : 1
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -107,9 +105,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Organizer
 --------
@@ -117,13 +115,12 @@ Organizer
 
 Default values for newly created instances:
 
-- priority                 0
-- memory_size              4096
-- memory_mode              -1
-- auto_start               True
-- update_flag              False
-- deleted                  False
-- verbosity                
+- priority                 : 0
+- memory_size              : 4096
+- memory_mode              : -1
+- auto_start               : True
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 
@@ -184,25 +181,24 @@ Theme
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : 
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -223,26 +219,25 @@ Window
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- show_title_bar           False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                layer
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- color                    (0, 115, 10)
-- verbosity                
-- sdl_window               SDL_Window
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- show_title_bar           : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : layer
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- color                    : (0, 115, 10)
+- verbosity                : 
+- sdl_window               : SDL_Window
+- y                        : 0
+- x                        : 0
 
 No non-private methods are defined
 
@@ -257,25 +252,24 @@ Window_Object
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : 
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 

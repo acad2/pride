@@ -26,6 +26,7 @@ class Audio_Reactor(base.Reactor):
                                  self.instance_name)
             
     def set_input_device(self, target_instance_name):
+        self.alert("Setting input device to {}".format(target_instance_name), level=0)
         self_name = self.instance_name
         if self.source_name:
             self.parallel_method(self.source_name, "remove_listener", self_name)

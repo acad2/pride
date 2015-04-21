@@ -8,13 +8,12 @@ Unzipper
 
 Default values for newly created instances:
 
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- verbosity                
-- target_directory         
-- filename                 
+- memory_size              : 4096
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- target_directory         : 
+- filename                 : 
 
 This object defines the following non-private methods:
 

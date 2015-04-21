@@ -31,7 +31,7 @@ def build_docs(site_name=''):
                  site_name=site_name).execute()
                  
 def update(component):
-    return constructor.parallel_method(component, "update")
+    return constructor.parallel_method(component, "update")  
 """
 
 options["startup_definitions"] += definitions

@@ -8,21 +8,20 @@ DoS
 
 Default values for newly created instances:
 
-- count                    0
-- timeout_notify           False
-- display_progress         False
-- salvo_size               100
-- memory_mode              -1
-- deleted                  False
-- ip                       localhost
-- verbosity                
-- priority                 0.04
-- memory_size              4096
-- auto_start               True
-- update_flag              False
-- display_latency          False
-- port                     80
-- target                   None
+- count                    : 0
+- timeout_notify           : False
+- display_progress         : False
+- salvo_size               : 100
+- memory_mode              : -1
+- deleted                  : False
+- ip                       : localhost
+- verbosity                : 
+- priority                 : 0.04
+- memory_size              : 4096
+- auto_start               : True
+- display_latency          : False
+- port                     : 80
+- target                   : None
 
 This object defines the following non-private methods:
 
@@ -63,9 +62,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Latency
 --------
@@ -81,27 +80,29 @@ Null_Connection
 
 Default values for newly created instances:
 
-- timeout                  0
-- memory_mode              -1
-- deleted                  False
-- ip                       
-- add_on_init              False
-- memory_size              0
-- socket_family            2
-- as_port                  0
-- added_to_network         False
-- network_packet_size      32768
-- timeout_notify           True
-- connect_attempts         10
-- target                   ()
-- verbosity                
-- bind_on_init             False
-- socket_type              1
-- port                     80
-- bad_target_verbosity     0
-- network_buffer           
-- blocking                 0
-- update_flag              False
+- timeout                  : 0
+- memory_mode              : -1
+- deleted                  : False
+- ip                       : 
+- add_on_init              : True
+- memory_size              : 0
+- blocking                 : 0
+- socket_family            : 2
+- as_port                  : 0
+- connection_attempts      : 10
+- added_to_network         : False
+- network_packet_size      : 32768
+- timeout_notify           : True
+- target                   : ()
+- verbosity                : 
+- bind_on_init             : False
+- socket_type              : 1
+- _connecting              : False
+- port                     : 80
+- bad_target_verbosity     : 0
+- auto_connect             : True
+- network_buffer           : 
+- closed                   : False
 
 This object defines the following non-private methods:
 
@@ -130,19 +131,17 @@ Scanner
 
 Default values for newly created instances:
 
-- subnet                   127.0.0.1
-- scan_size                1
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- timeout                  0
-- priority                 0.04
-- range                    (0, 0, 0, 254)
-- memory_size              4096
-- auto_start               True
-- update_flag              False
-- yield_interval           50
-- ports                    (22,)
+- subnet                   : 127.0.0.1
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- priority                 : 0.04
+- range                    : (0, 0, 0, 255)
+- memory_size              : 4096
+- auto_start               : True
+- yield_interval           : 100
+- ports                    : (22,)
+- discovery_verbosity      : v
 
 This object defines the following non-private methods:
 
@@ -153,13 +152,7 @@ This object defines the following non-private methods:
 
 
 
-- **scan_address**(self, address, ports):
-
-		  No documentation available
-
-
-
-- **create_threads**(self):
+- **new_thread**(self):
 
 		  No documentation available
 
@@ -175,27 +168,29 @@ Tcp_Port_Tester
 
 Default values for newly created instances:
 
-- timeout                  0
-- memory_mode              -1
-- deleted                  False
-- ip                       
-- add_on_init              False
-- memory_size              0
-- socket_family            2
-- as_port                  0
-- added_to_network         False
-- network_packet_size      32768
-- timeout_notify           True
-- connect_attempts         10
-- target                   ()
-- verbosity                
-- bind_on_init             False
-- socket_type              1
-- port                     80
-- bad_target_verbosity     vv
-- network_buffer           
-- blocking                 0
-- update_flag              False
+- as_port                  : 0
+- closed                   : False
+- memory_mode              : -1
+- deleted                  : False
+- ip                       : 
+- add_on_init              : True
+- memory_size              : 0
+- socket_family            : 2
+- port                     : 80
+- connection_attempts      : 10
+- target                   : ()
+- network_packet_size      : 32768
+- timeout_notify           : True
+- added_to_network         : False
+- verbosity                : 
+- bind_on_init             : False
+- socket_type              : 1
+- _connecting              : False
+- blocking                 : 0
+- bad_target_verbosity     : 0
+- auto_connect             : True
+- network_buffer           : 
+- timeout                  : 0
 
 This object defines the following non-private methods:
 

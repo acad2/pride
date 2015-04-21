@@ -18,7 +18,8 @@ import mpre.defaults as defaults
 Instruction = mpre.Instruction            
             
 class Shell(network2.Authenticated_Client):
-    
+    """ Provides the client side of the interpreter session. Handles keystrokes and
+        sends them to the Interpreter_Service to be executed."""
     defaults = defaults.Shell
                      
     def __init__(self, **kwargs):
@@ -95,7 +96,8 @@ class Shell(network2.Authenticated_Client):
         
         
 class Interpreter_Service(network2.Authenticated_Service):
-    
+    """ Provides the server side of the interactive interpreter. Receives keystrokes
+        and attempts to compile + exec them."""
     defaults = defaults.Interpreter_Service
     
     def __init__(self, **kwargs):
@@ -172,7 +174,10 @@ class Interpreter_Service(network2.Authenticated_Service):
             
         
 class Alert_Handler(base.Reactor):
-    
+    """ Provides the backend for the base.alert method. This component is automatically
+        created by the Metapython component. The print_level and log_level attributes act
+        as global filters for alerts; print_level and log_level may be specified as 
+        command line arguments upon program startup to globally control verbosity/logging."""
     level_map = {0 : "",
                 'v' : "notification ",
                 'vv' : "verbose notification ",
@@ -186,7 +191,7 @@ class Alert_Handler(base.Reactor):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = self.create("fileio.File", self.log_name, 'a+')
         
-    def _alert(self, message, level, callback):
+    def _alert(self, message, level):
         if not self.print_level or level <= self.print_level:
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
@@ -194,19 +199,20 @@ class Alert_Handler(base.Reactor):
             # windows will complain about a file in + mode if this isn't done sometimes
             self.log.seek(0, 1)
             self.log.write(severity + message + "\n")
-        if callback:
-            function, args, kwargs = callback
-            return function(*args, **kwargs)
        
             
 class Metapython(base.Reactor):
+    """ Provides an entry point to the environment. Instantiating this component and
+        calling the start_machine method starts the execution of the Processor component.
+        It is encouraged to use the Metapython component when create-ing new top level
+        components in the environment. For example, the Network component is a child object
+        of the Metapython component. Doing so allows for simple portability of an environment
+        in regards to saving/loading the state of an entire application."""
 
     defaults = defaults.Metapython
-        
     parser_ignore = ("environment_setup", "prompt", "copyright", 
                      "traceback", "memory_size", "network_packet_size", 
                      "interface", "port")
-                     
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
@@ -232,6 +238,7 @@ class Metapython(base.Reactor):
         Instruction(self.instance_name, "exec_command", source).execute()
      
     def exec_command(self, source):
+        """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')
         with self.main_as_name():
             exec code in globals(), globals()
@@ -246,6 +253,9 @@ class Metapython(base.Reactor):
             globals()["__name__"] = backup
              
     def setup_os_environ(self):
+        """ This method is called automatically in Metapython.__init__; os.environ can
+            be customized on startup via modifying Metapython.defaults["environment_setup"].
+            This can be useful for modifying system path only for the duration of the applications run time."""
         modes = {"=" : "equals",
                  "+=" : "__add__", # append strings or add ints
                  "-=" : "__sub__", # integer values only
@@ -263,6 +273,7 @@ class Metapython(base.Reactor):
             os.environ[variable] = result
             
     def start_machine(self):
+        """ Begins the processing of Instruction objects."""
         self.processor.run()
     
     def start_service(self):
@@ -282,7 +293,7 @@ class Restored_Interpreter(Metapython):
     
         Restores an interpreter environment that has been suspended via
         metapython.Metapython.save_state. This is a convenience class
-        over Metapython.load_state; instances produced by instantiating
+        over Metapython.load_state; note that instances produced by instantiating
         Restored_Interpreter will be of the type of instance returned by
         Metapython.load_state and not Restored_Interpreter"""
         

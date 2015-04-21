@@ -8,25 +8,24 @@ Display_Wrapper
 
 Default values for newly created instances:
 
-- layer                    1
-- popup                    False
-- memory_mode              -1
-- deleted                  False
-- outline_width            5
-- pack_modifier            
-- held                     False
-- pack_mode                
-- memory_size              4096
-- background_color         (0, 0, 0)
-- pack_on_init             True
-- size                     [800, 600]
-- color_scalar             0.6
-- verbosity                
-- sdl_window               SDL_Window
-- color                    (0, 115, 10)
-- update_flag              False
-- y                        0
-- x                        0
+- layer                    : 1
+- popup                    : False
+- memory_mode              : -1
+- deleted                  : False
+- outline_width            : 5
+- pack_modifier            : 
+- held                     : False
+- pack_mode                : 
+- memory_size              : 4096
+- background_color         : (0, 0, 0)
+- pack_on_init             : True
+- size                     : [800, 600]
+- color_scalar             : 0.6
+- verbosity                : 
+- sdl_window               : SDL_Window
+- color                    : (0, 115, 10)
+- y                        : 0
+- x                        : 0
 
 This object defines the following non-private methods:
 
@@ -53,15 +52,14 @@ Font_Manager
 
 Default values for newly created instances:
 
-- default_font_size        14
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- default_color            (15, 180, 35)
-- default_background       (0, 0, 0)
-- memory_size              4096
-- font_path                c:\users\_\pythonbs\mpre\gui\resources\fonts\Aero.ttf
-- update_flag              False
+- default_font_size        : 14
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- default_color            : (15, 180, 35)
+- default_background       : (0, 0, 0)
+- memory_size              : 4096
+- font_path                : c:\users\_\pythonbs\mpre\gui\resources\fonts\Aero.ttf
 
 No non-private methods are defined
 
@@ -96,9 +94,9 @@ Instruction
         any number of times.
         
         Note that Instructions must be executed to have any effect, and
-        that they do not happen inline, even if priority is 0.0. 
-        Because they do not execute in the current scope, the return value 
-        from the method call is not available through this mechanism.
+        that they do not happen inline even if the priority is 0.0. In
+        order to access the result of the executed function, a callback
+        function can be provided.
 
 Renderer
 --------
@@ -106,12 +104,11 @@ Renderer
 
 Default values for newly created instances:
 
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
-- deleted                  False
-- verbosity                
-- componenttypes           ()
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- componenttypes           : ()
+- memory_mode              : -1
 
 This object defines the following non-private methods:
 
@@ -138,11 +135,10 @@ SDL_Component
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 No non-private methods are defined
 
@@ -157,13 +153,12 @@ SDL_User_Input
 
 Default values for newly created instances:
 
-- priority                 0.04
-- memory_size              4096
-- memory_mode              -1
-- auto_start               True
-- update_flag              False
-- deleted                  False
-- verbosity                
+- priority                 : 0.04
+- memory_size              : 4096
+- memory_mode              : -1
+- auto_start               : True
+- deleted                  : False
+- verbosity                : 
 
 This object defines the following non-private methods:
 
@@ -250,18 +245,17 @@ SDL_Window
 
 Default values for newly created instances:
 
-- layer                    0
-- name                     Metapython
-- memory_mode              -1
-- deleted                  False
-- verbosity                
-- color                    (0, 0, 0)
-- memory_size              4096
-- update_flag              False
-- y                        0
-- x                        0
-- showing                  True
-- size                     [800, 600]
+- layer                    : 0
+- name                     : Metapython
+- memory_mode              : -1
+- deleted                  : False
+- verbosity                : 
+- color                    : (0, 0, 0)
+- memory_size              : 4096
+- y                        : 0
+- x                        : 0
+- showing                  : True
+- size                     : [800, 600]
 
 This object defines the following non-private methods:
 
@@ -306,11 +300,10 @@ Sprite_Factory
 
 Default values for newly created instances:
 
-- deleted                  False
-- verbosity                
-- memory_size              4096
-- memory_mode              -1
-- update_flag              False
+- deleted                  : False
+- verbosity                : 
+- memory_size              : 4096
+- memory_mode              : -1
 
 No non-private methods are defined
 
