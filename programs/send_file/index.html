@@ -90,6 +90,10 @@
                             </li>
                         
                             <li >
+                                <a href="../../mpre/compiler/">compiler</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
@@ -118,7 +122,19 @@
                             </li>
                         
                             <li >
+                                <a href="../../mpre/restore/">restore</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/translate/">translate</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -141,6 +157,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
+                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -168,6 +188,10 @@
                         
                             <li >
                                 <a href="../../audio/utilities/">utilities</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../audio/wav_file_info/">wav_file_info</a>
                             </li>
                         
                         </ul>
@@ -209,6 +233,14 @@
                             </li>
                         
                             <li >
+                                <a href="../../misc/attributetest2/">attributetest2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/attributetest3/">attributetest3</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../misc/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -241,11 +273,27 @@
                             </li>
                         
                             <li >
+                                <a href="../../misc/install_dependencies/">install_dependencies</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/referencetest/">referencetest</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../misc/scratch/">scratch</a>
                             </li>
                         
                             <li >
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/structtest/">structtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/todo/">todo</a>
                             </li>
                         
                             <li >
@@ -278,7 +326,7 @@
                             </li>
                         
                             <li >
-                                <a href="../remote_connection/">remote_connection</a>
+                                <a href="../restore/">restore</a>
                             </li>
                         
                             <li class="active">
@@ -291,6 +339,10 @@
                         
                             <li >
                                 <a href="../stupidsend/">stupidsend</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../unzip/">unzip</a>
                             </li>
                         
                         </ul>
@@ -339,7 +391,7 @@
                 
                 
                 <li >
-                    <a rel="next" href="../remote_connection/">
+                    <a rel="next" href="../restore/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
@@ -395,9 +447,9 @@
     any number of times.
 
     Note that Instructions must be executed to have any effect, and
-    that they do not happen inline, even if priority is 0.0. 
-    Because they do not execute in the current scope, the return value 
-    from the method call is not available through this mechanism.
+    that they do not happen inline even if the priority is 0.0. In
+    order to access the result of the executed function, a callback
+    function can be provided.
 </code></pre>
 </div>
         </div>
