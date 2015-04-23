@@ -476,55 +476,43 @@ class Tcp_Service_Proxy(network.Server):
 
     def __init__(self, **kwargs):
         super(Tcp_Service_Proxy, self).__init__(**kwargs)
-        self.inbound_connection_type = Tcp_Client_Proxy
-                    
+        self.Tcp_Socket_type = Tcp_Client_Proxy
+                
     def on_connect(self, connection):
         pass
         
         
-class Tcp_Client_Proxy(network.Tcp_Client):
+class Tcp_Client_Proxy(network.Tcp_Socket):
     
-    def recv(self):
-        print self.instance_name, "receiving data!"
-        request = self.socket.recv(self.network_packet_size)        
+    def recv(self, network_packet_size):
+        request = self.socket.recv(network_packet_size)        
         service_name, command, value = request.split(" ", 2)
+      #  self.parallel_method(service_name, request
         self.respond_with("reply")
         request = command + " " + value
         self.reaction(service_name, request)
               
     def reply(self, sender, packet):
-        self.send_data(str(sender) + " " + packet)
+        self.send(str(sender) + " " + packet)
 
                            
-class Tcp_Service_Test(network.Tcp_Client):
+class Tcp_Service_Client(network.Tcp_Client):
     
-    def on_connect(self):        
-        self.send_data("Interpreter_Service login username password")
-                           
-    def recv(self):
-        self.network_buffer += self.recv(self.network_packet_size)
-        print "got results!: ", self.network_buffer
-        
-def test_proxy():
-    verbosity = 'vvv'
-    options = {"verbosity" : verbosity,
-               "port" : 40000}
-               
-    options2 = {"verbosity" : verbosity,
-                "target" : ("localhost", 40000)}
+    defaults = defaults.Tcp_Client.copy()
+                         
+    def on_connect(self):   
+        self.send("Interpreter_Service login root password")
                 
-    Instruction("Metapython", "create", "network2.Tcp_Service_Proxy", **options).execute()
-    Instruction("Metapython", "create", "network2.Tcp_Service_Test", **options2).execute()
-    
-def test_reliability():
-    Instruction("Metapython", "create", Network_Service, port=4000, verbosity='vvv').execute()
-    Instruction("Metapython", "create", Network_Service, port=4001, verbosity='vvv').execute()
-    Instruction("Network_Service1", "send_data", "demo_reaction 0", to=("localhost", 4000)).execute()
-
-    
+    def recv(self, network_packet_size):
+        packet = self.wrapped_object.recv(network_packet_size)
+        print "got results!: ", packet
+        
+        self.send("Interpreter_Service " + raw_input("Reply: "))
+        
+        
 if __name__ == "__main__":
-    from mpre.tests.network2 import test_file_service, test_authentication
-    test_reliability()
+    from mpre.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
+   # test_reliability()
    # test_authentication()
    # test_file_service()
-   # test_proxy()
+    test_proxy()

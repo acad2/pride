@@ -65,8 +65,7 @@ class Process(base.Reactor):
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)
 
-        run_instruction = self.run_instruction = Instruction(self.instance_name, "run")
-
+        self.run_instruction = Instruction(self.instance_name, "run")
         if self.auto_start:
             Instruction(self.instance_name, "start").execute()
 
@@ -88,8 +87,20 @@ class Processor(Process):
     defaults = defaults.Processor
 
     def __init__(self, **kwargs):
-        self.running = True
         super(Processor, self).__init__(**kwargs)
+        self.paused = set()
+        self.on_resume = {}
+        
+    def pause(self, component_name):
+        self.paused.add(component_name)
+        self.on_resume[component_name] = []
+        
+    def resume(self, component_name):
+        self.paused.remove(component_name)
+        for instruction_info in self.on_resume[component_name]:
+            execute_at, instruction, callback = instruction_info
+            instruction.execute(execute_at, callback)
+        self.on_resume[component_name] = []
         
     def run(self):
         instructions = self.environment.Instructions
@@ -99,7 +110,7 @@ class Processor(Process):
         sleep = time.sleep
         heappop = heapq.heappop
         _getattr = getattr        
-        
+        on_resume = self.on_resume
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
@@ -111,7 +122,11 @@ class Processor(Process):
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
-            execute_at, instruction, callback = heappop(instructions)           
+            instruction_info = execute_at, instruction, callback = heappop(instructions)
+            if instruction.component_name in self.paused:
+                on_resume[instruction.component_name].append(instruction_info)
+                continue
+                
             try:
                 call = _getattr(Component_Resolve[instruction.component_name],
                                                   instruction.method)               
@@ -120,13 +135,12 @@ class Processor(Process):
                     error = "'{}' component does not exist".format(instruction.component_name)
                 component_alert((str(instruction), error)) 
                 continue
-                   
+            
             time_until = max(0, (execute_at - timer_function()))
             if time_until:
                 sleep(time_until)
-                
-            execution_alert([str(instruction)])
             
+            execution_alert([str(instruction)])           
             try:
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:

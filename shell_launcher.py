@@ -32,6 +32,12 @@ def build_docs(site_name=''):
                  
 def update(component):
     return constructor.parallel_method(component, "update")  
+    
+
+d = get_component("Metapython").create("mpre.misc.securitylibrary.DoS", target=("192.168.1.254", 80), display_latency=True)
+#Instruction("DoS", "delete").execute(2)
+#Instruction("Metapython", "exit").execute(2)
+#Instruction("Processor", "pause", "DoS").execute(1)
 """
 
 options["startup_definitions"] += definitions

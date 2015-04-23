@@ -61,26 +61,26 @@ class Environment(object):
         
     def delete(self, instance):
         try:
-            for child in itertools.chain(*instance.objects.values()):
-                child.delete()
+            objects = instance.objects
         except AttributeError: # non base objects have no .objects dictionary
             instance_name = self.Instance_Name[instance]
             parent = self.Component_Resolve[self.Parents[instance]]
             parent.objects[instance.__class__.__name__].remove(instance)          
         else:
             instance_name = instance.instance_name
-        
+            if objects:
+                for children in objects.values():
+                    [child.delete() for child in list(children)] 
+                    
         if instance in self.Parents:
             del self.Parents[instance]
         if instance_name in self.Component_Memory:
             self.Component_Memory.pop(instance_name).close()    
         
         if instance_name in self.References_To:
-            referrers = [name for name in self.References_To[instance_name]]
-            for referrer in referrers:
+            for referrer in list(self.References_To[instance_name]):
                 self.Component_Resolve[referrer].remove(instance)
-            del self.References_To[instance_name]
-            
+            del self.References_To[instance_name]            
         del self.Component_Resolve[instance_name]
         del self.Instance_Name[instance]
         del self.Instance_Number[instance]
@@ -88,8 +88,7 @@ class Environment(object):
     def add(self, instance):
         instance_class = instance.__class__.__name__
         try:
-            count = self.Instance_Count[instance_class] + 1
-            self.Instance_Count[instance_class] += 1
+            self.Instance_Count[instance_class] = count = self.Instance_Count[instance_class] + 1
         except KeyError:
             count = self.Instance_Count[instance_class] = 0
        

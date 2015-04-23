@@ -175,6 +175,5 @@ Metapython.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
 "interpreter_enabled" : True,
 "startup_definitions" : \
 """Instruction('Metapython', 'create', 'userinput.User_Input').execute()
-Instruction("Metapython", "create", "network.Network").execute()
-Instruction("Network", "_update_range_size").execute()"""})
+Instruction("Metapython", "create", "network.Network").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})

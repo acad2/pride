@@ -26,13 +26,16 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
-    
+       
 import mpre
 import mpre.metaclass
 import mpre.utilities as utilities
 import mpre.defaults as defaults
 
-__all__ = ["Base", "Reactor", "Wrapper", "Proxy"]
+__all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
+
+DeleteError = type("DeleteError", (ReferenceError, ), {})
+AddError = type("AddError", (ReferenceError, ), {})
 
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
@@ -138,18 +141,17 @@ class Base(object):
     def __init__(self, **kwargs):
        #  self = super(Base, cls).__new__(cls, *args, **kwargs)
         # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the call to __init__
-        self.objects = {}
-        
+        # defaults dictionary and should be set in the call to __init__                
         attributes = self.defaults.copy()
+        attributes["objects"] = {}
         attributes.update(kwargs)
         if kwargs.get("parse_args"):
-            attributes.update(self.parser.get_options(attributes))
-                
-        self.set_attributes(**attributes)
+            attributes.update(self.parser.get_options(attributes))        
         
+        self.set_attributes(**attributes)        
         self.environment.add(self)
-                
+        self._added = True
+        
     def set_attributes(self, **kwargs):
         """ usage: object.set_attributes(attr1=value1, attr2=value2).
             
@@ -174,13 +176,12 @@ class Base(object):
             and Instruction objects."""
         if not isinstance(instance_type, type):
             instance_type = utilities.resolve_string(instance_type)
-
         instance = instance_type(*args, **kwargs)
 
         self.add(instance)
-        if instance not in self.environment:
+        if not getattr(instance, "_added", False):
             self.environment.add(instance)
-        self.environment.modify("Parents", (instance, self.instance_name))        
+        self.environment.Parents[instance] = self.instance_name
         return instance
 
     def delete(self):
@@ -189,14 +190,17 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
-        self.deleted = True
+        if self.deleted:
+            raise DeleteError("{} has already been deleted".format(self.instance_name))
+        #print "Beginning deletion of", self.instance_name
         self.environment.delete(self)
-
+        self.deleted = True
+        
     def remove(self, instance):
         """ Usage: object.remove(instance)
         
             Removes an instance from self.objects. Modifies object.objects
-            and environment.References_To"""
+            and environment.References_To."""
         self.objects[instance.__class__.__name__].remove(instance)
         self.environment.References_To[instance.instance_name].remove(self.instance_name)
         
@@ -205,18 +209,20 @@ class Base(object):
 
             Adds an object to caller.objects[instance.__class__.__name__] and
             performs bookkeeping operations for the environment."""   
+        
         objects = self.objects
         instance_class = instance.__class__.__name__
-        siblings = objects.get(instance_class, [])
-        if instance not in siblings:
-            siblings.append(instance)
-            objects[instance_class] = siblings
-            
-            if hasattr(instance, "instance_name"):
-                instance_name = instance.instance_name
-                references_to = self.environment.References_To.get(instance_name, set())
-                references_to.add(self.instance_name)
-                self.environment.References_To[instance_name] = references_to      
+        siblings = objects.get(instance_class, set())
+        if instance in siblings:
+            raise AddError
+        siblings.add(instance)
+        objects[instance_class] = siblings      
+                    
+        instance_name = self.environment.Instance_Name[instance]
+        try:
+            self.environment.References_To[instance_name].add(self.instance_name)
+        except KeyError:
+            self.environment.References_To[instance_name] = set((self.instance_name, ))      
             
     def alert(self, message="Unspecified alert message", format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
