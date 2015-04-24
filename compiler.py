@@ -17,12 +17,14 @@ class Compiler(object):
                        subfolders=tuple(),
                        main_file='',
                        ignore_files=tuple(),
+                       ignore_folders=tuple(),
                        max_processes=10):
         self.shared_file_type = shared_file_type
         self.directory = directory
         self.subfolders = subfolders
         self.main_file = main_file
         self.ignore_files = ignore_files
+        self.ignore_folders = ignore_folders
         self.max_processes = max_processes
                      
     def cleanup_compiled_files(self, file_types=("pyx", "c")):  
@@ -71,19 +73,23 @@ class Compiler(object):
                             (index + 1) * files_per_process))
                        for index in range(files_per_process))
         
-        processes = []
-        for file_count in range(files_per_process):
-            processes.append(mp.Process(target=_compile.py_to_compiled, 
-                                        args=[files[slices[file_count]],
-                                        self.shared_file_type]))
-        print "beginning compilation..."
-        for process in processes:
-            process.start()
-                        
-        print "waiting for shared resources to finish compiling..."        
-        for process in processes:            
-            process.join()
-            
+        
+        if max_processes > 1:
+            processes = []
+            for file_count in range(files_per_process):
+                processes.append(mp.Process(target=_compile.py_to_compiled, 
+                                            args=[files[slices[file_count]],
+                                            self.shared_file_type]))
+            print "beginning compilation..."
+            for process in processes:
+                process.start()
+                            
+            print "waiting for shared resources to finish compiling..."        
+            for process in processes:            
+                process.join()
+       # else:
+        #    for file in files:
+                
         if main_file:
             print "compiling executable..."
             executable = _compile.py_to_compiled([main_file], 'exe')
@@ -94,4 +100,4 @@ if __name__ == "__main__":
                         main_file="metapython.py",
                         ignore_files=["compiler.py", "_compile.py"])
     compiler.compile()
-    compiler.cleanup_compiled_files(file_types=("pyx", "pyd", 'c'))
+    compiler.cleanup_compiled_files(file_types=("pyx", 'c'))

@@ -79,7 +79,7 @@ class Runtime_Decorator(object):
             call = self.function
         return call(*args, **kwargs)  
             
-    def _handle_context_manager(self, context_manager):
+    """def _handle_context_manager(self, context_manager):
         raise NotImplementedError
         if isinstance(context_manager, str):
             context_manager = utilities.resolve_string(context_manager)
@@ -87,7 +87,7 @@ class Runtime_Decorator(object):
 
         with context_manager():
             result = self.function(*args, **kwargs)
-        return result
+        return result"""
 
     def _handle_monkey_patch(self, monkey_patch):
         if isinstance(monkey_patch, str):

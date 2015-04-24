@@ -21,23 +21,15 @@ def print_components(mode="keys", size=(None, )):
 def get_component(instance_name):
     return constructor.environment.Component_Resolve[instance_name]
 
-def delete(instance=None):
-    Instruction(getattr(instance, "instance_name", instance), "delete").execute()
+def delete(instance_name):
+    constructor.parallel_method(instance_name, "delete")
                     
-def build_docs(site_name=''):
-    site_name = site_name if site_name else raw_input("Please enter site name: ")
-    
-    Instruction("Metapython", "create", "mpre.docbuilder.Documentation_Builder",
-                 site_name=site_name).execute()
+def build_docs(**kwargs):    
+    return constructor.parallel_method("Metapython", "create", 
+                                       "mpre.package.Documentation", **kwargs)
                  
 def update(component):
-    return constructor.parallel_method(component, "update")  
-    
-
-d = get_component("Metapython").create("mpre.misc.securitylibrary.DoS", target=("192.168.1.254", 80), display_latency=True)
-#Instruction("DoS", "delete").execute(2)
-#Instruction("Metapython", "exit").execute(2)
-#Instruction("Processor", "pause", "DoS").execute(1)
+    return constructor.parallel_method(component, "update")
 """
 
 options["startup_definitions"] += definitions

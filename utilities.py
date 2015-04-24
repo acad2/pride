@@ -45,11 +45,14 @@ def resolve_string(string):
 
     return getattr(_from, class_name)
         
-def create_module(module_name, source):
+def create_module(module_name, source, attach_source=False):
     """ Creates a module with the supplied name and source"""
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
     exec module_code in new_module.__dict__
+    if attach_source:
+        assert not hasattr(new_module, "_source")
+        new_module._source = source
     return new_module
   
 def get_module_source(module_name):
@@ -388,3 +391,24 @@ class LRU_Cache(object):
     def __setitem__(self, key, value):
         self.dict[key] = value
         self.contains.add(key)
+        
+class Importer(object):
+    
+    def __init__(self):
+        super(Importer, self).__init__()
+        
+    def find_module(self, module_name, path):        
+        if module_name[:4] == "mpre":
+            _module_name = module_name.split(".", 1)[-1]
+            if "{}_source".format(_module_name) in globals():
+                return self
+        return None
+        
+    def load_module(self, module_name):        
+        if module_name in sys.modules:
+            return sys.modules[module_name]
+        _module_name = module_name.split(".", -1)[-1]        
+        module = create_module(module_name, globals()["{}_source".format(_module_name)],
+                               attach_source=True)
+        sys.modules[module_name] = module
+        return module        

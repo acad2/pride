@@ -20,7 +20,11 @@ import os
 
 NO_ARGS = tuple()
 NO_KWARGS = dict()
-FILEPATH = os.path.split(__file__)[0]
+
+if "__file__" not in globals():
+    FILEPATH = os.getcwd()
+else:
+    FILEPATH = os.path.split(__file__)[0]
 
 # Base
 MANUALLY_REQUEST_MEMORY = 0

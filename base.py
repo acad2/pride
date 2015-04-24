@@ -36,6 +36,7 @@ __all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
 
 DeleteError = type("DeleteError", (ReferenceError, ), {})
 AddError = type("AddError", (ReferenceError, ), {})
+UpdateError = type("UpdateError", (BaseException, ), {})
 
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
@@ -406,7 +407,16 @@ class Base(object):
                 del sys.modules[module_name]
                 importlib.import_module(module_name)
                 module = sys.modules[module_name]                
-                source = inspect.getsource(module)
+                try:
+                    source = inspect.getsource(module)
+                except TypeError:
+                    try:
+                        print "Attempting to get {}._source".format(module_name)
+                        source = module._source
+                    except AttributeError:
+                        print dir(module)
+                        raise UpdateError("Could not locate source for {}".format(module.__name__))
+                        
                 required_modules.append((module_name, source, module))
 
         class_base = getattr(module, self.__class__.__name__)
@@ -472,7 +482,7 @@ class Reactor(Base):
             self.parallel_method(component_name, "react", 
                                  self.instance_name, message)
        
-        elif scope is 'global':
+        """elif scope is 'global':
             raise NotImplementedError
             memory, pointers = self.environment.Component_Memory[component_name]
                                                               
@@ -483,7 +493,7 @@ class Reactor(Base):
             raise NotImplementedError
             component_name, host_info = component_name
             self.parallel_method("Service_Proxy", "send_to", component_name, 
-                               host_info, self.instance_name, message)
+                               host_info, self.instance_name, message)"""
                     
     def react(self, sender, packet):        
         command, value = packet.split(" ", 1)
