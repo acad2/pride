@@ -98,6 +98,10 @@
                             </li>
                         
                             <li >
+                                <a href="../exelauncher/">exelauncher</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../fileio/">fileio</a>
                             </li>
                         
@@ -229,18 +233,6 @@
                         <ul class="dropdown-menu">
                         
                             <li >
-                                <a href="../../misc/attributetest/">attributetest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest2/">attributetest2</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest3/">attributetest3</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -265,10 +257,6 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/decoratorlibrary2/">decoratorlibrary2</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/dialectlibrary/">dialectlibrary</a>
                             </li>
                         
@@ -281,19 +269,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/todo/">todo</a>
                             </li>
                         
                             <li >
@@ -308,6 +284,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher/">buildlauncher</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/build_metapython_package/">build_metapython_package</a>
@@ -355,6 +335,18 @@
                         <ul class="dropdown-menu">
                         
                             <li >
+                                <a href="../../tests/attributetest/">attributetest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest2/">attributetest2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest3/">attributetest3</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../tests/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -376,6 +368,18 @@
                         
                             <li >
                                 <a href="../../tests/network2/">network2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/scratch/">scratch</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/structtest/">structtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -637,18 +641,23 @@ not require user interaction.
 <p>This object defines the following non-private methods:</p>
 <ul>
 <li>
+<p><strong>handle_bind_error</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
 <p><strong>on_connect</strong>(self, connection):</p>
 <pre class="prettyprint well"><code>  Connection logic that the server should apply when a new client has connected.
  This method should be overloaded by subclasses
 </code></pre>
 </li>
 <li>
-<p><strong>handle_bind_error</strong>(self):</p>
+<p><strong>accept</strong>(self):</p>
 <pre class="prettyprint well"><code>  No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>recv</strong>(self):</p>
+<p><strong>on_select</strong>(self):</p>
 <pre class="prettyprint well"><code>  No documentation available
 </code></pre>
 </li>

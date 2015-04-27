@@ -98,6 +98,10 @@
                             </li>
                         
                             <li >
+                                <a href="../exelauncher/">exelauncher</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../fileio/">fileio</a>
                             </li>
                         
@@ -229,18 +233,6 @@
                         <ul class="dropdown-menu">
                         
                             <li >
-                                <a href="../../misc/attributetest/">attributetest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest2/">attributetest2</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest3/">attributetest3</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -265,10 +257,6 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/decoratorlibrary2/">decoratorlibrary2</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/dialectlibrary/">dialectlibrary</a>
                             </li>
                         
@@ -281,19 +269,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/todo/">todo</a>
                             </li>
                         
                             <li >
@@ -308,6 +284,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher/">buildlauncher</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/build_metapython_package/">build_metapython_package</a>
@@ -355,6 +335,18 @@
                         <ul class="dropdown-menu">
                         
                             <li >
+                                <a href="../../tests/attributetest/">attributetest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest2/">attributetest2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest3/">attributetest3</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../tests/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -376,6 +368,18 @@
                         
                             <li >
                                 <a href="../../tests/network2/">network2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/scratch/">scratch</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/structtest/">structtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -428,13 +432,15 @@
         
             <li><a href="#network_service">Network_Service</a></li>
         
+            <li><a href="#remote_procedure_call">Remote_Procedure_Call</a></li>
+        
             <li><a href="#service_listing">Service_Listing</a></li>
         
             <li><a href="#tcp_client_proxy">Tcp_Client_Proxy</a></li>
         
-            <li><a href="#tcp_service_proxy">Tcp_Service_Proxy</a></li>
+            <li><a href="#tcp_service_client">Tcp_Service_Client</a></li>
         
-            <li><a href="#tcp_service_test">Tcp_Service_Test</a></li>
+            <li><a href="#tcp_service_proxy">Tcp_Service_Proxy</a></li>
         
     
     </ul>
@@ -669,6 +675,8 @@
 </ul>
 <p>This objects method resolution order is:</p>
 <p>(class 'mpre.network2.Network_Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<h2 id="remote_procedure_call">Remote_Procedure_Call</h2>
+<p>No documentation available</p>
 <h2 id="service_listing">Service_Listing</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
@@ -715,29 +723,24 @@
 </code></pre>
 <p>Default values for newly created instances:</p>
 <ul>
-<li>as_port                  : 0</li>
-<li>closed                   : False</li>
+<li>timeout                  : 0</li>
 <li>memory_mode              : -1</li>
 <li>deleted                  : False</li>
-<li>ip                       : </li>
 <li>add_on_init              : True</li>
 <li>memory_size              : 0</li>
+<li>interface                : 0.0.0.0</li>
 <li>socket_family            : 2</li>
-<li>port                     : 80</li>
+<li>port                     : 0</li>
 <li>connection_attempts      : 10</li>
-<li>target                   : ()</li>
 <li>network_packet_size      : 32768</li>
-<li>timeout_notify           : True</li>
 <li>added_to_network         : False</li>
 <li>verbosity                : </li>
 <li>bind_on_init             : False</li>
 <li>socket_type              : 1</li>
 <li>_connecting              : False</li>
 <li>blocking                 : 0</li>
-<li>bad_target_verbosity     : 0</li>
-<li>auto_connect             : True</li>
 <li>network_buffer           : </li>
-<li>timeout                  : 0</li>
+<li>closed                   : False</li>
 </ul>
 <p>This object defines the following non-private methods:</p>
 <ul>
@@ -747,22 +750,74 @@
 </code></pre>
 </li>
 <li>
-<p><strong>recv</strong>(self):</p>
+<p><strong>recv</strong>(self, network_packet_size):</p>
 <pre class="prettyprint well"><code>  No documentation available
 </code></pre>
 </li>
 </ul>
 <p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Tcp_Client_Proxy', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<p>(class 'mpre.network2.Tcp_Client_Proxy', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<h2 id="tcp_service_client">Tcp_Service_Client</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Default values for newly created instances:</p>
+<ul>
+<li>timeout                  : 0</li>
+<li>memory_mode              : -1</li>
+<li>deleted                  : False</li>
+<li>ip                       : </li>
+<li>args                     : None</li>
+<li>add_on_init              : True</li>
+<li>memory_size              : 0</li>
+<li>blocking                 : 0</li>
+<li>socket_family            : 2</li>
+<li>as_port                  : 0</li>
+<li>connection_attempts      : 10</li>
+<li>added_to_network         : False</li>
+<li>network_packet_size      : 32768</li>
+<li>timeout_notify           : True</li>
+<li>target                   : ()</li>
+<li>verbosity                : </li>
+<li>bind_on_init             : False</li>
+<li>socket_type              : 1</li>
+<li>_connecting              : False</li>
+<li>port                     : 80</li>
+<li>bad_target_verbosity     : 0</li>
+<li>auto_connect             : True</li>
+<li>network_buffer           : </li>
+<li>closed                   : False</li>
+<li>kwargs                   : None</li>
+<li>method                   : </li>
+<li>component_name           : </li>
+</ul>
+<p>This object defines the following non-private methods:</p>
+<ul>
+<li>
+<p><strong>make_request</strong>(self, component_name, method, args, kwargs):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>on_connect</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>recv</strong>(self, network_packet_size):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+</ul>
+<p>This objects method resolution order is:</p>
+<p>(class 'mpre.network2.Tcp_Service_Client', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="tcp_service_proxy">Tcp_Service_Proxy</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
 <p>Default values for newly created instances:</p>
 <ul>
-<li>reuse_port               : 0</li>
-<li>closed                   : False</li>
-<li>memory_mode              : -1</li>
 <li>Tcp_Socket_type          : network.Tcp_Socket</li>
+<li>timeout                  : 0</li>
+<li>memory_mode              : -1</li>
 <li>deleted                  : False</li>
 <li>add_on_init              : True</li>
 <li>memory_size              : 0</li>
@@ -770,9 +825,9 @@
 <li>socket_family            : 2</li>
 <li>port                     : 80</li>
 <li>connection_attempts      : 10</li>
-<li>name                     : </li>
-<li>network_packet_size      : 32768</li>
 <li>added_to_network         : False</li>
+<li>reuse_port               : 0</li>
+<li>name                     : </li>
 <li>verbosity                : </li>
 <li>share_methods            : ('on_connect', 'client_socket_recv', 'client_socket_send')</li>
 <li>bind_on_init             : False</li>
@@ -780,7 +835,8 @@
 <li>_connecting              : False</li>
 <li>blocking                 : 0</li>
 <li>network_buffer           : </li>
-<li>timeout                  : 0</li>
+<li>closed                   : False</li>
+<li>network_packet_size      : 32768</li>
 <li>backlog                  : 50</li>
 </ul>
 <p>This object defines the following non-private methods:</p>
@@ -793,50 +849,6 @@
 </ul>
 <p>This objects method resolution order is:</p>
 <p>(class 'mpre.network2.Tcp_Service_Proxy', class 'mpre.network.Server', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="tcp_service_test">Tcp_Service_Test</h2>
-<pre class="prettyprint well"><code>No docstring found
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>as_port                  : 0</li>
-<li>closed                   : False</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>ip                       : </li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>socket_family            : 2</li>
-<li>port                     : 80</li>
-<li>connection_attempts      : 10</li>
-<li>target                   : ()</li>
-<li>network_packet_size      : 32768</li>
-<li>timeout_notify           : True</li>
-<li>added_to_network         : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>blocking                 : 0</li>
-<li>bad_target_verbosity     : 0</li>
-<li>auto_connect             : True</li>
-<li>network_buffer           : </li>
-<li>timeout                  : 0</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>on_connect</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>recv</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Tcp_Service_Test', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 </div>
         </div>
 

@@ -97,6 +97,10 @@
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
+                            <li >
+                                <a href="../exelauncher/">exelauncher</a>
+                            </li>
+                        
                             <li class="active">
                                 <a href="./">fileio</a>
                             </li>
@@ -229,18 +233,6 @@
                         <ul class="dropdown-menu">
                         
                             <li >
-                                <a href="../../misc/attributetest/">attributetest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest2/">attributetest2</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/attributetest3/">attributetest3</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -265,10 +257,6 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/decoratorlibrary2/">decoratorlibrary2</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/dialectlibrary/">dialectlibrary</a>
                             </li>
                         
@@ -281,19 +269,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../misc/todo/">todo</a>
                             </li>
                         
                             <li >
@@ -308,6 +284,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher/">buildlauncher</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/build_metapython_package/">build_metapython_package</a>
@@ -355,6 +335,18 @@
                         <ul class="dropdown-menu">
                         
                             <li >
+                                <a href="../../tests/attributetest/">attributetest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest2/">attributetest2</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/attributetest3/">attributetest3</a>
+                            </li>
+                        
+                            <li >
                                 <a href="../../tests/bytecodedis/">bytecodedis</a>
                             </li>
                         
@@ -378,6 +370,18 @@
                                 <a href="../../tests/network2/">network2</a>
                             </li>
                         
+                            <li >
+                                <a href="../../tests/scratch/">scratch</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/structtest/">structtest</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../tests/todo/">todo</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -391,7 +395,7 @@
                 
                 
                 <li >
-                    <a rel="next" href="../defaults/">
+                    <a rel="next" href="../exelauncher/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
@@ -416,6 +420,8 @@
         
             <li><a href="#cached">Cached</a></li>
         
+            <li><a href="#encrypted_file">Encrypted_File</a></li>
+        
             <li><a href="#file">File</a></li>
         
             <li><a href="#mmap">Mmap</a></li>
@@ -431,25 +437,79 @@
 <p>No documentation available</p>
 <h2 id="cached">Cached</h2>
 <p>A memoization decorator that should work with any method and argument structure</p>
-<h2 id="file">File</h2>
-<pre class="prettyprint well"><code>usage: file_object = File([filename], [mode], [file])
+<h2 id="encrypted_file">Encrypted_File</h2>
+<pre class="prettyprint well"><code> usage: Encrypted_File(filename='', mode='', file=None, file_type='disk', **kwargs) 
+   =&gt; encrypted_file
 
-   Creates a File object. File objects are pickleable and
-   support the reactor interface for reading/writing to the
-   underlying wrapped file.
+Returns an Encrypted_File object. Calls to the write method will be encrypted with
+encrypted_file.key via the mpre.utilities.convert function, and reads will be decrypted using the same key. Currently only supports ascii.
 
-   Regarding pickle-ability; if the storage_mode attribute is set
-   to "persistent", when pickled the contents of the file will be saved as well.
-   This may fail with a memory error for very large files. The default storage mode
-   is "local", which will not copy file data when pickling.
+The key is only valid for as long as the instance exists. In order to preserve
+the key, utilize the save method. The resulting pickle stream can later be
+unpickled and supplied to the load method to recover the original instance with 
+the appropriate key to decrypt the file.
 </code></pre>
 <p>Default values for newly created instances:</p>
 <ul>
 <li>deleted                  : False</li>
 <li>verbosity                : </li>
 <li>memory_size              : 4096</li>
+<li>persistent               : False</li>
 <li>memory_mode              : -1</li>
-<li>storage_mode             : local</li>
+</ul>
+<p>This object defines the following non-private methods:</p>
+<ul>
+<li>
+<p><strong>encrypt</strong>(self, data):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>read</strong>(self, size=-1):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>decrypt</strong>(self, data):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>derive_key</strong>(self):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>write</strong>(self, data):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+</ul>
+<p>This objects method resolution order is:</p>
+<p>(class 'mpre.fileio.Encrypted_File', class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<h2 id="file">File</h2>
+<pre class="prettyprint well"><code> usage: File(filename='', mode='', file=None, file_type="disk", **kwargs) =&gt; file
+
+Return a wrapper around a file like object. File objects are pickleable. 
+If file.persistent is True, upon pickling the files data will be saved and upon
+loading the data restored. The default is False. The wrapped file can be specified
+by the file argument.
+
+The file_type argument is a shortcut for creating virtual files. If set to "virtual", 
+the file will be a wrapper around a StringIO.StringIO. Opening a second virtual file
+with the same filename will yield a different wrapper around the same underlying
+file like object. This means that the seek and tell methods for either virtual file
+will return the same result as the other, as they point to the same object. The
+default file_type is 'disk'. Note that virtual files are unique to each physical
+python process.
+</code></pre>
+<p>Default values for newly created instances:</p>
+<ul>
+<li>deleted                  : False</li>
+<li>verbosity                : </li>
+<li>memory_size              : 4096</li>
+<li>persistent               : False</li>
+<li>memory_mode              : -1</li>
 </ul>
 <p>This object defines the following non-private methods:</p>
 <ul>
@@ -465,6 +525,11 @@
 </li>
 <li>
 <p><strong>handle_read</strong>(self, sender, packet):</p>
+<pre class="prettyprint well"><code>  No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>delete</strong>(self):</p>
 <pre class="prettyprint well"><code>  No documentation available
 </code></pre>
 </li>
