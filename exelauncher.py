@@ -1,7 +1,7 @@
 import sys
 import os
 import types
-defaults_source = r'''print 'fuck yeah'
+defaults_source = r'''
 #   mpf.defaults - config file - contains attributes:values for new instances
 #
 #    Copyright (C) 2014  Ella Rose
@@ -187,7 +187,7 @@ Instruction("Metapython", "create", "network.Network").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})
 '''
 
-metaclass_source = r'''print 'fuck yeah'
+metaclass_source = r'''
 import sys
 import argparse
 import types
@@ -571,7 +571,7 @@ if __name__ == "__main__":
     unittest.main()
 '''
 
-base_source = r'''print 'fuck yeah'
+base_source = r'''
 #   mpre.base - root inheritance objects
 #
 #    Copyright (C) 2014  Ella Rose
@@ -880,7 +880,7 @@ class Base(object):
             elif hasattr(value, "save"):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"
-                
+           
         if "_required_modules" in attributes: # modules are not pickle-able
             module_info = attributes.pop("_required_modules")
             attributes["_required_modules"] = modules = []
@@ -985,10 +985,8 @@ class Base(object):
                     source = inspect.getsource(module)
                 except TypeError:
                     try:
-                        print "Attempting to get {}._source".format(module_name)
                         source = module._source
                     except AttributeError:
-                        print dir(module)
                         raise UpdateError("Could not locate source for {}".format(module.__name__))
                         
                 required_modules.append((module_name, source, module))
@@ -1159,7 +1157,7 @@ class Proxy(Reactor):
             super_object.__setattr__(attribute, value)
 '''
 
-_metapython_source = r'''print 'fuck yeah'
+_metapython_source = r'''
 import sys
 import codeop
 import os
@@ -1474,7 +1472,7 @@ class Restored_Interpreter(Metapython):
         return interpreter
 '''
 
-network_source = r'''print 'fuck yeah'
+network_source = r'''
 #   mpf.network_library - Asynchronous socket operations
 #
 #    Copyright (C) 2014  Ella Rose
@@ -1545,7 +1543,7 @@ class Error_Handler(object):
     def bad_target(self, sock, error):
         sock.alert("Invalid target {}; {} {}", 
                    [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level='v')
+                   level=0)
         sock.delete()
         
     def unhandled(self, sock, error):
@@ -1586,7 +1584,6 @@ class Socket(base.Wrapper):
     def send(self, data):
         """ Sends data via the underlying _socketobject. The socket is first checked to
             ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        print self.instance_name, "Sending data"
         if self.parallel_method("Network", "is_writable", self):
             return self.wrapped_object.send(data)
         else:
@@ -1623,6 +1620,7 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
+        print address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
@@ -1750,7 +1748,7 @@ class Udp_Socket(Socket):
             
         if not self.port:
             self.port = self.getsockname()[1]
-                   
+        
         
 class Multicast_Beacon(Udp_Socket):
 
@@ -1840,7 +1838,7 @@ class Network(vmlibrary.Process):
                                 
                 writable = self._writable = set(writable)
                 connecting = self.connecting
-                #print "{}/{} are connecting".format(len(connecting), len(socket_list))
+                
                 if connecting:
                     # if a tcp client is writable, it's connected
                     accepted_connections = connecting.intersection(writable)
@@ -1858,13 +1856,12 @@ class Network(vmlibrary.Process):
                                 try:
                                     connection.connect(connection.target)
                                 except socket.error as error:
+                                    expired.add(connection)
                                     handler = getattr(connection.error_handler, 
                                         ERROR_CODES[error.errno].lower(),
                                         connection.error_handler.unhandled)
-                                    handler(connection, error)
-                                    expired.add(connection)
-                    self.connecting = still_connecting.difference(expired)          
-             #   print "Total still connecting: ", len(self.connecting)
+                                    handler(connection, error)                                   
+                    self.connecting = still_connecting.difference(expired)       
                 if readable:
                     for sock in readable:
                         try:
@@ -1878,12 +1875,12 @@ class Network(vmlibrary.Process):
                    
     def connect(self, sock):
         self.connecting.add(sock)
-    
+                
     def is_writable(self, sock):
         return sock in self._writable
 '''
 
-shell_launcher_source = r'''print 'fuck yeah'
+shell_launcher_source = r'''
 import mpre
 
 Instruction = mpre.Instruction
@@ -1916,6 +1913,12 @@ def build_docs(**kwargs):
                  
 def update(component):
     return constructor.parallel_method(component, "update")
+    
+#proxy = constructor.create("network2.Tcp_Service_Proxy", port=39999)
+#import network2
+#rpc = network2.Remote_Procedure_Call("Interpreter_Service", "login", ("127.0.0.1", 39999), 
+#                                     "root2 password")
+#connection = rpc.execute()                        
 """
 
 options["startup_definitions"] += definitions

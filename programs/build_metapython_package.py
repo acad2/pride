@@ -2,7 +2,7 @@ import os
 import cPickle as pickle
 
 import mpre.package
-
+import mpre
 options = {"verbosity" : "vvv"}   
                        
 directory = options["directory"] = 'C:\\users\\_\\pythonbs'
@@ -19,5 +19,4 @@ if __name__ == "__main__":
         pickle.dump(package, package_file)
         package_file.flush()
         package_file.close()
-    print "complete!"
-    
+    mpre.Instruction("Metapython", "exit").execute()

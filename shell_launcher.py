@@ -30,6 +30,12 @@ def build_docs(**kwargs):
                  
 def update(component):
     return constructor.parallel_method(component, "update")
+    
+#proxy = constructor.create("network2.Tcp_Service_Proxy", port=39999)
+#import network2
+#rpc = network2.Remote_Procedure_Call("Interpreter_Service", "login", ("127.0.0.1", 39999), 
+#                                     "root2 password")
+#connection = rpc.execute()                        
 """
 
 options["startup_definitions"] += definitions

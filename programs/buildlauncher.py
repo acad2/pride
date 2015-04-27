@@ -1,4 +1,5 @@
 import importlib
+import os
 import sys
 import inspect
 import mpre.utilities
@@ -19,7 +20,7 @@ def build_launcher(from_modules):
             full_name = "mpre." + module_name
             importlib.import_module(full_name)
             source = inspect.getsource(sys.modules[full_name])
-            launcher.write("{}_source = r'''print 'fuck yeah'\n{}'''\n\n".format(module_name, source))
+            launcher.write("{}_source = r'''\n{}'''\n\n".format(module_name, source))
         launcher.write("{}\n\n".format(inspect.getsource(mpre.utilities.create_module)))
         launcher.write("{}\n\n".format(inspect.getsource(mpre.utilities.Importer)))
         launcher.write("sys.meta_path = [Importer()]\n\n")
@@ -28,7 +29,8 @@ def build_launcher(from_modules):
         launcher.write("    metapython = mpre._metapython.Metapython(parse_args=True)\n")
         launcher.write("    metapython.start_machine()")
         launcher.flush()
+        mpre._compile.py_to_compiled([LAUNCHER_FILENAME], 'exe')
   
 if __name__ == "__main__":
     build_launcher(startup_modules)
-    mpre._compile.py_to_compiled([LAUNCHER_FILENAME], 'exe')
+    os.remove(LAUNCHER_FILENAME)

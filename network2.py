@@ -4,8 +4,7 @@ import hmac
 import getpass
 import hashlib
 import sqlite3
-import binascii
-import functools
+import pickle
 
 import mpre
 import mpre.base as base
@@ -179,7 +178,7 @@ class Network_Service(network.Udp_Socket):
 class Authenticated_Service(base.Reactor):
     
     defaults = defaults.Authenticated_Service
-                
+    # to do: replace authentication with SRP instead of password hashing/storage            
     def __init__(self, **kwargs):
         super(Authenticated_Service, self).__init__(**kwargs)
         self.invalid_attempts = {}
@@ -223,6 +222,7 @@ class Authenticated_Service(base.Reactor):
         username, password = packet.split(" ", 1)
         
         if username in self.logged_in.values():
+            self.alert("Detected multiple login attempt for: {}", [username], level='v')
             return 'login_result failed 1'
             
         database = self.database#sqlite3.connect(self.database_filename)
@@ -474,6 +474,8 @@ class Download(base.Reactor):
         
 class Tcp_Service_Proxy(network.Server):
 
+    defaults = defaults.Server.copy()
+        
     def __init__(self, **kwargs):
         super(Tcp_Service_Proxy, self).__init__(**kwargs)
         self.Tcp_Socket_type = Tcp_Client_Proxy
@@ -485,12 +487,19 @@ class Tcp_Service_Proxy(network.Server):
 class Tcp_Client_Proxy(network.Tcp_Socket):
     
     def recv(self, network_packet_size):
-        request = self.socket.recv(network_packet_size)        
-        service_name, command, value = request.split(" ", 2)
-      #  self.parallel_method(service_name, request
-        self.respond_with("reply")
-        request = command + " " + value
-        self.reaction(service_name, request)
+        request = self.socket.recv(network_packet_size)
+        service_name, command, arguments = request.split(" ", 2)
+        print "received request: ", request
+        args, kwargs = pickle.loads(arguments)
+        args = args if args else tuple()
+        kwargs = kwargs if kwargs else {}
+        result = self.parallel_method(service_name, command, self.socket.getpeername(),
+                                      *args, **kwargs)
+        
+        self.send(result)        
+       # self.respond_with("reply")
+       # request = command + " " + value
+       # self.reaction(service_name, request)
               
     def reply(self, sender, packet):
         self.send(str(sender) + " " + packet)
@@ -499,20 +508,61 @@ class Tcp_Client_Proxy(network.Tcp_Socket):
 class Tcp_Service_Client(network.Tcp_Client):
     
     defaults = defaults.Tcp_Client.copy()
-                         
+    defaults.update({"component_name" : '',
+                     "method" : '',
+                     "args" : None,
+                     "kwargs" : None})
+                     
+    def __init__(self, **kwargs):
+        super(Tcp_Service_Client, self).__init__(**kwargs)
+        component_name = self.component_name
+        method = self.method
+        if not component_name:
+            self.alert("Invalid request: No component specified", level=0)
+        elif not method:
+            self.alert("Invalid request: No method specified", level=0)
+        
+        self.connection_string = self.make_request(self.component_name, method, 
+                                                   self.args, self.kwargs)
+    
+    def make_request(self, component_name, method, args, kwargs):        
+        return ' '.join((component_name, method, pickle.dumps((args, kwargs))))
+        
     def on_connect(self):   
-        self.send("Interpreter_Service login root password")
+        self.send(self.connection_string)
                 
     def recv(self, network_packet_size):
-        packet = self.wrapped_object.recv(network_packet_size)
-        print "got results!: ", packet
+        packet = self.socket.recv(network_packet_size)
+        self.alert("Received response: {}", [packet], level=0)        
+        self.send(raw_input("Reply format: (component_name method args kwargs)\nReply: "))
         
-        self.send("Interpreter_Service " + raw_input("Reply: "))
+
+class Remote_Procedure_Call(object):
         
+    def __init__(self, component_name, method_name, host_info, *args, **kwargs):
+        self.component_name = component_name
+        self.method_name = method_name
+        self.host_info = host_info
+        self.args = args
+        self.kwargs = kwargs
+                
+    def execute(self, recv_callback=None):
+        kwargs = {"component_name" : self.component_name,
+                  "method" : self.method_name,
+                  "target" : self.host_info,
+                  "args" : self.args,
+                  "kwargs" : self.kwargs,
+                  "verbosity" : 'vvv'}
+        if recv_callback:
+            kwargs["recv"] = recv_callback                                  
+        return Tcp_Service_Client(**kwargs)
         
 if __name__ == "__main__":
     from mpre.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
    # test_reliability()
    # test_authentication()
    # test_file_service()
-    test_proxy()
+   # test_proxy()
+    rpc = Remote_Procedure_Call("Interpeter_Service", "login", "root password")
+    #def callback(self, network_packet_size=0):
+    connection = rpc.execute()

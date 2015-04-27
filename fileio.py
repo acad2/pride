@@ -1,11 +1,15 @@
 import mmap
 import os
+import pickle
+import StringIO
 from contextlib import closing, contextmanager
 
+    
 import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
-    
+import mpre.utilities as utilities
+
 def ensure_folder_exists(pathname):
     """usage: ensure_folder_exists(pathname)
     
@@ -71,52 +75,119 @@ class Cached(object):
                 
                 
 class File(base.Wrapper):
-    """usage: file_object = File([filename], [mode], [file])
+    """ usage: File(filename='', mode='', file=None, file_type="disk", **kwargs) => file
     
-       Creates a File object. File objects are pickleable and
-       support the reactor interface for reading/writing to the
-       underlying wrapped file. 
-       
-       Regarding pickle-ability; if the storage_mode attribute is set
-       to "persistent", when pickled the contents of the file will be saved as well.
-       This may fail with a memory error for very large files. The default storage mode
-       is "local", which will not copy file data when pickling."""
+        Return a wrapper around a file like object. File objects are pickleable. 
+        If file.persistent is True, upon pickling the files data will be saved and upon
+        loading the data restored. The default is False. The wrapped file can be specified
+        by the file argument. 
+        
+        The file_type argument is a shortcut for creating virtual files. If set to "virtual", 
+        the file will be a wrapper around a StringIO.StringIO. Opening a second virtual file
+        with the same filename will yield a different wrapper around the same underlying
+        file like object. This means that the seek and tell methods for either virtual file
+        will return the same result as the other, as they point to the same object. The
+        default file_type is 'disk'. Note that virtual files are unique to each physical
+        python process."""
         
     defaults = defaults.Reactor.copy()
-    defaults.update({"storage_mode" : "local"})
+    defaults.update({"persistent" : False})
     
-    def __init__(self, filename='', mode='', file=None, **kwargs):           
-        kwargs.setdefault("wrapped_object", (file if file else 
-                                             open(filename, mode)))
+    virtual_files = {}
+    file_handles = {}
+    
+    def __init__(self, filename='', mode='', file=None, file_type="disk", **kwargs):    
+        if not file:
+            if file_type == "virtual":
+                if filename not in File.virtual_files:
+                    file = self.virtual_files[filename] = StringIO.StringIO()
+                    self.file_handles[filename] = [self]
+                else:
+                    file = self.virtual_files[filename]
+                    self.file_handles[filename].append(self)
+            elif file_type == "disk":
+                file = open(filename, mode)
+        kwargs.setdefault("wrapped_object", file)        
+        
         super(File, self).__init__(**kwargs)
         self.filename = filename
         self.mode = mode
+        self.file_type = file_type
         
     def handle_write(self, sender, packet):
-        self.wrapped_object.write(packet)
+        self.write(packet)
         
     def handle_read(self, sender, packet):
         seek, byte_count = packet.split(" ", 1)
-        self.wrapped_object.seek(seek)
-        return "handle_write " + self.file.read(byte_count)
+        self.seek(seek)
+        return "handle_write " + self.read(byte_count)
                         
     def __getstate__(self):
-        if self.storage_mode == "persistent":
-            self.seek(0)
-            data = self.read()
-        else:
-            data = ''
         attributes = super(File, self).__getstate__()
+        if self.persistent:
+            self.seek(0)
+            attributes["_file_data"] = self.read()
         del attributes["wrapped_object"]
-        attributes["_file_data"] = data
         return attributes
         
-    def on_load(self, attributes):        
+    def on_load(self, attributes):
         super(File, self).on_load(attributes)
-        _file = self.wrapped_object = open(self.filename, self.mode)
-        if self.storage_mode == "persistent":
-            _file.write(self.__dict__.pop("_file_data"))
-                        
+        if self.file_type == "virtual":
+            _file = (self.virtual_files[self.filename] if 
+                     self.filename in self.virtual_files else
+                     StringIO.StringIO())
+        else:
+            _file = open(self.filename, self.mode)
+        self.wrapped_object = _file
+        
+        if self.persistent:
+            self.write(self.__dict__.pop("_file_data"))                        
+            self.seek(0)
+            
+    def delete(self):
+        filename = self.filename
+        self.file_handles[filename].remove(self)
+        if not self.file_handles[filename]:
+            del self.virtual_files[filename]
+            del self.file_handles[filename]
+        
+        
+class Encrypted_File(File):
+    """ usage: Encrypted_File(filename='', mode='', file=None, file_type='disk', **kwargs) 
+               => encrypted_file
+               
+        Returns an Encrypted_File object. Calls to the write method will be encrypted with
+        encrypted_file.key via the mpre.utilities.convert function, and reads will be decrypted using the same key. Currently only supports ascii.
+        
+        The key is only valid for as long as the instance exists. In order to preserve
+        the key, utilize the save method. The resulting pickle stream can later be
+        unpickled and supplied to the load method to recover the original instance with 
+        the appropriate key to decrypt the file."""
+        
+    asciikey = ''.join(chr(ordinal) for ordinal in xrange(256))
+    
+    def __init__(self, filename='', mode='', file=None, file_type="disk", **kwargs):
+        super(Encrypted_File, self).__init__(filename, mode, file, file_type, **kwargs)
+        self.key = ''.join(ordinal for ordinal in self.derive_key())
+    
+    def derive_key(self):
+        key = set()
+        while len(key) < 256:
+            key.update(set(os.urandom(256)))
+        return key
+    
+    def write(self, data):
+        self.wrapped_object.write(self.encrypt(data))
+        
+    def read(self, size=-1):
+        return self.decrypt(self.wrapped_object.read(size))
+        
+    def encrypt(self, data):
+        return utilities.convert(data, Encrypted_File.asciikey, self.key)
+        
+    def decrypt(self, data):
+        return utilities.convert(data, self.key, Encrypted_File.asciikey)
+        
         
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 

@@ -68,7 +68,7 @@ class Error_Handler(object):
     def bad_target(self, sock, error):
         sock.alert("Invalid target {}; {} {}", 
                    [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level='v')
+                   level=0)
         sock.delete()
         
     def unhandled(self, sock, error):
@@ -109,7 +109,6 @@ class Socket(base.Wrapper):
     def send(self, data):
         """ Sends data via the underlying _socketobject. The socket is first checked to
             ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        print self.instance_name, "Sending data"
         if self.parallel_method("Network", "is_writable", self):
             return self.wrapped_object.send(data)
         else:
@@ -146,6 +145,7 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
+        print address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
@@ -273,7 +273,7 @@ class Udp_Socket(Socket):
             
         if not self.port:
             self.port = self.getsockname()[1]
-                   
+        
         
 class Multicast_Beacon(Udp_Socket):
 
@@ -363,7 +363,7 @@ class Network(vmlibrary.Process):
                                 
                 writable = self._writable = set(writable)
                 connecting = self.connecting
-                #print "{}/{} are connecting".format(len(connecting), len(socket_list))
+                
                 if connecting:
                     # if a tcp client is writable, it's connected
                     accepted_connections = connecting.intersection(writable)
@@ -381,13 +381,12 @@ class Network(vmlibrary.Process):
                                 try:
                                     connection.connect(connection.target)
                                 except socket.error as error:
+                                    expired.add(connection)
                                     handler = getattr(connection.error_handler, 
                                         ERROR_CODES[error.errno].lower(),
                                         connection.error_handler.unhandled)
-                                    handler(connection, error)
-                                    expired.add(connection)
-                    self.connecting = still_connecting.difference(expired)          
-             #   print "Total still connecting: ", len(self.connecting)
+                                    handler(connection, error)                                   
+                    self.connecting = still_connecting.difference(expired)       
                 if readable:
                     for sock in readable:
                         try:
@@ -401,6 +400,6 @@ class Network(vmlibrary.Process):
                    
     def connect(self, sock):
         self.connecting.add(sock)
-    
+                
     def is_writable(self, sock):
         return sock in self._writable

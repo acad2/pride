@@ -306,7 +306,7 @@ class Base(object):
             elif hasattr(value, "save"):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"
-                
+           
         if "_required_modules" in attributes: # modules are not pickle-able
             module_info = attributes.pop("_required_modules")
             attributes["_required_modules"] = modules = []
@@ -411,10 +411,8 @@ class Base(object):
                     source = inspect.getsource(module)
                 except TypeError:
                     try:
-                        print "Attempting to get {}._source".format(module_name)
                         source = module._source
                     except AttributeError:
-                        print dir(module)
                         raise UpdateError("Could not locate source for {}".format(module.__name__))
                         
                 required_modules.append((module_name, source, module))
