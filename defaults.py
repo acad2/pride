@@ -181,3 +181,22 @@ Metapython.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
 """Instruction('Metapython', 'create', 'userinput.User_Input').execute()
 Instruction("Metapython", "create", "network.Network").execute()"""})
 #"help" : "Execute a python script or launch a live metapython session"})
+
+# fileio
+
+File_Object = Base.copy()
+File_Object.update({"path" : '',
+                    "file_system" : "disk",
+                    "directory" : None,
+                    "is_directory" : False})
+                    
+Directory = File_Object.copy()
+Directory.update({"is_directory" : True})
+
+File = File_Object.copy()
+File.update({"file" : None,
+             "file_type" : "StringIO.StringIO"})
+             
+File_System = Process.copy()
+File_System.update({"file_systems" : ("disk", "virtual"),
+                    "auto_start" : False})             

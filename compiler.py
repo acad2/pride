@@ -12,14 +12,14 @@ class Compiler(object):
         currently does not yet type any variables in the source code, and the resulting 
         executable may not perform any faster then one interpreted from .py source. However,
         the executable created is more difficult to reverse engineer then one created by py2exe."""
-    def __init__(self, shared_file_type="pyd" if "win" in sys.platform else "so",
+    def __init__(self, shared_file_system="pyd" if "win" in sys.platform else "so",
                        directory=os.getcwd(),
                        subfolders=tuple(),
                        main_file='',
                        ignore_files=tuple(),
                        ignore_folders=tuple(),
                        max_processes=10):
-        self.shared_file_type = shared_file_type
+        self.shared_file_system = shared_file_system
         self.directory = directory
         self.subfolders = subfolders
         self.main_file = main_file
@@ -27,7 +27,7 @@ class Compiler(object):
         self.ignore_folders = ignore_folders
         self.max_processes = max_processes
                      
-    def cleanup_compiled_files(self, file_types=("pyx", "c")):  
+    def cleanup_compiled_files(self, file_systems=("pyx", "c")):  
         directory = self.directory
         _, _, file_list = next(os.walk(directory))
         file_list = [('', file_list)]
@@ -37,7 +37,7 @@ class Compiler(object):
             file_list.append((folder_path,
                               next(os.walk(folder_path))[2]))
          
-        for filetype in file_types:
+        for filetype in file_systems:
             for folder, _files in file_list:
                 for _file in _files:
                     if os.path.splitext(_file)[-1] == '.' + filetype:
@@ -79,7 +79,7 @@ class Compiler(object):
             for file_count in range(files_per_process):
                 processes.append(mp.Process(target=_compile.py_to_compiled, 
                                             args=[files[slices[file_count]],
-                                            self.shared_file_type]))
+                                            self.shared_file_system]))
             print "beginning compilation..."
             for process in processes:
                 process.start()
@@ -100,4 +100,4 @@ if __name__ == "__main__":
                         main_file="metapython.py",
                         ignore_files=["compiler.py", "_compile.py"])
     compiler.compile()
-    compiler.cleanup_compiled_files(file_types=("pyx", 'c'))
+    compiler.cleanup_compiled_files(file_systems=("pyx", 'c'))

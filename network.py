@@ -1,405 +1,568 @@
-#   mpf.network_library - Asynchronous socket operations
-#
-#    Copyright (C) 2014  Ella Rose
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import socket
-import select
-import struct
-import errno
-import traceback
+import os
+import collections
+import hmac
+import getpass
+import hashlib
+import sqlite3
+import pickle
 
 import mpre
-import mpre.vmlibrary as vmlibrary
-import mpre.defaults as defaults
 import mpre.base as base
-from utilities import Latency, Average
+import mpre.defaults as defaults
+import mpre.network as network
+import mpre.fileio as fileio
+from mpre.utilities import Latency, timer_function
 Instruction = mpre.Instruction
-
-NotWritableError = type("NotWritableError", (IOError, ), {"errno" : -1})
-ERROR_CODES = {-1 : "NotWritableError"}
-try:
-    CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
-    BAD_TARGET = errno.WSAEINVAL
-    CONNECTION_IN_PROGRESS = errno.WSAEWOULDBLOCK
-    CONNECTION_IS_CONNECTED = errno.WSAEISCONN
-    CONNECTION_WAS_ABORTED = errno.WSAECONNABORTED
-    CONNECTION_RESET = errno.WSAECONNRESET    
-    ERROR_CODES[BAD_TARGET] = "BAD_TARGET"    
-except:
-    CALL_WOULD_BLOCK = errno.EWOULDBLOCK
-    CONNECTION_IN_PROGRESS = errno.EINPROGRESS
-    CONNECTION_IS_CONNECTED = errno.EISCONN
-    CONNECTION_WAS_ABORTED = errno.ECONNABORTED
-    CONNECTION_RESET = errno.ECONNRESET
- 
-ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
-                    CONNECTION_IN_PROGRESS : "CONNECTION_IN_PROGRESS",
-                    CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
-                    CONNECTION_WAS_ABORTED : "CONNECTION_WAS_ABORTED",
-                    CONNECTION_RESET  : "CONNECTION_RESET"})
-               
-HOST = socket.gethostbyname(socket.gethostname())
-
-class Error_Handler(object):
-            
-    def connection_reset(self, sock, error):
-        sock.alert("Connection reset\n{}", [error], level=0)
-        sock.delete()
-        
-    def connection_was_aborted(self, sock, error):
-        sock.alert("Connection was aborted\n{}", [error], level=0)
-        sock.delete()
-        
-    def eagain(self, sock, error):
-        sock.alert("{}", [error], level=0)
-    
-    def bad_target(self, sock, error):
-        sock.alert("Invalid target {}; {} {}", 
-                   [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level=0)
-        sock.delete()
-        
-    def unhandled(self, sock, error):
-        sock.alert("Unhandled error:{} {}", [errno.errorcode[error.errno], error], level=0)
-        sock.delete()
-        
-_error_handler = Error_Handler()
-       
-class Socket(base.Wrapper):
-    """ Provides a mostly transparent asynchronous socket interface by applying a 
-        Wrapper to a _socketobject. The default socket family is socket.AF_INET and
-        the default socket type is socket.SOCK_STREAM (a.k.a. a tcp socket)."""
-    defaults = defaults.Socket
-
-    def _get_address(self):
-        return (self.ip, self.port)
-    address = property(_get_address)
-    
-    def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
-                       proto=0, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
-        self.error_handler = _error_handler
-        super(Socket, self).__init__(**kwargs)
-        self.socket = self.wrapped_object
-        self.setblocking(self.blocking)
-        self.settimeout(self.timeout)
-                
-        if self.add_on_init:
-            self.added_to_network = True
-            self.parallel_method("Network", "add", self)
-         
-    def on_select(self):
-        """ Used to customize behavior when a socket is readable according to select.select.
-            It is not likely that one would overload this method; End users probably want
-            to overload recv/recvfrom instead."""
-        self.recvfrom(self.network_packet_size)
-        
-    def send(self, data):
-        """ Sends data via the underlying _socketobject. The socket is first checked to
-            ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        if self.parallel_method("Network", "is_writable", self):
-            return self.wrapped_object.send(data)
-        else:
-            raise NotWritableError
-                             
-    def sendto(self, data, host_info):
-        """ Sends data via the underlying _socketobject to the specified address. The socket
-            is first checked to ensure writability before sending. If the socket is not
-            writable, NotWritableError is raised."""
-        if self.parallel_method("Network", "is_writable", self):
-            return self.wrapped_object.sendto(data, host_info)
-        else:
-            raise NotWritableError
-
-    def recv(self, buffer_size=0):
-        """ Receives data from a remote endpoint. This method is event triggered and called
-            when the socket becomes readable according to select.select. Subclasses should
-            extend this method to customize functionality for when data is received. This
-            method is called for Tcp sockets and requires a connection."""
-        buffer_size = (self.network_packet_size if not buffer_size else
-                       buffer_size)
-        return self.wrapped_object.recv(buffer_size)
-        
-    def recvfrom(self, buffer_size=0):
-        """ Receives data from a host. For Udp sockets this method is event triggered
-            and called when the socket becomes readable according to select.select. Subclasses
-            should extend this method to customize functionality for when data is received."""
-        buffer_size = (self.network_packet_size if not buffer_size else
-                       buffer_size)
-        return self.wrapped_object.recvfrom(buffer_size)
-      
-    def connect(self, address):
-        """ Perform a non blocking connect to the specified address. The on_connect method
-            is called when the connection succeeds, or the appropriate error handler method
-            is called if the connection fails. Subclasses should overload on_connect instead
-            of this method."""
-        print address
-        try:
-            self.wrapped_object.connect(address)
-        except socket.error as error:
-            if error.errno != 10035:
-                raise
-            if not self._connecting:
-                self._connecting = True
-                self.parallel_method("Network", "connect", self)            
-
-    def on_connect(self):
-        """ Performs any logic required when a Tcp connection succeeds. This method should
-            be overloaded by subclasses."""
-        self.alert("Connected", level=0)
-                
-    def delete(self):
-        if not self.closed:
-            self.close()            
-        super(Socket, self).delete()
-    
-    def close(self):
-        if self.added_to_network:
-            self.parallel_method("Network", "remove", self)
-        self.wrapped_object.close()
-        self.closed = True
-    
-    def __getstate__(self):
-        stats = super(Socket, self).__getstate__()
-        del stats["wrapped_object"]
-        del stats["socket"]
-        return stats
-        
-       
-class Tcp_Socket(Socket):
-
-    defaults = defaults.Tcp_Socket
-    
-    def __init__(self, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
-                                                          socket.SOCK_STREAM))
-        super(Tcp_Socket, self).__init__(**kwargs)
-
-    def on_select(self):
-        self.recv(self.network_packet_size)
-        
-        
-class Server(Tcp_Socket):
-
-    defaults = defaults.Server
-
-    def __init__(self, **kwargs):       
-        super(Server, self).__init__(**kwargs)
-        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
-
-        bind_success = True
-        try:
-            self.bind((self.interface, self.port))
-        except socket.error:
-            self.alert("socket.error when binding to {0}", (self.port, ), 0)
-            bind_success = self.handle_bind_error()
-        if bind_success:
-            self.listen(self.backlog)
-                    
-    def on_select(self):
-        try:
-            while True:
-                self.accept()
-        except socket.error as error:
-            if error.errno != 10035:
-                raise
-                
-    def accept(self):
-        _socket, address = self.wrapped_object.accept()
-        
-        connection = self.create(self.Tcp_Socket_type,
-                                 wrapped_object=_socket)
-        
-        self.alert("{} accepted connection {} from {}", 
-                  (self.name, connection.instance_name, address),
-                  level="v")
-        
-        self.on_connect(connection)
-        return connection, address
-        
-    def handle_bind_error(self):
-        if self.allow_port_zero:
-            self.bind((self.interface, 0))
-            return True
-        else:
-            self.alert("{0}\nAddress already in use. Deleting {1}\n",
-                       (traceback.format_exc(), self.instance_name), 0)
-            instruction = Instruction(self.instance_name, "delete")
-            instruction.execute()
- 
-    def on_connect(self, connection):
-        """ Connection logic that the server should apply when a new client has connected.
-            This method should be overloaded by subclasses"""
-        raise NotImplementedError 
-        
-        
-class Tcp_Client(Tcp_Socket):
-
-    defaults = defaults.Tcp_Client
-
-    def __init__(self, **kwargs):
-        super(Tcp_Client, self).__init__(**kwargs)
-        
-        if not self.target:
-            if not self.ip:
-                self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
-            self.target = (self.ip, self.port)
-        if self.auto_connect:
-            self.connect(self.target)
-                
-        
-class Udp_Socket(Socket):
-
-    defaults = defaults.Udp_Socket
-
-    def __init__(self, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
-        super(Udp_Socket, self).__init__(**kwargs)        
-               
-        if self.bind_on_init:
-            self.bind((self.interface, self.port))
-            
-        if not self.port:
-            self.port = self.getsockname()[1]
-        
-        
-class Multicast_Beacon(Udp_Socket):
-
-    defaults = defaults.Multicast_Beacon
-
-    def __init__(self, **kwargs):
-        super(Multicast_Beacon, self).__init__(**kwargs)
-        self.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.packet_ttl)
-
-
-class Multicast_Receiver(Udp_Socket):
-
-    defaults = defaults.Multicast_Receiver
-
-    def __init__(self, **kwargs):
-        super(Multicast_Receiver, self).__init__(**kwargs)
-
-        # thanks to http://pymotw.com/2/socket/multicast.html for the below
-        group_option = socket.inet_aton(self.address)
-        multicast_configuration = struct.pack("4sL", group_option, socket.INADDR_ANY)
-        self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
            
-
-class Network(vmlibrary.Process):
-    """ Manages socket objects and is responsible for calling select.select to determine
-        readability/writability of sockets. Also responsible for non blocking connect logic. 
-        This component is created by default upon application startup, and in most cases will
-        not require user interaction."""
-    defaults = defaults.Network
-   
-    def __init__(self, **kwargs):
-        # minor optimization; pre allocated slices and ranges for
-        # sliding through the socket list to sidestep the 500 
-        # file descriptor limit that select has. Produces slice objects
-        # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
-        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(100))
-        self._socket_range_size = range(1)
-        
-        self._writable = set()
-        self.connecting = set()
-        super(Network, self).__init__(**kwargs)
-        
-        self.sockets = []
-        self._sockets = set()
-        self.running = False
-        self.update_instruction = Instruction(self.instance_name, "_update_range_size")
-        self.update_instruction.execute(self.update_priority)
-        
-    def add(self, sock):
-        super(Network, self).add(sock)
-        self.sockets.append(sock)
-        self._sockets.add(sock)
-        if not self.running:
-            self.running = True        
-            self.run()
-                
-    def remove(self, sock):
-        super(Network, self).remove(sock)
-        self.sockets.remove(sock)
-        self._sockets.remove(sock)
-        if sock in self.connecting:
-            self.connecting.remove(sock)
-            
-    def delete(self):
-        super(Network, self).delete()
-        del self.sockets
-        del self._sockets
-        
-    def _update_range_size(self):
-        load = self._socket_range_size = range((len(self.sockets) / 500) + 1)
-        # disable sleep under load
-        self.priority = self.defaults["priority"] if len(load) == 1 else 0.0 
-        self.update_instruction.execute(self.update_priority)
-
-    def run(self):
-        sockets = self.sockets
-        if not sockets:
-            self.running = False
+def Authenticated(function):
+    def call(instance, sender, packet):
+        if sender in instance.logged_in:
+            response = function(instance, sender, packet)
         else:
-            for chunk in self._socket_range_size:
-                # select has a max # of file descriptors it can handle, which
-                # is about 500 (at least on windows). We can avoid this limitation
-                # by sliding through the socket list in slices of 500 at a time
-                socket_list = sockets[self._slice_mapping[chunk]]
-                readable, writable, errors = select.select(socket_list, socket_list, [], 0.0)
-                                
-                writable = self._writable = set(writable)
-                connecting = self.connecting
+            response = "login_result 0"
+        return response
+    return call    
+    
+class Network_Service(network.Udp_Socket):
+    
+    defaults = defaults.Network_Service
+    
+    end_request_errors = {"0" : "Invalid Request"}
+    
+    def __init__(self, **kwargs):
+        super(Network_Service, self).__init__(**kwargs)
+        self.expecting_response = collections.deque(maxlen=20)
+        self.received = collections.deque(maxlen=20)
+        self.packet_cache = collections.deque(maxlen=20)
+        self._return_to = {}
+        self.sent_at = {}
+        self.resent = set()
+
+    def socket_recv(self):
+        packet, sender = self.recvfrom(self.network_packet_size)
+
+        # (hopefully) reliable udp mechanisms
+        id, response_to, data = packet.split(" ", 2)     
+        self.received.append(response_to)
+        request = (sender, response_to)
+        
+        self.alert("Checking to see if {} is expected",
+                   [request],
+                   level='vv')    
+        try:                   
+            self.expecting_response.remove(request)
+        except ValueError:
+            if response_to == "None":
+                self.alert("Received a new connection {}",
+                           [id],
+                           'vv')
+            else:
+                self.alert("Received duplicate packet {}",
+                           [id],
+                           level='vv')
+                if request in self.resent:
+                    self.resent.remove(request)  
+                else:
+                    return
+        
+        # packet parsing
+        end_of_request = False
+        if response_to in self._return_to:
+            command = self._return_to[response_to]
+            value = data
+            if value[:11] == "end_request":
+                value = value[11:]
+                end_of_request = True
+        else:
+            if data[:11] == "end_request":
+                data = data[12:]
+                end_of_request = True
+            try:
+                command, value = data.split(" ", 1)
+            except ValueError:
+                if not end_of_request: # malformed request
+                    response = self.invalid_request(sender, packet)
+                    self.send_data(response, sender, response_to, False)  
+                    return
+
+        if end_of_request:
+            self.alert("Request finished {}",
+                       [request],
+                       'vv')
+            return
+            
+        self.alert("handling response {} {}",
+                   [command, value[:32]],
+                   level='vv')
+        #print "reaction: ", self.instance_name, command, value[:45]
+        response = getattr(self, command)(sender, value)
+        response = response if response else "end_request"
+        expect_response = response[:11] != "end_request"
+        
+        self.alert("Sending response: {} in response to {}",
+                   [response, id],
+                   level='vvv')
+        self.send_data(response, sender, response_to, expect_response)
+        
+        #self._handle_resends()
+        
+    def send_data(self, data, to=None, 
+                  response_to='None', expect_response=True):
+        reaction = ''
+        lowercase_data = data.lower()
+        
+        if lowercase_data[:6] == "return":
+            flag, reaction, data = data.split(" ", 2)
+        
+        id, packet = self._make_packet(response_to, data)
+        
+        if reaction:
+            self._return_to[id] = reaction
+            
+        if to[0] == "localhost":
+            to = ("127.0.0.1", to[1])                            
+        
+        self.sendto(packet, to)
+        
+        if expect_response:
+            self.expecting_response.append((to, id))
+            
+        self.packet_cache.append((id, packet))
+        self.sent_at[id] = timer_function()
+        self.alert("sent packet {} {} to {} in response to {}",
+                   [id, data[:32], to, response_to],
+                   level='vv')                               
+        
+    def _handle_resends(self):
+        packet_cache = dict((id, packet) for id, packet in self.packet_cache)
+        sent_at = self.sent_at
+        resend_after = .2
+        
+        for target, id in self.expecting_response:
+            if timer_function() - sent_at[id] > resend_after:
+                packet = packet_cache[id]
                 
-                if connecting:
-                    # if a tcp client is writable, it's connected
-                    accepted_connections = connecting.intersection(writable)
-                    if accepted_connections:
-                        for accepted in connecting.intersection(writable):
-                            accepted.on_connect()
+                self.alert("Resending {}",
+                           [id],
+                           level=0)
                         
-                    # if not, then it's still connecting or the connection failed
-                    still_connecting = connecting.difference(writable)    
-                    expired = set()                    
-                    if still_connecting:                        
-                        for connection in still_connecting:
-                            connection.connection_attempts -= 1
-                            if not connection.connection_attempts:
-                                try:
-                                    connection.connect(connection.target)
-                                except socket.error as error:
-                                    expired.add(connection)
-                                    handler = getattr(connection.error_handler, 
-                                        ERROR_CODES[error.errno].lower(),
-                                        connection.error_handler.unhandled)
-                                    handler(connection, error)                                   
-                    self.connecting = still_connecting.difference(expired)       
-                if readable:
-                    for sock in readable:
-                        try:
-                            sock.on_select()
-                        except socket.error as error:
-                            handler = getattr(sock.error_handler, 
-                                    ERROR_CODES[error.errno].lower(),
-                                    sock.error_handler.unhandled)
-                            handler(sock, error)         
-            self.run_instruction.execute(priority=self.priority)
-                   
-    def connect(self, sock):
-        self.connecting.add(sock)
+                self.parallel_method("Network", "send", 
+                                self,
+                                packet,
+                                target)
+                self.resent.add((target, id))               
+               
+    def invalid_request(self, sender, packet):
+        self.alert("Invalid reaction request\nFrom:{}\nPacket:{}",
+                   [sender, packet],
+                   level=0)
+                                    
+        return "end_request invalid_request " + packet
+    
+    def _make_packet(self, response_to, data):
+        message = response_to + " " + data
+        id = str(hash(message))
+        return id, id + " " + message
+        
+    def demo_reaction(self, sender, packet):
+        print "im a demo reaction for", sender, packet
+        counter = int(packet)
+        if counter >= 1000:
+            print "1000 reactions happened between {} and {}".format(self, sender)
+            response = ''
+        else:
+            response = "demo_reaction " + str(counter + 1)
+        return response
+        
+        
+class Authenticated_Service(base.Reactor):
+    
+    defaults = defaults.Authenticated_Service
+    # to do: replace authentication with SRP instead of password hashing/storage            
+    def __init__(self, **kwargs):
+        super(Authenticated_Service, self).__init__(**kwargs)
+        self.invalid_attempts = {}
+        self.logged_in = {}
+        
+        db = self.database = sqlite3.connect(self.database_filename)
+        db.text_factory = str
+                    
+        cursor = db.cursor()
+        
+        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
+                       "email TEXT, username TEXT, password TEXT" +
+                       ", address TEXT)")
+                       
+        self._add_user = '''INSERT INTO Credentials VALUES(?, ?, ?, ?)'''
+        self._remove_user = "DELETE FROM Credentials WHERE username=:username"
+        self._select_user = """SELECT username, password FROM Credentials WHERE username = ?"""
+            
+    def _sql_encrypt(self, password, salt=None):
+        salt = os.urandom(64) if not salt else salt
+        iterations = self.hash_rounds
+        digest = salt + password
+        hash_functions = dict((name, getattr(hashlib, name)) for name in 
+                               hashlib.algorithms if name != "pbkdf2_hmac")         
+        while iterations > 0:
+            for hash_function in hashlib.algorithms:
+                digest = hash_functions[hash_function](digest).digest()
+                iterations -= 1
+        return salt + digest
+        
+    def __getstate__(self):
+        state = super(Authenticated_Service, self).__getstate__()
+        del state["database"]
+        return state
+        
+    def on_load(self, attributes):
+        super(Authenticated_Service, self).on_load(attributes)
+        self.database = sqlite3.connect(self.database_filename)
+        
+    def login(self, sender, packet):
+        username, password = packet.split(" ", 1)
+        
+        if username in self.logged_in.values():
+            self.alert("Detected multiple login attempt for: {}", [username], level='v')
+            return 'login_result failed 1'
+            
+        database = self.database#sqlite3.connect(self.database_filename)
+        cursor = database.cursor()
+        
+        self.alert("{} attempting to login from {}",
+                   [username, sender],
+                   level='v')                   
+        
+        cursor.execute(self._select_user, [username])       
+        database.commit()            
+        try:
+            username, correct_password = cursor.fetchone()
+        except TypeError as error:
+            response = "register "
+            message = ("Please register username before logging in\n" +
+                       "Registration requires:" + "\n\temail: {}" + 
+                       "\n\tusername: {}" + "\n\tpassword: {}")
+            response += message
+            database.rollback()            
+        else:
+            hashed = self._sql_encrypt(password, correct_password[:64])
+            if (hmac.compare_digest(hashed, correct_password) if 
+                hasattr(hmac, "compare_digest") else 
+                hashed == correct_password):
+                     
+                self.logged_in[sender] = username
+                response = "success " + self.login_message
+            else:
+                invalid_attempts = self.invalid_attempts
                 
-    def is_writable(self, sock):
-        return sock in self._writable
+                attempts = invalid_attempts.get(sender, 0)
+                invalid_attempts.setdefault(sender, attempts + 1)
+                response = "failed 0"            
+                
+        return "login_result " + response
+        
+    def register(self, sender, packet):
+        database = self.database#sqlite3.connect(self.database_filename)
+        cursor = database.cursor()
+        
+        email, username, password = packet.split(" ", 2)
+
+        self.alert("Registering new user {} {} {}",
+                   [email, username, sender],
+                   level='v')
+       
+        try:
+            cursor.execute(self._add_user, (email, username,
+                                            self._sql_encrypt(password), str(sender)))
+            
+        except sqlite3.Error as error:            
+            self.alert("Database error: {}",
+                       [error],
+                       0)
+            database.rollback()
+            response = 'failed'
+        else:
+            database.commit()
+            response = "success"
+            
+            self.alert("{} {} {} registered successfully",
+                       [username, email, sender],
+                       level='vv')
+        return "register_results " + response
+
+    def logout(self, sender, packet):
+        if sender in self.logged_in:            
+            del self.logged_in[sender]
+    
+    @Authenticated
+    def modify_user(self, sender, packet):
+        mode, user = packet.split(" ", 1)
+        database = sqlite3.connect(self.database_filename)
+        cursor = database.cursor()
+        
+        if mode == "remove":
+            cursor.execute(self._remove_user, 
+                          {"Username" : self.logged_in[sender]})
+            database.commit()
+            del self.logged_in[user]
+
+      
+class Authenticated_Client(base.Reactor):
+            
+    defaults = defaults.Authenticated_Client
+    
+    login_errors = {"0" : "Invalid username or password",
+                    "1" : "Already logged in"}
+                    
+    def __init__(self, **kwargs):
+        super(Authenticated_Client, self).__init__(**kwargs)        
+        self.logged_in = False
+        self.reaction(self.target, self.login())        
+        
+    def login(self, sender=None, packet=None):
+        self.alert("Attempting to login", level=0)#'v')
+        
+        username = (self.username if self.username else 
+                    raw_input("Please provide username for {}: ".format(
+                               self.instance_name)))
+                    
+        password = self.password if self.password else getpass.getpass()
+        return "login {} {}".format(username, password)
+                
+    def register(self, sender, packet):        
+        self.alert(packet, 
+                  (self.email, self.username, "*" * len(self.password)),
+                   level=0)
+        
+        email = (self.email if self.email else 
+                 raw_input("Please register an email address: "))
+        while ' ' in email:
+            self.alert("Invalid email address. Cannot contain spaces",
+                       level=0)
+            email = (self.email if self.email else 
+                     raw_input("Please register an email address: "))
+                 
+        username = (self.username if self.username else 
+                    raw_input("Please register a username: "))
+                    
+        password = self.password if self.password else getpass.getpass()        
+        
+        return "register {} {} {}".format(email, username, password)
+    
+    def register_results(self, sender, packet):
+        if "success" in packet:
+            return self.login(sender, packet)
+        else:
+            self.alert("Error encountered when attempting to register with {}\n{}",
+                       [sender, packet])
+        
+    def login_result(self, sender, packet):
+        if "success" in packet:
+            self.alert(packet, level=0)
+            self.logged_in = True
+        elif "register" in packet:
+            flag, message = packet.split(" ", 1)
+            return self.register(sender, message)
+        else:
+            failed, code = packet.split(" ", 1)
+            error = self.login_errors[code]
+            self.alert("Login failed; {}", [error], level=0)
+        
+        
+class Service_Listing(Network_Service):
+    defaults = defaults.Network_Service.copy()
+    
+    def __init__(self, **kwargs):
+        self.services = {}
+        super(Service_Listing, self).__init__(**kwargs)
+        
+    def set_service(self, sender, packet):
+        service_name, address = packet.split(" ", 1)                
+        self.services[address] = service_name
+        return "set success"
+        
+    def remove_service(self, sender, packet):
+        service_name, address = packet.split(" ", 1)
+        del self.services[address]
+        
+    def send_listing(self, sender, packet):
+        return "\n".join("Address: {: >20} Service: {: > 5}".format\
+                        (address, service_info) for  address, service_info\
+                        in self.services.items())
+            
+           
+class File_Service(base.Reactor):
+    defaults = defaults.File_Service
+    
+    def __init__(self, **kwargs):
+        super(File_Service, self).__init__(**kwargs)
+                
+    def slice_request(self, sender, slice_info):
+        filename, file_position, request_size = slice_info.split()
+        seek_index = int(file_position)
+        request_size = int(request_size)
+        
+        if request_size >= self.mmap_threshold:
+            _file, offset = fileio.Mmap(filename, seek_index)
+            data = _file[offset:offset + request_size]            
+        
+        else:
+            _file = open(filename, 'rb')
+            _file.seek(seek_index)
+            data = _file.read(request_size)
+            _file.close()
+            
+        self.alert("retrieved {}/{} bytes of data/requested", 
+                   [len(data), request_size],
+                   level='vv')
+        return "record_data " + file_position + " " + data        
+        
+    def get_filesize(self, sender, filename):
+        try:
+            response = str(os.path.getsize(filename))
+        except WindowsError:
+            response = "0"
+        return "set_filesize " + response
+                  
+  
+class Download(base.Reactor):
+    
+    defaults = defaults.Download
+    
+    def __init__(self, **kwargs):
+        super(Download, self).__init__(**kwargs)
+        self.data_remaining = 0
+        
+        filename = self.filename
+        self.file = open("{}_{}".format(self.filename_prefix, filename), 'wb')    
+                
+        self.reaction(self.target, "get_filesize " + filename)                  
+                
+    def make_request(self):
+        if self.bytes_remaining > 0:
+            file_position = self.file.tell()
+            request_size = min(self.bytes_remaining, self.network_packet_size)
+            request = "{} {} {} {}".format("slice_request",
+                                            self.filename, 
+                                            file_position, 
+                                            request_size)
+        else:
+            request = ""
+            self.alert("finished downloading, sending close request" + "*"*40, level=0)
+            self.file.close()
+        return request
+                
+    def set_filesize(self, sender, value):
+        filesize = int(value)
+        if filesize:
+            self.bytes_remaining = filesize
+            return self.make_request()            
+        else:
+            self.alert("File {} was not available for download from {}",
+                       [self.filename, self.target])        
+        
+    def record_data(self, sender, data):
+        file_position, file_data = data.split(" ", 1)
+        seek_position = int(file_position)
+        
+        file = self.file
+        file.seek(seek_position)        
+        file.write(data)
+        file.flush()
+        self.bytes_remaining -= file.tell() - seek_position
+        return self.make_request()
+        
+        
+class Tcp_Service_Proxy(network.Server):
+
+    defaults = defaults.Server.copy()
+        
+    def __init__(self, **kwargs):
+        super(Tcp_Service_Proxy, self).__init__(**kwargs)
+        self.Tcp_Socket_type = Tcp_Client_Proxy
+                
+    def on_connect(self, connection):
+        pass
+        
+        
+class Tcp_Client_Proxy(network.Tcp_Socket):
+    
+    def recv(self, network_packet_size):
+        request = self.socket.recv(network_packet_size)
+        service_name, command, arguments = request.split(" ", 2)
+        print "received request: ", request
+        args, kwargs = pickle.loads(arguments)
+        args = args if args else tuple()
+        kwargs = kwargs if kwargs else {}
+        result = self.parallel_method(service_name, command, self.socket.getpeername(),
+                                      *args, **kwargs)
+        
+        self.send(result)        
+       # self.respond_with("reply")
+       # request = command + " " + value
+       # self.reaction(service_name, request)
+              
+    def reply(self, sender, packet):
+        self.send(str(sender) + " " + packet)
+
+                           
+class Tcp_Service_Client(network.Tcp_Client):
+    
+    defaults = defaults.Tcp_Client.copy()
+    defaults.update({"component_name" : '',
+                     "method" : '',
+                     "args" : None,
+                     "kwargs" : None})
+                     
+    def __init__(self, **kwargs):
+        super(Tcp_Service_Client, self).__init__(**kwargs)
+        component_name = self.component_name
+        method = self.method
+        if not component_name:
+            self.alert("Invalid request: No component specified", level=0)
+        elif not method:
+            self.alert("Invalid request: No method specified", level=0)
+        
+        self.connection_string = self.make_request(self.component_name, method, 
+                                                   self.args, self.kwargs)
+    
+    def make_request(self, component_name, method, args, kwargs):        
+        return ' '.join((component_name, method, pickle.dumps((args, kwargs))))
+        
+    def on_connect(self):   
+        self.send(self.connection_string)
+                
+    def recv(self, network_packet_size):
+        packet = self.socket.recv(network_packet_size)
+        self.alert("Received response: {}", [packet], level=0)        
+        self.send(raw_input("Reply format: (component_name method args kwargs)\nReply: "))
+        
+
+class Remote_Procedure_Call(object):
+        
+    def __init__(self, component_name, method_name, host_info, *args, **kwargs):
+        self.component_name = component_name
+        self.method_name = method_name
+        self.host_info = host_info
+        self.args = args
+        self.kwargs = kwargs
+                
+    def execute(self, recv_callback=None):
+        kwargs = {"component_name" : self.component_name,
+                  "method" : self.method_name,
+                  "target" : self.host_info,
+                  "args" : self.args,
+                  "kwargs" : self.kwargs,
+                  "verbosity" : 'vvv'}
+        if recv_callback:
+            kwargs["recv"] = recv_callback                                  
+        return Tcp_Service_Client(**kwargs)
+        
+if __name__ == "__main__":
+    from mpre.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
+   # test_reliability()
+   # test_authentication()
+   # test_file_service()
+   # test_proxy()
+    rpc = Remote_Procedure_Call("Interpeter_Service", "login", "root password")
+    #def callback(self, network_packet_size=0):
+    connection = rpc.execute()

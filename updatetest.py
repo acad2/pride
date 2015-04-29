@@ -1,48 +1,67 @@
-import pickle
 import sys
-from types import MethodType
+from threading import Thread
 
-def update(instance):
-    stats = pickle.dumps(instance)
-    reload(sys.modules[instance.__module__])
-    return pickle.loads(stats)       
-    
-def patch(method_name, _class, new_method):
-    setattr(_class, method_name, MethodType(new_method, None, _class))
-    
-    
-if __name__ == "__main__":
-    import testclass
-    instance = testclass.Test_Class(1, 2, 3, False)
-    print "\noriginal method: "
-    instance.testmethod()
-    
-    def patch(self, *args):
-        print "something different"
+import mpre.vmlibrary as vmlibrary
+import mpre.defaults as defaults
+
+try:
+    from msvcrt import getwch, kbhit
+    input_waiting = kbhit
+except:
+    import select
+    def input_waiting():
+        return select.select([sys.stdin], [], [], 0.0)[0]
         
-    print "\nmonkey patched method: "
-    instance.testmethod = MethodType(patch, instance, testclass.Test_Class)
-    instance.testmethod()
+        
+class User_Input(vmlibrary.Process):
+    """ Captures user input and provides the input to any listening component"""
+    defaults = defaults.User_Input
     
-    print "\nAlternate instance method post patch: "
-    instance2 = testclass.Test_Class(1, 2, 3, True)
-    instance2.testmethod()
-    with open("testclass.py", 'w') as pyfile:
-        pyfile.write("""class Test_Class(object):
+    def __init__(self, **kwargs):
+        self.listeners = []
+        super(User_Input, self).__init__(**kwargs)        
+        self.thread_started = False
+        self.thread = Thread(target=self.read_input)
+        self.input = ''
         
-    def __init__(self, x, y, z, test=True):
-        self.x = x
-        self.y = y
-        self.z = z
-        self.test = test
+    def run(self):
+        if not self.thread_started and input_waiting():
+            self.thread.start()
+            self.thread_started = True
+            
+        if self.input:
+            message = "handle_keystrokes " + self.input
+            for listener in self.listeners:
+                # for reasons still not understood by me, if sys.stdout
+                # is not written to here then at random intervals
+                # newline will be written but listener won't receive
+                # keystrokes until the next read_input
+                sys.stdout.write(" \b")
+                self.reaction(listener, message)
+            self.input = ''
+            
+        self.run_instruction.execute(priority=self.priority)
+    
+    def __getstate__(self):
+        attributes = super(User_Input, self).__getstate__()
+        del attributes["thread"]
+        return attributes
+    
+    def on_load(self, attributes):
+        super(User_Input, self).on_load(attributes)
+        self.thread = Thread(target=self.read_input)
+        self.thread_started = False
+        self.input = ''
         
-    def testmethod(self, *args):
-        print "inside testmethod", self, args
-        print "This method has been updated successfully"
+    def add_listener(self, sender, argument):
+        """ Adds a component to listeners. Components added this way should support a    
+            handle_keystrokes method"""
+        self.listeners.append(sender)
         
-    class_var = 1337""")
-        pyfile.flush()
-        pyfile.close()
-    instance = update(instance)
-    print "\ntestmethod after update"
-    instance.testmethod()
+    def remove_listener(self, sender, argument):
+        self.listeners.remove(sender)
+        
+    def read_input(self):        
+        self.input = sys.stdin.readline()
+        self.thread = Thread(target=self.read_input)
+        self.thread_started = False

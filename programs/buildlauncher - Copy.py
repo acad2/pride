@@ -16,29 +16,25 @@ LAUNCHER_FILENAME = "exelauncher.py"
 
 def build_launcher(from_modules):
     with open(LAUNCHER_FILENAME, 'w+') as launcher:
-        imports = r''
+        imports = ''
         for module in required_modules:
             imports += "import {}\n".format(module)
         launcher.write(imports)
-        
-        embedded_string = r''
-        for embedded_object in embed_objects:
-            embedded_string += "{}\n\n".format(inspect.getsource(embedded_object))
-        launcher.write(embedded_string)
-        
-        add_module = r"Encrypted_String_Importer.add_module('{}', {}_source)" + "\n\n"
         for module_name in from_modules:
-            _module_name = module_name.replace('.', '_')
             importlib.import_module(module_name)
             source = inspect.getsource(sys.modules[module_name])
             encrypted_file = mpre.fileio.Encrypted_File(module_name, file_system="virtual", 
                                                         persistent=True)
             encrypted_file = encrypted_file.update() # make it attach source so it can be rebuilt
             encrypted_file.write(source)
-            launcher.write("{}_source = r'''{}'''\n\n".format(_module_name, 
+            launcher.write("{}_source = r'''{}'''\n\n".format(module_name.replace('.', '_'), 
                                                               encrypted_file.save()))
-            launcher.write(add_module.format(module_name, _module_name))
-        launcher.write("sys.meta_path = [Encrypted_String_Importer()]\n\n")
+                                                              
+        for embedded_object in embed_objects:
+            launcher.write("{}\n\n".format(inspect.getsource(embedded_object)))
+
+   #     for 
+        launcher.write("sys.meta_path = [Encrypted_Source_Importer()]\n\n")
         launcher.write("if __name__ == '__main__':\n")
         launcher.write("    import mpre._metapython\n")
         launcher.write("    metapython = mpre._metapython.Metapython(parse_args=True)\n")

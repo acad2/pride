@@ -22,6 +22,7 @@ import heapq
 import importlib
 import operator
 import inspect
+import hashlib
 try:
     import cPickle as pickle
 except ImportError:
@@ -31,12 +32,11 @@ import mpre
 import mpre.metaclass
 import mpre.utilities as utilities
 import mpre.defaults as defaults
+import mpre.importers as importers
+from mpre.errors import *
 
 __all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
 
-DeleteError = type("DeleteError", (ReferenceError, ), {})
-AddError = type("AddError", (ReferenceError, ), {})
-UpdateError = type("UpdateError", (BaseException, ), {})
 
 class Base(object):
     """ usage: instance = Base(attribute=value, ...)
@@ -193,7 +193,7 @@ class Base(object):
             the object can be collected by the python garbage collector"""
         if self.deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        #print "Beginning deletion of", self.instance_name
+        print "Beginning deletion of", self.instance_name
         self.environment.delete(self)
         self.deleted = True
         
@@ -315,14 +315,16 @@ class Base(object):
             modules.append(module_info[-1])
         else:
             attributes["_required_module"] = (self.__module__, self.__class__.__name__)
-            
+        
+        saved = pickle.dumps(attributes)
+        saved = hashlib.sha512(saved).hexdigest() + saved
         if _file:
-            pickle.dump(attributes, _file)
+            _file.write(saved)
         else:
-            return pickle.dumps(attributes)     
+            return saved
             
     @classmethod
-    def load(cls, attributes=None, _file=None):
+    def load(cls, attributes='', _file=None):
         """ usage: base_object.load([attributes], [_file]) => restored_instance
         
             Loads state preserved by the save method. The attributes argument, if specified,
@@ -337,9 +339,16 @@ class Base(object):
             
             To customize the behavior of an object after it has been loaded, one should
             extend the on_load method instead of load."""
-        assert attributes or _file            
-        attributes = attributes.copy() if attributes is not None else pickle.load(_file)
-                
+        if _file:
+            assert not attributes
+            attributes = _file.read()
+        mac = attributes[:128]
+        attributes = attributes[128:]
+        if mac != hashlib.sha512(attributes).hexdigest():
+            raise CorruptPickleError("Message authentication code mismatch\n\n" + 
+                                     attributes)
+            
+        attributes = pickle.loads(attributes)                
         saved_objects = attributes["objects"]
         objects = attributes["objects"] = {}
         for instance_type, saved_instances in saved_objects.items():            
@@ -349,15 +358,15 @@ class Base(object):
         if "_required_modules" in attributes:
             _required_modules = []
             incomplete_modules = attributes["_required_modules"]
-            module_sources = dict((module_name, source) for module_name, source, none in
-                                   incomplete_modules[:-1])
-            with utilities.modules_switched(module_sources):
-                for module_name, source, none in incomplete_modules[:-1]:
-                    _required_modules.append((module_name, source, 
-                                              utilities.create_module(module_name, source)))
-                class_name = incomplete_modules[-1]
-                module_name = incomplete_modules[-2][0]
-                self_class = getattr(sys.modules[module_name], class_name)
+            module_sources = dict((module_name, source) for 
+                                  module_name, source, none in
+                                  incomplete_modules[:-1])
+            
+            for module_name, source, none in incomplete_modules[:-1]:
+                module = utilities.create_module(module_name, source)
+                _required_modules.append((module_name, source, module))
+            class_name = incomplete_modules[-1]
+            self_class = getattr(module, class_name)
             attributes["_required_modules"] = _required_modules        
         else:
             module_name, class_name = attributes["_required_module"]
@@ -400,8 +409,8 @@ class Base(object):
         # modules are garbage collected if not kept alive        
         required_modules = []        
         class_mro = self.__class__.__mro__[:-1] # don't update object
-        class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]
-        
+        class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  
+                
         with utilities.modules_preserved(info[1] for info in class_info):
             for cls, module_name in class_info:
                 del sys.modules[module_name]
@@ -416,7 +425,7 @@ class Base(object):
                         raise UpdateError("Could not locate source for {}".format(module.__name__))
                         
                 required_modules.append((module_name, source, module))
-
+        
         class_base = getattr(module, self.__class__.__name__)
         class_base._required_modules = required_modules
         required_modules.append(self.__class__.__name__)        
@@ -440,7 +449,8 @@ class Reactor(Base):
         Adds reaction framework on top of a Base object. 
         Reactions are event triggered chains of method calls
         
-        This class is a recent addition and is not final in it's api or implementation."""
+        This class is a recent addition and is far from final in it's api and
+        implementation. """
     
     defaults = defaults.Reactor
     
@@ -524,14 +534,21 @@ class Wrapper(Reactor):
         of the wrapped object. Any attributes not present on the wrapper object
         will be gotten from the underlying wrapped object. This class
         acts primarily as a wrapper and secondly as the wrapped object."""
+        
+    wrapped_object_name = ''
+    
     def __init__(self, **kwargs):
-        self.wrapped_object = kwargs.pop("wrapped_object", None)
         super(Wrapper, self).__init__(**kwargs)
-                
+        if self.wrapped_object_name:
+            setattr(self, self.wrapped_object_name, self.wrapped_object)
+            
     def __getattr__(self, attribute):
         return getattr(self.wrapped_object, attribute)        
                        
-                       
+    def wraps(self, _object):
+        self.wrapped_object = _object
+        
+        
 class Proxy(Reactor):
     """ usage: Proxy(wrapped_object=my_object) => proxied_object
     
