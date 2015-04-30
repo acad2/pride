@@ -1,80 +1,154 @@
-import os
-from sys import platform
-import subprocess
+#   mpf.vmlibrary - virtual machine - processor - instruction handler
+#
+#    Copyright (C) 2014  Ella Rose
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import heapq
+import time
+import traceback
+from functools import partial
 
-def ensure_file_exists(filepath, data=('a', '')):
-    if not os.path.exists(filepath) or not os.path.isfile(filepath):
-        mode, file_data = data
-        with open(filepath, mode) as _file:
-            if file_data:
-                _file.write(file_data)
-                _file.flush()
-            _file.close()
+import mpre
+import mpre.base as base
+import mpre.defaults as defaults
+import mpre.utilities as utilities
+
+Instruction = mpre.Instruction
+timer_function = utilities.timer_function
+
+class Process(base.Reactor):
+    """ usage: Process(target=function, args=..., kwargs=...) => process_object
+    
+        Create a logical process. Note that while Process objects
+        allow for the interface of target=function, the preferred usage
+        is via subclassing.
+        
+        Process objects have a run_instruction attribute. This attribute
+        is a saved instruction: Instruction(self.instance_name, 'run'). 
+        
+        Process objects have a default attribute 'auto_start', which
+        defaults to True. When True, an instruction for process.start
+        will automatically be executed inside __init__.
+        
+        The start method simply calls the run method, but can be overriden 
+        if the entry point would be useful, and keeps a similar interface
+        with the standard library threading/process model.
+        
+        Subclasses should overload the run method. A process may propagate
+        itself by executing a run instruction inside it's run method. While
+        processes support the reaction interface, use of a process presumes
+        the desire for some kind of explicitly timed Instruction. Examples
+        of processes include polling for user input or socket buffers
+        at various intervals.
+        
+        Some people may find the serial style, one frame at a time method
+        offered by processes easier to understand and follow then reactions.
+        Most things can be accomplished by either, though processes may be
+        less performant then parallel_methods/reactions"""
+
+    defaults = defaults.Process
+    parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
+
+    def __init__(self, **kwargs):
+        self.args = tuple()
+        self.kwargs = dict()
+        super(Process, self).__init__(**kwargs)
+
+        self.run_instruction = Instruction(self.instance_name, "run")
+        if self.auto_start:
+            Instruction(self.instance_name, "start").execute()
+
+    def start(self):
+        self.run()
+
+    def run(self):
+        if self.target:
+            self.target(*self.args, **self.kwargs)
             
-COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}." if "win" in platform else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}. "
 
-def convert_to_pyx(file_list):
-    new_names = []
-    
-    for filename in file_list:
+class Processor(Process):
+    """ Removes enqueued Instructions via heapq.heappop, then
+        performs the specified method call while handling the
+        possibility of the specified component/method not existing,
+        and any exception that could be raised inside the method call
+        itself."""
         
-        with open(filename, 'r') as py_file:
-            ensure_file_exists(filename + 'x', ('w', py_file.read()))
-            new_names.append(filename + 'x')
-    return new_names
+    defaults = defaults.Processor
 
-    
-def convert_to_c(file_names, mode):
-    options = {"stdout" : subprocess.PIPE,
-               "stderr" : subprocess.PIPE}
-    cross_compile = "cython {} --embed" if mode is 'exe' else "cython {}"
-    c_files = []
-    
-    for filename in file_names:
-        command = cross_compile.format(filename)
-        compiler = subprocess.Popen(command, **options)
-        output, errors = compiler.stdout, compiler.stderr
+    def __init__(self, **kwargs):
+        super(Processor, self).__init__(**kwargs)
+        self.paused = set()
+        self.on_resume = {}
         
-        problem = errors.read()
-        if problem:
-            print problem
-            #raw_input("Continue compiling other modules?")
-        else:
-            _filename = filename.split(".")[:-1][0]
-            new_name = _filename + '.c'
-            c_files.append(new_name)
-            #print "{} cross compiled successfully to {}{}".format(filename, new_name, output.read())
-    #print
-    return c_files
-
-    
-def ccompile(file_list, mode="pyd"):
-    compile_mode = mode + " -shared" if mode in ('pyd', 'so') else mode
-    
-    compile_command = COMPILE_COMMAND + compile_mode
-    
-    options = {"stdout" : subprocess.PIPE,
-               "stderr" : subprocess.PIPE}
+    def pause(self, component_name):
+        self.paused.add(component_name)
+        self.on_resume[component_name] = []
+        
+    def resume(self, component_name):
+        self.paused.remove(component_name)
+        for instruction_info in self.on_resume[component_name]:
+            execute_at, instruction, callback = instruction_info
+            instruction.execute(execute_at, callback)
+        self.on_resume[component_name] = []
+        
+    def run(self):
+        instructions = self.environment.Instructions
+        Component_Resolve = self.environment.Component_Resolve
+        processor_name = self.instance_name
+        
+        sleep = time.sleep
+        heappop = heapq.heappop
+        _getattr = getattr        
+        on_resume = self.on_resume
+        component_errors = (AttributeError, KeyError)
+        reraise_exceptions = (SystemExit, KeyboardInterrupt)
+        alert = self.alert
+        component_alert = partial(alert, "{0}: {1}", level=0)
+        exception_alert = partial(alert, 
+                                  "\nException encountered when processing {0}.{1}\n{2}", 
+                                  level=0)
+        execution_alert = partial(alert, "executing instruction {}", level="vvv")
+        format_traceback = traceback.format_exc
                
-    compiled = []
-    for filename in file_list:
-        _filename = ''.join(filename.split(".")[:-1])
-        compiler = subprocess.Popen(compile_command.format(filename, _filename), **options)
-        output, errors = compiler.stdout, compiler.stderr
-        problem = errors.read()
-        if problem:
-            print problem
-        else:
-            object_name = _filename + '.' + mode
-            print "{} was compiled successfully{}".format(object_name, output.read())
-            compiled.append(object_name)
-        
-    return compiled
-    
-def py_to_compiled(file_list, mode="pyd"):
-    pyx_files = convert_to_pyx(file_list)
-    return pyx_to_compiled(pyx_files, mode)
-    
-def pyx_to_compiled(file_list, mode):
-    c_files = convert_to_c(file_list, mode)
-    return ccompile(c_files, mode)
+        while instructions and self.running:            
+            instruction_info = execute_at, instruction, callback = heappop(instructions)
+            if instruction.component_name in self.paused:
+                on_resume[instruction.component_name].append(instruction_info)
+                continue
+                
+            try:
+                call = _getattr(Component_Resolve[instruction.component_name],
+                                                  instruction.method)               
+            except component_errors as error:
+                if isinstance(error, KeyError):
+                    error = "'{}' component does not exist".format(instruction.component_name)
+                component_alert((str(instruction), error)) 
+                continue
+            
+            time_until = max(0, (execute_at - timer_function()))
+            if time_until:
+                sleep(time_until)
+            
+            execution_alert([str(instruction)])           
+            try:
+                result = call(*instruction.args, **instruction.kwargs)
+            except BaseException as result:
+                if type(result) in reraise_exceptions:
+                    raise
+                exception_alert((instruction.component_name,
+                                 instruction.method,
+                                 format_traceback()))
+            else:
+                if callback:
+                    callback(result)        

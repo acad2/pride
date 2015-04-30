@@ -61,7 +61,9 @@ Socket.update({"blocking" : 0,
 "timeout" : 0,
 "add_on_init" : True,
 "network_packet_size" : 32768,
-"memory_size" : 0,
+"socket_family" : socket.AF_INET,
+"socket_type" : socket.SOCK_STREAM,
+"protocol" : socket.IPPROTO_IP,
 "network_buffer" : '',
 "interface" : "0.0.0.0",
 "port" : 0,
@@ -71,6 +73,9 @@ Socket.update({"blocking" : 0,
 "_connecting" : False,
 "added_to_network" : False})
 
+Raw_Socket = Socket.copy()
+Raw_Socket.update({"socket_type" : socket.SOCK_RAW})
+                   
 Tcp_Socket = Socket.copy()
 Tcp_Socket.update({"socket_family" : socket.AF_INET,
 "socket_type" : socket.SOCK_STREAM})
@@ -195,7 +200,11 @@ Directory.update({"is_directory" : True})
 
 File = File_Object.copy()
 File.update({"file" : None,
-             "file_type" : "StringIO.StringIO"})
+             "file_type" : "StringIO.StringIO",
+             "mode" : ""})
+
+Encrypted_File = File.copy()
+Encrypted_File.update({"block_size" : 1024})
              
 File_System = Process.copy()
 File_System.update({"file_systems" : ("disk", "virtual"),

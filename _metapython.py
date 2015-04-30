@@ -1,209 +1,313 @@
-import heapq
-import mmap
-import itertools
-import pprint
+import sys
+import codeop
+import os
+import traceback
+import time
+import cStringIO
 import pickle
 import contextlib
-import copy
 
-import utilities
-timer_function = utilities.timer_function  
+import mpre
+import mpre.base as base
+import mpre.vmlibrary as vmlibrary
+import mpre.network2 as network2
+import mpre.utilities as utilities
+import mpre.fileio as fileio
+import mpre.defaults as defaults
 
-class Environment(object):
-    
-    fields = ("Component_Resolve", "Instance_Count", "Instance_Name",
-              "Instance_Number", "Component_Memory", "Parents", "References_To",
-              "Reference_Location")
-              
-    def __init__(self):
-        super(Environment, self).__init__()
-        self.Instructions = []
-        for field in self.fields:
-            setattr(self, field, {})
-                
-    def display(self):
-        print "\nInstructions: {}".format([(instruction[0], str(instruction[1])) for 
-                                           instruction in self.Instructions])
+Instruction = mpre.Instruction            
+            
+class Shell(network2.Authenticated_Client):
+    """ Provides the client side of the interpreter session. Handles keystrokes and
+        sends them to the Interpreter_Service to be executed."""
+    defaults = defaults.Shell
+                     
+    def __init__(self, **kwargs):
+        super(Shell, self).__init__(**kwargs)
+        self.lines = ''
+        self.user_is_entering_definition = False            
+        self.reaction("User_Input", "add_listener " + self.instance_name)
         
-        for attribute in ("Component_Resolve", "Instance_Count", "Instance_Name",
-                          "Instance_Number", "Component_Memory", "Parents",
-                          "References_To", "Reference_Location"):
-            print "\n" + attribute
-            pprint.pprint(getattr(self, attribute))
-    
-    def replace(self, component, new_component):
-        components = self.Component_Resolve
-        if isinstance(component, unicode) or isinstance(component, str):
-            component = self.Component_Resolve[component]
-
-        old_component_name = component.instance_name
-        
-        self.Component_Resolve[old_component_name] = self.Component_Resolve.pop(new_component.instance_name, new_component)
-        
-        self.Instance_Name[new_component] = self.Instance_Name.pop(component)
-        self.Instance_Number[new_component] = self.Instance_Number.pop(component)
-        
-        memory = self.Component_Memory
-        if new_component.instance_name in memory:
-            memory[old_component_name] = memory.pop(new_component.instance_name)
-        
-        parents = self.Parents
-        if component in parents:
-            parents[new_component] = parents.pop(component)
-                
-        new_component.instance_name = old_component_name
-        references = self.References_To.get(old_component_name, set()).copy()
-        
-        for referrer in references:
-            instance = self.Component_Resolve[referrer]
-            instance.remove(component)
-            instance.add(new_component)       
-        
-    def delete(self, instance):
+    def login_result(self, sender, packet):
+        response = super(Shell, self).login_result(sender, packet)
+        if self.logged_in:
+            sys.stdout.write(">>> ")
+            if self.startup_definitions:
+                self.handle_startup_definitions()                
+        return response
+     
+    def handle_startup_definitions(self):
         try:
-            objects = instance.objects
-        except AttributeError: # non base objects have no .objects dictionary
-            instance_name = self.Instance_Name[instance]
-            parent = self.Component_Resolve[self.Parents[instance]]
-            parent.objects[instance.__class__.__name__].remove(instance)          
+            compile(self.startup_definitions, "Shell", 'exec')
+        except:
+            self.alert("Startup defintions failed to compile:\n{}",
+                    [traceback.format_exc()],
+                    level=0)
         else:
-            instance_name = instance.instance_name
-            if objects:
-                for children in objects.values():
-                    [child.delete() for child in list(children)] 
+            self.execute_source(self.startup_definitions) 
                     
-        if instance in self.Parents:
-            del self.Parents[instance]
-        if instance_name in self.Component_Memory:
-            self.Component_Memory.pop(instance_name).close()    
+    def handle_keystrokes(self, sender, keyboard_input):
+        if not self.logged_in:
+            return
         
-        if instance_name in self.References_To:
-            for referrer in list(self.References_To[instance_name]):
-                self.Component_Resolve[referrer].remove(instance)
-            del self.References_To[instance_name]            
-        del self.Component_Resolve[instance_name]
-        del self.Instance_Name[instance]
-        del self.Instance_Number[instance]
-        
-    def add(self, instance):
-        instance_class = instance.__class__.__name__
-        try:
-            self.Instance_Count[instance_class] = count = self.Instance_Count[instance_class] + 1
-        except KeyError:
-            count = self.Instance_Count[instance_class] = 0
-       
-        instance_name = instance_class + str(count) if count else instance_class
-        self.Component_Resolve[instance_name] = instance
-        try:
-            self.Instance_Name[instance] = instance.instance_name = instance_name
-            self.Instance_Number[instance] = instance.instance_number = count
-        except AttributeError:
-            self.Instance_Name[instance] = instance_name
-            self.Instance_Number[instance] = count
-        
-        memory_size = getattr(instance, "memory_size", 0)
-        if memory_size:
-            self.add_memory(instance.instance_name, instance.memory_mode, memory_size)                        
-    def add_memory(self, instance_name, memory_mode, memory_size):
-        if not memory_mode:
-            file_on_disk = open(instance_name, 'a+')
-            file_descriptor = file_on_disk.fileno()
+        self.lines += keyboard_input
+        lines = self.lines
+                
+        if lines != "\n":            
+            try:
+                code = codeop.compile_command(lines, "<stdin>", "exec")
+            except (SyntaxError, OverflowError, ValueError) as error:
+                sys.stdout.write(traceback.format_exc())
+                self.prompt = ">>> "
+                self.lines = ''
+            else:
+                if code:
+                    if self.user_is_entering_definition:
+                        if lines[-2:] == "\n\n":
+                            self.prompt = ">>> "
+                            self.lines = ''
+                            self.execute_source(lines)
+                            self.user_is_entering_definition = False              
+                    else:
+                        self.lines = ''
+                        self.execute_source(lines)
+                else:
+                    self.user_is_entering_definition = True
+                    self.prompt = "... "
         else:
-            file_descriptor = -1
-        self.Component_Memory[instance_name] = mmap.mmap(file_descriptor, memory_size)     
-                            
-    def __contains__(self, component):
-        if (component in self.Component_Resolve.keys() or
-            component in itertools.chain(self.Component_Resolve.values())):
-            return True
+            self.lines = ''
         
-    def update(self, environment):       
-        for instruction in environment.Instructions:
-            heapq.heappush(self.Instructions, instruction)
+        sys.stdout.write(self.prompt)
+        
+    def execute_source(self, source):
+        self.reaction(self.target, self.exec_code_request(self.target, source))
+        
+    def exec_code_request(self, sender, source):
+        if not self.logged_in:
+            response = self.login(sender, source)
+        else:
+            self.respond_with("result")
+            response = "exec_code " + source
+        return response     
+        
+    def result(self, sender, packet):
+        if packet:
+            sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet)
+        
+        
+class Interpreter_Service(network2.Authenticated_Service):
+    """ Provides the server side of the interactive interpreter. Receives keystrokes
+        and attempts to compile + exec them."""
+    defaults = defaults.Interpreter_Service
+    
+    def __init__(self, **kwargs):
+        self.user_namespaces = {}
+        self.user_session = {}
+        super(Interpreter_Service, self).__init__(**kwargs)
+        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+')
+                
+    def login(self, sender, packet):
+        response = super(Interpreter_Service, self).login(sender, packet)
+        if "success" in response.lower():
+            username = self.logged_in[sender]
+            self.user_namespaces[username] = {"__name__" : "__main__",
+                                              "__doc__" : '',
+                                              "Instruction" : Instruction}
+            self.user_session[username] = ''
+            string_info = (username, sender,
+                           sys.version, sys.platform, self.copyright)
+        
+            greeting = "Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info)
+            response = "login_result success " + greeting
 
-        self.Component_Resolve.update(environment.Component_Resolve)
-        self.Component_Memory.update(environment.Component_Memory)
-        self.Parents.update(environment.Parents)
-        self.References_To.update(environment.References_To)
-        self.Instance_Number.update(environment.Instance_Number)
-        self.Instance_Count.update(environment.Instance_Count)
+        return response
         
+    @network2.Authenticated
+    def exec_code(self, sender, packet):
+        log = self.log        
+        username = self.logged_in[sender]
+        log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
+                  packet)                  
+        result = ''                
+        try:
+            code = compile(packet, "<stdin>", 'exec')
+        except (SyntaxError, OverflowError, ValueError):
+            result = traceback.format_exc()           
+        else:                
+            backup = sys.stdout            
+            sys.stdout = cStringIO.StringIO()
+            
+            namespace = (globals() if username == "root" else 
+                         self.user_namespaces[username])
+            remove_builtins = False
+            if "__builtins__" not in namespace:
+                remove_builtins = True
+                namespace["__builtins__"] = __builtins__
+            try:
+                exec code in namespace
+            except BaseException as error:
+                if type(error) == SystemExit:
+                    raise
+                else:
+                    result = traceback.format_exc()
+            else:
+                self.user_session[username] += packet
+            finally:
+                if remove_builtins:
+                    del namespace["__builtins__"]
+                sys.stdout.seek(0)
+                result = sys.stdout.read() + result
+                log.write("{}\n".format(result))
+                
+                sys.stdout.close()
+                sys.stdout = backup                
+        log.flush()        
+        return "result " + result
+        
+    def __setstate__(self, state):     
+        super(Interpreter_Service, self).__setstate__(state)
+        sender = dict((value, key) for key, value in self.logged_in.items())
+        for username in self.user_session.keys():
+            source = self.user_session[username]
+            self.user_session[username] = ''
+            result = self.exec_code(sender[username], source)
+            
+        
+class Alert_Handler(base.Reactor):
+    """ Provides the backend for the base.alert method. This component is automatically
+        created by the Metapython component. The print_level and log_level attributes act
+        as global filters for alerts; print_level and log_level may be specified as 
+        command line arguments upon program startup to globally control verbosity/logging."""
+    level_map = {0 : "",
+                'v' : "notification ",
+                'vv' : "verbose notification ",
+                'vvv' : "very verbose notification ",
+                'vvvv' : "extremely verbose notification "}
+                
+    defaults = defaults.Alert_Handler
+             
+    def __init__(self, **kwargs):
+        kwargs["parse_args"] = True
+        super(Alert_Handler, self).__init__(**kwargs)
+        self.log = self.create("mpre.fileio.File", self.log_name, 'a+')
+        
+    def _alert(self, message, level):
+        if not self.print_level or level <= self.print_level:
+            sys.stdout.write(message + "\n")
+        if level <= self.log_level:
+            severity = self.level_map.get(level, str(level))
+            # windows will complain about a file in + mode if this isn't done sometimes
+            self.log.seek(0, 1)
+            self.log.write(severity + message + "\n")
+       
+            
+class Metapython(base.Reactor):
+    """ Provides an entry point to the environment. Instantiating this component and
+        calling the start_machine method starts the execution of the Processor component.
+        It is encouraged to use the Metapython component when create-ing new top level
+        components in the environment. For example, the Network component is a child object
+        of the Metapython component. Doing so allows for simple portability of an environment
+        in regards to saving/loading the state of an entire application."""
+
+    defaults = defaults.Metapython
+    parser_ignore = ("environment_setup", "prompt", "copyright", 
+                     "traceback", "memory_size", "network_packet_size", 
+                     "interface", "port")
+    parser_modifiers = {"command" : {"types" : ("positional", ),
+                                     "nargs" : '?'},
+                        "help" : {"types" : ("short", "long"),
+                                  "nargs" : '?'}
+                        }
+    exit_on_help = False
+
+    def __init__(self, **kwargs):
+        super(Metapython, self).__init__(**kwargs)
+        self.setup_os_environ()
+        self.file_system = self.create("mpre.fileio.File_System")
+        self.processor = self.create("vmlibrary.Processor")        
+        self.alert_handler = self.create(Alert_Handler)
+
+        if self.startup_definitions:
+            Instruction(self.instance_name, "exec_command", 
+                        self.startup_definitions).execute() 
+                        
+        if self.interpreter_enabled:
+            Instruction(self.instance_name, "start_service").execute()
+     
+        with open(self.command, 'r') as module_file:
+            source = module_file.read()
+        Instruction(self.instance_name, "exec_command", source).execute()
+     
+    def exec_command(self, source):
+        """ Executes the supplied source as the __main__ module"""
+        code = compile(source, 'Metapython', 'exec')
+        with self.main_as_name():
+            exec code in globals(), globals()
+            
     @contextlib.contextmanager
-    def preserved(self):
-        backups = [self.Instructions]        
-        for field in self.fields:
-            backups.append(getattr(self, field).copy())
+    def main_as_name(self):
+        backup = globals()["__name__"]        
+        globals()["__name__"] = "__main__"
         try:
             yield
         finally:
-            self.Instructions = backups.pop(0)
-            for field in self.fields:
-                setattr(self, field, backups.pop(0))
-                        
-    def modify(self, container_name, item, method="add_key"):
-        container = getattr(self, container_name)
-        if method == "add_key":
-            key, value = item
-            container[key] = value
-        elif method == "remove_item":
-            del container[item]
-        else:
-            getattr(container, method)(item)
-                           
-        
-class Instruction(object):
-    """ usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
-                           
-        Creates and executes an instruction object. 
-            - component_name is the string instance_name of the component 
-            - method_name is a string of the component method to be called
-            - Positional and keyword arguments for the method may be
-              supplied after the method_name.
-              
-        A priority attribute can be supplied when executing an instruction.
-        It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
-        
-        Instructions are useful for serial and explicitly timed tasks. 
-        Instructions are only enqueued when the execute method is called. 
-        At that point they will be marked for execution in 
-        instruction.priority seconds. 
-        
-        Instructions may be saved as an attribute of a component instead
-        of continuously being instantiated. This allows the reuse of
-        instruction objects. The same instruction object can be executed 
-        any number of times.
-        
-        Note that Instructions must be executed to have any effect, and
-        that they do not happen inline even if the priority is 0.0. In
-        order to access the result of the executed function, a callback
-        function can be provided."""
-        
-    def __init__(self, component_name, method, *args, **kwargs):
-        super(Instruction, self).__init__()
-        self.created_at = timer_function()
-        self.component_name = component_name
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-        
-    def execute(self, priority=0.0, callback=None):
-        """ usage: instruction.execute(priority=0.0, callback=None)
-        
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed."""
-        execute_at = self.execute_at = timer_function() + priority
-        heapq.heappush(environment.Instructions, 
-                      (execute_at, self, callback))
+            globals()["__name__"] = backup
+             
+    def setup_os_environ(self):
+        """ This method is called automatically in Metapython.__init__; os.environ can
+            be customized on startup via modifying Metapython.defaults["environment_setup"].
+            This can be useful for modifying system path only for the duration of the applications run time."""
+        modes = {"=" : "equals",
+                 "+=" : "__add__", # append strings or add ints
+                 "-=" : "__sub__", # integer values only
+                 "*=" : "__mul__",
+                 "/=" : "__div__"}
+
+        for command in self.environment_setup:
+            variable, mode, value = command.split()
+            if modes[mode] == "equals":
+                result = value
+            else:
+                environment_value = os.environ[variable]
+                method = modes[mode]
+                result = getattr(environment_value, method)(value)
+            os.environ[variable] = result
             
-    def __str__(self):
-        args = str(getattr(self, "args", ''))
-        kwargs = str(getattr(self, "kwargs", ''))
-        component = getattr(self, "component_name", '')
-        method = getattr(self, "method", '')
-        return "{}({}.{}, {}, {})".format(self.__class__.__name__, component, 
-                                          method, args, kwargs)  
-                                     
-environment = Environment()
+    def start_machine(self):
+        """ Begins the processing of Instruction objects."""
+        self.processor.run()
+    
+    def start_service(self):
+        server_options = {"name" : self.instance_name,
+                          "interface" : self.interface,
+                          "port" : self.port}        
+        self.server = self.create(Interpreter_Service, **server_options)      
+        
+    def exit(self, exit_code=0):
+        self.parallel_method("Processor", "set_attributes", running=False)
+        # cleanup/finalizers go here?
+        sys.exit(exit_code)
+                        
+        
+class Restored_Interpreter(Metapython):
+    """ usage: Restored_Intepreter(filename="suspended_interpreter.bin") => interpreter
+    
+        Restores an interpreter environment that has been suspended via
+        metapython.Metapython.save_state. This is a convenience class
+        over Metapython.load_state; note that instances produced by instantiating
+        Restored_Interpreter will be of the type of instance returned by
+        Metapython.load_state and not Restored_Interpreter"""
+        
+    defaults = defaults.Metapython.copy()
+    defaults.update({"filename" : 'Metapython.state'})
+    
+    def __new__(cls, *args, **kwargs):
+        instance = super(Restored_Interpreter, cls).__new__(cls, *args, **kwargs)
+        attributes = cls.defaults.copy()
+        if kwargs.get("parse_args"):
+            attributes.update(instance.parser.get_options(cls.defaults))       
+        
+        with open(attributes["filename"], 'rb') as save_file:
+            interpreter = pickle.load(save_file)
+        
+        return interpreter
