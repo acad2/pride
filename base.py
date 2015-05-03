@@ -1,20 +1,71 @@
-#   mpre.base - root inheritance objects
-#
-#    Copyright (C) 2014  Ella Rose
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+""" Contains The root inheritance objects that provides many of the features
+    of the runtime environment. An object that inherits from mpre.base.Base will 
+    possess these capabilities:
+        
+        - When instantiating, arbitrary attributes may be assigned
+          via keyword arguments
+          
+        - The class includes a defaults attribute, which is a dictionary
+          of name:value pairs. These pairs will be assigned as attributes
+          to new instances; Any attribute specified via keyword argument
+          will override a default
+          
+        - The flag parse_args=True may be passed to the call to 
+          instantiate a new object. If so, then the metaclass
+          generated parser will be used to interpret command
+          line arguments. Only command line arguments that are
+          in the class defaults dictionary will be assigned to 
+          the new instance. Arguments by default are supplied 
+          explicitly with long flags in the form --attribute value.
+          Arguments assigned via the command line will override 
+          both defaults and any keyword arg specified values. 
+          Consult the parser defintion for further information,
+          including using short/positional args and ignoring attributes.
+          
+        - The methods create/delete, and add/remove:
+            - The create method returns an instantiated object and
+              calls add on it automatically. This performs book keeping
+              with the environment regarding references and parent information.
+            - The delete method is used to explicitly destroy a component.
+              It calls remove internally to remove known locations
+              where the object is stored and update any tracking 
+              information in the environment
+        
+        - The alert method, which makes logging and statements 
+          of varying verbosity simple and straight forward.
+          
+        - parallel_method calls. This is the primary concurreny mechanism 
+          and is used in a similar capacity to Instruction objects.
+          The difference is that the call happens immediately and the return 
+          value from the specified method is available in the calling scope
+          
+        - Decorator(s) and monkey patches may be specified via
+          keyword argument to any method call. Note that this
+          functionality does not apply to python objects
+          builtin magic methods (i.e. __init__). The syntax
+          for this is:
+          
+            - component.method(decorator='module.Decorator')
+            - component.method(decorators=['module.Decorator', ...])
+            - component.method(monkey_patch='module.Method')
+          
+          The usage of these does not permanently wrap/replace the
+          method. The decorator/patch is only applied when specified.
+        
+        - Augmented docstrings. Information about class defaults
+          and method names + argument signatures + method docstrings (if any)
+          is included automatically. 
+          
+    Note that some features are facilitated by the metaclass. These include
+    the argument parser, runtime decoration, and documentation.
+    
+    Instances of Base classes are counted and have an instance_name attribute.
+    This is equal to type(instance).__name__ + str(instance_count). There
+    is an exception to this; The first instance is number 0 and
+    its name is simply type(instance).__name__, without 0 at the end.
+    This name associates the instance to the instance_name in the
+    mpre.environment.Component_Resolve. The instance_name can be used to reference
+    the object from any scope, as long as the component exists."""
 import mmap
 import sys
 import traceback
@@ -39,83 +90,7 @@ __all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
 
 
 class Base(object):
-    """ usage: instance = Base(attribute=value, ...)
-    
-        The root inheritance object that provides many of the features
-        of the runtime environment. An object that inherits from base will 
-        possess these capabilities:
-            
-            - When instantiating, arbitrary attributes may be assigned
-              via keyword arguments
-              
-            - The class includes a defaults attribute, which is a dictionary
-              of name:value pairs. These pairs will be assigned as attributes
-              to new instances; Any attribute specified via keyword argument
-              will override a default
-              
-            - The flag parse_args=True may be passed to the call to 
-              instantiate a new object. If so, then the metaclass
-              generated parser will be used to interpret command
-              line arguments. Only command line arguments that are
-              in the class defaults dictionary will be assigned to 
-              the new instance. Arguments by default are supplied 
-              explicitly with long flags in the form --attribute value.
-              Arguments assigned via the command line will override 
-              both defaults and any keyword arg specified values. 
-              Consult the parser defintion for further information,
-              including using short/positional args and ignoring attributes.
-              
-            - The methods create/delete, and add/remove:
-                - The create method returns an instantiated object and
-                  calls add on it automatically. This performs book keeping
-                  with the environment regarding references and parent information.
-                - The delete method is used to explicitly destroy a component.
-                  It calls remove internally to remove known locations
-                  where the object is stored and update any tracking 
-                  information in the environment
-            
-            - The alert method, which makes logging and statements 
-              of varying verbosity simple and straight forward.
-              
-            - parallel_method calls. This method is used in a 
-              similar capacity to Instruction objects, but the
-              call happens immediately and the return value from the
-              specified method is available
-              
-            - Decorator(s) and monkey patches may be specified via
-              keyword argument to any method call. Note that this
-              functionality does not apply to python objects
-              builtin magic methods (i.e. __init__). The syntax
-              for this is:
-              
-                - component.method(decorator='module.Decorator')
-                - component.method(decorators=['module.Decorator', ...])
-                - component.method(monkey_patch='module.Method')
-              
-              The usage of these does not permanently wrap/replace the
-              method. The decorator/patch is only applied when specified.
-            
-            - Augmented docstrings. Information about class defaults
-              and method names + argument signatures + method docstrings (if any)
-              is included automatically. 
-              
-        Note that some features are facilitated by the metaclass. These include
-        the argument parser, runtime decoration, and documentation.
-        
-        Instances of Base classes are counted and have an instance_name attribute.
-        This is equal to type(instance).__name__ + str(instance_count). There
-        is an exception to this; The first instance is number 0 and
-        its name is simply type(instance).__name__, without 0 at the end.
-        This name associates the instance to the instance_name in the
-        mpre.environment.Component_Resolve. The instance_name is used
-        for lookups in Instructions, parallel method calls, and reactions.
-        
-        Base objects can specify a memory_size attribute. If specified,
-        the object will have a .memory attribute. This is a chunk of
-        anonymous, contiguous memory of the size specified, provided
-        by pythons mmap.mmap. This memory attribute can be useful because 
-        it supports both the file-style read/write/seek interface and 
-        string-style slicing"""
+
     __metaclass__ = mpre.metaclass.Metaclass
     
     # A command line argument parser is generated automatically for
@@ -123,8 +98,7 @@ class Base(object):
     # class defaults dictionary. Specific attributes can be modified
     # or ignored by specifying them here.
     parser_modifiers = {}
-    parser_ignore = ("network_packet_size", "memory_size")
-        
+            
     # the default attributes new instances will initialize with.
     defaults = defaults.Base
     
@@ -191,11 +165,10 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
-        if self.deleted:
+        if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        print "Beginning deletion of", self.instance_name
         self.environment.delete(self)
-        self.deleted = True
+        self._deleted = True
         
     def remove(self, instance):
         """ Usage: object.remove(instance)
@@ -270,6 +243,9 @@ class Base(object):
     def __setstate__(self, state):
         self.on_load(state)
               
+    def __str__(self):
+        return self.instance_name
+        
     def save(self, attributes=None, _file=None):
         """ usage: base.save([attributes], [_file])
             
@@ -316,75 +292,17 @@ class Base(object):
         else:
             attributes["_required_module"] = (self.__module__, self.__class__.__name__)
         
-        saved = pickle.dumps(attributes)
-        saved = hashlib.sha512(saved).hexdigest() + saved
+        saved = utilities.authenticated_dump(attributes, utilities.key)
         if _file:
             _file.write(saved)
         else:
             return saved
             
-    @classmethod
-    def load(cls, attributes='', _file=None):
-        """ usage: base_object.load([attributes], [_file]) => restored_instance
-        
-            Loads state preserved by the save method. The attributes argument, if specified,
-            should be a dictionary created by unpickling the bytestream returned by the 
-            save method. Alternatively the _file argument may be supplied. _file should be
-            a file like object that has previously been supplied to the save method.
-            
-            Note that unlike save, this method requires either attributes or _file to be
-            specified. Also note that if attributes are specified, it should be a dictionary
-            that was produced by the save method - simply passing an objects __dict__ will
-            result in exceptions.
-            
-            To customize the behavior of an object after it has been loaded, one should
-            extend the on_load method instead of load."""
-        if _file:
-            assert not attributes
-            attributes = _file.read()
-        mac = attributes[:128]
-        attributes = attributes[128:]
-        if mac != hashlib.sha512(attributes).hexdigest():
-            raise CorruptPickleError("Message authentication code mismatch\n\n" + 
-                                     attributes)
-            
-        attributes = pickle.loads(attributes)                
-        saved_objects = attributes["objects"]
-        objects = attributes["objects"] = {}
-        for instance_type, saved_instances in saved_objects.items():            
-            objects[instance_type] = [cls.load(pickle.loads(instance)) for instance in
-                                      saved_instances]
-
-        if "_required_modules" in attributes:
-            _required_modules = []
-            incomplete_modules = attributes["_required_modules"]
-            module_sources = dict((module_name, source) for 
-                                  module_name, source, none in
-                                  incomplete_modules[:-1])
-            
-            for module_name, source, none in incomplete_modules[:-1]:
-                module = utilities.create_module(module_name, source)
-                _required_modules.append((module_name, source, module))
-            class_name = incomplete_modules[-1]
-            self_class = getattr(module, class_name)
-            attributes["_required_modules"] = _required_modules        
-        else:
-            module_name, class_name = attributes["_required_module"]
-            importlib.import_module(module_name)
-            self_class = getattr(sys.modules[module_name], class_name)            
-        self = self_class.__new__(self_class)
-        
-        attribute_modifier = attributes.pop("_attribute_type")
-        for key, value in attributes.items():
-            modifier = attribute_modifier.get(key, '')
-            if modifier == "reference":
-                attributes[key] = self.environment.Component_Resolve[value]
-            elif modifier == "save":
-                attributes[key] = cls.load(pickle.loads(value))
-                
-        self.on_load(attributes)
-        self.alert("Loaded", level='v')
-        return self
+    @staticmethod
+    def load(attributes='', _file=None):
+        """ Loads and instance from a bytestream or file produced by save. This
+            calls utilities.load but may look syntatically nicer."""
+        return utilities.load(attributes, _file)
         
     def on_load(self, attributes):
         """ usage: base.on_load(attributes)
@@ -394,7 +312,7 @@ class Base(object):
             by the load method."""
         self.set_attributes(**attributes)
         self.environment.add(self)
-        if self.instance_name != attributes["instance_name"]:
+        if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
             self.environment.replace(attributes["instance_name"], self)
                 
     def update(self):
@@ -411,7 +329,7 @@ class Base(object):
         class_mro = self.__class__.__mro__[:-1] # don't update object
         class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  
                 
-        with utilities.modules_preserved(info[1] for info in class_info):
+        with module_utilities.modules_preserved(info[1] for info in class_info):
             for cls, module_name in class_info:
                 del sys.modules[module_name]
                 importlib.import_module(module_name)

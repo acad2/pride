@@ -8,29 +8,62 @@ import importlib
 import types
 import pickle
 import hashlib
+import pprint
+
+import mpre.misc.bytecodedis
+from mpre.errors import CorruptPickleError
 
 if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
 
+import pickle
+import hmac
+import hashlib
+
+key = ''.join(chr(x) for x in xrange(256))#os.urandom(512)
+
+def authenticated_dump(py_object, key, _file=None,  hash_algorithm=hashlib.sha512):
+    bytestream = pickle.dumps(py_object)
+    result = hmac.HMAC(key, bytestream, hash_algorithm).hexdigest() + bytestream
+    if _file:
+        _file.write(result)
+    else:
+        return result
+
+def authenticated_load(bytestream, key, hash_algorithm=hashlib.sha512):
+    mac_size = hash_algorithm().digestsize * 2
+    try:
+        pickled_object = bytestream[mac_size:]
+    except TypeError:
+        bytestream = bytestream.read()
+        pickled_object = bytestream[mac_size:]
+    valid = hmac.compare_digest(bytestream[:mac_size], 
+                                hmac.HMAC(key, pickled_object, hash_algorithm).hexdigest())
+    if valid:
+        return pickle.loads(pickled_object)
+    else:
+        raise CorruptPickleError("Message authentication code mismatch\n\n" + mac)
+                                 
 def load(attributes=None, _file=None):
-    """ usage: see mpre.Base.load.__doc__"""
+    """ usage: load([attributes], [_file]) => restored_instance
+    
+        Loads state preserved by the save method. Loads an instance from either
+        a bytestream or file, as returned by the save method..
+        
+        To customize the behavior of an object after it has been loaded, one should
+        extend the on_load method.""" 
     if _file:
         assert not attributes
-        attributes = _file.read()
-    mac = attributes[:128]
-    attributes = attributes[128:]
-    if mac != hashlib.sha512(attributes).hexdigest():
-        raise CorruptPickleError("Message authentication code mismatch\n\n" + 
-                                 attributes)
+        attributes = _file.read()    
         
-    attributes = pickle.loads(attributes) 
+    attributes = authenticated_load(attributes, ''.join(chr(x) for x in xrange(256)))   
     saved_objects = attributes["objects"]
     objects = attributes["objects"] = {}
     for instance_type, saved_instances in saved_objects.items():            
-        objects[instance_type] = [load(pickle.loads(instance)) for instance in
-                                  saved_instances]
+        objects[instance_type] = set([load(instance) for instance in
+                                      saved_instances])
 
     if "_required_modules" in attributes:
         _required_modules = []
@@ -60,6 +93,7 @@ def load(attributes=None, _file=None):
             attributes[key] = load(pickle.loads(value))
             
     self.on_load(attributes)
+    self.alert("Loaded", level='v')
     return self  
         
 def convert(old_value, old_base, new_base):
@@ -80,27 +114,7 @@ def convert(old_value, old_base, new_base):
             new_value.append(new_base[digit])
 
     return ''.join(str(item) for item in reversed(new_value))
-        
-@contextlib.contextmanager
-def file_contents_swapped(contents, filepath='', _file=None):
-    """ Enters a context where the data of the supplied file/filepath are the 
-        contents specified in the contents argument."""
-    if not _file:
-        _file = open(filepath, 'r+b')
-    original_contents = _file.read()
-    _file.truncate(0)
-    _file.seek(0)
-    _file.write(contents)
-    _file.flush()
-    try:
-        yield
-    finally:
-        _file.truncate(0)
-        _file.seek(0)
-        _file.write(original_contents)
-        _file.flush()
-        _file.close()
-        
+                
 def resolve_string(string):
     """Given an attribute string of ...x.y.z, import ...x.y and return z"""
     module_name = string.split(".")   
@@ -108,68 +122,11 @@ def resolve_string(string):
     module_name = '.'.join(module_name)
     if not module_name:
         module_name = "__main__"
-        
+    
     _from = sys.modules[module_name] if module_name in sys.modules\
             else importlib.import_module(module_name)
-
     return getattr(_from, class_name)
-        
-def create_module(module_name, source, attach_source=False):
-    """ Creates a module with the supplied name and source"""
-    module_code = compile(source, module_name, 'exec')
-    new_module = types.ModuleType(module_name)
-    exec module_code in new_module.__dict__
-    if attach_source:
-        assert not hasattr(new_module, "_source")
-        new_module._source = source
-    return new_module
-  
-def get_module_source(module_name):
-    """ Retrieves the source code of a module specified by name"""
-    with modules_preserved([module_name]):
-        reload_module(module_name)
-        source = inspect.getsource(sys.modules[module_name])
-    return source
-    
-def reload_module(module_name):
-    """ Reloads the module specified by module_name"""
-    reload(sys.modules[module_name])
-     
-@contextlib.contextmanager
-def modules_preserved(modules=tuple()):
-    """ Enter a context where the modules specified will be backed up + restored upon exit"""
-    backup = {}
-    for module_name in modules:
-        backup[module_name] = sys.modules.get(module_name, None)
-        if backup[module_name] is None:
-            print "Attempted to preserve non existent module: ", module_name
-    try:
-        yield
-    finally:
-        for name, module in backup.items():
-            if module is not None:
-                sys.modules[name] = module
-        
-@contextlib.contextmanager
-def modules_switched(module_dict):
-    """ Enters a context where the modules in module_dict.keys are replaced by the source
-        specified in module_dict[key]. The original modules will be restored upon exit."""
-    modules = {}
-    with modules_preserved(module_dict.keys()):
-        for module_name, source_code in module_dict.items():
-            try:
-                module = sys.modules.pop(module_name)
-            except KeyError:
-                module = importlib.import_module(module_name)                
-            filepath = (module.__file__ if module.__file__[-1] != 'c' else
-                        module.__file__[:-1])
-            with file_contents_swapped(source_code, filepath):
-                modules[module_name] = importlib.import_module(module_name)
-        try:
-            yield
-        except:
-            raise
-            pass    
+
     
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 
@@ -186,113 +143,106 @@ def shell(command, shell=False):
     process = subprocess.Popen(command.split(), shell=shell)
     return process.communicate()[0]
     
-def function_header(function, mode="signature"):
-    """usage: function_header(function, 
-                             [mode]) => "(arg1, default_arg=True, keyword=True...)"
+def function_header(function):
+    """usage: function_header(function) => "(arg1, default_arg=True, keyword=True...)"
     
-    Given a function, return it's signature. mode can be specified as insertable
-    to use string format insertions instead of argument names"""
-    spec = args, varargs, keyword_args, default_args = inspect.getargspec(function)   
-    
-    header_size = ", ".join("{}" for x in range(len(args)))                
-    header_args = [arg for arg in args]
-    
-    if default_args: 
-        new_args = []
-        for arg in default_args:
-            if isinstance(arg, str):
-                new_arg = repr(arg)
-            else:
-                new_arg = arg
-            new_args.append(new_arg)
-        default_args = new_args
-        non_defaults = len(args) - len(default_args)
-        len(default_args)
-        header_args = header_args[:non_defaults] + ["{}={}".format(arg_name, default_args[index]) for index, arg_name in enumerate(header_args[non_defaults:])]
-        
-    if varargs:
-        header_size += ", *{}"
-        header_args.append(varargs)    
-    
-    if keyword_args: 
-        insert = "**{}" if mode == "signature" else "**{}"
-        header_size += ", " + insert
-        header_args.append(keyword_args)
-             
-    answer = inserts = "({})".format(header_size)
-    
-    if mode == "signature":
-        answer = inserts.format(*header_args)
-    
-    return answer    
-    
-def documentation(instance):
-    """ usage: documentation(object) => augmented_documentation_string
-    
-        Given a python object, attempt to introspect any useful information
-        and include it appended to the objects docstring."""
-        
-    if isinstance(instance, type):
-        _class = instance
-    else:
-        _class = instance.__class__
-    
-    options_text = 'Default values for newly created instances:\n\n'
-    try: # gather the default attribute names and values (base objects only)
-        options = ""
-        for key, value in _class.defaults.items():
-            if value is None:
-                value = "None"
-            options += "- {0: <25}: {1}\n".format(key, value)
-        if not options:
-            options_text = "\nNo defaults are assigned to new instances\n"
-        else:
-            options_text += options
-    except AttributeError: # does not have defaults
-        options_text = "\n\n"
-        
-    docstring = ""
-    class_docstring = getattr(_class, "__doc", '')
-    if not class_docstring:
-        class_docstring = getattr(_class, "__doc__", '')
-    docstring += "\t" + class_docstring.replace("    ", '').replace("\n", "\n\t") + "\n\n" + options_text + "\n"
-    beginning = docstring    
-        
-    docstring = "This object defines the following non-private methods:\n"
-    found = False
-    for attribute_name in _class.__dict__.keys():
-        if "_" != attribute_name[0]:
-            attribute = getattr(_class, attribute_name)
-            if callable(attribute):
-                attribute = getattr(attribute, "function", attribute)
-                found = True
-
-                docstring += "\n\n- **" + attribute_name + "**"
-                                
-                function_docstring = inspect.getdoc(attribute)
-                function_docstring = function_docstring if function_docstring else "No documentation available"
-
-                try:
-                    method_header = function_header(attribute)
-                except:
-                    print "Could not find header for", attribute
-                    raise SystemExit
-                docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
-                docstring += "\n"          
-                
-    if found:
-        docstring = beginning + docstring
-    else:
-        docstring = beginning + "No non-private methods are defined\n"
+       Given a function, return a string of it's signature."""
     try:
-        mro = str(_class.__mro__).replace("<", "").replace(">", '')
-        
+        code = function.func_code
     except AttributeError:
-        docstring += "\n No method resolution order detected...\n"
+        print function
+        
+    arguments = inspect.getargs(code)
+    _arguments = ', '.join(arguments.args )
+    if arguments.varargs:
+        _arguments += ", *" + arguments.varargs
+    if arguments.keywords:
+        _arguments += ", **" + arguments.keywords
+    return "(" + _arguments + ")"    
+    
+def usage(_object):
+    if hasattr(_object, "func_name"):
+        name = _object.func_name
+        arguments = function_header(_object)
+        return_type = ''#mpre.misc.bytecodedis.get_return_type(_object)
+    elif hasattr(_object, "func_code"):
+        name = _object.__name__
+        arguments = function_header(_object)
+        return_type = ''
+    elif hasattr(_object, "defaults") and isinstance(_object.defaults, dict):
+        name = _object.__name__ if isinstance(_object, type) else type(_object).__name__
+        spacing = ''
+        arguments = '({'
+        for attribute, value in _object.defaults.items():
+            arguments += spacing + attribute + " : " + str(value)
+            spacing = '\n' + (len(name) + len("usage: ({")) * " "
+        arguments += "})"    
+        return_type = " => {}".format(name)
+    elif _object.__class__.__name__ == "Runtime_Decorator":
+        name = _object.function.__name__
+        arguments = function_header(_object.function)
+        return_type = ''
+    elif hasattr(_object, "__call__"):
+        name = _object.__name__ if isinstance(_object, type) else type(_object).__name__
+        arguments = function_header(_object.__call__)
+        return_type = ''
     else:
-        docstring += "\nThis objects method resolution order is:\n\n"
-        docstring += mro + "\n"
+        raise ValueError("Unsupported object: {}".format(_object))
+    return "usage: {}{}{}".format(name, arguments, return_type)
+    
+def documentation(_object):
+    new_section = "{}\n==============\n\n"
+    new_subsection = "{}\n--------------\n\n"
+    new_function = "- **{}"
+    if isinstance(_object, types.ModuleType):        
+        module_name = _object.__name__
+        docstring = new_section.format(module_name)
+        docstring += _object.__doc__ if _object.__doc__ is not None else ''
+        
+        for attribute in (attribute for attribute in dir(_object) if "_" != attribute[0]):
+            value = getattr(_object, attribute)
+            if isinstance(value, type) or callable(value) and "built-in" not in str(value):
+                docs = documentation(value)
+                if docs:
+                    docstring += "\n\n" + docs
+            
+    elif isinstance(_object, type):
+        class_name = _object.__name__
+        docstring = new_subsection.format(class_name)
+        docs = _object.__dict__["__doc__"]
+        if docs.__class__.__name__ == "Docstring":
+            docs = _object.__doc    
+        elif docs is None:
+            docs = "No documentation available"
+        docstring += docs.replace("\n", "\n\t\t") + "\n"
+        
+        for attribute in (attribute for attribute in dir(_object) if "_" != attribute[0]):
+            value = getattr(_object, attribute)
+            if hasattr(value, "function"):
+                docs = documentation(value.function)
+                docstring += "\n\n" + docs
+            elif hasattr(value, "im_func"):
+                docs = documentation(value)           
+                docstring += "\n\n" + docs
+                
+    elif callable(_object):
+        try:
+            function_name = _object.__name__
+        except AttributeError:
+            docstring = ''
+        else:
+            #docstring = new_function.format(function_name)
+            docstring = new_function.format(usage(_object)[7:]) + ":"
+            docstring += "\n\n\t\t"
+            docstring += (_object.__doc__ if _object.__doc__ is not None else 
+                          "No documentation available").replace("\n", "\n\t\t") + "\n"
+            #docstring += "\n\n\t\t" + ge
+            #docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
+    elif _object.__class__.__name__ == "Runtime_Decorator":
+        docstring = documentation(_object.function)
+        
     return docstring
+
     
 class Latency(object):
     """ usage: Latency([name="component_name"], 
@@ -466,3 +416,39 @@ class LRU_Cache(object):
     def __setitem__(self, key, value):
         self.dict[key] = value
         self.contains.add(key)    
+        
+class Module_Listing(object):
+
+    def __init__(self, _file):
+        super(Module_Listing, self).__init__()
+        self.file = _file        
+
+    def from_help(self):
+        helper = pydoc.Helper(output=self.file)
+        helper("modules")
+
+    def read_file(self):
+        file = self.file
+        file.seek(0)
+        text = file.read()
+        return text
+
+    def trim(self, text):
+        _file = StringIO(text)
+        found = []
+        count = 0
+        for line in _file.readlines():
+            if line.split(" ").count("") > 2:
+                found += line.split()
+
+        return ' '.join(found)
+
+    def get_modules(self):
+        self.from_help()
+        original = self.read_file()
+        return self.trim(original)
+
+    def make_file(self, filename):
+        with open(filename, 'w') as _file:
+            _file.write(self.get_modules())
+            _file.flush()        

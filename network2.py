@@ -5,6 +5,7 @@ import getpass
 import hashlib
 import sqlite3
 import pickle
+import traceback
 
 import mpre
 import mpre.base as base
@@ -13,6 +14,7 @@ import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
 Instruction = mpre.Instruction
+components = mpre.components
            
 def Authenticated(function):
     def call(instance, sender, packet):
@@ -25,6 +27,7 @@ def Authenticated(function):
     
 class Network_Service(network.Udp_Socket):
     
+    """ Reliable udp socket; under development"""
     defaults = defaults.Network_Service
     
     end_request_errors = {"0" : "Invalid Request"}
@@ -367,202 +370,54 @@ class Authenticated_Client(base.Reactor):
             error = self.login_errors[code]
             self.alert("Login failed; {}", [error], level=0)
         
-        
-class Service_Listing(Network_Service):
-    defaults = defaults.Network_Service.copy()
+                    
+class RPC_Handler(mpre.base.Base):
+    
+    def make_request(self, callback, host_info, transport_protocol, component_name, 
+                     method, args, kwargs):
+        arguments = pickle.dumps((args, kwargs))
+        request = ' '.join((component_name, method, arguments))
+        self.create(RPC_Requester, transport_protocol, target=host_info, request=request, 
+                    callback=callback if callback is not None else self.alert)
+ 
+
+class RPC_Server(network.Server):
     
     def __init__(self, **kwargs):
-        self.services = {}
-        super(Service_Listing, self).__init__(**kwargs)
-        
-    def set_service(self, sender, packet):
-        service_name, address = packet.split(" ", 1)                
-        self.services[address] = service_name
-        return "set success"
-        
-    def remove_service(self, sender, packet):
-        service_name, address = packet.split(" ", 1)
-        del self.services[address]
-        
-    def send_listing(self, sender, packet):
-        return "\n".join("Address: {: >20} Service: {: > 5}".format\
-                        (address, service_info) for  address, service_info\
-                        in self.services.items())
+        super(RPC_Server, self).__init__(**kwargs)
+        self.Tcp_Socket_type = RPC_Request
             
-           
-class File_Service(base.Reactor):
-    defaults = defaults.File_Service
     
-    def __init__(self, **kwargs):
-        super(File_Service, self).__init__(**kwargs)
-                
-    def slice_request(self, sender, slice_info):
-        filename, file_position, request_size = slice_info.split()
-        seek_index = int(file_position)
-        request_size = int(request_size)
+class RPC_Requester(network.Tcp_Client):
+    
+    def on_connect(self):
+        self.send(self.request)
         
-        if request_size >= self.mmap_threshold:
-            _file, offset = fileio.Mmap(filename, seek_index)
-            data = _file[offset:offset + request_size]            
+    def recv(self, network_packet_size):
+        packet = super(RPC_Requester, self).recv(network_packet_size)
+        self.callback(pickle.loads(packet))
+        self.delete()    
         
-        else:
-            _file = open(filename, 'rb')
-            _file.seek(seek_index)
-            data = _file.read(request_size)
-            _file.close()
-            
-        self.alert("retrieved {}/{} bytes of data/requested", 
-                   [len(data), request_size],
-                   level='vv')
-        return "record_data " + file_position + " " + data        
-        
-    def get_filesize(self, sender, filename):
+ 
+class RPC_Request(network.Tcp_Socket):
+    
+    def recv(self, network_packet_size):
+        request = super(RPC_Request, self).recv(network_packet_size)
+        component_name, method, argument_bytestream = request.split(" ", 2)
         try:
-            response = str(os.path.getsize(filename))
-        except WindowsError:
-            response = "0"
-        return "set_filesize " + response
-                  
-  
-class Download(base.Reactor):
-    
-    defaults = defaults.Download
-    
-    def __init__(self, **kwargs):
-        super(Download, self).__init__(**kwargs)
-        self.data_remaining = 0
+            args, kwargs = pickle.loads(argument_bytestream)
+            call = getattr(components[component_name], method)
+            response = call(*args, **kwargs)
+            response = pickle.dumps(response)
+        except:
+            response = pickle.dumps(traceback.format_exc())
+        self.send(response)
+        self.delete()
         
-        filename = self.filename
-        self.file = open("{}_{}".format(self.filename_prefix, filename), 'wb')    
-                
-        self.reaction(self.target, "get_filesize " + filename)                  
-                
-    def make_request(self):
-        if self.bytes_remaining > 0:
-            file_position = self.file.tell()
-            request_size = min(self.bytes_remaining, self.network_packet_size)
-            request = "{} {} {} {}".format("slice_request",
-                                            self.filename, 
-                                            file_position, 
-                                            request_size)
-        else:
-            request = ""
-            self.alert("finished downloading, sending close request" + "*"*40, level=0)
-            self.file.close()
-        return request
-                
-    def set_filesize(self, sender, value):
-        filesize = int(value)
-        if filesize:
-            self.bytes_remaining = filesize
-            return self.make_request()            
-        else:
-            self.alert("File {} was not available for download from {}",
-                       [self.filename, self.target])        
-        
-    def record_data(self, sender, data):
-        file_position, file_data = data.split(" ", 1)
-        seek_position = int(file_position)
-        
-        file = self.file
-        file.seek(seek_position)        
-        file.write(data)
-        file.flush()
-        self.bytes_remaining -= file.tell() - seek_position
-        return self.make_request()
-        
-        
-class Tcp_Service_Proxy(network.Server):
-
-    defaults = defaults.Server.copy()
-        
-    def __init__(self, **kwargs):
-        super(Tcp_Service_Proxy, self).__init__(**kwargs)
-        self.Tcp_Socket_type = Tcp_Client_Proxy
-                
-    def on_connect(self, connection):
-        pass
-        
-        
-class Tcp_Client_Proxy(network.Tcp_Socket):
-    
-    def recv(self, network_packet_size):
-        request = self.socket.recv(network_packet_size)
-        service_name, command, arguments = request.split(" ", 2)
-        print "received request: ", request
-        args, kwargs = pickle.loads(arguments)
-        args = args if args else tuple()
-        kwargs = kwargs if kwargs else {}
-        result = self.parallel_method(service_name, command, self.socket.getpeername(),
-                                      *args, **kwargs)
-        
-        self.send(result)        
-       # self.respond_with("reply")
-       # request = command + " " + value
-       # self.reaction(service_name, request)
-              
-    def reply(self, sender, packet):
-        self.send(str(sender) + " " + packet)
-
-                           
-class Tcp_Service_Client(network.Tcp_Client):
-    
-    defaults = defaults.Tcp_Client.copy()
-    defaults.update({"component_name" : '',
-                     "method" : '',
-                     "args" : None,
-                     "kwargs" : None})
-                     
-    def __init__(self, **kwargs):
-        super(Tcp_Service_Client, self).__init__(**kwargs)
-        component_name = self.component_name
-        method = self.method
-        if not component_name:
-            self.alert("Invalid request: No component specified", level=0)
-        elif not method:
-            self.alert("Invalid request: No method specified", level=0)
-        
-        self.connection_string = self.make_request(self.component_name, method, 
-                                                   self.args, self.kwargs)
-    
-    def make_request(self, component_name, method, args, kwargs):        
-        return ' '.join((component_name, method, pickle.dumps((args, kwargs))))
-        
-    def on_connect(self):   
-        self.send(self.connection_string)
-                
-    def recv(self, network_packet_size):
-        packet = self.socket.recv(network_packet_size)
-        self.alert("Received response: {}", [packet], level=0)        
-        self.send(raw_input("Reply format: (component_name method args kwargs)\nReply: "))
-        
-
-class Remote_Procedure_Call(object):
-        
-    def __init__(self, component_name, method_name, host_info, *args, **kwargs):
-        self.component_name = component_name
-        self.method_name = method_name
-        self.host_info = host_info
-        self.args = args
-        self.kwargs = kwargs
-                
-    def execute(self, recv_callback=None):
-        kwargs = {"component_name" : self.component_name,
-                  "method" : self.method_name,
-                  "target" : self.host_info,
-                  "args" : self.args,
-                  "kwargs" : self.kwargs,
-                  "verbosity" : 'vvv'}
-        if recv_callback:
-            kwargs["recv"] = recv_callback                                  
-        return Tcp_Service_Client(**kwargs)
         
 if __name__ == "__main__":
     from mpre.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
    # test_reliability()
    # test_authentication()
    # test_file_service()
-   # test_proxy()
-    rpc = Remote_Procedure_Call("Interpeter_Service", "login", "root password")
-    #def callback(self, network_packet_size=0):
-    connection = rpc.execute()
+   # test_rpc()    

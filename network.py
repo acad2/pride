@@ -36,7 +36,8 @@ try:
     CONNECTION_IN_PROGRESS = errno.WSAEWOULDBLOCK
     CONNECTION_IS_CONNECTED = errno.WSAEISCONN
     CONNECTION_WAS_ABORTED = errno.WSAECONNABORTED
-    CONNECTION_RESET = errno.WSAECONNRESET    
+    CONNECTION_RESET = errno.WSAECONNRESET
+    CONNECTION_CLOSED = errno.WSAEDISCON
     ERROR_CODES[BAD_TARGET] = "BAD_TARGET"    
 except:
     CALL_WOULD_BLOCK = errno.EWOULDBLOCK
@@ -44,17 +45,23 @@ except:
     CONNECTION_IS_CONNECTED = errno.EISCONN
     CONNECTION_WAS_ABORTED = errno.ECONNABORTED
     CONNECTION_RESET = errno.ECONNRESET
+    CONNECTION_CLOSED = errno.ENOTCONN
  
 ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                     CONNECTION_IN_PROGRESS : "CONNECTION_IN_PROGRESS",
                     CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
                     CONNECTION_WAS_ABORTED : "CONNECTION_WAS_ABORTED",
-                    CONNECTION_RESET  : "CONNECTION_RESET"})
+                    CONNECTION_RESET  : "CONNECTION_RESET",
+                    CONNECTION_CLOSED : "CONNECTION_CLOSED"})
                
 HOST = socket.gethostbyname(socket.gethostname())
 
 class Error_Handler(object):
-            
+    
+    def connection_closed(self, sock, error):
+        sock.alert("{}", [error], level=0)
+        sock.delete()
+        
     def connection_reset(self, sock, error):
         sock.alert("Connection reset\n{}", [error], level=0)
         sock.delete()
@@ -106,7 +113,7 @@ class Socket(base.Wrapper):
         """ Used to customize behavior when a socket is readable according to select.select.
             It is not likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead."""
-        self.recvfrom(self.network_packet_size)
+        return self.recvfrom(self.network_packet_size)
         
     def send(self, data):
         """ Sends data via the underlying _socketobject. The socket is first checked to
@@ -127,12 +134,16 @@ class Socket(base.Wrapper):
 
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
-            when the socket becomes readable according to select.select. Subclasses should
-            extend this method to customize functionality for when data is received. This
+            when the socket becomes readable according to select.select. If . This
             method is called for Tcp sockets and requires a connection."""
         buffer_size = (self.network_packet_size if not buffer_size else
                        buffer_size)
-        return self.wrapped_object.recv(buffer_size)
+        response = self.wrapped_object.recv(buffer_size)
+        if not response:
+            error = socket.error("Connection closed")
+            error.errno = CONNECTION_CLOSED
+            raise error
+        return response
         
     def recvfrom(self, buffer_size=0):
         """ Receives data from a host. For Udp sockets this method is event triggered
@@ -147,7 +158,6 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
-        print address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
@@ -226,9 +236,10 @@ class Server(Tcp_Socket):
         try:
             self.bind((self.interface, self.port))
         except socket.error:
-            self.alert("socket.error when binding to {0}", (self.port, ), 0)
+            self.alert("socket.error when binding to {}", (self.port, ), 0)
             bind_success = self.handle_bind_error()
         if bind_success:
+            self.alert("Listening at: {}:{}".format(self.interface, self.port), level='v')
             self.listen(self.backlog)
                     
     def on_select(self):
@@ -245,11 +256,9 @@ class Server(Tcp_Socket):
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket)
         
-        self.alert("{} accepted connection {} from {}", 
-                  (self.name, connection.instance_name, address),
-                  level="v")
+
         
-        self.on_connect(connection)
+        self.on_connect(connection, address)
         return connection, address
         
     def handle_bind_error(self):
@@ -262,10 +271,11 @@ class Server(Tcp_Socket):
             instruction = Instruction(self.instance_name, "delete")
             instruction.execute()
  
-    def on_connect(self, connection):
+    def on_connect(self, connection, address):
         """ Connection logic that the server should apply when a new client has connected.
             This method should be overloaded by subclasses"""
-        raise NotImplementedError 
+        self.alert("accepted connection {} from {}", 
+                  (connection.instance_name, address),level="v")
         
         
 class Tcp_Client(Tcp_Socket):

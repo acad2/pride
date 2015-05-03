@@ -4,6 +4,8 @@ import os
 import pickle
 import StringIO
 import pprint
+import binascii
+import contextlib
 from contextlib import closing, contextmanager
 
     
@@ -11,6 +13,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
 import mpre.utilities as utilities
+import mpre.userinput
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -38,7 +41,27 @@ def ensure_file_exists(filepath, data=('a', '')):
                 _file.write(file_data)
                 _file.flush()
                         
-            
+@contextlib.contextmanager
+def file_contents_swapped(contents, filepath='', _file=None):
+    """ Enters a context where the data of the supplied file/filepath are the 
+        contents specified in the contents argument."""
+    if not _file:
+        _file = open(filepath, 'r+b')
+    original_contents = _file.read()
+    _file.truncate(0)
+    _file.seek(0)
+    _file.write(contents)
+    _file.flush()
+    try:
+        yield
+    finally:
+        _file.truncate(0)
+        _file.seek(0)
+        _file.write(original_contents)
+        _file.flush()
+        _file.close() 
+
+        
 class Cached(object):
     """ A memoization decorator that should work with any method and argument structure"""
     cache = {}
@@ -107,7 +130,7 @@ class File(base.Wrapper):
         specified mode."""
         
     defaults = defaults.File
-            
+    
     def __init__(self, path='', mode='', **kwargs):  
         super(File, self).__init__(**kwargs)
         if "file_system" not in kwargs:
@@ -164,14 +187,22 @@ class File(base.Wrapper):
         attributes["_file_data"] = self.read()
         self.seek(backup_tell) # in case other objects use it (arguably bad practice anyway)
         del attributes["wrapped_object"]
+        del attributes["file"]
         return attributes
         
     def on_load(self, attributes):
         super(File, self).on_load(attributes)
-        _file = open(self.filename, self.mode)
+        if self.file_system == "disk":
+            self.file = _file = open(self.filename, self.mode)
+        else:
+            self.file = _file = utilities.resolve_string(self.file_type)()
         self.wraps(_file)
         self.write(self.__dict__.pop("_file_data"))                        
         self.seek(0)
+        try:
+            self.parallel_method("File_System", "add", self)
+        except base.AddError:
+            pass
             
     def delete(self):
         super(File, self).delete()
@@ -194,7 +225,14 @@ class Encrypted_File(File):
         the appropriate key to decrypt the file."""
     
     defaults = defaults.Encrypted_File
-    asciikey = ''.join(chr(ordinal) for ordinal in xrange(256))
+        
+    def _get_keys(self):
+        return (self.key, self.data_pointers)
+    keys = property(_get_keys)
+    
+    def _get_ascii_key(self):
+        return ''.join(chr(ordinal) for ordinal in xrange(256))
+    asciikey = property(_get_ascii_key)
     
     def __init__(self, filename='', mode='', **kwargs):
         super(Encrypted_File, self).__init__(filename, mode, **kwargs)
@@ -285,10 +323,12 @@ class Encrypted_File(File):
         return result#[offset:]
         
     def encrypt(self, data):
-        return utilities.convert(data, Encrypted_File.asciikey, self.key)
+      #  data = binascii.hexlify(data)
+        return utilities.convert(data, self.asciikey, self.key)
         
     def decrypt(self, data):
-        return utilities.convert(data, self.key, Encrypted_File.asciikey)
+        return utilities.convert(data, self.key, self.asciikey)
+       # return binascii.unhexlify(data)
         
 
 class File_System(base.Base):
@@ -375,6 +415,10 @@ class File_System(base.Base):
         
     def __getitem__(self, path):
         return self.get_file(path)
+     
+    def __setitem__(self, path, value):
+        _path = path.split(os.path.sep)
+        self.get_file(os.path.join(*_path[:-1]))[_path[-1]] = value
         
     def get_file(self, path):  
         try:
@@ -414,14 +458,13 @@ class File_System(base.Base):
                     elif not is_file:   
                         exists = os.path.exists(current_directory)
                         if _file_system != "disk" or exists:
-                            if not exists: # because of how interpreter_service logs output
-                                sys.__stdout__.write("Directory '{}' does not exist. Create it? y/n: ".format(key))
-                            if exists or 'y' in raw_input().lower():                       
-                        #       print "creating node: {}".format(key)
+                            if not exists:
+                                prompt = "Directory '{}' does not exist. Create it? y/n: "
+                                permission = mpre.userinput.get_selection(prompt.format(key), bool)
+                            if exists or permission:
+                            #   print "creating node: {}".format(key)
                                 directory[key] = {}
-                                directory = directory[key]
-                   #            _directory = Directory(path=current_directory)
-                                #pprint.pprint(directory)
+                                directory = directory[key]   
                             else:
                                 raise IOError("Directory '{}' does not exist".format(key))
                         else:
@@ -523,7 +566,8 @@ if __name__ == "__main__":
         for x in xrange(iterations):
             f = File(filename, 'rb')
     
-    from mpre.misc.decoratorlibrary import Timed
+    import mpre.misc.decoratorlibrary
+    Timed = mpre.misc.decoratorlibrary
     
     time = Timed(test_case1)("demofile.exe")
     time2 = Timed(test_case2)("demofile.exe")

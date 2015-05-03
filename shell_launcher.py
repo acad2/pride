@@ -7,11 +7,12 @@ options = {"parse_args" : True,
 
 # feel free to customize
 definitions = \
-r"""import base
+r"""import mpre.base as base
+import mpre
 
 constructor = base.Base()
 environment = constructor.environment
-    
+components = mpre.components
 create = constructor.create
 
 def print_components(mode="keys", size=(None, )):
@@ -31,27 +32,27 @@ def build_docs(**kwargs):
 def update(component):
     return constructor.parallel_method(component, "update")
     
-#proxy = constructor.create("network2.Tcp_Service_Proxy", port=39999)
-#import network2
-#rpc = network2.Remote_Procedure_Call("Interpreter_Service", "login", ("127.0.0.1", 39999), 
-#                                     "root2 password")
-#connection = rpc.execute()  
-
-#Instruction("Metapython", "create", "mpre.fileio.File_System").execute()
 #f = constructor.create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
 fs = get_component("File_System")
 #ftest = fs.get_file("virtual\\test_directory\\test.disk")
 
 #d = constructor.create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
 
-e = constructor.create("mpre.fileio.Encrypted_File", "virtual\\test_file.txt")
-e.write("This is a test string. ")
-e.write("And this is another.")
-e.seek(0)
+#e = constructor.create("mpre.fileio.Encrypted_File", "virtual\\test_file.txt")
+#e.write("This is a test string. ")
+#e.write("And this is another.")
+#e.seek(0)
 #print e.read()
+
+#_package = constructor.create("mpre.package.Package", mpre)
+#with open("metapython.pack", 'wb') as package_file:
+#    _package.save(_file=package_file)
+
+#_sqlite3 = _package.get_module("sqlite3")
+ 
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    Instruction("Metapython", "create", "metapython.Shell", **options).execute()
+    Instruction("Metapython", "create", "_metapython.Shell", **options).execute()

@@ -43,7 +43,7 @@ def convert_to_c(file_names, mode):
             _filename = filename.split(".")[:-1][0]
             new_name = _filename + '.c'
             c_files.append(new_name)
-            #print "{} cross compiled successfully to {}{}".format(filename, new_name, output.read())
+            print "{} cross compiled successfully to {}{}".format(filename, new_name, output.read())
     #print
     return c_files
 

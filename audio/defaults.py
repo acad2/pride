@@ -43,7 +43,6 @@ PyAudio_Device.update({"format" : 8,
 "data" : "",
 "record_to_disk" : False,
 "frame_count" : 0,
-"memory_size" : 16384,
 "source_name" : '',
 "data_source" : '',
 "mute" : False,
@@ -66,13 +65,6 @@ Audio_Manager = Reactor.copy()
 Audio_Manager.update({"config_file_name" : '',
 "use_defaults" : True,
 "configure" : False})
-
-Audio_Channel = Reactor.copy()
-Audio_Channel.update({"audio_data" : '',
-"memory_size" : 65535})
-
-Audio_Service = Reactor.copy()
-Audio_Service.update({"memory_size" : 65535})
 
 Voip_Messenger = Process.copy()
 Voip_Messenger.update({"microphone_name" : "microphone",

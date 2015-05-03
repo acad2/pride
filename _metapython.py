@@ -211,8 +211,9 @@ class Metapython(base.Reactor):
 
     defaults = defaults.Metapython
     parser_ignore = ("environment_setup", "prompt", "copyright", 
-                     "traceback", "memory_size", "network_packet_size", 
-                     "interface", "port")
+                     "traceback", "interface", "port")
+                     
+    # make an optional "command" positional argument and allow both -h and --help flags
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
@@ -223,10 +224,10 @@ class Metapython(base.Reactor):
     def __init__(self, **kwargs):
         super(Metapython, self).__init__(**kwargs)
         self.setup_os_environ()
-        self.file_system = self.create("mpre.fileio.File_System")
-        self.processor = self.create("vmlibrary.Processor")        
-        self.alert_handler = self.create(Alert_Handler)
-
+        for component_type in self.startup_components:
+            component = self.create(component_type)
+            setattr(self, component.instance_name.lower(), component)
+            
         if self.startup_definitions:
             Instruction(self.instance_name, "exec_command", 
                         self.startup_definitions).execute() 

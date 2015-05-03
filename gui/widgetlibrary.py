@@ -1,8 +1,8 @@
 import time
 
 import mpre
-import guilibrary
-import defaults
+import mpre.gui.guilibrary as guilibrary
+import mpre.gui.defaults as defaults
 import mpre.base as base
 Instruction = mpre.Instruction
 

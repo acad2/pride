@@ -3,6 +3,8 @@ import mpre.defaults as defaults
 Base = defaults.Base
 Process = defaults.Process
 
+if "__file__" not in globals():
+    __file__ = os.getcwd()
 PACKAGE_LOCATION = os.path.dirname(os.path.abspath(__file__))
 
 SCREEN_SIZE = [800, 600]

@@ -1,19 +1,5 @@
 #   mpf.defaults - config file - contains attributes:values for new instances
-#
-#    Copyright (C) 2014  Ella Rose
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import struct
 import socket
 import os
@@ -27,18 +13,9 @@ else:
     FILEPATH = os.path.split(__file__)[0]
 
 # Base
-MANUALLY_REQUEST_MEMORY = 0
-DEFAULT_MEMORY_SIZE = 4096
-
-# anonymous memory passes -1  as the file descriptor to pythons mmap.mmap.
-# persistent memory opens the file instance.instance_name and opens an
-# mmap.mmap with that files file descriptor
-ANONYMOUS = -1
-PERSISTENT = 0
-Base = {"memory_size" : DEFAULT_MEMORY_SIZE,
-"memory_mode" : ANONYMOUS,
-"verbosity" : '',
-"deleted" : False}
+Base = {"verbosity" : '',
+"_deleted" : False,
+"replace_reference_on_load" : True}
 
 Reactor = Base.copy()
 
@@ -175,16 +152,15 @@ Metapython = Reactor.copy()
 Metapython.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
 "implementation" : DEFAULT_IMPLEMENTATION,
 "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
+"startup_components" : ("mpre.fileio.File_System", "vmlibrary.Processor",
+                        "mpre._metapython.Alert_Handler", "mpre.userinput.User_Input",
+                        "mpre.network.Network", "mpre.network2.RPC_Handler"),
 "interface" : "0.0.0.0",
 "port" : 40022,
 "prompt" : ">>> ",
-"_suspended_file_name" : "suspended_interpreter.bin",
 "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-"priority" : .04,
 "interpreter_enabled" : True,
-"startup_definitions" : \
-"""Instruction('Metapython', 'create', 'userinput.User_Input').execute()
-Instruction("Metapython", "create", "network.Network").execute()"""})
+"startup_definitions" : ''})
 #"help" : "Execute a python script or launch a live metapython session"})
 
 # fileio
@@ -209,3 +185,23 @@ Encrypted_File.update({"block_size" : 1024})
 File_System = Process.copy()
 File_System.update({"file_systems" : ("disk", "virtual"),
                     "auto_start" : False})             
+  
+Package = Base.copy()
+Package.update({"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
+                "package_name" : None,
+                "include_all_source" : True,
+                "replace_reference_on_load" : False,
+                "include_documentation" : False})  
+                
+Loader = Base.copy()
+Loader.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types"),
+               "embedded_objects" : ("mpre.utilities.load", "mpre.errors.CorruptPickleError",
+                                     "mpre.module_utilities.create_module"),
+               "importer" : "mpre.package.Package_Importer"})
+                
+Executable = Base.copy()                    
+Executable.update({"filename" : "metapython.exe",
+                   "package" : None,
+                   "file" : None,
+                   "loader_type" : "mpre.programs.buildlauncher.Loader",
+                   "main_source" : ''})                    

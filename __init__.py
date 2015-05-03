@@ -100,18 +100,7 @@ class Environment(object):
         except AttributeError:
             self.Instance_Name[instance] = instance_name
             self.Instance_Number[instance] = count
-        
-        memory_size = getattr(instance, "memory_size", 0)
-        if memory_size:
-            self.add_memory(instance.instance_name, instance.memory_mode, memory_size)                        
-    def add_memory(self, instance_name, memory_mode, memory_size):
-        if not memory_mode:
-            file_on_disk = open(instance_name, 'a+')
-            file_descriptor = file_on_disk.fileno()
-        else:
-            file_descriptor = -1
-        self.Component_Memory[instance_name] = mmap.mmap(file_descriptor, memory_size)     
-                            
+
     def __contains__(self, component):
         if (component in self.Component_Resolve.keys() or
             component in itertools.chain(self.Component_Resolve.values())):
@@ -188,15 +177,20 @@ class Instruction(object):
         self.args = args
         self.kwargs = kwargs
         
-    def execute(self, priority=0.0, callback=None):
+    def execute(self, priority=0.0, callback=None, host_info=tuple(), transport_protocol="Tcp"):
         """ usage: instruction.execute(priority=0.0, callback=None)
         
             Submits an instruction to the processing queue. The instruction
             will be executed in priority seconds. An optional callback function 
             can be provided if the return value of the instruction is needed."""
-        execute_at = self.execute_at = timer_function() + priority
-        heapq.heappush(environment.Instructions, 
-                      (execute_at, self, callback))
+        if host_info:
+            components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
+                                                   self.component_name, self.method, 
+                                                   self.args, self.kwargs)
+        else:
+            execute_at = self.execute_at = timer_function() + priority
+            heapq.heappush(environment.Instructions, 
+                          (execute_at, self, callback))
             
     def __str__(self):
         args = str(getattr(self, "args", ''))
@@ -207,3 +201,4 @@ class Instruction(object):
                                           method, args, kwargs)  
                                      
 environment = Environment()
+components = environment.Component_Resolve
