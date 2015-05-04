@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -370,16 +378,8 @@
                                 <a href="../network2/">network2</a>
                             </li>
                         
-                            <li >
-                                <a href="../scratch/">scratch</a>
-                            </li>
-                        
                             <li class="active">
                                 <a href="./">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -395,12 +395,12 @@
                 
                 
                 <li >
-                    <a rel="next" href="../scratch/">
+                    <a rel="next" href="../network2/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
-                <li >
-                    <a rel="prev" href="../todo/">
+                <li class="disabled">
+                    <a rel="prev" >
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -416,34 +416,63 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
+        <li class="main active"><a href="#structtest">structtest</a></li>
+        
+            <li><a href="#struct">Struct</a></li>
+        
+            <li><a href="#timed">Timed</a></li>
+        
+    
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<p>N
-o</p>
-<p>d
-o
-c
-u
-m
-e
-n
-t
-a
-t
-i
-o
-n</p>
-<p>a
-v
-a
-i
-l
-a
-b
-l
-e</p>
+<h1 id="structtest">structtest</h1>
+<h2 id="struct">Struct</h2>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.tests.attributetest.Struct'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>create_struct</strong>(self, dictionary):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>create_metadata</strong>(self, attribute_order, byte_offsets, is_pickled):</p>
+<pre class="prettyprint well"><code> create a metadata struct that provides attribute names,
+    the pickled flag, and the associated offset/size.
+</code></pre>
+</li>
+<li>
+<p><strong>byte_representation</strong>(self, dictionary):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>update</strong>(self, dictionary):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>from_dictionary</strong>(self, dictionary):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>pack</strong>(self, value):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
+<h2 id="timed">Timed</h2>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.misc.decoratorlibrary.Timed'&gt;, &lt;type 'object'&gt;)
+</code></pre>
 </div>
         </div>
 

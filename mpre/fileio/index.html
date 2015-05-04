@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../exelauncher/">exelauncher</a>
+                                <a href="../errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../exe/">exe</a>
                             </li>
                         
                             <li class="active">
                                 <a href="./">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -395,12 +395,12 @@
                 
                 
                 <li >
-                    <a rel="next" href="../exelauncher/">
+                    <a rel="next" href="../exe/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../metaclass/">
+                    <a rel="prev" href="../importers/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -420,9 +420,13 @@
         
             <li><a href="#cached">Cached</a></li>
         
+            <li><a href="#directory">Directory</a></li>
+        
             <li><a href="#encrypted_file">Encrypted_File</a></li>
         
             <li><a href="#file">File</a></li>
+        
+            <li><a href="#file_system">File_System</a></li>
         
             <li><a href="#mmap">Mmap</a></li>
         
@@ -434,113 +438,219 @@
             <div class="col-md-9" role="main">
 
 <h1 id="mprefileio">mpre.fileio</h1>
-<p>No documentation available</p>
 <h2 id="cached">Cached</h2>
-<p>A memoization decorator that should work with any method and argument structure</p>
-<h2 id="encrypted_file">Encrypted_File</h2>
-<pre class="prettyprint well"><code> usage: Encrypted_File(filename='', mode='', file=None, file_type='disk', **kwargs) 
-   =&gt; encrypted_file
-
-Returns an Encrypted_File object. Calls to the write method will be encrypted with
-encrypted_file.key via the mpre.utilities.convert function, and reads will be decrypted using the same key. Currently only supports ascii.
-
-The key is only valid for as long as the instance exists. In order to preserve
-the key, utilize the save method. The resulting pickle stream can later be
-unpickled and supplied to the load method to recover the original instance with 
-the appropriate key to decrypt the file.
+<pre class="prettyprint well"><code> A memoization decorator that should work with any method and argument structure
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>memory_size              : 4096</li>
-<li>persistent               : False</li>
-<li>memory_mode              : -1</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.Cached'&gt;, &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
-<p><strong>encrypt</strong>(self, data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>decrement_handle</strong>(self, key):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
+</ul>
+<h2 id="directory">Directory</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'directory': None,
+ 'file_system': 'disk',
+ 'is_directory': True,
+ 'path': '',
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.Directory'&gt;, &lt;class 'mpre.base.Base'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
 <li>
-<p><strong>read</strong>(self, size=-1):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>delete</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
+<h2 id="encrypted_file">Encrypted_File</h2>
+<pre class="prettyprint well"><code> usage: Encrypted_File(_file, **kwargs) =&gt; encrypted_file
+
+    Returns an Encrypted_File object. Calls to the write method will be encrypted with
+    encrypted_file.key (currently via the mpre.utilities.convert function), and reads will be decrypted using the same key. Currently only supports ascii. Should currently
+    be considered as a demonstartion only, please do not depend upon this to keep
+    information private.
+
+    The key is only valid for as long as the instance exists. In order to preserve
+    the key, utilize the save method. The resulting pickle stream can later be
+    unpickled and supplied to the load method to recover the original instance with 
+    the appropriate key to decrypt the file.
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'block_size': 1024,
+ 'directory': None,
+ 'file': None,
+ 'file_system': 'disk',
+ 'file_type': 'StringIO.StringIO',
+ 'is_directory': False,
+ 'mode': '',
+ 'path': '',
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.Encrypted_File'&gt;,
+ &lt;class 'mpre.fileio.File'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>truncate</strong>(self, size):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>decrypt</strong>(self, data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>derive_key</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>encrypt</strong>(self, data):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>write</strong>(self, data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.fileio.Encrypted_File', class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="file">File</h2>
-<pre class="prettyprint well"><code> usage: File(filename='', mode='', file=None, file_type="disk", **kwargs) =&gt; file
-
-Return a wrapper around a file like object. File objects are pickleable. 
-If file.persistent is True, upon pickling the files data will be saved and upon
-loading the data restored. The default is False. The wrapped file can be specified
-by the file argument.
-
-The file_type argument is a shortcut for creating virtual files. If set to "virtual", 
-the file will be a wrapper around a StringIO.StringIO. Opening a second virtual file
-with the same filename will yield a different wrapper around the same underlying
-file like object. This means that the seek and tell methods for either virtual file
-will return the same result as the other, as they point to the same object. The
-default file_type is 'disk'. Note that virtual files are unique to each physical
-python process.
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>memory_size              : 4096</li>
-<li>persistent               : False</li>
-<li>memory_mode              : -1</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
 <li>
-<p><strong>handle_write</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>read</strong>(self, size):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
+</ul>
+<h2 id="file">File</h2>
+<pre class="prettyprint well"><code> usage: File(filename='', mode='', file=None, file_system="disk", **kwargs) =&gt; file
+
+    Return a wrapper around a file like object. File objects are pickleable. 
+    Upon pickling the files data will be saved and upon loading the data restored. 
+    The default is False. The wrapped file can be specified by the file argument. If
+    the file argument is not present, the file named in filename will be opened in the
+    specified mode.
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'directory': None,
+ 'file': None,
+ 'file_system': 'disk',
+ 'file_type': 'StringIO.StringIO',
+ 'is_directory': False,
+ 'mode': '',
+ 'path': '',
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.File'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
 <li>
 <p><strong>on_load</strong>(self, attributes):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>handle_read</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>delete</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<h2 id="file_system">File_System</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': False,
+ 'file_systems': ('disk', 'virtual'),
+ 'priority': 0.04,
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.File_System'&gt;, &lt;class 'mpre.base.Base'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>listdir</strong>(self, path):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>getcwd</strong>(self, file_system):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>new_file_system</strong>(self, file_system):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>join</strong>(self, path_one, path_two):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>exists</strong>(self, path, file_type):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>change_directory</strong>(self, path):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>change_file_system</strong>(self, file_system):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>remove</strong>(self, _file, file_system):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>get_file</strong>(self, path):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>add</strong>(self, _file):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 <h2 id="mmap">Mmap</h2>
-<p>Usage: mmap [offset] = fileio.Mmap(filename, 
-                                          file_position_or_size=0,
-                                          blocks=0)</p>
-<pre class="prettyprint well"><code>    Return an mmap.mmap object. Use of this class presumes a
+<pre class="prettyprint well"><code>Usage: mmap [offset] = fileio.Mmap(filename, 
+                                      file_position_or_size=0,
+                                      blocks=0)
+
+    Return an mmap.mmap object. Use of this class presumes a
     need for a slice into a potentially large file at an arbitrary
     point without loading the entire file contents. These slices
     are cached so that further requests for the same chunk will return the same mmap.
@@ -559,9 +669,20 @@ python process.
           mapping to be of size (blocks * mmap.ALLOCATIONGRANULARITY)
         - this argument has no effect when used with -1 for the filename
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.fileio.Mmap'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>new_mmap</strong>(filename, file_position, blocks):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 <h2 id="closing">closing</h2>
-<p>Context to automatically close something at the end of a block.</p>
-<pre class="prettyprint well"><code>Code like this:
+<pre class="prettyprint well"><code>Context to automatically close something at the end of a block.
+
+Code like this:
 
     with closing(&lt;module&gt;.open(&lt;arguments&gt;)) as f:
         &lt;block&gt;
@@ -574,6 +695,64 @@ is equivalent to this:
     finally:
         f.close()
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'contextlib.closing'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>contextmanager</strong>(func):</p>
+<pre class="prettyprint well"><code>@contextmanager decorator.
+</code></pre>
+<p>Typical usage:</p>
+<pre class="prettyprint well"><code>@contextmanager
+def some_generator(&lt;arguments&gt;):
+    &lt;setup&gt;
+    try:
+        yield &lt;value&gt;
+    finally:
+        &lt;cleanup&gt;
+</code></pre>
+<p>This makes this:</p>
+<pre class="prettyprint well"><code>with some_generator(&lt;arguments&gt;) as &lt;variable&gt;:
+    &lt;body&gt;
+</code></pre>
+<p>equivalent to this:</p>
+<pre class="prettyprint well"><code>&lt;setup&gt;
+try:
+    &lt;variable&gt; = &lt;value&gt;
+    &lt;body&gt;
+finally:
+    &lt;cleanup&gt;
+</code></pre>
+</li>
+<li>
+<p><strong>ensure_file_exists</strong>(filepath, data):</p>
+<pre class="prettyprint well"><code>usage: ensure_file_exists(filepath, [data=('a', '')])
+
+filepath is the absolute or relative path of the file.
+If the file does not exist, it is created
+
+data is optional. if specified, data[0] = mode and 
+data[1] = the data to be written
+
+mode should be 'a' or 'w', 'a' is the default. 
+'w' will truncate the file and the only contents
+will be the data supplied in data[1]
+</code></pre>
+</li>
+<li>
+<p><strong>ensure_folder_exists</strong>(pathname, file_system):</p>
+<pre class="prettyprint well"><code>usage: ensure_folder_exists(pathname)
+</code></pre>
+<p>If the named folder does not exist, it is created</p>
+</li>
+<li>
+<p><strong>file_contents_swapped</strong>(, <em>args, </em>*kwds):</p>
+<pre class="prettyprint well"><code> Enters a context where the data of the supplied file/filepath are the 
+contents specified in the contents argument.
+</code></pre>
+</li>
+</ul>
 </div>
         </div>
 

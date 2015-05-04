@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown active">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -416,7 +416,7 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#mpreprogramsunzip">mpre.programs.unzip</a></li>
+        <li class="main active"><a href="#unzip">unzip</a></li>
         
             <li><a href="#unzipper">Unzipper</a></li>
         
@@ -425,30 +425,27 @@
 </div></div>
             <div class="col-md-9" role="main">
 
-<h1 id="mpreprogramsunzip">mpre.programs.unzip</h1>
-<p>No documentation available</p>
+<h1 id="unzip">unzip</h1>
 <h2 id="unzipper">Unzipper</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>target_directory         : </li>
-<li>filename                 : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'filename': '',
+ 'replace_reference_on_load': True,
+ 'target_directory': '',
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'unzip.Unzipper'&gt;, &lt;class 'mpre.base.Base'&gt;, &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>unzip</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.programs.unzip.Unzipper', class 'mpre.base.Base', type 'object')</p>
 </div>
         </div>
 

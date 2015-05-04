@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown active">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -416,9 +416,9 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#mpreprogramsstupidsend">mpre.programs.stupidsend</a></li>
+        <li class="main active"><a href="#stupidsend">stupidsend</a></li>
         
-            <li><a href="#sockettype">SocketType</a></li>
+            <li><a href="#_socketobject">_socketobject</a></li>
         
             <li><a href="#error">error</a></li>
         
@@ -426,7 +426,7 @@
         
             <li><a href="#herror">herror</a></li>
         
-            <li><a href="#socket">socket</a></li>
+            <li><a href="#_socketobject_1">_socketobject</a></li>
         
             <li><a href="#timeout">timeout</a></li>
         
@@ -435,10 +435,10 @@
 </div></div>
             <div class="col-md-9" role="main">
 
-<h1 id="mpreprogramsstupidsend">mpre.programs.stupidsend</h1>
-<p>No documentation available</p>
-<h2 id="sockettype">SocketType</h2>
-<p>socket([family[, type[, proto]]]) -&gt; socket object</p>
+<h1 id="stupidsend">stupidsend</h1>
+<h2 id="_socketobject">_socketobject</h2>
+<pre class="prettyprint well"><code>socket([family[, type[, proto]]]) -&gt; socket object
+</code></pre>
 <p>Open a socket of the given type.  The family argument specifies the
 address family; it defaults to AF_INET.  The type argument specifies
 whether this is a stream (SOCK_STREAM, this is the default)
@@ -472,14 +472,254 @@ setsockopt(level, optname, value) -- set socket options
 settimeout(None | float) -- set or clear the timeout
 shutdown(how) -- shut down traffic in one or both directions</p>
 <p>[*] not available on all platforms!</p>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket._socketobject'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>shutdown</strong>**:</p>
+<pre class="prettyprint well"><code>shutdown(flag)
+</code></pre>
+</li>
+</ul>
+<p>Shut down the reading side of the socket (flag == SHUT_RD), the writing side
+of the socket (flag == SHUT_WR), or both ends (flag == SHUT_RDWR).</p>
+<ul>
+<li>
+<p><strong>gettimeout</strong>**:</p>
+<pre class="prettyprint well"><code>gettimeout() -&gt; timeout
+</code></pre>
+</li>
+</ul>
+<p>Returns the timeout in seconds (float) associated with socket 
+operations. A timeout of None indicates that timeouts on socket 
+operations are disabled.</p>
+<ul>
+<li>
+<p><strong>accept</strong>(self):</p>
+<pre class="prettyprint well"><code>accept() -&gt; (socket object, address info)
+</code></pre>
+</li>
+</ul>
+<p>Wait for an incoming connection.  Return a new socket representing the
+connection, and the address of the client.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>connect</strong>**:</p>
+<pre class="prettyprint well"><code>connect(address)
+</code></pre>
+</li>
+</ul>
+<p>Connect the socket to a remote address.  For IP sockets, the address
+is a pair (host, port).</p>
+<ul>
+<li>
+<p><strong>getsockname</strong>**:</p>
+<pre class="prettyprint well"><code>getsockname() -&gt; address info
+</code></pre>
+</li>
+</ul>
+<p>Return the address of the local endpoint.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>close</strong>(self, _closedsocket, _delegate_methods, setattr):</p>
+<pre class="prettyprint well"><code>close()
+</code></pre>
+</li>
+</ul>
+<p>Close the socket.  It cannot be used after this call.</p>
+<ul>
+<li>
+<p><strong>getsockopt</strong>**:</p>
+<pre class="prettyprint well"><code>getsockopt(level, option[, buffersize]) -&gt; value
+</code></pre>
+</li>
+</ul>
+<p>Get a socket option.  See the Unix manual for level and option.
+If a nonzero buffersize argument is given, the return value is a
+string of that length; otherwise it is an integer.</p>
+<ul>
+<li>
+<p><strong>connect_ex</strong>**:</p>
+<pre class="prettyprint well"><code>connect_ex(address) -&gt; errno
+</code></pre>
+</li>
+</ul>
+<p>This is like connect(address), but returns an error code (the errno value)
+instead of raising an exception when an error occurs.</p>
+<ul>
+<li>
+<p><strong>makefile</strong>(self, mode, bufsize):</p>
+<pre class="prettyprint well"><code>makefile([mode[, bufsize]]) -&gt; file object
+
+Return a regular file object corresponding to the socket.  The mode
+and bufsize arguments are as for the built-in open() function.
+</code></pre>
+</li>
+<li>
+<p><strong>listen</strong>**:</p>
+<pre class="prettyprint well"><code>listen(backlog)
+</code></pre>
+</li>
+</ul>
+<p>Enable a server to accept connections.  The backlog argument must be at
+least 0 (if it is lower, it is set to 0); it specifies the number of
+unaccepted connections that the system will allow before refusing new
+connections.</p>
+<ul>
+<li>
+<p><strong>setsockopt</strong>**:</p>
+<pre class="prettyprint well"><code>setsockopt(level, option, value)
+</code></pre>
+</li>
+</ul>
+<p>Set a socket option.  See the Unix manual for level and option.
+The value argument can either be an integer or a string.</p>
+<ul>
+<li>
+<p><strong>dup</strong>(self):</p>
+<pre class="prettyprint well"><code>dup() -&gt; socket object
+
+Return a new socket object connected to the same system resource.
+</code></pre>
+</li>
+<li>
+<p><strong>ioctl</strong>**:</p>
+<pre class="prettyprint well"><code>ioctl(cmd, option) -&gt; long
+</code></pre>
+</li>
+</ul>
+<p>Control the socket with WSAIoctl syscall. Currently supported 'cmd' values are
+SIO_RCVALL:  'option' must be one of the socket.RCVALL_* constants.
+SIO_KEEPALIVE_VALS:  'option' is a tuple of (onoff, timeout, interval).</p>
+<ul>
+<li>
+<p><strong>getpeername</strong>**:</p>
+<pre class="prettyprint well"><code>getpeername() -&gt; address info
+</code></pre>
+</li>
+</ul>
+<p>Return the address of the remote endpoint.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>setblocking</strong>**:</p>
+<pre class="prettyprint well"><code>setblocking(flag)
+</code></pre>
+</li>
+</ul>
+<p>Set the socket to blocking (flag is true) or non-blocking (false).
+setblocking(True) is equivalent to settimeout(None);
+setblocking(False) is equivalent to settimeout(0.0).</p>
+<ul>
+<li>
+<p><strong>fileno</strong>**:</p>
+<pre class="prettyprint well"><code>fileno() -&gt; integer
+</code></pre>
+</li>
+</ul>
+<p>Return the integer file descriptor of the socket.</p>
+<ul>
+<li>
+<p><strong>bind</strong>**:</p>
+<pre class="prettyprint well"><code>bind(address)
+</code></pre>
+</li>
+</ul>
+<p>Bind the socket to a local address.  For IP sockets, the address is a
+pair (host, port); the host must refer to the local host. For raw packet
+sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])</p>
+<ul>
+<li>
+<p><strong>sendall</strong>**:</p>
+<pre class="prettyprint well"><code>sendall(data[, flags])
+</code></pre>
+</li>
+</ul>
+<p>Send a data string to the socket.  For the optional flags
+argument, see the Unix manual.  This calls send() repeatedly
+until all data is sent.  If an error occurs, it's impossible
+to tell how much data has been sent.</p>
+<ul>
+<li>
+<p><strong>settimeout</strong>**:</p>
+<pre class="prettyprint well"><code>settimeout(timeout)
+</code></pre>
+</li>
+</ul>
+<p>Set a timeout on socket operations.  'timeout' can be a float,
+giving in seconds, or None.  Setting a timeout of None disables
+the timeout feature and is equivalent to setblocking(1).
+Setting a timeout of zero is the same as setblocking(0).</p>
+<ul>
+<li>
+<p><strong>create_connection</strong>(address, timeout, source_address):</p>
+<pre class="prettyprint well"><code>Connect to *address* and return the socket object.
+</code></pre>
+<p>Convenience function.  Connect to <em>address</em> (a 2-tuple <code>(host,
+port)</code>) and return the socket object.  Passing the optional
+<em>timeout</em> parameter will set the timeout on the socket instance
+before attempting to connect.  If no <em>timeout</em> is supplied, the
+global default timeout setting returned by :func:<code>getdefaulttimeout</code>
+is used.  If <em>source_address</em> is set it must be a tuple of (host, port)
+for the socket to bind as a source address before making the connection.
+An host of '' or port 0 tells the OS to use the default.</p>
+</li>
+</ul>
 <h2 id="error">error</h2>
-<p>No documentation available</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket.error'&gt;,
+ &lt;type 'exceptions.IOError'&gt;,
+ &lt;type 'exceptions.EnvironmentError'&gt;,
+ &lt;type 'exceptions.StandardError'&gt;,
+ &lt;type 'exceptions.Exception'&gt;,
+ &lt;type 'exceptions.BaseException'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <h2 id="gaierror">gaierror</h2>
-<p>No documentation available</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket.gaierror'&gt;,
+ &lt;class 'socket.error'&gt;,
+ &lt;type 'exceptions.IOError'&gt;,
+ &lt;type 'exceptions.EnvironmentError'&gt;,
+ &lt;type 'exceptions.StandardError'&gt;,
+ &lt;type 'exceptions.Exception'&gt;,
+ &lt;type 'exceptions.BaseException'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>getfqdn</strong>(name):</p>
+<pre class="prettyprint well"><code>Get fully qualified domain name from name.
+</code></pre>
+<p>An empty argument is interpreted as meaning the local host.</p>
+<p>First the hostname returned by gethostbyaddr() is checked, then
+possibly existing aliases. In case no FQDN is available, hostname
+from gethostname() is returned.</p>
+</li>
+</ul>
 <h2 id="herror">herror</h2>
-<p>No documentation available</p>
-<h2 id="socket">socket</h2>
-<p>socket([family[, type[, proto]]]) -&gt; socket object</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket.herror'&gt;,
+ &lt;class 'socket.error'&gt;,
+ &lt;type 'exceptions.IOError'&gt;,
+ &lt;type 'exceptions.EnvironmentError'&gt;,
+ &lt;type 'exceptions.StandardError'&gt;,
+ &lt;type 'exceptions.Exception'&gt;,
+ &lt;type 'exceptions.BaseException'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<h2 id="_socketobject_1">_socketobject</h2>
+<pre class="prettyprint well"><code>socket([family[, type[, proto]]]) -&gt; socket object
+</code></pre>
 <p>Open a socket of the given type.  The family argument specifies the
 address family; it defaults to AF_INET.  The type argument specifies
 whether this is a stream (SOCK_STREAM, this is the default)
@@ -513,8 +753,200 @@ setsockopt(level, optname, value) -- set socket options
 settimeout(None | float) -- set or clear the timeout
 shutdown(how) -- shut down traffic in one or both directions</p>
 <p>[*] not available on all platforms!</p>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket._socketobject'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>shutdown</strong>**:</p>
+<pre class="prettyprint well"><code>shutdown(flag)
+</code></pre>
+</li>
+</ul>
+<p>Shut down the reading side of the socket (flag == SHUT_RD), the writing side
+of the socket (flag == SHUT_WR), or both ends (flag == SHUT_RDWR).</p>
+<ul>
+<li>
+<p><strong>gettimeout</strong>**:</p>
+<pre class="prettyprint well"><code>gettimeout() -&gt; timeout
+</code></pre>
+</li>
+</ul>
+<p>Returns the timeout in seconds (float) associated with socket 
+operations. A timeout of None indicates that timeouts on socket 
+operations are disabled.</p>
+<ul>
+<li>
+<p><strong>accept</strong>(self):</p>
+<pre class="prettyprint well"><code>accept() -&gt; (socket object, address info)
+</code></pre>
+</li>
+</ul>
+<p>Wait for an incoming connection.  Return a new socket representing the
+connection, and the address of the client.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>connect</strong>**:</p>
+<pre class="prettyprint well"><code>connect(address)
+</code></pre>
+</li>
+</ul>
+<p>Connect the socket to a remote address.  For IP sockets, the address
+is a pair (host, port).</p>
+<ul>
+<li>
+<p><strong>getsockname</strong>**:</p>
+<pre class="prettyprint well"><code>getsockname() -&gt; address info
+</code></pre>
+</li>
+</ul>
+<p>Return the address of the local endpoint.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>close</strong>(self, _closedsocket, _delegate_methods, setattr):</p>
+<pre class="prettyprint well"><code>close()
+</code></pre>
+</li>
+</ul>
+<p>Close the socket.  It cannot be used after this call.</p>
+<ul>
+<li>
+<p><strong>getsockopt</strong>**:</p>
+<pre class="prettyprint well"><code>getsockopt(level, option[, buffersize]) -&gt; value
+</code></pre>
+</li>
+</ul>
+<p>Get a socket option.  See the Unix manual for level and option.
+If a nonzero buffersize argument is given, the return value is a
+string of that length; otherwise it is an integer.</p>
+<ul>
+<li>
+<p><strong>connect_ex</strong>**:</p>
+<pre class="prettyprint well"><code>connect_ex(address) -&gt; errno
+</code></pre>
+</li>
+</ul>
+<p>This is like connect(address), but returns an error code (the errno value)
+instead of raising an exception when an error occurs.</p>
+<ul>
+<li>
+<p><strong>makefile</strong>(self, mode, bufsize):</p>
+<pre class="prettyprint well"><code>makefile([mode[, bufsize]]) -&gt; file object
+
+Return a regular file object corresponding to the socket.  The mode
+and bufsize arguments are as for the built-in open() function.
+</code></pre>
+</li>
+<li>
+<p><strong>listen</strong>**:</p>
+<pre class="prettyprint well"><code>listen(backlog)
+</code></pre>
+</li>
+</ul>
+<p>Enable a server to accept connections.  The backlog argument must be at
+least 0 (if it is lower, it is set to 0); it specifies the number of
+unaccepted connections that the system will allow before refusing new
+connections.</p>
+<ul>
+<li>
+<p><strong>setsockopt</strong>**:</p>
+<pre class="prettyprint well"><code>setsockopt(level, option, value)
+</code></pre>
+</li>
+</ul>
+<p>Set a socket option.  See the Unix manual for level and option.
+The value argument can either be an integer or a string.</p>
+<ul>
+<li>
+<p><strong>dup</strong>(self):</p>
+<pre class="prettyprint well"><code>dup() -&gt; socket object
+
+Return a new socket object connected to the same system resource.
+</code></pre>
+</li>
+<li>
+<p><strong>ioctl</strong>**:</p>
+<pre class="prettyprint well"><code>ioctl(cmd, option) -&gt; long
+</code></pre>
+</li>
+</ul>
+<p>Control the socket with WSAIoctl syscall. Currently supported 'cmd' values are
+SIO_RCVALL:  'option' must be one of the socket.RCVALL_* constants.
+SIO_KEEPALIVE_VALS:  'option' is a tuple of (onoff, timeout, interval).</p>
+<ul>
+<li>
+<p><strong>getpeername</strong>**:</p>
+<pre class="prettyprint well"><code>getpeername() -&gt; address info
+</code></pre>
+</li>
+</ul>
+<p>Return the address of the remote endpoint.  For IP sockets, the address
+info is a pair (hostaddr, port).</p>
+<ul>
+<li>
+<p><strong>setblocking</strong>**:</p>
+<pre class="prettyprint well"><code>setblocking(flag)
+</code></pre>
+</li>
+</ul>
+<p>Set the socket to blocking (flag is true) or non-blocking (false).
+setblocking(True) is equivalent to settimeout(None);
+setblocking(False) is equivalent to settimeout(0.0).</p>
+<ul>
+<li>
+<p><strong>fileno</strong>**:</p>
+<pre class="prettyprint well"><code>fileno() -&gt; integer
+</code></pre>
+</li>
+</ul>
+<p>Return the integer file descriptor of the socket.</p>
+<ul>
+<li>
+<p><strong>bind</strong>**:</p>
+<pre class="prettyprint well"><code>bind(address)
+</code></pre>
+</li>
+</ul>
+<p>Bind the socket to a local address.  For IP sockets, the address is a
+pair (host, port); the host must refer to the local host. For raw packet
+sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])</p>
+<ul>
+<li>
+<p><strong>sendall</strong>**:</p>
+<pre class="prettyprint well"><code>sendall(data[, flags])
+</code></pre>
+</li>
+</ul>
+<p>Send a data string to the socket.  For the optional flags
+argument, see the Unix manual.  This calls send() repeatedly
+until all data is sent.  If an error occurs, it's impossible
+to tell how much data has been sent.</p>
+<ul>
+<li>
+<p><strong>settimeout</strong>**:</p>
+<pre class="prettyprint well"><code>settimeout(timeout)
+</code></pre>
+</li>
+</ul>
+<p>Set a timeout on socket operations.  'timeout' can be a float,
+giving in seconds, or None.  Setting a timeout of None disables
+the timeout feature and is equivalent to setblocking(1).
+Setting a timeout of zero is the same as setblocking(0).</p>
 <h2 id="timeout">timeout</h2>
-<p>No documentation available</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'socket.timeout'&gt;,
+ &lt;class 'socket.error'&gt;,
+ &lt;type 'exceptions.IOError'&gt;,
+ &lt;type 'exceptions.EnvironmentError'&gt;,
+ &lt;type 'exceptions.StandardError'&gt;,
+ &lt;type 'exceptions.Exception'&gt;,
+ &lt;type 'exceptions.BaseException'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 </div>
         </div>
 

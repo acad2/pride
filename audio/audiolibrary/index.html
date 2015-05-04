@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown active">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li class="active">
                                 <a href="./">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -395,7 +395,7 @@
                 
                 
                 <li >
-                    <a rel="next" href="../alsaaudiodevices/">
+                    <a rel="next" href="../../mpre/__init__/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
@@ -416,7 +416,7 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#mpreaudioaudiolibrary">mpre.audio.audiolibrary</a></li>
+        <li class="main active"><a href="#audiolibrary">audiolibrary</a></li>
         
             <li><a href="#audio_file">Audio_File</a></li>
         
@@ -437,166 +437,179 @@
 </div></div>
             <div class="col-md-9" role="main">
 
-<h1 id="mpreaudioaudiolibrary">mpre.audio.audiolibrary</h1>
-<p>No documentation available</p>
+<h1 id="audiolibrary">audiolibrary</h1>
 <h2 id="audio_file">Audio_File</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>memory_size              : 4096</li>
-<li>persistent               : False</li>
-<li>memory_mode              : -1</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'directory': None,
+ 'file': None,
+ 'file_system': 'disk',
+ 'file_type': 'StringIO.StringIO',
+ 'is_directory': False,
+ 'mode': '',
+ 'path': '',
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'audiolibrary.Audio_File'&gt;,
+ &lt;class 'mpre.fileio.File'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>handle_audio_input</strong>(self, sender, audio_data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.audio.audiolibrary.Audio_File', class 'mpre.fileio.File', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="audio_manager">Audio_Manager</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>use_defaults             : True</li>
-<li>memory_size              : 4096</li>
-<li>configure                : False</li>
-<li>memory_mode              : -1</li>
-<li>config_file_name         : </li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'config_file_name': '',
+ 'configure': False,
+ 'replace_reference_on_load': True,
+ 'use_defaults': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'audiolibrary.Audio_Manager'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>load_api</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>load_default_devices</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>record</strong>(self, device_name, file, channels=2, rate=48000):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>record</strong>(self, device_name, file, channels, rate):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>run_configuration</strong>(self, exit_when_finished=False):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>run_configuration</strong>(self, exit_when_finished):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>load_config_file</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>get_devices</strong>(self, devices='Audio_Input'):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>get_devices</strong>(self, devices):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.audio.audiolibrary.Audio_Manager', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="audio_reactor">Audio_Reactor</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>deleted                  : False</li>
-<li>source_name              : </li>
-<li>verbosity                : </li>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'replace_reference_on_load': True,
+ 'source_name': '',
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'audiolibrary.Audio_Reactor'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>add_listener</strong>(self, instance_name):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>handle_audio_output</strong>(self, audio_data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>handle_audio_input</strong>(self, sender, audio_data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>set_input_device</strong>(self, target_instance_name):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>handle_end_of_stream</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>remove_listener</strong>(self, instance_name):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.audio.audiolibrary.Audio_Reactor', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="config_utility">Config_Utility</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>priority                 : 0.04</li>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-<li>auto_start               : False</li>
-<li>config_file_name         : audiocfg</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>mode                     : ('input',)</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': False,
+ 'config_file_name': 'audiocfg',
+ 'mode': ('input',),
+ 'priority': 0.04,
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'audiolibrary.Config_Utility'&gt;,
+ &lt;class 'mpre.vmlibrary.Process'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>run</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>write_config_file</strong>(self, device_list):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>print_display_devices</strong>(self, device_dict):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>get_selections</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.audio.audiolibrary.Config_Utility', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="instruction">Instruction</h2>
-<p>usage: Instruction(component_name, method_name, 
-                           <em>args, </em>*kwargs).execute(priority=priority)</p>
-<pre class="prettyprint well"><code>    Creates and executes an instruction object. 
+<pre class="prettyprint well"><code> usage: Instruction(component_name, method_name, 
+                       *args, **kwargs).execute(priority=priority)
+
+    Creates and executes an instruction object. 
         - component_name is the string instance_name of the component 
         - method_name is a string of the component method to be called
         - Positional and keyword arguments for the method may be
@@ -621,59 +634,96 @@
     order to access the result of the executed function, a callback
     function can be provided.
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.Instruction'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>execute</strong>(self, priority, callback, host_info, transport_protocol):</p>
+<pre class="prettyprint well"><code> usage: instruction.execute(priority=0.0, callback=None)
+
+    Submits an instruction to the processing queue. The instruction
+    will be executed in priority seconds. An optional callback function 
+    can be provided if the return value of the instruction is needed.
+</code></pre>
+</li>
+</ul>
 <h2 id="latency">Latency</h2>
-<p>usage: Latency([name="component_name"], 
-                       [average_size=20]) =&gt; latency_object</p>
-<pre class="prettyprint well"><code>    Latency objects possess a latency attribute that marks
+<pre class="prettyprint well"><code> usage: Latency([name="component_name"], 
+                   [average_size=20]) =&gt; latency_object
+
+    Latency objects possess a latency attribute that marks
     the average time between calls to latency.update()
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Latency'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>update</strong>(self):</p>
+<pre class="prettyprint well"><code> usage: latency.update()
+
+    notes the current time and adds it to the average time.
+</code></pre>
+</li>
+<li>
+<p><strong>display</strong>(self, mode):</p>
+<pre class="prettyprint well"><code> usage: latency.display([mode='sys.stdin'])
+
+    Writes latency information via either sys.stdin.write or print.
+    Information includes the latency average, meta average, and max value
+</code></pre>
+</li>
+</ul>
 <h2 id="wav_file">Wav_File</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>repeat                   : False</li>
-<li>source_name              : </li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>filename                 : </li>
-<li>channels                 : 2</li>
-<li>rate                     : 48000</li>
-<li>memory_size              : 4096</li>
-<li>mode                     : rb</li>
-<li>sample_width             : 2</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'channels': 2,
+ 'filename': '',
+ 'mode': 'rb',
+ 'rate': 48000,
+ 'repeat': False,
+ 'replace_reference_on_load': True,
+ 'sample_width': 2,
+ 'source_name': '',
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'audiolibrary.Wav_File'&gt;,
+ &lt;class 'audiolibrary.Audio_Reactor'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>handle_audio_input</strong>(self, sender, audio_data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>write</strong>(self, data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>read</strong>(self, size=None):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>read</strong>(self, size):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>close</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>tell</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.audio.audiolibrary.Wav_File', class 'mpre.audio.audiolibrary.Audio_Reactor', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 </div>
         </div>
 

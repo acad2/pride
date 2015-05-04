@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../exelauncher/">exelauncher</a>
+                                <a href="../errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -420,11 +420,13 @@
         
             <li><a href="#average">Average</a></li>
         
-            <li><a href="#importer">Importer</a></li>
+            <li><a href="#corruptpickleerror">CorruptPickleError</a></li>
         
             <li><a href="#lru_cache">LRU_Cache</a></li>
         
             <li><a href="#latency">Latency</a></li>
+        
+            <li><a href="#module_listing">Module_Listing</a></li>
         
     
     </ul>
@@ -432,11 +434,11 @@
             <div class="col-md-9" role="main">
 
 <h1 id="mpreutilities">mpre.utilities</h1>
-<p>No documentation available</p>
 <h2 id="average">Average</h2>
-<p>usage: Average([name=''], [size=20], 
-                       [values=tuple()], [meta_average=False]) =&gt; average_object</p>
-<pre class="prettyprint well"><code>    Average objects keep a running average via the add method.
+<pre class="prettyprint well"><code> usage: Average([name=''], [size=20], 
+                   [values=tuple()], [meta_average=False]) =&gt; average_object
+
+    Average objects keep a running average via the add method.
     The size option specifies the maximum number of samples. When
     this limit is reached, additional samples will result in the
     oldest sample being removed.
@@ -447,19 +449,163 @@
     to keep an average of the average - This is implemented by an
     additional Average object.
 </code></pre>
-<h2 id="importer">Importer</h2>
-<p>No documentation available</p>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Average'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>full_add</strong>(self, value):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>partial_add</strong>(self, value):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
+<h2 id="corruptpickleerror">CorruptPickleError</h2>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.errors.CorruptPickleError'&gt;,
+ &lt;class 'pickle.UnpicklingError'&gt;,
+ &lt;class 'pickle.PickleError'&gt;,
+ &lt;type 'exceptions.Exception'&gt;,
+ &lt;type 'exceptions.BaseException'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <h2 id="lru_cache">LRU_Cache</h2>
-<p>A dictionary with a max size that keeps track of
-       key usage and handles key eviction. </p>
-<pre class="prettyprint well"><code>   currently completely untested
+<pre class="prettyprint well"><code>A dictionary with a max size that keeps track of
+   key usage and handles key eviction.
+
+   currently completely untested
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.LRU_Cache'&gt;, &lt;type 'object'&gt;)
 </code></pre>
 <h2 id="latency">Latency</h2>
-<p>usage: Latency([name="component_name"], 
-                       [average_size=20]) =&gt; latency_object</p>
-<pre class="prettyprint well"><code>    Latency objects possess a latency attribute that marks
+<pre class="prettyprint well"><code> usage: Latency([name="component_name"], 
+                   [average_size=20]) =&gt; latency_object
+
+    Latency objects possess a latency attribute that marks
     the average time between calls to latency.update()
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Latency'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>update</strong>(self):</p>
+<pre class="prettyprint well"><code> usage: latency.update()
+
+    notes the current time and adds it to the average time.
+</code></pre>
+</li>
+<li>
+<p><strong>display</strong>(self, mode):</p>
+<pre class="prettyprint well"><code> usage: latency.display([mode='sys.stdin'])
+
+    Writes latency information via either sys.stdin.write or print.
+    Information includes the latency average, meta average, and max value
+</code></pre>
+</li>
+</ul>
+<h2 id="module_listing">Module_Listing</h2>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Module_Listing'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>trim</strong>(self, text):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>read_file</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>get_modules</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>make_file</strong>(self, filename):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>from_help</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>authenticated_dump</strong>(py_object, key, _file, hash_algorithm):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>authenticated_load</strong>(bytestream, key, hash_algorithm):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>convert</strong>(old_value, old_base, new_base):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>documentation</strong>(_object):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>function_header</strong>(function):</p>
+<pre class="prettyprint well"><code>usage: function_header(function) =&gt; "(arg1, default_arg=True, keyword=True...)"
+</code></pre>
+<p>Given a function, return a string of it's signature.</p>
+</li>
+<li>
+<p><strong>load</strong>(attributes, _file):</p>
+<pre class="prettyprint well"><code> usage: load([attributes], [_file]) =&gt; restored_instance
+
+Loads state preserved by the save method. Loads an instance from either
+a bytestream or file, as returned by the save method..
+
+To customize the behavior of an object after it has been loaded, one should
+extend the on_load method.
+</code></pre>
+</li>
+<li>
+<p><strong>resolve_string</strong>(string):</p>
+<pre class="prettyprint well"><code>Given an attribute string of ...x.y.z, import ...x.y and return z
+</code></pre>
+</li>
+<li>
+<p><strong>shell</strong>(command, shell):</p>
+<pre class="prettyprint well"><code> usage: shell('command string --with args', 
+             [shell=False]) = &gt; sys.stdout.output from executed command
+
+Launches a process on the physical machine via the operating 
+system shell. The shell and available commands are OS dependent.
+
+Regarding the shell argument; from the python docs on subprocess.Popen:
+    "The shell argument (which defaults to False) specifies whether to use the shell as the program to execute. If shell is True, it is recommended to pass args as a string rather than as a sequence."
+
+and also:        
+    "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input"
+</code></pre>
+</li>
+<li>
+<p><strong>usage</strong>(_object):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 </div>
         </div>
 

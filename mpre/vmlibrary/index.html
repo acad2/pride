@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../exelauncher/">exelauncher</a>
+                                <a href="../errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="./">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -400,7 +400,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../../audio/alsaaudiodevices/">
+                    <a rel="prev" href="../_compile/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -432,11 +432,11 @@
             <div class="col-md-9" role="main">
 
 <h1 id="mprevmlibrary">mpre.vmlibrary</h1>
-<p>No documentation available</p>
 <h2 id="instruction">Instruction</h2>
-<p>usage: Instruction(component_name, method_name, 
-                           <em>args, </em>*kwargs).execute(priority=priority)</p>
-<pre class="prettyprint well"><code>    Creates and executes an instruction object. 
+<pre class="prettyprint well"><code> usage: Instruction(component_name, method_name, 
+                       *args, **kwargs).execute(priority=priority)
+
+    Creates and executes an instruction object. 
         - component_name is the string instance_name of the component 
         - method_name is a string of the component method to be called
         - Positional and keyword arguments for the method may be
@@ -461,100 +461,121 @@
     order to access the result of the executed function, a callback
     function can be provided.
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.Instruction'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>execute</strong>(self, priority, callback, host_info, transport_protocol):</p>
+<pre class="prettyprint well"><code> usage: instruction.execute(priority=0.0, callback=None)
+
+    Submits an instruction to the processing queue. The instruction
+    will be executed in priority seconds. An optional callback function 
+    can be provided if the return value of the instruction is needed.
+</code></pre>
+</li>
+</ul>
 <h2 id="process">Process</h2>
 <pre class="prettyprint well"><code> usage: Process(target=function, args=..., kwargs=...) =&gt; process_object
 
-Create a logical process. Note that while Process objects
-allow for the interface of target=function, the preferred usage
-is via subclassing.
+    Create a logical process. Note that while Process objects
+    allow for the interface of target=function, the preferred usage
+    is via subclassing.
 
-Process objects have a run_instruction attribute. This attribute
-is a saved instruction: Instruction(self.instance_name, 'run').
+    Process objects have a run_instruction attribute. This attribute
+    is a saved instruction: Instruction(self.instance_name, 'run').
 
-Process objects have a default attribute 'auto_start', which
-defaults to True. When True, an instruction for process.start
-will automatically be executed inside __init__.
+    Process objects have a default attribute 'auto_start', which
+    defaults to True. When True, an instruction for process.start
+    will automatically be executed inside __init__.
 
-The start method simply calls the run method, but can be overriden 
-if the entry point would be useful, and keeps a similar interface
-with the standard library threading/process model.
+    The start method simply calls the run method, but can be overriden 
+    if the entry point would be useful, and keeps a similar interface
+    with the standard library threading/process model.
 
-Subclasses should overload the run method. A process may propagate
-itself by executing a run instruction inside it's run method. While
-processes support the reaction interface, use of a process presumes
-the desire for some kind of explicitly timed Instruction. Examples
-of processes include polling for user input or socket buffers
-at various intervals.
+    Subclasses should overload the run method. A process may propagate
+    itself by executing a run instruction inside it's run method. While
+    processes support the reaction interface, use of a process presumes
+    the desire for some kind of explicitly timed Instruction. Examples
+    of processes include polling for user input or socket buffers
+    at various intervals.
 
-Some people may find the serial style, one frame at a time method
-offered by processes easier to understand and follow then reactions.
-Most things can be accomplished by either, though processes may be
-less performant then parallel_methods/reactions
+    Some people may find the serial style, one frame at a time method
+    offered by processes easier to understand and follow then reactions.
+    Most things can be accomplished by either, though processes may be
+    less performant then parallel_methods/reactions
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>priority                 : 0.04</li>
-<li>memory_size              : 4096</li>
-<li>auto_start               : True</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': True,
+ 'priority': 0.04,
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.vmlibrary.Process'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>run</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>start</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="processor">Processor</h2>
 <pre class="prettyprint well"><code> Removes enqueued Instructions via heapq.heappop, then
-performs the specified method call while handling the
-possibility of the specified component/method not existing,
-and any exception that could be raised inside the method call
-itself.
+    performs the specified method call while handling the
+    possibility of the specified component/method not existing,
+    and any exception that could be raised inside the method call
+    itself.
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>priority                 : 0.04</li>
-<li>running                  : True</li>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-<li>auto_start               : False</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': False,
+ 'priority': 0.04,
+ 'replace_reference_on_load': True,
+ 'running': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.vmlibrary.Processor'&gt;,
+ &lt;class 'mpre.vmlibrary.Process'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>pause</strong>(self, component_name):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>run</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>resume</strong>(self, component_name):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.vmlibrary.Processor', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="partial">partial</h2>
-<p>partial(func, <em>args, </em>*keywords) - new function with partial application
-    of the given arguments and keywords.</p>
+<pre class="prettyprint well"><code>partial(func, *args, **keywords) - new function with partial application
+of the given arguments and keywords.
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;type 'functools.partial'&gt;, &lt;type 'object'&gt;)
+</code></pre>
 </div>
         </div>
 

@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -400,7 +400,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../scratch/">
+                    <a rel="prev" href="../structtest/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -416,7 +416,7 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#mpretestsnetwork2">mpre.tests.network2</a></li>
+        <li class="main active"><a href="#network2">network2</a></li>
         
             <li><a href="#instruction">Instruction</a></li>
         
@@ -425,12 +425,12 @@
 </div></div>
             <div class="col-md-9" role="main">
 
-<h1 id="mpretestsnetwork2">mpre.tests.network2</h1>
-<p>No documentation available</p>
+<h1 id="network2">network2</h1>
 <h2 id="instruction">Instruction</h2>
-<p>usage: Instruction(component_name, method_name, 
-                           <em>args, </em>*kwargs).execute(priority=priority)</p>
-<pre class="prettyprint well"><code>    Creates and executes an instruction object. 
+<pre class="prettyprint well"><code> usage: Instruction(component_name, method_name, 
+                       *args, **kwargs).execute(priority=priority)
+
+    Creates and executes an instruction object. 
         - component_name is the string instance_name of the component 
         - method_name is a string of the component method to be called
         - Positional and keyword arguments for the method may be
@@ -455,6 +455,45 @@
     order to access the result of the executed function, a callback
     function can be provided.
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.Instruction'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>execute</strong>(self, priority, callback, host_info, transport_protocol):</p>
+<pre class="prettyprint well"><code> usage: instruction.execute(priority=0.0, callback=None)
+
+    Submits an instruction to the processing queue. The instruction
+    will be executed in priority seconds. An optional callback function 
+    can be provided if the return value of the instruction is needed.
+</code></pre>
+</li>
+<li>
+<p><strong>test_authentication</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>test_file_service</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>test_proxy</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>test_reliability</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>test_rpc</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 </div>
         </div>
 

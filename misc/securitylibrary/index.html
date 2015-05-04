@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../../mpre/exelauncher/">exelauncher</a>
+                                <a href="../../mpre/errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../../mpre/fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../../mpre/metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../mpre/restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../mpre/shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../mpre/updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../../mpre/vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../../mpre/_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../mpre/__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../dialectlibrary/">dialectlibrary</a>
+                                <a href="../dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="./">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -400,7 +400,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../verbosedialect/">
+                    <a rel="prev" href="../../programs/buildlauncher - Copy/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -416,7 +416,7 @@
             <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#mpremiscsecuritylibrary">mpre.misc.securitylibrary</a></li>
+        <li class="main active"><a href="#securitylibrary">securitylibrary</a></li>
         
             <li><a href="#dos">DoS</a></li>
         
@@ -432,49 +432,51 @@
         
             <li><a href="#tcp_port_tester">Tcp_Port_Tester</a></li>
         
-            <li><a href="#fork">fork</a></li>
+            <li><a href="#popen">Popen</a></li>
         
     
     </ul>
 </div></div>
             <div class="col-md-9" role="main">
 
-<h1 id="mpremiscsecuritylibrary">mpre.misc.securitylibrary</h1>
-<p>No documentation available</p>
+<h1 id="securitylibrary">securitylibrary</h1>
 <h2 id="dos">DoS</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>count                    : 0</li>
-<li>timeout_notify           : False</li>
-<li>display_progress         : False</li>
-<li>salvo_size               : 100</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>ip                       : localhost</li>
-<li>verbosity                : </li>
-<li>priority                 : 0.04</li>
-<li>memory_size              : 4096</li>
-<li>auto_start               : True</li>
-<li>display_latency          : False</li>
-<li>port                     : 80</li>
-<li>target                   : None</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': True,
+ 'count': 0,
+ 'display_latency': False,
+ 'display_progress': False,
+ 'ip': 'localhost',
+ 'port': 80,
+ 'priority': 0.04,
+ 'replace_reference_on_load': True,
+ 'salvo_size': 100,
+ 'target': None,
+ 'timeout_notify': False,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'securitylibrary.DoS'&gt;,
+ &lt;class 'mpre.vmlibrary.Process'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>run</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.misc.securitylibrary.DoS', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="instruction">Instruction</h2>
-<p>usage: Instruction(component_name, method_name, 
-                           <em>args, </em>*kwargs).execute(priority=priority)</p>
-<pre class="prettyprint well"><code>    Creates and executes an instruction object. 
+<pre class="prettyprint well"><code> usage: Instruction(component_name, method_name, 
+                       *args, **kwargs).execute(priority=priority)
+
+    Creates and executes an instruction object. 
         - component_name is the string instance_name of the component 
         - method_name is a string of the component method to be called
         - Positional and keyword arguments for the method may be
@@ -499,129 +501,287 @@
     order to access the result of the executed function, a callback
     function can be provided.
 </code></pre>
-<h2 id="latency">Latency</h2>
-<p>usage: Latency([name="component_name"], 
-                       [average_size=20]) =&gt; latency_object</p>
-<pre class="prettyprint well"><code>    Latency objects possess a latency attribute that marks
-    the average time between calls to latency.update()
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.Instruction'&gt;, &lt;type 'object'&gt;)
 </code></pre>
-<h2 id="null_connection">Null_Connection</h2>
-<pre class="prettyprint well"><code>No docstring found
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>as_port                  : 0</li>
-<li>closed                   : False</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>ip                       : </li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>socket_family            : 2</li>
-<li>port                     : 80</li>
-<li>connection_attempts      : 10</li>
-<li>target                   : ()</li>
-<li>network_packet_size      : 32768</li>
-<li>timeout_notify           : True</li>
-<li>added_to_network         : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>blocking                 : 0</li>
-<li>bad_target_verbosity     : 0</li>
-<li>auto_connect             : True</li>
-<li>network_buffer           : </li>
-<li>timeout                  : 0</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
 <ul>
 <li>
-<p><strong>on_connect</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>execute</strong>(self, priority, callback, host_info, transport_protocol):</p>
+<pre class="prettyprint well"><code> usage: instruction.execute(priority=0.0, callback=None)
+
+    Submits an instruction to the processing queue. The instruction
+    will be executed in priority seconds. An optional callback function 
+    can be provided if the return value of the instruction is needed.
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.misc.securitylibrary.Null_Connection', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<h2 id="latency">Latency</h2>
+<pre class="prettyprint well"><code> usage: Latency([name="component_name"], 
+                   [average_size=20]) =&gt; latency_object
+
+    Latency objects possess a latency attribute that marks
+    the average time between calls to latency.update()
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Latency'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>update</strong>(self):</p>
+<pre class="prettyprint well"><code> usage: latency.update()
+
+    notes the current time and adds it to the average time.
+</code></pre>
+</li>
+<li>
+<p><strong>display</strong>(self, mode):</p>
+<pre class="prettyprint well"><code> usage: latency.display([mode='sys.stdin'])
+
+    Writes latency information via either sys.stdin.write or print.
+    Information includes the latency average, meta average, and max value
+</code></pre>
+</li>
+</ul>
+<h2 id="null_connection">Null_Connection</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'as_port': 0,
+ 'auto_connect': True,
+ 'bad_target_verbosity': 0,
+ 'bind_on_init': False,
+ 'blocking': 0,
+ 'closed': False,
+ 'connection_attempts': 10,
+ 'ip': '',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 80,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'target': (),
+ 'timeout': 0,
+ 'timeout_notify': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'securitylibrary.Null_Connection'&gt;,
+ &lt;class 'mpre.network.Tcp_Client'&gt;,
+ &lt;class 'mpre.network.Tcp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>on_connect</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 <h2 id="process">Process</h2>
 <pre class="prettyprint well"><code>Process objects represent activity that is run in a separate process
 
 The class is analagous to `threading.Thread`
 </code></pre>
-<h2 id="scanner">Scanner</h2>
-<pre class="prettyprint well"><code>No docstring found
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'multiprocessing.process.Process'&gt;, &lt;type 'object'&gt;)
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>subnet                   : 127.0.0.1</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>priority                 : 0.04</li>
-<li>range                    : (0, 0, 0, 255)</li>
-<li>memory_size              : 4096</li>
-<li>auto_start               : True</li>
-<li>yield_interval           : 100</li>
-<li>ports                    : (22,)</li>
-<li>discovery_verbosity      : v</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
 <ul>
 <li>
 <p><strong>run</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>Method to be run in sub-process; can be overridden in sub-class
+</code></pre>
+</li>
+<li>
+<p><strong>terminate</strong>(self):</p>
+<pre class="prettyprint well"><code>Terminate process; sends SIGTERM signal or uses TerminateProcess()
+</code></pre>
+</li>
+<li>
+<p><strong>join</strong>(self, timeout):</p>
+<pre class="prettyprint well"><code>Wait until child process terminates
+</code></pre>
+</li>
+<li>
+<p><strong>start</strong>(self):</p>
+<pre class="prettyprint well"><code>Start child process
+</code></pre>
+</li>
+<li>
+<p><strong>is_alive</strong>(self):</p>
+<pre class="prettyprint well"><code>Return whether process is alive
+</code></pre>
+</li>
+</ul>
+<h2 id="scanner">Scanner</h2>
+<pre class="prettyprint well"><code>No docstring found
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'auto_start': True,
+ 'discovery_verbosity': 'v',
+ 'ports': (22,),
+ 'priority': 0.04,
+ 'range': (0, 0, 0, 255),
+ 'replace_reference_on_load': True,
+ 'subnet': '127.0.0.1',
+ 'verbosity': '',
+ 'yield_interval': 100}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'securitylibrary.Scanner'&gt;,
+ &lt;class 'mpre.vmlibrary.Process'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>run</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>new_thread</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.misc.securitylibrary.Scanner', class 'mpre.vmlibrary.Process', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="tcp_port_tester">Tcp_Port_Tester</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>as_port                  : 0</li>
-<li>closed                   : False</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>ip                       : </li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>socket_family            : 2</li>
-<li>port                     : 80</li>
-<li>connection_attempts      : 10</li>
-<li>target                   : ()</li>
-<li>network_packet_size      : 32768</li>
-<li>timeout_notify           : True</li>
-<li>added_to_network         : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>blocking                 : 0</li>
-<li>bad_target_verbosity     : 0</li>
-<li>auto_connect             : True</li>
-<li>network_buffer           : </li>
-<li>timeout                  : 0</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'as_port': 0,
+ 'auto_connect': True,
+ 'bad_target_verbosity': 0,
+ 'bind_on_init': False,
+ 'blocking': 0,
+ 'closed': False,
+ 'connection_attempts': 10,
+ 'ip': '',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 80,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'target': (),
+ 'timeout': 0,
+ 'timeout_notify': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'securitylibrary.Tcp_Port_Tester'&gt;,
+ &lt;class 'mpre.network.Tcp_Client'&gt;,
+ &lt;class 'mpre.network.Tcp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>on_connect</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>contextmanager</strong>(func):</p>
+<pre class="prettyprint well"><code>@contextmanager decorator.
+</code></pre>
+<p>Typical usage:</p>
+<pre class="prettyprint well"><code>@contextmanager
+def some_generator(&lt;arguments&gt;):
+    &lt;setup&gt;
+    try:
+        yield &lt;value&gt;
+    finally:
+        &lt;cleanup&gt;
+</code></pre>
+<p>This makes this:</p>
+<pre class="prettyprint well"><code>with some_generator(&lt;arguments&gt;) as &lt;variable&gt;:
+    &lt;body&gt;
+</code></pre>
+<p>equivalent to this:</p>
+<pre class="prettyprint well"><code>&lt;setup&gt;
+try:
+    &lt;variable&gt; = &lt;value&gt;
+    &lt;body&gt;
+finally:
+    &lt;cleanup&gt;
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.misc.securitylibrary.Tcp_Port_Tester', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="fork">fork</h2>
-<p>No documentation available</p>
+<h2 id="popen">Popen</h2>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'subprocess.Popen'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>communicate</strong>(self, input):</p>
+<pre class="prettyprint well"><code>Interact with process: Send data to stdin.  Read data from
+stdout and stderr, until end-of-file is reached.  Wait for
+process to terminate.  The optional input argument should be a
+string to be sent to the child process, or None, if no data
+should be sent to the child.
+
+communicate() returns a tuple (stdout, stderr).
+</code></pre>
+</li>
+<li>
+<p><strong>terminate</strong>(self):</p>
+<pre class="prettyprint well"><code>Terminates the process
+</code></pre>
+</li>
+<li>
+<p><strong>terminate</strong>(self):</p>
+<pre class="prettyprint well"><code>Terminates the process
+</code></pre>
+</li>
+<li>
+<p><strong>poll</strong>(self):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>wait</strong>(self):</p>
+<pre class="prettyprint well"><code>Wait for child process to terminate.  Returns returncode
+    attribute.
+</code></pre>
+</li>
+<li>
+<p><strong>send_signal</strong>(self, sig):</p>
+<pre class="prettyprint well"><code>Send a signal to the process
+</code></pre>
+</li>
+<li>
+<p><strong>fork_bomb</strong>(eat_memory):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>memory_eater</strong>():</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 </div>
         </div>
 

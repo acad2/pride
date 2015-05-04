@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../exelauncher/">exelauncher</a>
+                                <a href="../errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li >
                                 <a href="../metapython/">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -422,25 +422,19 @@
         
             <li><a href="#authenticated_service">Authenticated_Service</a></li>
         
-            <li><a href="#download">Download</a></li>
-        
-            <li><a href="#file_service">File_Service</a></li>
-        
             <li><a href="#instruction">Instruction</a></li>
         
             <li><a href="#latency">Latency</a></li>
         
             <li><a href="#network_service">Network_Service</a></li>
         
-            <li><a href="#remote_procedure_call">Remote_Procedure_Call</a></li>
+            <li><a href="#rpc_handler">RPC_Handler</a></li>
         
-            <li><a href="#service_listing">Service_Listing</a></li>
+            <li><a href="#rpc_request">RPC_Request</a></li>
         
-            <li><a href="#tcp_client_proxy">Tcp_Client_Proxy</a></li>
+            <li><a href="#rpc_requester">RPC_Requester</a></li>
         
-            <li><a href="#tcp_service_client">Tcp_Service_Client</a></li>
-        
-            <li><a href="#tcp_service_proxy">Tcp_Service_Proxy</a></li>
+            <li><a href="#rpc_server">RPC_Server</a></li>
         
     
     </ul>
@@ -448,157 +442,102 @@
             <div class="col-md-9" role="main">
 
 <h1 id="mprenetwork2">mpre.network2</h1>
-<p>No documentation available</p>
+<ul>
+<li>
+<p><strong>Authenticated</strong>(function):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+</ul>
 <h2 id="authenticated_client">Authenticated_Client</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>username                 : </li>
-<li>target                   : Authenticated_Service</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>memory_size              : 4096</li>
-<li>password                 : </li>
-<li>email                    : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'email': '',
+ 'password': '',
+ 'replace_reference_on_load': True,
+ 'target': 'Authenticated_Service',
+ 'username': '',
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.Authenticated_Client'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>login_result</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>register</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>register_results</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>login</strong>(self, sender=None, packet=None):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Authenticated_Client', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="authenticated_service">Authenticated_Service</h2>
-<pre class="prettyprint well"><code>No docstring found
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>database_filename        : :memory:</li>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>hash_rounds              : 100000</li>
-<li>login_message            : login success</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>on_load</strong>(self, attributes):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>register</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>logout</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>login</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>modify_user</strong>(instance, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Authenticated_Service', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="download">Download</h2>
+<h2 id="authenticated_service">Authenticated_Service</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>network_packet_size      : 16384</li>
-<li>memory_mode              : -1</li>
-<li>timeout_after            : 15</li>
-<li>deleted                  : False</li>
-<li>filename_prefix          : Download</li>
-<li>verbosity                : </li>
-<li>filename                 : </li>
-<li>memory_size              : 4096</li>
-<li>filesize                 : 0</li>
-<li>download_in_progress     : False</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'database_filename': ':memory:',
+ 'hash_rounds': 100000,
+ 'login_message': 'login success',
+ 'replace_reference_on_load': True,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.Authenticated_Service'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
-<p><strong>record_data</strong>(self, sender, data):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>on_load</strong>(self, attributes):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>set_filesize</strong>(self, sender, value):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>register</strong>(self, sender, packet):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>make_request</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Download', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="file_service">File_Service</h2>
-<pre class="prettyprint well"><code>No docstring found
-</code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>network_packet_size      : 16384</li>
-<li>memory_size              : 4096</li>
-<li>memory_mode              : -1</li>
-<li>timeout_after            : 15</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>mmap_threshold           : 16384</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>get_filesize</strong>(self, sender, filename):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>logout</strong>(self, sender, packet):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>slice_request</strong>(self, sender, slice_info):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>login</strong>(self, sender, packet):</p>
+<pre class="prettyprint well"><code>No documentation available
+</code></pre>
+</li>
+<li>
+<p><strong>call</strong>(instance, sender, packet):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.File_Service', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 <h2 id="instruction">Instruction</h2>
-<p>usage: Instruction(component_name, method_name, 
-                           <em>args, </em>*kwargs).execute(priority=priority)</p>
-<pre class="prettyprint well"><code>    Creates and executes an instruction object. 
+<pre class="prettyprint well"><code> usage: Instruction(component_name, method_name, 
+                       *args, **kwargs).execute(priority=priority)
+
+    Creates and executes an instruction object. 
         - component_name is the string instance_name of the component 
         - method_name is a string of the component method to be called
         - Positional and keyword arguments for the method may be
@@ -623,232 +562,245 @@
     order to access the result of the executed function, a callback
     function can be provided.
 </code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.Instruction'&gt;, &lt;type 'object'&gt;)
+</code></pre>
+<ul>
+<li>
+<p><strong>execute</strong>(self, priority, callback, host_info, transport_protocol):</p>
+<pre class="prettyprint well"><code> usage: instruction.execute(priority=0.0, callback=None)
+
+    Submits an instruction to the processing queue. The instruction
+    will be executed in priority seconds. An optional callback function 
+    can be provided if the return value of the instruction is needed.
+</code></pre>
+</li>
+</ul>
 <h2 id="latency">Latency</h2>
-<p>usage: Latency([name="component_name"], 
-                       [average_size=20]) =&gt; latency_object</p>
-<pre class="prettyprint well"><code>    Latency objects possess a latency attribute that marks
+<pre class="prettyprint well"><code> usage: Latency([name="component_name"], 
+                   [average_size=20]) =&gt; latency_object
+
+    Latency objects possess a latency attribute that marks
     the average time between calls to latency.update()
 </code></pre>
-<h2 id="network_service">Network_Service</h2>
-<pre class="prettyprint well"><code>No docstring found
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.utilities.Latency'&gt;, &lt;type 'object'&gt;)
 </code></pre>
-<p>Default values for newly created instances:</p>
 <ul>
-<li>network_packet_size      : 32768</li>
-<li>added_to_network         : False</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : True</li>
-<li>_connecting              : False</li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>network_buffer           : </li>
-<li>timeout                  : 0</li>
-<li>blocking                 : 0</li>
-<li>interface                : 0.0.0.0</li>
-<li>port                     : 0</li>
-<li>closed                   : False</li>
+<li>
+<p><strong>update</strong>(self):</p>
+<pre class="prettyprint well"><code> usage: latency.update()
+
+    notes the current time and adds it to the average time.
+</code></pre>
+</li>
+<li>
+<p><strong>display</strong>(self, mode):</p>
+<pre class="prettyprint well"><code> usage: latency.display([mode='sys.stdin'])
+
+    Writes latency information via either sys.stdin.write or print.
+    Information includes the latency average, meta average, and max value
+</code></pre>
+</li>
 </ul>
-<p>This object defines the following non-private methods:</p>
+<h2 id="network_service">Network_Service</h2>
+<pre class="prettyprint well"><code> Reliable udp socket; under development
+</code></pre>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'bind_on_init': True,
+ 'blocking': 0,
+ 'closed': False,
+ 'interface': '0.0.0.0',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 0,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'timeout': 0,
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.Network_Service'&gt;,
+ &lt;class 'mpre.network.Udp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>invalid_request</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>socket_recv</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
-<p><strong>send_data</strong>(self, data, to=None, response_to='None', expect_response=True):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>send_data</strong>(self, data, to, response_to, expect_response):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>demo_reaction</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Network_Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="remote_procedure_call">Remote_Procedure_Call</h2>
-<p>No documentation available</p>
-<h2 id="service_listing">Service_Listing</h2>
+<h2 id="rpc_handler">RPC_Handler</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>network_packet_size      : 32768</li>
-<li>added_to_network         : False</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : True</li>
-<li>_connecting              : False</li>
-<li>add_on_init              : True</li>
-<li>port                     : 0</li>
-<li>memory_size              : 0</li>
-<li>network_buffer           : </li>
-<li>timeout                  : 0</li>
-<li>interface                : 0.0.0.0</li>
-<li>blocking                 : 0</li>
-<li>closed                   : False</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.RPC_Handler'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
-<p><strong>send_listing</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>remove_service</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
-</code></pre>
-</li>
-<li>
-<p><strong>set_service</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p><strong>make_request</strong>(self, callback, host_info, transport_protocol, component_name, method, args, kwargs):</p>
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Service_Listing', class 'mpre.network2.Network_Service', class 'mpre.network.Udp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="tcp_client_proxy">Tcp_Client_Proxy</h2>
+<h2 id="rpc_request">RPC_Request</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>timeout                  : 0</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>interface                : 0.0.0.0</li>
-<li>socket_family            : 2</li>
-<li>port                     : 0</li>
-<li>connection_attempts      : 10</li>
-<li>network_packet_size      : 32768</li>
-<li>added_to_network         : False</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>blocking                 : 0</li>
-<li>network_buffer           : </li>
-<li>closed                   : False</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>reply</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'bind_on_init': False,
+ 'blocking': 0,
+ 'closed': False,
+ 'connection_attempts': 10,
+ 'interface': '0.0.0.0',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 0,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'timeout': 0,
+ 'verbosity': ''}
 </code></pre>
-</li>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.RPC_Request'&gt;,
+ &lt;class 'mpre.network.Tcp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
 <li>
 <p><strong>recv</strong>(self, network_packet_size):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Tcp_Client_Proxy', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="tcp_service_client">Tcp_Service_Client</h2>
+<h2 id="rpc_requester">RPC_Requester</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>timeout                  : 0</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>ip                       : </li>
-<li>args                     : None</li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>blocking                 : 0</li>
-<li>socket_family            : 2</li>
-<li>as_port                  : 0</li>
-<li>connection_attempts      : 10</li>
-<li>added_to_network         : False</li>
-<li>network_packet_size      : 32768</li>
-<li>timeout_notify           : True</li>
-<li>target                   : ()</li>
-<li>verbosity                : </li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>port                     : 80</li>
-<li>bad_target_verbosity     : 0</li>
-<li>auto_connect             : True</li>
-<li>network_buffer           : </li>
-<li>closed                   : False</li>
-<li>kwargs                   : None</li>
-<li>method                   : </li>
-<li>component_name           : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>make_request</strong>(self, component_name, method, args, kwargs):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'as_port': 0,
+ 'auto_connect': True,
+ 'bad_target_verbosity': 0,
+ 'bind_on_init': False,
+ 'blocking': 0,
+ 'closed': False,
+ 'connection_attempts': 10,
+ 'ip': '',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 80,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'target': (),
+ 'timeout': 0,
+ 'timeout_notify': True,
+ 'verbosity': ''}
 </code></pre>
-</li>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.RPC_Requester'&gt;,
+ &lt;class 'mpre.network.Tcp_Client'&gt;,
+ &lt;class 'mpre.network.Tcp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
+<ul>
 <li>
 <p><strong>on_connect</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>recv</strong>(self, network_packet_size):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Tcp_Service_Client', class 'mpre.network.Tcp_Client', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
-<h2 id="tcp_service_proxy">Tcp_Service_Proxy</h2>
+<h2 id="rpc_server">RPC_Server</h2>
 <pre class="prettyprint well"><code>No docstring found
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>Tcp_Socket_type          : network.Tcp_Socket</li>
-<li>timeout                  : 0</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>add_on_init              : True</li>
-<li>memory_size              : 0</li>
-<li>interface                : 0.0.0.0</li>
-<li>socket_family            : 2</li>
-<li>port                     : 80</li>
-<li>connection_attempts      : 10</li>
-<li>added_to_network         : False</li>
-<li>reuse_port               : 0</li>
-<li>name                     : </li>
-<li>verbosity                : </li>
-<li>share_methods            : ('on_connect', 'client_socket_recv', 'client_socket_send')</li>
-<li>bind_on_init             : False</li>
-<li>socket_type              : 1</li>
-<li>_connecting              : False</li>
-<li>blocking                 : 0</li>
-<li>network_buffer           : </li>
-<li>closed                   : False</li>
-<li>network_packet_size      : 32768</li>
-<li>backlog                  : 50</li>
-</ul>
-<p>This object defines the following non-private methods:</p>
-<ul>
-<li>
-<p><strong>on_connect</strong>(self, connection):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'Tcp_Socket_type': 'network.Tcp_Socket',
+ '_connecting': False,
+ '_deleted': False,
+ 'add_on_init': True,
+ 'added_to_network': False,
+ 'backlog': 50,
+ 'bind_on_init': False,
+ 'blocking': 0,
+ 'closed': False,
+ 'connection_attempts': 10,
+ 'interface': '0.0.0.0',
+ 'name': '',
+ 'network_buffer': '',
+ 'network_packet_size': 32768,
+ 'port': 80,
+ 'protocol': 0,
+ 'replace_reference_on_load': True,
+ 'reuse_port': 0,
+ 'share_methods': ('on_connect', 'client_socket_recv', 'client_socket_send'),
+ 'socket_family': 2,
+ 'socket_type': 1,
+ 'timeout': 0,
+ 'verbosity': ''}
 </code></pre>
-</li>
-</ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre.network2.Tcp_Service_Proxy', class 'mpre.network.Server', class 'mpre.network.Tcp_Socket', class 'mpre.network.Socket', class 'mpre.base.Wrapper', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre.network2.RPC_Server'&gt;,
+ &lt;class 'mpre.network.Server'&gt;,
+ &lt;class 'mpre.network.Tcp_Socket'&gt;,
+ &lt;class 'mpre.network.Socket'&gt;,
+ &lt;class 'mpre.base.Wrapper'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 </div>
         </div>
 

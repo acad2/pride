@@ -90,19 +90,23 @@
                             </li>
                         
                             <li >
-                                <a href="../compiler/">compiler</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../defaults/">defaults</a>
                             </li>
                         
                             <li >
-                                <a href="../exelauncher/">exelauncher</a>
+                                <a href="../errors/">errors</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../exe/">exe</a>
                             </li>
                         
                             <li >
                                 <a href="../fileio/">fileio</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../importers/">importers</a>
                             </li>
                         
                             <li >
@@ -111,6 +115,10 @@
                         
                             <li class="active">
                                 <a href="./">metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../module_utilities/">module_utilities</a>
                             </li>
                         
                             <li >
@@ -126,19 +134,7 @@
                             </li>
                         
                             <li >
-                                <a href="../restore/">restore</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../shell_launcher/">shell_launcher</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../translate/">translate</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../updatetest/">updatetest</a>
                             </li>
                         
                             <li >
@@ -153,6 +149,18 @@
                                 <a href="../vmlibrary/">vmlibrary</a>
                             </li>
                         
+                            <li >
+                                <a href="../_compile/">_compile</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../_metapython/">_metapython</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../__init__/">__init__</a>
+                            </li>
+                        
                         </ul>
                     </li>
                 
@@ -161,10 +169,6 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">audio <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                        
-                            <li >
-                                <a href="../../audio/alsaaudiodevices/">alsaaudiodevices</a>
-                            </li>
                         
                             <li >
                                 <a href="../../audio/audiolibrary/">audiolibrary</a>
@@ -257,7 +261,11 @@
                             </li>
                         
                             <li >
-                                <a href="../../misc/dialectlibrary/">dialectlibrary</a>
+                                <a href="../../misc/dialect/">dialect</a>
+                            </li>
+                        
+                            <li >
+                                <a href="../../misc/dialects/">dialects</a>
                             </li>
                         
                             <li >
@@ -272,10 +280,6 @@
                                 <a href="../../misc/securitylibrary/">securitylibrary</a>
                             </li>
                         
-                            <li >
-                                <a href="../../misc/verbosedialect/">verbosedialect</a>
-                            </li>
-                        
                         </ul>
                     </li>
                 
@@ -284,6 +288,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">programs <b class="caret"></b></a>
                         <ul class="dropdown-menu">
+                        
+                            <li >
+                                <a href="../../programs/buildlauncher - Copy/">buildlauncher - Copy</a>
+                            </li>
                         
                             <li >
                                 <a href="../../programs/buildlauncher/">buildlauncher</a>
@@ -371,15 +379,7 @@
                             </li>
                         
                             <li >
-                                <a href="../../tests/scratch/">scratch</a>
-                            </li>
-                        
-                            <li >
                                 <a href="../../tests/structtest/">structtest</a>
-                            </li>
-                        
-                            <li >
-                                <a href="../../tests/todo/">todo</a>
                             </li>
                         
                         </ul>
@@ -400,7 +400,7 @@
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../network/">
+                    <a rel="prev" href="../module_utilities/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -431,56 +431,58 @@
     python script to execute</p>
 <h2 id="shell">Shell</h2>
 <pre class="prettyprint well"><code> Provides the client side of the interpreter session. Handles keystrokes and
-sends them to the Interpreter_Service to be executed.
+    sends them to the Interpreter_Service to be executed.
 </code></pre>
-<p>Default values for newly created instances:</p>
-<ul>
-<li>username                 : root</li>
-<li>prompt                   : &gt;&gt;&gt; </li>
-<li>target                   : Interpreter_Service</li>
-<li>memory_mode              : -1</li>
-<li>deleted                  : False</li>
-<li>verbosity                : </li>
-<li>startup_definitions      : </li>
-<li>memory_size              : 4096</li>
-<li>password                 : password</li>
-<li>email                    : </li>
-</ul>
-<p>This object defines the following non-private methods:</p>
+<p>Instance defaults: </p>
+<pre class="prettyprint well"><code>{'_deleted': False,
+ 'email': '',
+ 'password': 'password',
+ 'prompt': '&gt;&gt;&gt; ',
+ 'replace_reference_on_load': True,
+ 'startup_definitions': '',
+ 'target': 'Interpreter_Service',
+ 'username': 'root',
+ 'verbosity': ''}
+</code></pre>
+<p>Method resolution order: </p>
+<pre class="prettyprint well"><code>(&lt;class 'mpre._metapython.Shell'&gt;,
+ &lt;class 'mpre.network2.Authenticated_Client'&gt;,
+ &lt;class 'mpre.base.Reactor'&gt;,
+ &lt;class 'mpre.base.Base'&gt;,
+ &lt;type 'object'&gt;)
+</code></pre>
 <ul>
 <li>
 <p><strong>handle_startup_definitions</strong>(self):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>login_result</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>exec_code_request</strong>(self, sender, source):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>result</strong>(self, sender, packet):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>execute_source</strong>(self, source):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 <li>
 <p><strong>handle_keystrokes</strong>(self, sender, keyboard_input):</p>
-<pre class="prettyprint well"><code>  No documentation available
+<pre class="prettyprint well"><code>No documentation available
 </code></pre>
 </li>
 </ul>
-<p>This objects method resolution order is:</p>
-<p>(class 'mpre._metapython.Shell', class 'mpre.network2.Authenticated_Client', class 'mpre.base.Reactor', class 'mpre.base.Base', type 'object')</p>
 </div>
         </div>
 
