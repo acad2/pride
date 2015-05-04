@@ -1,28 +1,26 @@
-mpre.programs.unzip
-========
-No documentation available
+unzip
+==============
+
+
 
 Unzipper
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- memory_size              : 4096
-- memory_mode              : -1
-- deleted                  : False
-- verbosity                : 
-- target_directory         : 
-- filename                 : 
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'filename': '',
+	 'replace_reference_on_load': True,
+	 'target_directory': '',
+	 'verbosity': ''}
 
+Method resolution order: 
+
+	(<class 'unzip.Unzipper'>, <class 'mpre.base.Base'>, <type 'object'>)
 
 - **unzip**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.programs.unzip.Unzipper', class 'mpre.base.Base', type 'object')
+		No documentation available

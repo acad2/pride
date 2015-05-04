@@ -150,7 +150,7 @@ def function_header(function):
     try:
         code = function.func_code
     except AttributeError:
-        print function
+        raise ValueError("could not locate code object of {}".format(function))
         
     arguments = inspect.getargs(code)
     _arguments = ', '.join(arguments.args )
@@ -178,7 +178,7 @@ def usage(_object):
             spacing = '\n' + (len(name) + len("usage: ({")) * " "
         arguments += "})"    
         return_type = " => {}".format(name)
-    elif _object.__class__.__name__ == "Runtime_Decorator":
+    elif getattr(_object, "__class__", '') == "Runtime_Decorator":
         name = _object.function.__name__
         arguments = function_header(_object.function)
         return_type = ''
@@ -193,7 +193,7 @@ def usage(_object):
 def documentation(_object):
     new_section = "{}\n==============\n\n"
     new_subsection = "{}\n--------------\n\n"
-    new_function = "- **{}"
+    new_function = "- **{}**"
     if isinstance(_object, types.ModuleType):        
         module_name = _object.__name__
         docstring = new_section.format(module_name)
@@ -214,9 +214,16 @@ def documentation(_object):
             docs = _object.__doc    
         elif docs is None:
             docs = "No documentation available"
-        docstring += docs.replace("\n", "\n\t\t") + "\n"
+        docstring += '\t' + docs + "\n" #docs.replace("\n", "\n\t\t") + "\n"
         
-        for attribute in (attribute for attribute in dir(_object) if "_" != attribute[0]):
+        if hasattr(_object, 'defaults'):
+            docstring += '\n\n' + "Instance defaults: \n\n\t"
+            docstring += pprint.pformat(_object.defaults).replace("\n", "\n\t")
+           
+        docstring += "\n\n" + "Method resolution order: \n\n\t" + pprint.pformat(_object.__mro__).replace("\n", "\n\t")
+        
+        for attribute in (attribute for attribute in 
+                          _object.__dict__.keys() if "_" != attribute[0]):
             value = getattr(_object, attribute)
             if hasattr(value, "function"):
                 docs = documentation(value.function)
@@ -232,10 +239,15 @@ def documentation(_object):
             docstring = ''
         else:
             #docstring = new_function.format(function_name)
-            docstring = new_function.format(usage(_object)[7:]) + ":"
+            beginning = "usage: " + function_name            
+            try:
+                docstring = (new_function.format(function_name) + 
+                             usage(_object)[len(beginning):] + ":")
+            except ValueError:
+                docstring = new_function.format(function_name) + "**:"
             docstring += "\n\n\t\t"
             docstring += (_object.__doc__ if _object.__doc__ is not None else 
-                          "No documentation available").replace("\n", "\n\t\t") + "\n"
+                          "No documentation available") + "\n"
             #docstring += "\n\n\t\t" + ge
             #docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
     elif _object.__class__.__name__ == "Runtime_Decorator":

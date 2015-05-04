@@ -1,103 +1,90 @@
 mpre.package
-========
-No documentation available
+==============
+
+
 
 Documentation
---------
-	
-	Generates restructed text .md files from python modules.
-	Writes a mkdocs.yml with the .md files information.
-	Runs mkdocs build to build a site from the .md files
-	
+--------------
 
-Default values for newly created instances:
-
-- site_name                : 
-- memory_mode              : -1
-- package                  : None
-- deleted                  : False
-- verbosity                : vv
-- ignore_directories       : ('docs',)
-- subfolders               : ()
-- memory_size              : 4096
-- ignore_files             : ()
-- directory                : C:\Users\_\pythonbs\mpre
-- index_page               : ()
-
-This object defines the following non-private methods:
-
-
-- **write_yml_file**(self, file_data):
-
-		  No documentation available
-
-
-
-- **update**(self):
-
-		  No documentation available
-
-
-
-- **generate_md_file**(self, module_name):
-
-		  usage: documentation.generate_md_file(module_name) => documentation
-
-
-This objects method resolution order is:
-
-(class 'mpre.package.Documentation', class 'mpre.base.Base', type 'object')
-
-
-Package
---------
 	No docstring found
 
-Default values for newly created instances:
 
-- package_name             : 
-- memory_mode              : -1
-- make_docs                : True
-- deleted                  : False
-- verbosity                : 
-- ignore_directories       : ()
-- store_source             : True
-- subfolders               : ()
-- memory_size              : 4096
-- directory                : 
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
 
+Method resolution order: 
 
-- **update_structure**(self):
+	(<class 'mpre.package.Documentation'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
-		  No documentation available
+- **write_markdown_file**(self, markdown_text, filename):
+
+		No documentation available
 
 
+- **write_yml_entry**(self, entry, yml_file):
 
-- **init_filename_in**(self, path):
-
-		  No documentation available
-
+		No documentation available
 
 
-- **make_files**(self, subfolder, subpath, file_list):
+Module
+--------------
 
-		  No documentation available
-
-
-
-- **make_folder**(self, subfolder, folder_path):
-
-		  No documentation available
+	No documentation available
 
 
+Method resolution order: 
 
-- **from_directory**(top_directory, dirnames, ignore_directories=()):
+	(<class 'mpre.package.Module'>, <type 'module'>, <type 'object'>)
 
-		  No documentation available
+Package
+--------------
+
+	No docstring found
 
 
-This objects method resolution order is:
+Instance defaults: 
 
-(class 'mpre.package.Package', class 'mpre.base.Base', type 'object')
+	{'_deleted': False,
+	 'include_all_source': True,
+	 'include_documentation': False,
+	 'package_name': None,
+	 'python_extensions': ('.py', '.pyx', '.pyd', '.pso', '.so'),
+	 'replace_reference_on_load': False,
+	 'top_level_package': '',
+	 'verbosity': ''}
+
+Method resolution order: 
+
+	(<class 'mpre.package.Package'>, <class 'mpre.base.Base'>, <type 'object'>)
+
+- **get_module**(self, module_name):
+
+		No documentation available
+
+
+Package_Importer
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'mpre.package.Package_Importer'>, <type 'object'>)
+
+- **find_module**(self, module_path, path):
+
+		No documentation available
+
+
+- **load_module**(self, module_path):
+
+		No documentation available
+
+
+- **create_module**(module_name, source, context):
+
+		 Creates a module with the supplied name and source

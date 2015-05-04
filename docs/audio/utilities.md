@@ -1,10 +1,12 @@
-mpre.audio.utilities
-========
-No documentation available
+utilities
+==============
+
+
 
 Instruction
---------
- usage: Instruction(component_name, method_name, 
+--------------
+
+	 usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
                            
         Creates and executes an instruction object. 
@@ -31,3 +33,50 @@ Instruction
         that they do not happen inline even if the priority is 0.0. In
         order to access the result of the executed function, a callback
         function can be provided.
+
+
+Method resolution order: 
+
+	(<class 'mpre.Instruction'>, <type 'object'>)
+
+- **execute**(self, priority, callback, host_info, transport_protocol):
+
+		 usage: instruction.execute(priority=0.0, callback=None)
+        
+            Submits an instruction to the processing queue. The instruction
+            will be executed in priority seconds. An optional callback function 
+            can be provided if the return value of the instruction is needed.
+
+
+- **disable_audio**(name):
+
+		No documentation available
+
+
+- **enable_audio**(parent):
+
+		Executes the following instruction:
+    
+        Instruction("Metapython", "create", 
+                    "mpre.audio.audiolibrary.Audio_Manager").execute()
+    
+
+
+- **ensure_audio_enabled**(, **kwargs):
+
+		No documentation available
+
+
+- **install_pyalsaaudio**():
+
+		No documentation available
+
+
+- **record_wav_file**(parse_args, **kwargs):
+
+		No documentation available
+
+
+- **wav_file_info**(parse_args, **kwargs):
+
+		No documentation available

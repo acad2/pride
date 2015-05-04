@@ -1,7 +1,14 @@
-mpre.tests.lru_test
-========
-No documentation available
+lru_test
+==============
+
+
 
 LRU_Cache
---------
-No documentation available
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'lru_test.LRU_Cache'>, <type 'object'>)

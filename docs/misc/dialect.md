@@ -1,39 +1,41 @@
-get_modules
+dialect
 ==============
 
 
 
-Module_Listing
+Dialect
 --------------
 
-	No documentation available
+	 usage: dialect = Dialect(dictionary) # create a dialect which switches keys for values
+        modified_input = dialect.translate(input) # perform the translation on text string
+        original_input = dialect.translate(modified_input, "from") # reverse a translation
 
 
 Method resolution order: 
 
-	(<class 'get_modules.Module_Listing'>, <type 'object'>)
+	(<class 'dialect.Dialect'>, <type 'object'>)
 
-- **trim**(self, text):
-
-		No documentation available
-
-
-- **read_file**(self):
+- **translate_from**(self, _file):
 
 		No documentation available
 
 
-- **get_modules**(self):
+- **translate_to_file**(self, input_file, output_file):
 
 		No documentation available
 
 
-- **make_file**(self, filename):
+- **translate**(self, _file):
 
 		No documentation available
 
 
-- **from_help**(self):
+- **save**(self, filename, mode):
+
+		No documentation available
+
+
+- **from_object**(self, object):
 
 		No documentation available
 
@@ -51,3 +53,9 @@ Method resolution order:
     cannot be interpreted as 7-bit ASCII (that use the 8th bit) will cause
     a UnicodeError to be raised when getvalue() is called.
     
+
+
+- **randint**(self, a, b):
+
+		Return random integer in range [a, b], including both end points.
+        

@@ -1,163 +1,171 @@
-mpre.gui.widgetlibrary
-========
-No documentation available
+widgetlibrary
+==============
+
+
 
 Attribute_Displayer
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : layer
-- memory_size              : 4096
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'layer',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.widgetlibrary.Attribute_Displayer', class 'mpre.gui.guilibrary.Window', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'widgetlibrary.Attribute_Displayer'>,
+	 <class 'mpre.gui.guilibrary.Window'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Date_Time_Button
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- text                     : Button
-- outline_width            : 5
-- text_color               : (255, 130, 25)
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : horizontal
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- shape                    : rect
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'horizontal',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'shape': 'rect',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'text': 'Button',
+	 'text_color': (255, 130, 25),
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'widgetlibrary.Date_Time_Button'>,
+	 <class 'mpre.gui.guilibrary.Button'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **update_time**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.widgetlibrary.Date_Time_Button', class 'mpre.gui.guilibrary.Button', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 Homescreen
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : layer
-- memory_size              : 4096
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
-- background_filename      : C:\test.jpg
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'background_color': (0, 0, 0),
+	 'background_filename': 'C:\\test.jpg',
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'layer',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.widgetlibrary.Homescreen', class 'mpre.gui.guilibrary.Window', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'widgetlibrary.Homescreen'>,
+	 <class 'mpre.gui.guilibrary.Window'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Indicator
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- text                     : Button
-- outline_width            : 5
-- text_color               : (255, 130, 25)
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- shape                    : rect
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'shape': 'rect',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'text': 'Button',
+	 'text_color': (255, 130, 25),
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'widgetlibrary.Indicator'>,
+	 <class 'mpre.gui.guilibrary.Button'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **draw_texture**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.widgetlibrary.Indicator', class 'mpre.gui.guilibrary.Button', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 Instruction
---------
- usage: Instruction(component_name, method_name, 
+--------------
+
+	 usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
                            
         Creates and executes an instruction object. 
@@ -185,186 +193,209 @@ Instruction
         order to access the result of the executed function, a callback
         function can be provided.
 
+
+Method resolution order: 
+
+	(<class 'mpre.Instruction'>, <type 'object'>)
+
+- **execute**(self, priority, callback, host_info, transport_protocol):
+
+		 usage: instruction.execute(priority=0.0, callback=None)
+        
+            Submits an instruction to the processing queue. The instruction
+            will be executed in priority seconds. An optional callback function 
+            can be provided if the return value of the instruction is needed.
+
+
 Popup_Menu
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : True
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : <function <lambda> at 0x025126F0>
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': <function <lambda> at 0x026ED170>,
+	 'pack_on_init': True,
+	 'popup': True,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.widgetlibrary.Popup_Menu', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'widgetlibrary.Popup_Menu'>,
+	 <class 'mpre.gui.guilibrary.Container'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Right_Click_Button
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- text                     : Button
-- outline_width            : 5
-- text_color               : (255, 130, 25)
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- shape                    : rect
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'shape': 'rect',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'text': 'Button',
+	 'text_color': (255, 130, 25),
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'widgetlibrary.Right_Click_Button'>,
+	 <class 'mpre.gui.guilibrary.Button'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **click**(self, mouse):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.widgetlibrary.Right_Click_Button', class 'mpre.gui.guilibrary.Button', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 Right_Click_Menu
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : True
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : <function <lambda> at 0x025126F0>
-- held                     : False
-- pack_mode                : layer
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : (200, 150)
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'layer',
+	 'pack_modifier': <function <lambda> at 0x026ED170>,
+	 'pack_on_init': True,
+	 'popup': True,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': (200, 150),
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.widgetlibrary.Right_Click_Menu', class 'mpre.gui.widgetlibrary.Popup_Menu', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'widgetlibrary.Right_Click_Menu'>,
+	 <class 'widgetlibrary.Popup_Menu'>,
+	 <class 'mpre.gui.guilibrary.Container'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Task_Bar
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : <function <lambda> at 0x02512730>
-- held                     : False
-- pack_mode                : menu_bar
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'menu_bar',
+	 'pack_modifier': <function <lambda> at 0x026ED1B0>,
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.widgetlibrary.Task_Bar', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'widgetlibrary.Task_Bar'>,
+	 <class 'mpre.gui.guilibrary.Container'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Title_Bar
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'widgetlibrary.Title_Bar'>,
+	 <class 'mpre.gui.guilibrary.Container'>,
+	 <class 'mpre.gui.guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **draw_texture**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.widgetlibrary.Title_Bar', class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available

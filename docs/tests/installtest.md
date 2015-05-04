@@ -1,7 +1,18 @@
-mpre.tests.installtest
-========
-No documentation available
+installtest
+==============
+
+
 
 Installer
---------
-No documentation available
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'installtest.Installer'>, <type 'object'>)
+
+- **install**(self):
+
+		No documentation available

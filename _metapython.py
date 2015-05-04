@@ -288,27 +288,3 @@ class Metapython(base.Reactor):
         self.parallel_method("Processor", "set_attributes", running=False)
         # cleanup/finalizers go here?
         sys.exit(exit_code)
-                        
-        
-class Restored_Interpreter(Metapython):
-    """ usage: Restored_Intepreter(filename="suspended_interpreter.bin") => interpreter
-    
-        Restores an interpreter environment that has been suspended via
-        metapython.Metapython.save_state. This is a convenience class
-        over Metapython.load_state; note that instances produced by instantiating
-        Restored_Interpreter will be of the type of instance returned by
-        Metapython.load_state and not Restored_Interpreter"""
-        
-    defaults = defaults.Metapython.copy()
-    defaults.update({"filename" : 'Metapython.state'})
-    
-    def __new__(cls, *args, **kwargs):
-        instance = super(Restored_Interpreter, cls).__new__(cls, *args, **kwargs)
-        attributes = cls.defaults.copy()
-        if kwargs.get("parse_args"):
-            attributes.update(instance.parser.get_options(cls.defaults))       
-        
-        with open(attributes["filename"], 'rb') as save_file:
-            interpreter = pickle.load(save_file)
-        
-        return interpreter

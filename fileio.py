@@ -152,14 +152,21 @@ class File(base.Wrapper):
             self.path = os.path.curdir
         
         self.mode = mode if mode else self.mode    
+        self.parallel_method("File_System", "add", self)
         if not self.file:
-            if self.file_system == "disk":                
-                self.file = open(self.filename, self.mode)                
+            if self.file_system == "disk":          
+                self.file = open(path, self.mode)                
             else:
                 self.file = utilities.resolve_string(self.file_type)()             
         self.wraps(self.file)        
-        self.parallel_method("File_System", "add", self)
-                
+            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        self.delete()
+        return value
+        
     def __getitem__(self, slice):
         stop = slice.stop if slice.stop is not None else -1
         start = slice.start if slice.start is not None else 0
@@ -457,21 +464,18 @@ class File_System(base.Base):
                         directory = file_system
                     elif not is_file:   
                         exists = os.path.exists(current_directory)
-                        if _file_system != "disk" or exists:
-                            if not exists:
-                                prompt = "Directory '{}' does not exist. Create it? y/n: "
-                                permission = mpre.userinput.get_selection(prompt.format(key), bool)
-                            if exists or permission:
-                            #   print "creating node: {}".format(key)
-                                directory[key] = {}
-                                directory = directory[key]   
-                            else:
-                                raise IOError("Directory '{}' does not exist".format(key))
+                        if not exists:
+                            prompt = "Directory '{}' does not exist. Create it? y/n: "
+                            permission = mpre.userinput.get_selection(prompt.format(key), bool)
+                            if permission:
+                                ensure_folder_exists(current_directory)
+                                exists = True
+                        if exists:
+                        #   print "creating node: {}".format(key)
+                            directory[key] = {}
+                            directory = directory[key]   
                         else:
-                      #      print "path: ", path
-                       #     print "Key: ", key
-                        #    print "Current dir: ", current_directory
-                            raise IOError("Directory {} '{}' does not exist".format(key, current_directory))
+                            raise IOError("Directory '{}' does not exist".format(key))           
                     else:
                         pprint.pprint(file_system)
                         raise IOError("File '{}' does not exist".format(current_directory))

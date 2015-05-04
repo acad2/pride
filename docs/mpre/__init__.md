@@ -1,6 +1,51 @@
-send_file
+mpre.__init__
 ==============
 
+
+
+Environment
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'mpre.__init__.Environment'>, <type 'object'>)
+
+- **modify**(self, container_name, item, method):
+
+		No documentation available
+
+
+- **update**(self, environment):
+
+		No documentation available
+
+
+- **replace**(self, component, new_component):
+
+		No documentation available
+
+
+- **add**(self, instance):
+
+		No documentation available
+
+
+- **preserved**(, *args, **kwds):
+
+		No documentation available
+
+
+- **display**(self):
+
+		No documentation available
+
+
+- **delete**(self, instance):
+
+		No documentation available
 
 
 Instruction
@@ -37,7 +82,7 @@ Instruction
 
 Method resolution order: 
 
-	(<class 'mpre.Instruction'>, <type 'object'>)
+	(<class 'mpre.__init__.Instruction'>, <type 'object'>)
 
 - **execute**(self, priority, callback, host_info, transport_protocol):
 

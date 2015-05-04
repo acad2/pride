@@ -1,7 +1,18 @@
-mpre.misc.referencetest
-========
-No documentation available
+referencetest
+==============
+
+
 
 Reference
---------
-No documentation available
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'referencetest.Reference'>, <type 'object'>)
+
+- **dereference**(self):
+
+		No documentation available

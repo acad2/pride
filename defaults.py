@@ -191,7 +191,8 @@ Package.update({"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
                 "package_name" : None,
                 "include_all_source" : True,
                 "replace_reference_on_load" : False,
-                "include_documentation" : False})  
+                "include_documentation" : False,
+                "top_level_package" : ''})  
                 
 Loader = Base.copy()
 Loader.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types"),

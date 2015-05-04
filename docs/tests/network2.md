@@ -1,10 +1,12 @@
-mpre.tests.network2
-========
-No documentation available
+network2
+==============
+
+
 
 Instruction
---------
- usage: Instruction(component_name, method_name, 
+--------------
+
+	 usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
                            
         Creates and executes an instruction object. 
@@ -31,3 +33,41 @@ Instruction
         that they do not happen inline even if the priority is 0.0. In
         order to access the result of the executed function, a callback
         function can be provided.
+
+
+Method resolution order: 
+
+	(<class 'mpre.Instruction'>, <type 'object'>)
+
+- **execute**(self, priority, callback, host_info, transport_protocol):
+
+		 usage: instruction.execute(priority=0.0, callback=None)
+        
+            Submits an instruction to the processing queue. The instruction
+            will be executed in priority seconds. An optional callback function 
+            can be provided if the return value of the instruction is needed.
+
+
+- **test_authentication**():
+
+		No documentation available
+
+
+- **test_file_service**():
+
+		No documentation available
+
+
+- **test_proxy**():
+
+		No documentation available
+
+
+- **test_reliability**():
+
+		No documentation available
+
+
+- **test_rpc**():
+
+		No documentation available

@@ -1,87 +1,90 @@
-mpre.gui.guilibrary
-========
-No documentation available
+guilibrary
+==============
+
+
 
 Button
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- text                     : Button
-- outline_width            : 5
-- text_color               : (255, 130, 25)
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- shape                    : rect
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'shape': 'rect',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'text': 'Button',
+	 'text_color': (255, 130, 25),
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'guilibrary.Button'>,
+	 <class 'guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **draw_texture**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.guilibrary.Button', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 Container
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : vertical
-- memory_size              : 4096
-- alpha                    : 1
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'alpha': 1,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'vertical',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.guilibrary.Container', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'guilibrary.Container'>,
+	 <class 'guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Instruction
---------
- usage: Instruction(component_name, method_name, 
+--------------
+
+	 usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority)
                            
         Creates and executes an instruction object. 
@@ -109,253 +112,260 @@ Instruction
         order to access the result of the executed function, a callback
         function can be provided.
 
+
+Method resolution order: 
+
+	(<class 'mpre.Instruction'>, <type 'object'>)
+
+- **execute**(self, priority, callback, host_info, transport_protocol):
+
+		 usage: instruction.execute(priority=0.0, callback=None)
+        
+            Submits an instruction to the processing queue. The instruction
+            will be executed in priority seconds. An optional callback function 
+            can be provided if the return value of the instruction is needed.
+
+
 Organizer
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- priority                 : 0
-- memory_size              : 4096
-- memory_mode              : -1
-- auto_start               : True
-- deleted                  : False
-- verbosity                : 
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'auto_start': True,
+	 'priority': 0,
+	 'replace_reference_on_load': True,
+	 'verbosity': ''}
 
+Method resolution order: 
+
+	(<class 'guilibrary.Organizer'>, <class 'mpre.base.Base'>, <type 'object'>)
 
 - **pack_menu_bar**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack_text**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack_vertical**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack_layer**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack_grid**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack_horizontal**(self, item, count, length):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **pack**(self, item):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.guilibrary.Organizer', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 SDL_Rect
---------
-No documentation available
+--------------
+
+	No documentation available
+
+
+Method resolution order: 
+
+	(<class 'sdl2.rect.SDL_Rect'>,
+	 <type '_ctypes.Structure'>,
+	 <type '_ctypes._CData'>,
+	 <type 'object'>)
 
 Theme
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : 
-- memory_size              : 4096
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': '',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'guilibrary.Theme'>,
+	 <class 'guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 - **draw_texture**(self, window_object):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.guilibrary.Theme', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 Window
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- show_title_bar           : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : layer
-- memory_size              : 4096
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- color                    : (0, 115, 10)
-- verbosity                : 
-- sdl_window               : SDL_Window
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-No non-private methods are defined
+	{'_deleted': False,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': 'layer',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'show_title_bar': False,
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
-This objects method resolution order is:
+Method resolution order: 
 
-(class 'mpre.gui.guilibrary.Window', class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
-
+	(<class 'guilibrary.Window'>,
+	 <class 'guilibrary.Window_Object'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
 
 Window_Object
---------
+--------------
+
 	No docstring found
 
-Default values for newly created instances:
 
-- layer                    : 1
-- popup                    : False
-- memory_mode              : -1
-- deleted                  : False
-- outline_width            : 5
-- pack_modifier            : 
-- held                     : False
-- pack_mode                : 
-- memory_size              : 4096
-- background_color         : (0, 0, 0)
-- pack_on_init             : True
-- size                     : [800, 600]
-- color_scalar             : 0.6
-- verbosity                : 
-- sdl_window               : SDL_Window
-- color                    : (0, 115, 10)
-- y                        : 0
-- x                        : 0
+Instance defaults: 
 
-This object defines the following non-private methods:
+	{'_deleted': False,
+	 'background_color': (0, 0, 0),
+	 'color': (0, 115, 10),
+	 'color_scalar': 0.6,
+	 'held': False,
+	 'layer': 1,
+	 'outline_width': 5,
+	 'pack_mode': '',
+	 'pack_modifier': '',
+	 'pack_on_init': True,
+	 'popup': False,
+	 'replace_reference_on_load': True,
+	 'sdl_window': 'SDL_Window',
+	 'size': [800, 600],
+	 'verbosity': '',
+	 'x': 0,
+	 'y': 0}
 
+Method resolution order: 
+
+	(<class 'guilibrary.Window_Object'>, <class 'mpre.base.Base'>, <type 'object'>)
 
 - **click**(self, mouse):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **mousemotion**(self, x_change, y_change):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **create**(self, *args, **kwargs):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **draw_children**(self):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **add**(self, instance):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **draw_texture**(self):
 
-		  No documentation available
+		No documentation available
 
 
+- **draw**(self, figure, *args, **kwargs):
 
-- **draw**(self, figure='rect', *args, **kwargs):
-
-		  No documentation available
-
+		No documentation available
 
 
 - **mousewheel**(self, x_amount, y_amount):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **press**(self, mouse):
 
-		  No documentation available
-
+		No documentation available
 
 
 - **release**(self, mouse):
 
-		  No documentation available
+		No documentation available
 
 
+- **pack**(self, reset):
 
-- **pack**(self, reset=False):
-
-		  No documentation available
-
+		No documentation available
 
 
 - **delete**(self):
 
-		  No documentation available
-
-
-This objects method resolution order is:
-
-(class 'mpre.gui.guilibrary.Window_Object', class 'mpre.base.Base', type 'object')
+		No documentation available
 
 
 attrgetter
---------
-attrgetter(attr, ...) --> attrgetter object
+--------------
+
+	attrgetter(attr, ...) --> attrgetter object
 
 Return a callable object that fetches the given attribute(s) from its operand.
 After f = attrgetter('name'), the call f(r) returns r.name.
 After g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).
 After h = attrgetter('name.first', 'name.last'), the call h(r) returns
 (r.name.first, r.name.last).
+
+
+Method resolution order: 
+
+	(<type 'operator.attrgetter'>, <type 'object'>)

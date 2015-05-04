@@ -44,9 +44,10 @@ fs = get_component("File_System")
 #e.seek(0)
 #print e.read()
 
-#_package = constructor.create("mpre.package.Package", mpre)
+#_package = constructor.create("mpre.package.Package", mpre, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
+#print _package.documentation.markdown
 
 #_sqlite3 = _package.get_module("sqlite3")
  

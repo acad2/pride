@@ -2,14 +2,14 @@ import types
 import sys
 import contextlib
         
-def create_module(module_name, source, attach_source=False):
+def create_module(module_name, source, context=None):
     """ Creates a module with the supplied name and source"""
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
+    if context:
+        for key, value in context.items():
+            setattr(new_module, key, value)    
     exec module_code in new_module.__dict__
-    if attach_source:
-        assert not hasattr(new_module, "_source")
-        new_module._source = source
     return new_module
   
 def get_module_source(module):
