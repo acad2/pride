@@ -1,13 +1,13 @@
 import time
 
 import mpre
-import mpre.gui.guilibrary as guilibrary
-import mpre.gui.defaults as defaults
+import mpre.gui.gui as gui
+import mpre.gui
 import mpre.base as base
 Instruction = mpre.Instruction
 
 
-class Indicator(guilibrary.Button):  
+class Indicator(gui.Button):  
         
     def draw_texture(self):
         super(Indicator, self).draw_texture()
@@ -20,60 +20,77 @@ class Indicator(guilibrary.Button):
         self.draw("text", parent.instance_name, area, color=(255, 255, 255))
                        
         
-class Title_Bar(guilibrary.Container):
+class Title_Bar(gui.Container):
         
+    defaults = gui.Container.defaults.copy()
+    defaults.update({"pack_modifier" : (lambda parent, child:
+                                        setattr(child, "y", child.y+child.size[1]))
+                    })
     def draw_texture(self):
-        self.draw("text", self.parent.name, (0, 0, 60, 12), color=self.color)
+        self.draw("text", self.parent.instance_name, (0, 0, 60, 12), color=self.color)
         
         
-class Popup_Menu(guilibrary.Container):
+class Popup_Menu(gui.Container):
 
-    defaults = defaults.Popup_Menu
+    defaults = gui.Container.defaults.copy()
+    defaults.update({"popup" : True,
+                     "pack_modifier" : (lambda parent, child: 
+                                        setattr(child, "position", 
+                                               (SCREEN_SIZE[0]/2, SCREEN_SIZE[1]/2)))
+                    })
 
     def __init__(self, **kwargs):
         super(Popup_Menu, self).__init__(**kwargs)
         Instruction("User_Input", "add_popup", self).execute()
 
 
-class Homescreen(guilibrary.Window):
+class Homescreen(gui.Window):
 
-    defaults = defaults.Homescreen
-
+    defaults = gui.Window.defaults.copy()
+    
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
         self.create(Task_Bar)
 
 
-class Task_Bar(guilibrary.Container):
+class Task_Bar(gui.Container):
 
-    defaults = defaults.Task_Bar
+    defaults = gui.Container.defaults.copy()
+    defaults.update({"pack_modifier" : (lambda parent, child:
+                                        setattr(child, "y", 
+                                               (parent.y+parent.size[1])-child.size[1]))
+                    })
+    # ^ aligns the bottom left corners of the parent and child object
 
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
         self.create(Date_Time_Button)
 
 
-class Date_Time_Button(guilibrary.Button):
+class Date_Time_Button(gui.Button):
 
-    defaults = defaults.Date_Time_Button
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"pack_mode" : "horizontal"})
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
-        update = self.update_instruction = Instruction(self.instance_name, 
-                                                       "update_time")        
+        update = self.update_instruction = Instruction(self.instance_name, "update_time")        
         self.update_time()        
         
     def update_time(self):
         self.text = time.asctime()
         instance_name = self.instance_name
-        self.update_instruction.execute()
         
-        Instruction(instance_name, "draw_texture").execute(priority=1)
+        self.draw_texture()
+        self.update_instruction.execute(priority=1)        
 
 
 class Right_Click_Menu(Popup_Menu):
 
-    defaults = defaults.Right_Click_Menu
+    defaults = Popup_Menu.defaults.copy()
+    defaults.update({"pack_mode": "z",
+                     "size" : (200, 150)})
+
 
     def __init__(self, **kwargs):
         super(Right_Click_Menu, self).__init__(**kwargs)
@@ -93,17 +110,3 @@ class Right_Click_Menu(Popup_Menu):
                 attributes["attributes"].append(attribute)
         for name, collection in attributes.items():
             self.create(Right_Click_Button, text=name, attributes=collection, size=(50, 50))
-
-
-class Right_Click_Button(guilibrary.Button):
-
-    defaults = defaults.Right_Click_Button
-
-    def __init__(self, **kwargs):
-        super(Right_Click_Button, self).__init__(**kwargs)
-
-    def click(self, mouse):
-        self.create(Attribute_Displayer, attributes=self.attributes)
-
-
-class Attribute_Displayer(guilibrary.Window): pass

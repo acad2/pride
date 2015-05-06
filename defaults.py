@@ -184,25 +184,4 @@ Encrypted_File.update({"block_size" : 1024})
              
 File_System = Process.copy()
 File_System.update({"file_systems" : ("disk", "virtual"),
-                    "auto_start" : False})             
-  
-Package = Base.copy()
-Package.update({"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
-                "package_name" : None,
-                "include_all_source" : True,
-                "replace_reference_on_load" : False,
-                "include_documentation" : False,
-                "top_level_package" : ''})  
-                
-Loader = Base.copy()
-Loader.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types"),
-               "embedded_objects" : ("mpre.utilities.load", "mpre.errors.CorruptPickleError",
-                                     "mpre.module_utilities.create_module"),
-               "importer" : "mpre.package.Package_Importer"})
-                
-Executable = Base.copy()                    
-Executable.update({"filename" : "metapython.exe",
-                   "package" : None,
-                   "file" : None,
-                   "loader_type" : "mpre.programs.buildlauncher.Loader",
-                   "main_source" : ''})                    
+                    "auto_start" : False})                       

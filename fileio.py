@@ -8,12 +8,13 @@ import binascii
 import contextlib
 from contextlib import closing, contextmanager
 
-    
+import mpre    
 import mpre.vmlibrary as vmlibrary
 import mpre.defaults as defaults
 import mpre.base as base
 import mpre.utilities as utilities
 import mpre.userinput
+component = mpre.component
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -22,23 +23,18 @@ def ensure_folder_exists(pathname, file_system="disk"):
     if not os.path.exists(pathname) or not os.path.isdir(pathname):
         os.mkdir(pathname)
   
-def ensure_file_exists(filepath, data=('a', '')):
-    """usage: ensure_file_exists(filepath, [data=('a', '')])
+def ensure_file_exists(filepath, data=''):
+    """usage: ensure_file_exists(filepath, [data=''])
         
         filepath is the absolute or relative path of the file.
         If the file does not exist, it is created
         
-        data is optional. if specified, data[0] = mode and 
-        data[1] = the data to be written
-        
-        mode should be 'a' or 'w', 'a' is the default. 
-        'w' will truncate the file and the only contents
-        will be the data supplied in data[1]"""
+        data is optional. if specified, the file will be truncated and 
+        the data will written to the file"""
     if not os.path.exists(filepath) or not os.path.isfile(filepath):
-        mode, file_data = data
         with open(filepath, mode) as _file:
-            if file_data:
-                _file.write(file_data)
+            if data:
+                _file.write(data)
                 _file.flush()
                         
 @contextlib.contextmanager
@@ -140,21 +136,26 @@ class File(base.Wrapper):
                 file_system = self.file_system
                 _path = path
             else:
-                if self.parallel_method("File_System", "exists", file_system, 
-                                      file_type="file_system"):
-                    self.file_system = file_system
-                    path = _path
-                else:
+                self.file_system = file_system
+                path = _path
+                if "File_System" not in component:
+                    self.alert("File_System component does not exist", level='v')     
+                elif not component["File_System"].exists(file_system, file_type="file_system"):
                     raise IOError("File system '{}' does not exist".format(file_system))
-                
+                else:
+                    raise RuntimeError("unhandled exception encountered in File __init__")
         self.path, self.filename = os.path.split(path)
         if not self.path:
             self.path = os.path.curdir
         
-        self.mode = mode if mode else self.mode    
-        self.parallel_method("File_System", "add", self)
+        self.mode = mode or self.mode
+        try:
+            mpre.component["File_System"].add(self)
+        except KeyError:
+            self.alert("File_System does not exist", level='v')
+            
         if not self.file:
-            if self.file_system == "disk":          
+            if self.file_system == "disk":      
                 self.file = open(path, self.mode)                
             else:
                 self.file = utilities.resolve_string(self.file_type)()             

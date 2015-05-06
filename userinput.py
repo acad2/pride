@@ -87,7 +87,7 @@ class User_Input(vmlibrary.Process):
         self.input = ''
         
     def add_listener(self, sender, argument):
-        """ Adds a component to listeners. Components added this way should support a    
+        """ Adds a component to listeners. components added this way should support a    
             handle_keystrokes method"""
         self.listeners.append(sender)
         

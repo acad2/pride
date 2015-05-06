@@ -44,7 +44,7 @@ def authenticated_load(bytestream, key, hash_algorithm=hashlib.sha512):
     if valid:
         return pickle.loads(pickled_object)
     else:
-        raise CorruptPickleError("Message authentication code mismatch\n\n" + mac)
+        raise CorruptPickleError("Message authentication code mismatch\n\n" + bytestream[:mac_size])
                                  
 def load(attributes=None, _file=None):
     """ usage: load([attributes], [_file]) => restored_instance
@@ -101,19 +101,19 @@ def convert(old_value, old_base, new_base):
     new_base_size = len(new_base)
     old_base_mapping = dict((symbol, index) for index, symbol in enumerate(old_base))
     decimal_value = 0    
-    new_value = []
+    new_value = ''
     
     for power, value_representation in enumerate(reversed(old_value)):
         decimal_value += old_base_mapping[value_representation]*(old_base_size**power)
                             
     if decimal_value == 0:
-        new_value = [new_base[0]]
+        new_value = new_base[0]
     else:
         while decimal_value > 0: # divmod = divide and modulo in one action
             decimal_value, digit = divmod(decimal_value, new_base_size)
-            new_value.append(new_base[digit])
+            new_value += new_base[digit]
 
-    return ''.join(str(item) for item in reversed(new_value))
+    return ''.join(reversed(new_value))
                 
 def resolve_string(string):
     """Given an attribute string of ...x.y.z, import ...x.y and return z"""

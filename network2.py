@@ -14,7 +14,7 @@ import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
 Instruction = mpre.Instruction
-components = mpre.components
+component = mpre.component
            
 def Authenticated(function):
     def call(instance, sender, packet):
@@ -406,7 +406,7 @@ class RPC_Request(network.Tcp_Socket):
         component_name, method, argument_bytestream = request.split(" ", 2)
         try:
             args, kwargs = pickle.loads(argument_bytestream)
-            call = getattr(components[component_name], method)
+            call = getattr(component[component_name], method)
             response = call(*args, **kwargs)
             response = pickle.dumps(response)
         except:

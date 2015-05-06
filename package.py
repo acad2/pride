@@ -47,7 +47,13 @@ class Module(types.ModuleType):
         
 class Package(mpre.base.Base):
     
-    defaults = mpre.defaults.Package
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
+                     "package_name" : None,
+                     "include_source" : True,
+                     "replace_reference_on_load" : False,
+                     "include_documentation" : False,
+                     "top_level_package" : ''}) 
      
     def _get_subpackages(self):
         return [package for package in self.objects.get("Package", [])]
@@ -55,13 +61,14 @@ class Package(mpre.base.Base):
     
     def __init__(self, module, **kwargs):
         self.sources = {}
-        documentation = self.module_documentation = {}
+        documentation = self.documentation = {}
         super(Package, self).__init__(**kwargs)       
         
         package_name = self.package_name = module.__name__
         top_level_package = self.top_level_package = self.top_level_package or package_name
         include_documentation = self.include_documentation
-
+    
+        main_file = getattr(sys.modules["__main__"], "__file__", '__main__')
         module_file = module.__file__
         path, init_py = os.path.split(module_file)
         self.path = path
@@ -75,56 +82,78 @@ class Package(mpre.base.Base):
         _subpackages = []
         for _file in os.listdir(path):
             module_name, extension = os.path.splitext(_file)   
+            if module_name == "__init__":
+                continue
             if extension in self.python_extensions:
                 modules.append(module_name)
+              #  is_main = module_name == main_file
                 if module.__package__:
-                  #  print "Renaming {} to {}".format(module_name, module.__package__ + "." + module_name)
+               #     print "Renaming {} to {}".format(module_name, module.__package__ + "." + module_name)
                     module_name = module.__package__ + '.' + module_name
-                    
+
                 required_modules.add(module_name)
                 with open(os.path.join(path, _file), 'rb') as py_file:
-                    source = sources[module_name] = py_file.read()
-
-                if not sources[module_name]:
-                    continue
+                    source = py_file.read()
+                    if self.include_source:
+                        sources[module_name] = source
+             #   if not source:
+              #      print "Could not obtain source for: ", module_name
+               #     continue
+               # if is_main:
+                #    required_modules.update(module_utilities.get_required_modules(module))
+                 #   continue                
                 try:
-                 #   print "Compiling", module_name
-                    _module = module_utilities.create_module(module_name, source,
-                                                             context={"__file__" : _file,
-                                                                      "_source" : source,
-                                                                      "__package__" : package_name})
-                except:
+                #    print "Compiling", module_name, package_name, _file
+                    _module = (sys.modules.get(module_name) or 
+                               module_utilities.create_module(module_name, source,
+                                                              context={"__file__" : _file,
+                                                                       "_source" : source,
+                                                                       "__package__" : package_name}))
+                except BaseException as error:
+                    if type(error) in (KeyboardInterrupt, SystemExit, RuntimeError):
+                        raise
                     print "Unable to compile module: {}. Unable to determine required modules".format(module_name)                 
-                   # print traceback.format_exc()
+                    print traceback.format_exc()
                 else:
                     required_modules.update(module_utilities.get_required_modules(_module))
                     if include_documentation:
-                        documentation[module_name] = self.create(Documentation, _module, path=path,
+                        documentation[module_name] = self.create("mpre.package.Documentation", 
+                                                                 _module, path=path,
                                                                  top_level_package=top_level_package) 
                         
             elif os.path.exists(os.path.join(path, _file, "__init__.py")):
                 # do subpackages later so modules in appear grouped by package in mkdocs.yml
-                _subpackages.append(importlib.import_module(_file))                
+                _module = importlib.import_module(_file)
+                _module.__dict__.setdefault("__package__", _file)
+            #    print "Created subpackage: ", _file
+                _subpackages.append(_module)                
                 
         for subpackage in _subpackages:
             self.create(Package, subpackage, sources=sources, 
                         include_documentation=include_documentation,
+                        include_source=self.include_source,
                         top_level_package=top_level_package)            
         
         for subpackage in self.objects.get("Package", []):
             self.required_modules.update(subpackage.required_modules)            
         
         for module_name in required_modules:
-            #print "Ensuring source for {} exists".format(module_name)
-            if module_name not in sources and self.include_all_source:
+            if module_name == "__main__":
+          #      print "Ignoring main module", sys.modules["__main__"].__file__
+                continue
+         #   print "Ensuring source for {} exists".format(module_name)
+            if module_name not in sources and self.include_source:
                 try:
                     sources[module_name] = (get_source(sys.modules[module_name] if 
                                             module_name in sys.modules else
                                             get_source(importlib.import_module(module_name))))
-                except TypeError:
-#                    print "Could not get source for module: ", module_name
+                except:
+           #         print "Could not get source for module: ", module_name
                     sources[module_name] = None
     
+        if top_level_package == package_name and self.include_documentation :
+            self.documentation[package_name] = self.create("mpre.package.Documentation", module)
+            
     def get_module(self, module_name):        
        # package_prefix = self.package_name + '.'
        # string_size = len(package_prefix)

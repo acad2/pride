@@ -68,12 +68,8 @@ def get_required_modules(module):
         for attribute, value in module.__dict__.items():
             if isinstance(value, types.ModuleType):                
                 name = value.__name__
-                package = value.__package__
-                if package and name[:len(package)] != package:
-                    print "Renaming: ", name, "to ", value.__package__ + "." + name
-                    name = value.__package__ + "." + name
-                    
                 if name not in required_modules:  
+              #      print "Adding {} to required_modules".format(name)
                     required_modules.add(name)
                     required_modules.update(_get_modules(value, required_modules))            
         return required_modules

@@ -12,7 +12,7 @@ import mpre
 
 constructor = base.Base()
 environment = constructor.environment
-components = mpre.components
+component = mpre.component
 create = constructor.create
 
 def print_components(mode="keys", size=(None, )):
@@ -51,6 +51,12 @@ fs = get_component("File_System")
 
 #_sqlite3 = _package.get_module("sqlite3")
  
+#import mpre.gui.gui as gui
+#gui.enable()
+#create("mpre.gui.widgetlibrary.Homescreen")
+#r = component["Renderer"]
+#h = component["Homescreen"]
+
 """
 
 options["startup_definitions"] += definitions

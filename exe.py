@@ -13,7 +13,13 @@ import mpre.importers
 
 class Loader(mpre.base.Base):
     
-    defaults = mpre.defaults.Loader
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types", "hmac"),
+                     "embedded_objects" : ("mpre.utilities.authenticated_load", 
+                                           "mpre.utilities.load", 
+                                           "mpre.errors.CorruptPickleError",
+                                           "mpre.module_utilities.create_module"),
+                     "importer" : "mpre.package.Package_Importer"})
         
     def __init__(self, **kwargs):
         super(Loader, self).__init__(**kwargs)
@@ -40,15 +46,19 @@ class Loader(mpre.base.Base):
     
 class Executable(mpre.base.Base):    
     
-    defaults = mpre.defaults.Executable
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"filename" : "metapython.exe",
+                     "package" : None,
+                     "file" : None,
+                     "loader_type" : "mpre.programs.buildlauncher.Loader",
+                     "main_source" : ''})   
                            
     def __init__(self, module, **kwargs):
         super(Executable, self).__init__(**kwargs)
         self.file = mpre.fileio.File(self.filename, 'w+b')
         self.main_source = inspect.getsource(module) if not self.main_source else self.main_source
         self.loader = self.create(self.loader_type)
-        assert self.main_source
-        
+                
     def build(self):
         _file = self.file        
         _file.write(self.loader.source + "\n\n")      
@@ -57,7 +67,7 @@ class Executable(mpre.base.Base):
         add_to_path = "sys.meta_path.append(_importer(load({}_package)))\n\n"
         for package in self.packages:
             _file.write(embed_package.format(package.package_name, package.save()))
-            _file.write(add_to_path.format(package.package_name))
+        #    _file.write(add_to_path.format(package.package_name))
         _file.write("\n\n")
         _file.write(self.main_source)
         _file.flush()
@@ -68,6 +78,12 @@ class Executable(mpre.base.Base):
 if __name__ == "__main__":
     import mpre
     import mpre.metapython
-    import mpre.package
-    exe = Executable(mpre.metapython, packages=[mpre.package.Package(mpre)])
+    import mpre.package   
+    import mpre.fileio
+    if "File_System" not in mpre.component:
+        mpre.environment.add(mpre.fileio.File_System())
+    packages=[mpre.package.Package(mpre, include_source=False)]       
+    exe = Executable(mpre.metapython, packages=packages)
     exe.build()
+    print "Complete"
+    #exe.alert("Complete", level=0)

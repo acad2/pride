@@ -84,6 +84,7 @@ import mpre.metaclass
 import mpre.utilities as utilities
 import mpre.defaults as defaults
 import mpre.importers as importers
+import mpre.module_utilities as module_utilities
 from mpre.errors import *
 
 __all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
@@ -186,10 +187,11 @@ class Base(object):
         
         objects = self.objects
         instance_class = instance.__class__.__name__
-        siblings = objects.get(instance_class, set())
+        siblings = objects.get(instance_class, [])#set())
         if instance in siblings:
             raise AddError
-        siblings.add(instance)
+        #siblings.add(instance)
+        siblings.append(instance)
         objects[instance_class] = siblings      
                     
         instance_name = self.environment.Instance_Name[instance]

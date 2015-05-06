@@ -1,15 +1,6 @@
 import os
 from sys import platform
 import subprocess
-
-def ensure_file_exists(filepath, data=('a', '')):
-    if not os.path.exists(filepath) or not os.path.isfile(filepath):
-        mode, file_data = data
-        with open(filepath, mode) as _file:
-            if file_data:
-                _file.write(file_data)
-                _file.flush()
-            _file.close()
             
 COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}." if "win" in platform else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}. "
 
@@ -17,10 +8,12 @@ def convert_to_pyx(file_list):
     new_names = []
     
     for filename in file_list:
-        
-        with open(filename, 'r') as py_file:
-            ensure_file_exists(filename + 'x', ('w', py_file.read()))
-            new_names.append(filename + 'x')
+        pyx_filename = filename + 'x'
+        with open(filename, 'r') as py_file, open(pyx_filename, 'w') as pyx_file:
+            pyx_file.truncate(0)
+            pyx_file.write(py_file.read())
+            pyx_file.flush()
+            new_names.append(pyx_filename)
     return new_names
 
     

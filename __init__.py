@@ -184,7 +184,7 @@ class Instruction(object):
             will be executed in priority seconds. An optional callback function 
             can be provided if the return value of the instruction is needed."""
         if host_info:
-            components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
+            component["RPC_Handler"].make_request(callback, host_info, transport_protocol,
                                                    self.component_name, self.method, 
                                                    self.args, self.kwargs)
         else:
@@ -201,4 +201,4 @@ class Instruction(object):
                                           method, args, kwargs)  
                                      
 environment = Environment()
-components = environment.Component_Resolve
+component = environment.Component_Resolve
