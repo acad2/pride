@@ -6,29 +6,11 @@ from contextlib import contextmanager
 
 import mpre
 import mpre.base as base
-import mpre.defaults as defaults
+
 import mpre.vmlibrary as vmlibrary
 import mpre.network as network
 from mpre.utilities import Latency
 Instruction = mpre.Instruction
-
-Scanner = defaults.Process.copy()
-Scanner.update({"subnet" : "127.0.0.1",
-"ports" : (22, ),
-"range" : (0, 0, 0, 255),
-"yield_interval" : 100,
-"discovery_verbosity" : 'v'})
-
-DoS = defaults.Process.copy()
-DoS.update({"salvo_size" : 100,
-"count" : 0,
-"ip" : "localhost",
-"port" : 80,
-"target" : None,
-"timeout_notify" : False,
-"display_latency" : False,
-"display_progress" : False})
-
 
 """def trace_function(frame, instruction, args):
     pass
@@ -48,7 +30,15 @@ class Null_Connection(network.Tcp_Client):
         
 class DoS(vmlibrary.Process):
 
-    defaults = DoS
+    defaults = vmlibrary.Process.defaults.copy()
+    defaults.update({"salvo_size" : 100,
+                     "count" : 0,
+                     "ip" : "localhost",
+                     "port" : 80,
+                     "target" : None,
+                     "timeout_notify" : False,
+                     "display_latency" : False,
+                     "display_progress" : False})
 
     def __init__(self, **kwargs):
         super(DoS, self).__init__(**kwargs)
@@ -87,7 +77,12 @@ class Tcp_Port_Tester(network.Tcp_Client):
         
 class Scanner(vmlibrary.Process):
 
-    defaults = Scanner
+    defaults = vmlibrary.Process.defaults.copy()
+    defaults.update({"subnet" : "127.0.0.1",
+                     "ports" : (22, ),
+                     "range" : (0, 0, 0, 255),
+                     "yield_interval" : 100,
+                     "discovery_verbosity" : 'v'})
 
     def __init__(self, **kwargs):
         super(Scanner, self).__init__(**kwargs)

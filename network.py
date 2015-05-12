@@ -23,7 +23,7 @@ import sys
 
 import mpre
 import mpre.vmlibrary as vmlibrary
-import mpre.defaults as defaults
+
 import mpre.base as base
 from utilities import Latency, Average
 Instruction = mpre.Instruction
@@ -89,7 +89,21 @@ class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
         Wrapper to a _socketobject. The default socket family is socket.AF_INET and
         the default socket type is socket.SOCK_STREAM (a.k.a. a tcp socket)."""
-    defaults = defaults.Socket
+    defaults = base.Wrapper.defaults.copy()
+    defaults.update({"blocking" : 0,
+                     "timeout" : 0,
+                     "add_on_init" : True,
+                     "network_packet_size" : 32768,
+                     "socket_family" : socket.AF_INET,
+                     "socket_type" : socket.SOCK_STREAM,
+                     "protocol" : socket.IPPROTO_IP,
+                     "interface" : "0.0.0.0",
+                     "port" : 0,
+                     "connection_attempts" : 10,
+                     "bind_on_init" : False,
+                     "closed" : False,
+                     "_connecting" : False,
+                     "added_to_network" : False})
 
     def _get_address(self):
         return (self.ip, self.port)
@@ -192,7 +206,8 @@ class Socket(base.Wrapper):
  
 class Raw_Socket(Socket):
     
-    defaults = defaults.Raw_Socket
+    defaults = Socket.defaults.copy()
+    defaults.update({"socket_type" : socket.SOCK_RAW})
     
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, 
@@ -213,7 +228,9 @@ class Packet_Sniffer(Raw_Socket):
         
 class Tcp_Socket(Socket):
 
-    defaults = defaults.Tcp_Socket
+    defaults = Socket.defaults.copy()
+    defaults.update({"socket_family" : socket.AF_INET,
+                     "socket_type" : socket.SOCK_STREAM})
     
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
@@ -226,7 +243,13 @@ class Tcp_Socket(Socket):
         
 class Server(Tcp_Socket):
 
-    defaults = defaults.Server
+    defaults = Tcp_Socket.defaults.copy()
+    defaults.update({"port" : 80,
+                     "backlog" : 50,
+                     "name" : "",
+                     "reuse_port" : 0,
+                     "Tcp_Socket_type" : "network.Tcp_Socket",
+                     "share_methods" : ("on_connect", "client_socket_recv", "client_socket_send")})
 
     def __init__(self, **kwargs):       
         super(Server, self).__init__(**kwargs)
@@ -280,7 +303,12 @@ class Server(Tcp_Socket):
         
 class Tcp_Client(Tcp_Socket):
 
-    defaults = defaults.Tcp_Client
+    defaults = Tcp_Socket.defaults.copy()
+    defaults.update({"ip" : "",
+                     "port" : 80,
+                     "target" : tuple(),
+                     "auto_connect" : True})
+    del defaults["interface"]
 
     def __init__(self, **kwargs):
         super(Tcp_Client, self).__init__(**kwargs)
@@ -295,7 +323,9 @@ class Tcp_Client(Tcp_Socket):
         
 class Udp_Socket(Socket):
 
-    defaults = defaults.Udp_Socket
+    defaults = Socket.defaults.copy()
+    defaults.update({"bind_on_init" : True})
+    del defaults["connection_attempts"]
 
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -310,7 +340,10 @@ class Udp_Socket(Socket):
         
 class Multicast_Beacon(Udp_Socket):
 
-    defaults = defaults.Multicast_Beacon
+    defaults = Udp_Socket.defaults.copy()
+    defaults.update({"packet_ttl" : struct.pack("b", 127),
+                     "multicast_group" : "224.0.0.0",
+                     "multicast_port" : 1929})
 
     def __init__(self, **kwargs):
         super(Multicast_Beacon, self).__init__(**kwargs)
@@ -319,7 +352,8 @@ class Multicast_Beacon(Udp_Socket):
 
 class Multicast_Receiver(Udp_Socket):
 
-    defaults = defaults.Multicast_Receiver
+    defaults = Udp_Socket.defaults.copy()
+    defaults.update({"address" : "224.0.0.0"})
 
     def __init__(self, **kwargs):
         super(Multicast_Receiver, self).__init__(**kwargs)
@@ -335,7 +369,13 @@ class Network(vmlibrary.Process):
         readability/writability of sockets. Also responsible for non blocking connect logic. 
         This component is created by default upon application startup, and in most cases will
         not require user interaction."""
-    defaults = defaults.Network
+    defaults = vmlibrary.Process.defaults.copy()
+    defaults.update({"handle_resends" : False,
+                     "number_of_sockets" : 0,
+                     "priority" : .01,
+                     "update_priority" : 5,
+                     "_updating" : False,
+                     "auto_start" : False})
    
     def __init__(self, **kwargs):
         # minor optimization; pre allocated slices and ranges for

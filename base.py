@@ -81,8 +81,9 @@ except ImportError:
        
 import mpre
 import mpre.metaclass
+import mpre.persistence as persistence
 import mpre.utilities as utilities
-import mpre.defaults as defaults
+
 import mpre.importers as importers
 import mpre.module_utilities as module_utilities
 from mpre.errors import *
@@ -101,7 +102,9 @@ class Base(object):
     parser_modifiers = {}
             
     # the default attributes new instances will initialize with.
-    defaults = defaults.Base
+    defaults = {"verbosity" : '',
+                "_deleted" : False,
+                "replace_reference_on_load" : True}
     
     def _get_parent_name(self):
         return self.environment.Parents[self]
@@ -154,9 +157,9 @@ class Base(object):
             instance_type = utilities.resolve_string(instance_type)
         instance = instance_type(*args, **kwargs)
 
-        self.add(instance)
         if not getattr(instance, "_added", False):
             self.environment.add(instance)
+        self.add(instance)
         self.environment.Parents[instance] = self.instance_name
         return instance
 
@@ -260,22 +263,17 @@ class Base(object):
             
             If the calling object is one that has been created via the update method, the 
             returned state will include any required source code to rebuild the object."""
-            
-        self.alert("Saving", level='v')
-        # avoid mutating original in case attributes was passed via interpreter session
-        attributes = (self.__getstate__() if attributes is None else attributes).copy()
-        
+        attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
         found_objects = []
         for component_type, values in objects.items():
-            new_values = []
+            saved_objects[component_type] = new_values = []
             for value in sorted(values, key=operator.attrgetter("instance_name")):
                 if hasattr(value, "save"):     
                     found_objects.append(value)
                     new_values.append(value.save())
-            saved_objects[component_type] = new_values
-        
+                    
         attribute_type = attributes["_attribute_type"] = {}
         for key, value in attributes.items():
             if value in found_objects:
@@ -283,40 +281,45 @@ class Base(object):
                 attribute_type[key] = "reference"
             elif hasattr(value, "save"):
                 attributes[key] = value.save()
-                attribute_type[key] = "saved"
-           
-        if "_required_modules" in attributes: # modules are not pickle-able
-            module_info = attributes.pop("_required_modules")
-            attributes["_required_modules"] = modules = []
-            for name, source, module in module_info[:-1]:
-                modules.append((name, source, None))
-            modules.append(module_info[-1])
-        else:
-            attributes["_required_module"] = (self.__module__, self.__class__.__name__)
-        
-        saved = utilities.authenticated_dump(attributes, utilities.key)
-        if _file:
-            _file.write(saved)
-        else:
-            return saved
+                attribute_type[key] = "saved"      
+        return persistence.save(self, attributes, _file)    
             
     @staticmethod
     def load(attributes='', _file=None):
         """ Loads and instance from a bytestream or file produced by save. This
-            calls utilities.load but may look syntatically nicer."""
-        return utilities.load(attributes, _file)
+            calls persistence.load but may look syntatically nicer."""
+        assert attributes or _file
+        new_self, attributes = persistence.load(attributes, _file)
+   
+        saved_objects = attributes["objects"]
+        objects = attributes["objects"] = {}
+        
+        for instance_type, saved_instances in saved_objects.items(): 
+            objects[instance_type] = [Base.load(instance) for instance in saved_instances]
+            
+        attribute_modifier = attributes.pop("_attribute_type")
+        for key, value in attributes.items():
+            modifier = attribute_modifier.get(key, '')
+            if modifier == "reference":
+                attributes[key] = mpre.component[value]
+            elif modifier == "save":
+                attributes[key] = Base.load(value) # may need to be pickle.dumps(value)
+                
+        new_self.on_load(attributes)
+        return new_self
         
     def on_load(self, attributes):
         """ usage: base.on_load(attributes)
         
             Implements the behavior of an object after it has been loaded. This method 
             may be extended by subclasses to customize functionality for instances created
-            by the load method."""
+            by the load method."""                
         self.set_attributes(**attributes)
         self.environment.add(self)
         if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
             self.environment.replace(attributes["instance_name"], self)
-                
+        self.alert("Loaded", level='v')
+        
     def update(self):
         """usage: base_instance.update() => updated_base
         
@@ -326,43 +329,22 @@ class Base(object):
            new, updated object. Attributes of the original object will be assigned
            to the updated object."""
         self.alert("Updating", level='v') 
-        # modules are garbage collected if not kept alive        
-        required_modules = []        
-        class_mro = self.__class__.__mro__[:-1] # don't update object
-        class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  
-                
-        with module_utilities.modules_preserved(info[1] for info in class_info):
-            for cls, module_name in class_info:
-                del sys.modules[module_name]
-                importlib.import_module(module_name)
-                module = sys.modules[module_name]                
-                try:
-                    source = inspect.getsource(module)
-                except TypeError:
-                    try:
-                        source = module._source
-                    except AttributeError:
-                        raise UpdateError("Could not locate source for {}".format(module.__name__))
-                        
-                required_modules.append((module_name, source, module))
-        
-        class_base = getattr(module, self.__class__.__name__)
-        class_base._required_modules = required_modules
-        required_modules.append(self.__class__.__name__)        
+        class_base = utilities.updated_class(type(self))
+        class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
                 
         # a mini replacement __init__
         attributes = new_self.defaults.copy()
-        attributes["_required_modules"] = required_modules
+        attributes["_required_modules"] = class_base._required_modules
         new_self.set_attributes(**attributes)
         self.environment.add(new_self)        
-     
+        
         attributes = self.__dict__
         self.environment.replace(self, new_self)
         new_self.set_attributes(**attributes)
         return new_self
+                
         
-
 class Reactor(Base):
     """ usage: Reactor(attribute=value, ...) => reactor_instance
     
@@ -372,7 +354,7 @@ class Reactor(Base):
         This class is a recent addition and is far from final in it's api and
         implementation. """
     
-    defaults = defaults.Reactor
+    defaults = Base.defaults.copy()
     
     def __init__(self, **kwargs):
         super(Reactor, self).__init__(**kwargs)        
@@ -454,7 +436,9 @@ class Wrapper(Reactor):
         of the wrapped object. Any attributes not present on the wrapper object
         will be gotten from the underlying wrapped object. This class
         acts primarily as a wrapper and secondly as the wrapped object."""
-        
+     
+    defaults = Reactor.defaults.copy()
+    defaults.update({"wrapped_object" : None})
     wrapped_object_name = ''
     
     def __init__(self, **kwargs):

@@ -10,7 +10,7 @@ from contextlib import closing, contextmanager
 
 import mpre    
 import mpre.vmlibrary as vmlibrary
-import mpre.defaults as defaults
+
 import mpre.base as base
 import mpre.utilities as utilities
 import mpre.userinput
@@ -97,7 +97,7 @@ class Cached(object):
  
 class Directory(base.Base):
     
-    defaults = defaults.Directory
+    defaults = base.Base.defaults.copy()
     
     def __init__(self, **kwargs):
         super(Directory, self).__init__(**kwargs)
@@ -107,12 +107,13 @@ class Directory(base.Base):
         
         self.file_system, path = os.path.split(self.path)
         self.path, self.filename = os.path.split(path)
+        self.full_path = os.path.sep.join(self.path, self.filename)
         self.parallel_method("File_System", "add", self)        
         
     def delete(self):
-        for _file in self.directory[self.filename].values():
-            if _file is not self:
-                _file.delete()
+        for _file in component["File_System"][self.full_path]:
+            #if _file is not self:
+            _file.delete()
         super(Directory, self).delete()
                 
         
@@ -120,12 +121,18 @@ class File(base.Wrapper):
     """ usage: File(filename='', mode='', file=None, file_system="disk", **kwargs) => file
     
         Return a wrapper around a file like object. File objects are pickleable. 
-        Upon pickling the files data will be saved and upon loading the data restored. 
-        The default is False. The wrapped file can be specified by the file argument. If
-        the file argument is not present, the file named in filename will be opened in the
-        specified mode."""
+        Upon pickling the files data will be saved and upon loading the data restored. This
+        can be prevented by setting the persistent attribute to False.
+        The wrapped file can be specified by the file argument. If the file argument is not present,
+        the file named in filename will be opened in the specified mode."""
         
-    defaults = defaults.File
+    defaults = base.Wrapper.defaults.copy()
+    defaults.update({"file" : None,
+                     "file_type" : "StringIO.StringIO",
+                     "file_system" : "disk",
+                     "is_directory" : False,
+                     "mode" : "",
+                     "persistent" : True})
     
     def __init__(self, path='', mode='', **kwargs):  
         super(File, self).__init__(**kwargs)
@@ -142,8 +149,8 @@ class File(base.Wrapper):
                     self.alert("File_System component does not exist", level='v')     
                 elif not component["File_System"].exists(file_system, file_type="file_system"):
                     raise IOError("File system '{}' does not exist".format(file_system))
-                else:
-                    raise RuntimeError("unhandled exception encountered in File __init__")
+                #else:
+                 #   raise RuntimeError("unhandled exception encountered in File __init__")
         self.path, self.filename = os.path.split(path)
         if not self.path:
             self.path = os.path.curdir
@@ -193,7 +200,7 @@ class File(base.Wrapper):
         backup_tell = self.tell()
         self.seek(0)
         attributes["_file_data"] = self.read()
-        self.seek(backup_tell) # in case other objects use it (arguably bad practice anyway)
+        self.seek(backup_tell)
         del attributes["wrapped_object"]
         del attributes["file"]
         return attributes
@@ -205,19 +212,15 @@ class File(base.Wrapper):
         else:
             self.file = _file = utilities.resolve_string(self.file_type)()
         self.wraps(_file)
-        self.write(self.__dict__.pop("_file_data"))                        
-        self.seek(0)
-        try:
-            self.parallel_method("File_System", "add", self)
-        except base.AddError:
-            pass
+        self.truncate(0)
+        self.write(self.__dict__.pop("_file_data"))        
+        self.flush()
+        component['File_System'].add(self)
             
     def delete(self):
         super(File, self).delete()
         self.wrapped_object.close()
-       #if self.directory and self.filename in self.directory:
-        del self.directory
-                
+                               
         
 class Encrypted_File(File):
     """ usage: Encrypted_File(_file, **kwargs) => encrypted_file
@@ -232,7 +235,8 @@ class Encrypted_File(File):
         unpickled and supplied to the load method to recover the original instance with 
         the appropriate key to decrypt the file."""
     
-    defaults = defaults.Encrypted_File
+    defaults = File.defaults.copy()
+    defaults.update({"block_size" : 1024})
         
     def _get_keys(self):
         return (self.key, self.data_pointers)
@@ -341,7 +345,9 @@ class Encrypted_File(File):
 
 class File_System(base.Base):
             
-    defaults = defaults.File_System
+    defaults = base.Base.defaults.copy()
+    defaults.update({"file_systems" : ("disk", "virtual"),
+                    "auto_start" : False})      
     
     def __init__(self, **kwargs):
         super(File_System, self).__init__(**kwargs)
@@ -385,10 +391,9 @@ class File_System(base.Base):
         if _file.is_directory:
             value = {}
         else:
-            value = _file
+            value = _file.instance_name
         directory[_file.filename] = value
-        _file.directory = directory
-        super(File_System, self).add(_file)
+        #super(File_System, self).add(_file)
         
     def __str__(self):
         backup = sys.stdout
@@ -492,9 +497,8 @@ class File_System(base.Base):
         return result
         
     def remove(self, _file, file_system="disk"):
-        super(File_System, self).remove(_file)
-        directory = (self.get_file(os.path.join(_file.file_system, _file.path)) if not 
-                     _file.directory else _file.directory)
+      #  super(File_System, self).remove(_file)
+        directory = self.get_file(os.path.join(_file.file_system, _file.path))
         del directory[_file.filename]
           
         

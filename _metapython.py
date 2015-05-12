@@ -13,14 +13,24 @@ import mpre.vmlibrary as vmlibrary
 import mpre.network2 as network2
 import mpre.utilities as utilities
 import mpre.fileio as fileio
-import mpre.defaults as defaults
 
 Instruction = mpre.Instruction            
-            
+    
+if "__file__" not in globals():
+    FILEPATH = os.getcwd()
+else:
+    FILEPATH = os.path.split(__file__)[0]
+    
 class Shell(network2.Authenticated_Client):
     """ Provides the client side of the interpreter session. Handles keystrokes and
         sends them to the Interpreter_Service to be executed."""
-    defaults = defaults.Shell
+    defaults = network2.Authenticated_Client.defaults.copy()
+    defaults.update({"email" : '',
+                     "username" : "root",
+                     "password" : "password",
+                     "prompt" : ">>> ",
+                     "startup_definitions" : '',
+                     "target" : "Interpreter_Service"})
                      
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
@@ -98,7 +108,8 @@ class Shell(network2.Authenticated_Client):
 class Interpreter_Service(network2.Authenticated_Service):
     """ Provides the server side of the interactive interpreter. Receives keystrokes
         and attempts to compile + exec them."""
-    defaults = defaults.Interpreter_Service
+    defaults = network2.Authenticated_Service.defaults.copy()
+    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
@@ -184,12 +195,16 @@ class Alert_Handler(base.Reactor):
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
                 
-    defaults = defaults.Alert_Handler
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"log_level" : 0,
+                     "print_level" : 0,
+                     "log_name" : "Alerts.log",
+                     "log_is_persistent" : False})
              
     def __init__(self, **kwargs):
         kwargs["parse_args"] = True
         super(Alert_Handler, self).__init__(**kwargs)
-        self.log = self.create("mpre.fileio.File", self.log_name, 'a+')
+        self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
         
     def _alert(self, message, level):
         if not self.print_level or level <= self.print_level:
@@ -209,7 +224,18 @@ class Metapython(base.Reactor):
         of the Metapython component. Doing so allows for simple portability of an environment
         in regards to saving/loading the state of an entire application."""
 
-    defaults = defaults.Metapython
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
+                     "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
+                     "startup_components" : ("mpre.fileio.File_System", "vmlibrary.Processor",
+                                             "mpre._metapython.Alert_Handler", "mpre.userinput.User_Input",
+                                             "mpre.network.Network", "mpre.network2.RPC_Handler"),
+                     "interface" : "0.0.0.0",
+                     "port" : 40022,
+                     "prompt" : ">>> ",
+                     "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                     "interpreter_enabled" : True,
+                     "startup_definitions" : ''})    
     parser_ignore = ("environment_setup", "prompt", "copyright", 
                      "traceback", "interface", "port")
                      

@@ -249,30 +249,15 @@ class Parser(object):
         return options
 
        
-class Instance_Tracker(type):
-    """ Provides instance tracking and counting attributes.
-    
-        Note as of 3/3/2015: the class must implement these attributes,
-        it is not performed by this metaclass"""
-        
-    def __new__(cls, name, bases, attributes):
-        if "instance_tracker" not in attributes:
-            attributes["instance_tracker"] = {}
-        if "instance_count" not in attributes:
-            attributes["instance_count"] = 0
-
-        return super(Instance_Tracker, cls).__new__(cls, name, bases, attributes)
-
        
-class Metaclass(Documented, Instance_Tracker, Parser_Metaclass, Method_Hook):
+class Metaclass(Documented, Parser_Metaclass, Method_Hook):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 
         new single inheritance metaclass that utilizes each entry. 
         The methods insert_metaclass and remove_metaclass may be used
         to alter the contents of this list.
         
-        Implementation currently under examination due to compiling with
-        cython being broken"""
+        Implementation currently under examination"""
         
     #metaclasses = [Documented, Instance_Tracker, Parser_Metaclass, Method_Hook]
    # _metaclass = type("Metaclass",
@@ -308,7 +293,7 @@ class Metaclass(Documented, Instance_Tracker, Parser_Metaclass, Method_Hook):
 if __name__ == "__main__":
     import unittest
     import mpre.base as base
-    import mpre.defaults      
+          
     
     class Test_Metaclass(unittest.TestCase):
         

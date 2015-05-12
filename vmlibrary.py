@@ -21,7 +21,7 @@ from functools import partial
 
 import mpre
 import mpre.base as base
-import mpre.defaults as defaults
+
 import mpre.utilities as utilities
 
 Instruction = mpre.Instruction
@@ -57,7 +57,9 @@ class Process(base.Reactor):
         Most things can be accomplished by either, though processes may be
         less performant then parallel_methods/reactions"""
 
-    defaults = defaults.Process
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"auto_start" : True,
+                     "priority" : .04})
     parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
 
     def __init__(self, **kwargs):
@@ -84,7 +86,9 @@ class Processor(Process):
         and any exception that could be raised inside the method call
         itself."""
         
-    defaults = defaults.Processor
+    defaults = Process.defaults.copy()
+    defaults.update({"running" : True,
+                     "auto_start" : False})
 
     def __init__(self, **kwargs):
         super(Processor, self).__init__(**kwargs)

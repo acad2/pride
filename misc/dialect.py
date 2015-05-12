@@ -81,6 +81,45 @@ verbose_dialect[">="] = "is greater then or equal to"
 verbose_dialect[">="] = "is less then or equal to"
 verbose_dialect["=="] = "is equal to"
 
+lol_dialect = DICTIONARY.copy()
+lol_dialect["and"] = "and"
+lol_dialect["as"] = "but to me its"
+lol_dialect["assert"] = "Make sure that"
+lol_dialect["break"] = "Shatter a vase LOL"
+lol_dialect["class"] = "What is a"
+lol_dialect["continue"] = "Handle the next iteration"
+lol_dialect["def"] = "wat do"
+lol_dialect["del"] = "Decrement the reference counter of"
+lol_dialect["elif"] = "If not and"
+lol_dialect["else"] = "If not then"
+lol_dialect["except"] = "So prepare for the exception(s)"
+lol_dialect["exec"] = "Execute"
+lol_dialect["finally"] = "Ensure this happens"
+lol_dialect["for"] = "For each"
+lol_dialect["from"] = "Give me"
+lol_dialect["global"] = "Using the global value for"
+lol_dialect["if"] = "Supposing that"
+lol_dialect["import"] = "ICANHAZ"
+lol_dialect["is"] = "Literally is"
+lol_dialect["lambda"] = "Short instruction"
+lol_dialect["not"] = "not"
+lol_dialect["or"] = "or"
+lol_dialect["pass"] = "Don't worry about it"
+lol_dialect["print"] = "Print to console"
+lol_dialect["raise"] = "Stop because there might be a problem"
+lol_dialect["return"] = "The result is"
+lol_dialect["try"] = "This might not work"
+lol_dialect["while"] = "While"
+lol_dialect["with"] = "In a new context, with"
+lol_dialect["yield"] = "Remember this context for later, lets work on"
+#lol_dialect["#"] = "Sidenote:" # does not work
+lol_dialect["="] = "="
+lol_dialect["!="] = "does not equal"
+lol_dialect[":"] = ":"
+lol_dialect[">="] = "is greater then or equal to"
+lol_dialect[">="] = "is less then or equal to"
+lol_dialect["=="] = "is equal to"
+
 class Dialect(object):
     """ usage: dialect = Dialect(dictionary) # create a dialect which switches keys for values
         modified_input = dialect.translate(input) # perform the translation on text string
@@ -127,10 +166,9 @@ class Dialect(object):
 
 if __name__ == "__main__":
     import sys
-    from StringIO import StringIO
     translator = Dialect(**verbose_dialect)
     filename = sys.modules["__main__"].__file__
-    with open(filename, 'r') as _file:
+    with open('network.py', 'r') as _file:
         source = _file.read()
         _file.seek(0)
         translated = translator.translate(_file)    

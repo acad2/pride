@@ -31,3 +31,5 @@ Q: What are the dependencies?
 A: Python 2.7+ is required. optional modules require additional dependencies:
    1. Low level audio support requires pyalsaaudio on linux or pyaudio otherwise
    2. SDL support requires SDL2.0 and pysdl2
+   3. documentation websites require mkdocs
+   4. creation of compiled executables requires Cython and gcc

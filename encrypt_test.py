@@ -12,33 +12,23 @@ def grouper(n, iterable, padvalue=None):
     return izip_longest(*[iter(iterable)]*n, fillvalue=padvalue)
     
 def convert(bytes, message_key, public_key):
+    # warning: conversion will truncate leading zeros
     old_base_size = len(message_key)
-    new_base_size = len(public_key)
-    old_base_mapping = dict((symbol, index) for index, symbol in enumerate(message_key))
-    decimal_value = 0    
-    new_value = ''
-    print "\nBeginning conversion of: ", len(bytes), bytes, [ord(byte) for byte in bytes]
-    print "from key: ", len(message_key), [ord(char) for char in message_key]
-    print "to key: ", len(public_key), [ord(char) for char in public_key]
-    for power, value_representation in enumerate(reversed(bytes)):
-     #   value = old_base_mapping[value_representation]*(old_base_size**power)
-      #  if not_significant and not value:
-            
-        
-        decimal_value += old_base_mapping[value_representation]*(old_base_size**power)
-                            
+    symbol_value = dict((symbol, index) for index, symbol in enumerate(message_key))    
+    decimal_value = sum((symbol_value[symbol] * old_base_size ** power)for 
+                         power, symbol in enumerate(reversed(bytes)))
+                                                    
     if decimal_value == 0:
         new_value = public_key[0]
     else:
+        new_base_size = len(public_key)
+        new_value = ''
         while decimal_value > 0: # divmod = divide and modulo in one action
             decimal_value, digit = divmod(decimal_value, new_base_size)
-            print "Calculated the digit: ", digit, public_key[digit]
             new_value += public_key[digit]
-        print "done calculating: ", digit, public_key[digit]
-    result = ''.join(reversed(new_value))
-    print "conversion result: ", len(result), result, [ord(char) for char in result]
-    return result
-    
+        
+    return ''.join(reversed(new_value))
+        
 def derive_public_key(key_size=192, random_selection_size=128):
     key = []
     while len(key) < key_size:
@@ -60,7 +50,7 @@ def derive_password_key(public_key, password=None, hash_function=hashlib.sha512,
     public_key_size = len(public_key)
     password_key = public_key
     while len(password_key) < key_size:
-        password = hash_function(password).digest()
+        password = hash_function(password + public_key).digest()
         for symbol in password:
             if symbol not in password_key and len(password_key) < key_size:
                 password_key += symbol
@@ -75,8 +65,10 @@ def derive_message_key(message):
             key.append(_key.pop(ord(random_number)))
         except IndexError:
             pass
-    assert ''.join(key) not in PADS
-    PADS.add(''.join(key))
+    
+    key = derive_message_key(message) if key[0] == message[0] else key
+    #PADS.add(''.join(key))
+    #key = ['w', 'x', 'y', 'z'] + key
     return key
     
 def encrypt(message, public_key=None):
@@ -90,12 +82,20 @@ def decrypt(encrypted_message, public_key, message_key):
     
 PUBLIC_KEY = derive_public_key()
 
-def test_convert(): 
+def test_convert(message): 
     e = convert(message, asciikey, PUBLIC_KEY)
     d = convert(e, PUBLIC_KEY, asciikey)
-    print d
-    print message
-    assert d == message
+  #  print d
+   # print message
+    if d != message:
+      #  print "deconverted: \n", d
+       # print "original message:"
+        #print message
+        print "deconverted: "
+        print [ord(char) for char in d]
+        print "message: "
+        print [ord(char) for char in message]
+        raise AssertionError
      
 def test_message_key():     
     message_key = derive_message_key(message)
@@ -104,10 +104,13 @@ def test_message_key():
     
     e = convert(message, message_key, PUBLIC_KEY)
     d = convert(e, PUBLIC_KEY, message_key)
-    print d
-    print message
-    print message_key
-    assert d == message
+  #  print d
+  #  print message
+  #  print message_key
+    if d != message:
+        print "deconverted with a message key\n", d
+        print "\n", message
+        raise AssertionError
     
 def test_password_key():
     message_key = derive_message_key(message)    
@@ -118,22 +121,29 @@ def test_password_key():
     assert len(set(_key)) == 256
     e2 = convert(message, message_key, _key)
     d2 = convert(e2, _key, message_key)
-    print d2
-    print message
-    assert d2 == message
- 
+ #   print d2
+  #  print message
+    if d2 != message:
+        print "deconverted with a password key: \n", d2
+        print "\n", message
+        raise AssertionError
     
 def test_encrypt():    
     encrypted, key = encrypt(message, PUBLIC_KEY)
     decrypted = decrypt(encrypted, PUBLIC_KEY, key)
-    assert decrypted == message
-            
+    if decrypted != message:
+        print "decrypted: ", decrypted
+        print "\n", message
+        raise AssertionError
+        
 if __name__ == "__main__":
-    message = "test_data " 
     getpass.getpass = lambda prompt: "testpassword"
-
+    _hash = hashlib.sha512
+    message = "Interpreter_Service login root password"
+    print sorted([ord(char) for char in PUBLIC_KEY])
     while True:
-     #   test_convert()
-        test_message_key()
-    #    test_password_key()
+        message = _hash(message).digest()
+        test_convert(message)
+     #   test_message_key()
+     #   test_password_key()
       #  test_encrypt()

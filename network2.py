@@ -9,7 +9,7 @@ import traceback
 
 import mpre
 import mpre.base as base
-import mpre.defaults as defaults
+
 import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
@@ -28,7 +28,7 @@ def Authenticated(function):
 class Network_Service(network.Udp_Socket):
     
     """ Reliable udp socket; under development"""
-    defaults = defaults.Network_Service
+    defaults = network.Udp_Socket.defaults.copy()
     
     end_request_errors = {"0" : "Invalid Request"}
     
@@ -180,8 +180,11 @@ class Network_Service(network.Udp_Socket):
         
 class Authenticated_Service(base.Reactor):
     
-    defaults = defaults.Authenticated_Service
-    # to do: replace authentication with SRP instead of password hashing/storage            
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"database_filename" : ":memory:",
+                     "login_message" : 'login success',
+                     "hash_rounds" : 100000})
+    # to do: replace authentication with SRP instead of password hashing/storage 
     def __init__(self, **kwargs):
         super(Authenticated_Service, self).__init__(**kwargs)
         self.invalid_attempts = {}
@@ -311,7 +314,11 @@ class Authenticated_Service(base.Reactor):
       
 class Authenticated_Client(base.Reactor):
             
-    defaults = defaults.Authenticated_Client
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"email" : '',
+                     "username" : "",
+                     "password" : '',
+                     "target" : "Authenticated_Service"})
     
     login_errors = {"0" : "Invalid username or password",
                     "1" : "Already logged in"}

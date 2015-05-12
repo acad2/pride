@@ -8,7 +8,6 @@ import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
 import mpre.fileio as fileio
-import mpre.audio.defaults as defaults
 from mpre.utilities import Latency
 Instruction = mpre.Instruction
 
@@ -16,7 +15,8 @@ Instruction = mpre.Instruction
        
 class Audio_Reactor(base.Reactor):
     
-    defaults = defaults.Audio_Reactor
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"source_name" : ''})
     
     def __init__(self, **kwargs):
         self.listeners = []
@@ -61,7 +61,13 @@ class Audio_File(fileio.File):
 
 class Wav_File(Audio_Reactor):
 
-    defaults = defaults.Wav_File
+    defaults = Audio_Reactor.defaults.copy()
+    defaults.update({"mode" : "rb",
+                     "filename" : "",
+                     "repeat" : False,
+                     "channels" : 2,
+                     "rate" : 48000,
+                     "sample_width" : 2})
 
     def _get_audiosize(self):
         return self.channels * self.sample_width * self.file.getnframes()
@@ -112,7 +118,10 @@ class Wav_File(Audio_Reactor):
 
 class Config_Utility(vmlibrary.Process):
 
-    defaults = defaults.Config_Utility
+    defaults = vmlibrary.Process.defaults.copy()
+    defaults.update({"config_file_name" : "audiocfg",
+                     "mode" : ("input",),
+                     "auto_start" : False})
 
     def __init__(self, **kwargs):
         self.selected_devices = []
@@ -184,7 +193,10 @@ class Config_Utility(vmlibrary.Process):
             
 class Audio_Manager(base.Reactor):
 
-    defaults = defaults.Audio_Manager
+    defaults = base.Reactor.defaults.copy()
+    defaults.update({"config_file_name" : '',
+                     "use_defaults" : True,
+                     "configure" : False})
 
     def _get_devices(self):
         return self.objects.get("Audio_Input", []) + self.objects.get("Audio_Output", [])

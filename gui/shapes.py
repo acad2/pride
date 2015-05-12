@@ -1,5 +1,5 @@
 import mpre.base
-import mpre.defaults
+
 
 class Shape(mpre.base.Base):
     

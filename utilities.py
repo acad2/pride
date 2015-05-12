@@ -3,99 +3,41 @@ import time
 import inspect
 import subprocess
 import collections
-import contextlib
 import importlib
 import types
-import pickle
-import hashlib
 import pprint
 
-import mpre.misc.bytecodedis
-from mpre.errors import CorruptPickleError
+import mpre.module_utilities
 
 if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
 
-import pickle
-import hmac
-import hashlib
-
-key = ''.join(chr(x) for x in xrange(256))#os.urandom(512)
-
-def authenticated_dump(py_object, key, _file=None,  hash_algorithm=hashlib.sha512):
-    bytestream = pickle.dumps(py_object)
-    result = hmac.HMAC(key, bytestream, hash_algorithm).hexdigest() + bytestream
-    if _file:
-        _file.write(result)
-    else:
-        return result
-
-def authenticated_load(bytestream, key, hash_algorithm=hashlib.sha512):
-    mac_size = hash_algorithm().digestsize * 2
-    try:
-        pickled_object = bytestream[mac_size:]
-    except TypeError:
-        bytestream = bytestream.read()
-        pickled_object = bytestream[mac_size:]
-    valid = hmac.compare_digest(bytestream[:mac_size], 
-                                hmac.HMAC(key, pickled_object, hash_algorithm).hexdigest())
-    if valid:
-        return pickle.loads(pickled_object)
-    else:
-        raise CorruptPickleError("Message authentication code mismatch\n\n" + bytestream[:mac_size])
-                                 
-def load(attributes=None, _file=None):
-    """ usage: load([attributes], [_file]) => restored_instance
-    
-        Loads state preserved by the save method. Loads an instance from either
-        a bytestream or file, as returned by the save method..
-        
-        To customize the behavior of an object after it has been loaded, one should
-        extend the on_load method.""" 
-    if _file:
-        assert not attributes
-        attributes = _file.read()    
-        
-    attributes = authenticated_load(attributes, ''.join(chr(x) for x in xrange(256)))   
-    saved_objects = attributes["objects"]
-    objects = attributes["objects"] = {}
-    for instance_type, saved_instances in saved_objects.items():            
-        objects[instance_type] = set([load(instance) for instance in
-                                      saved_instances])
-
-    if "_required_modules" in attributes:
-        _required_modules = []
-        incomplete_modules = attributes["_required_modules"]
-        module_sources = dict((module_name, source) for module_name, source, none in 
-                              incomplete_modules)
-
-        for module_name, source, none in incomplete_modules[:-1]:
-            module = create_module(module_name, source)
-            _required_modules.append((module_name, source, module))
-        
-        class_name = attributes.pop("_class")
-        self_class = getattr(module, class_name)
-        attributes["_required_modules"] = _required_modules        
-    else:
-        module_name, class_name = attributes["_required_module"]
-        module = importlib.import_module(module_name)
-        self_class = getattr(module, class_name)            
-    self = self_class.__new__(self_class)
-    
-    attribute_modifier = attributes.pop("_attribute_type")
-    for key, value in attributes.items():
-        modifier = attribute_modifier.get(key, '')
-        if modifier == "reference":
-            attributes[key] = self.environment.Component_Resolve[value]
-        elif modifier == "save":
-            attributes[key] = load(pickle.loads(value))
+def updated_class(_class, importer_type="mpre.importers.From_Disk"):
+    # modules are garbage collected if not kept alive        
+    required_modules = []        
+    module_loader = resolve_string(importer_type)()
+    class_mro = _class.__mro__[:-1] # don't update object
+    class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
             
-    self.on_load(attributes)
-    self.alert("Loaded", level='v')
-    return self  
-        
+    with mpre.module_utilities.modules_preserved(info[1] for info in class_info):
+        for cls, module_name in class_info:
+            module = module_loader.load_module(module_name)
+            try:
+                source = inspect.getsource(module)
+            except TypeError:
+                try:
+                    source = module._source
+                except AttributeError:
+                    raise UpdateError("Could not locate source for {}".format(module.__name__))
+                    
+            required_modules.append((module_name, source, module))
+    
+    class_base = getattr(module, _class.__name__)
+    class_base._required_modules = required_modules
+    return class_base
+    
 def convert(old_value, old_base, new_base):
     old_base_size = len(old_base)
     new_base_size = len(new_base)

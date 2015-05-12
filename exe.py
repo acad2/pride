@@ -4,7 +4,7 @@ import sys
 import inspect
 
 import mpre.base
-import mpre.defaults
+
 import mpre.utilities as utilities
 import mpre.module_utilities as module_utilities
 import mpre._compile
@@ -15,8 +15,8 @@ class Loader(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types", "hmac"),
-                     "embedded_objects" : ("mpre.utilities.authenticated_load", 
-                                           "mpre.utilities.load", 
+                     "embedded_objects" : ("mpre.persistence.authenticated_load", 
+                                           "mpre.persistence.load", 
                                            "mpre.errors.CorruptPickleError",
                                            "mpre.module_utilities.create_module"),
                      "importer" : "mpre.package.Package_Importer"})
@@ -50,7 +50,7 @@ class Executable(mpre.base.Base):
     defaults.update({"filename" : "metapython.exe",
                      "package" : None,
                      "file" : None,
-                     "loader_type" : "mpre.programs.buildlauncher.Loader",
+                     "loader_type" : "mpre.exe.Loader",
                      "main_source" : ''})   
                            
     def __init__(self, module, **kwargs):
@@ -66,8 +66,8 @@ class Executable(mpre.base.Base):
         embed_package = "{}_package = r'''{}'''\n\n"
         add_to_path = "sys.meta_path.append(_importer(load({}_package)))\n\n"
         for package in self.packages:
-            _file.write(embed_package.format(package.package_name, package.save()))
-        #    _file.write(add_to_path.format(package.package_name))
+            _file.write(embed_package.format(package.package_name, 'null'))#package.save()))
+       #     _file.write(add_to_path.format(package.package_name))
         _file.write("\n\n")
         _file.write(self.main_source)
         _file.flush()
@@ -79,10 +79,8 @@ if __name__ == "__main__":
     import mpre
     import mpre.metapython
     import mpre.package   
-    import mpre.fileio
-    if "File_System" not in mpre.component:
-        mpre.environment.add(mpre.fileio.File_System())
-    packages=[mpre.package.Package(mpre, include_source=False)]       
+    #import mpre.fileio
+    packages=[mpre.package.Package(mpre, include_source=True)]       
     exe = Executable(mpre.metapython, packages=packages)
     exe.build()
     print "Complete"

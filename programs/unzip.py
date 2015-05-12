@@ -1,10 +1,9 @@
 import zipfile
 import mpre.base as base
-import mpre.defaults as defaults
 
 class Unzipper(base.Base):
     
-    defaults = defaults.Base.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"filename" : '',
                      "target_directory" : ''})
                      

@@ -10,44 +10,33 @@ definitions = \
 r"""import mpre.base as base
 import mpre
 
-constructor = base.Base()
-environment = constructor.environment
+environment = mpre.environment
 component = mpre.component
-create = constructor.create
-
-def print_components(mode="keys", size=(None, )):
-    _slice = slice(*size)
-    print getattr(constructor.environment.Component_Resolve, mode)()[_slice]
-
-def get_component(instance_name):
-    return constructor.environment.Component_Resolve[instance_name]
+def create(instance_type, *args, **kwargs):
+    return component["Metapython"].create(instance_type, *args, **kwargs)
 
 def delete(instance_name):
-    constructor.parallel_method(instance_name, "delete")
-                    
-def build_docs(**kwargs):    
-    return constructor.parallel_method("Metapython", "create", 
-                                       "mpre.package.Documentation", **kwargs)
-                 
-def update(component):
-    return constructor.parallel_method(component, "update")
+    component[instance_name].delete()
+                                     
+def update(instance_name):
+    return component[instance_name].update()
     
-#f = constructor.create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
-fs = get_component("File_System")
+#f = create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
+fs = component["File_System"]
 #ftest = fs.get_file("virtual\\test_directory\\test.disk")
 
-#d = constructor.create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
+#d = create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
 
-#e = constructor.create("mpre.fileio.Encrypted_File", "virtual\\test_file.txt")
+#e = create("mpre.fileio.Encrypted_File", "virtual\\test_file.txt")
 #e.write("This is a test string. ")
 #e.write("And this is another.")
 #e.seek(0)
 #print e.read()
 
-#_package = constructor.create("mpre.package.Package", mpre, include_documentation=True)
+#_package = create("mpre.package.Package", mpre, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
-#print _package.documentation.markdown
+#print _package.documentation["mpre"].markdown
 
 #_sqlite3 = _package.get_module("sqlite3")
  
@@ -57,6 +46,16 @@ fs = get_component("File_System")
 #r = component["Renderer"]
 #h = component["Homescreen"]
 
+#import mpre.package
+#p = mpre.package.Package(mpre)
+
+#update("Metapython")
+#update("Metapython")
+#x = component["Metapython"].save()
+#y = mpre.base.Base.load(x) # calls .on_load automatically
+
+#z = s(constructor)
+#newz = l(z) # does not call .on_load
 """
 
 options["startup_definitions"] += definitions

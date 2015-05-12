@@ -2,7 +2,6 @@ import sys
 from threading import Thread
 
 import mpre.vmlibrary as vmlibrary
-import mpre.defaults as defaults
 
 try:
     from msvcrt import getwch, kbhit
@@ -48,7 +47,7 @@ def is_affirmative(input):
 
 class User_Input(vmlibrary.Process):
     """ Captures user input and provides the input to any listening component"""
-    defaults = defaults.User_Input
+    defaults = vmlibrary.Process.defaults.copy()
     
     def __init__(self, **kwargs):
         self.listeners = []

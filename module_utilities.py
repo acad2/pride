@@ -64,17 +64,25 @@ def modules_switched(module_dict):
             pass    
 
 def get_required_modules(module):    
-    def _get_modules(module, required_modules):
+    def _get_modules(module, required_modules, packages):
         for attribute, value in module.__dict__.items():
             if isinstance(value, types.ModuleType):                
                 name = value.__name__
+                package = value.__package__
+                if name == package:
+                    packages.add(name)
+                              
                 if name not in required_modules:  
-              #      print "Adding {} to required_modules".format(name)
+                 #   print "Adding {} to required_modules".format(name)                        
                     required_modules.add(name)
-                    required_modules.update(_get_modules(value, required_modules))            
-        return required_modules
+                    module_modules, module_packages = _get_modules(value, 
+                                                                   required_modules, 
+                                                                   packages)
+                    required_modules.update(module_modules)
+                    packages.update(module_packages)
+        return required_modules, packages
         
-    return _get_modules(module, set())
+    return _get_modules(module, set(), set())
     
 def get_required_sources(modules):
     module_source = {}
