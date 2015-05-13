@@ -41,16 +41,16 @@ fs = components["File_System"]
 #e.seek(0)
 #print e.read()
 
-_package = create("mpre.package.Package", mpre, include_documentation=True)
-with open("metapython.pack", 'wb') as package_file:
-    _package.save(_file=package_file)
-print _package.documentation["mpre"].markdown
+#_package = create("mpre.package.Package", mpre, include_documentation=True)
+#with open("metapython.pack", 'wb') as package_file:
+#    _package.save(_file=package_file)
+#print _package.documentation["mpre"].markdown
 
 #_sqlite3 = _package.get_module("sqlite3")
  
 import mpre.gui.gui as gui
-gui.enable()
-create("mpre.gui.widgetlibrary.Homescreen")
+#gui.enable()
+#create("mpre.gui.widgetlibrary.Homescreen")
 #r = components["Renderer"]
 #h = components["Homescreen"]
 

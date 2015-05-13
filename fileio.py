@@ -199,6 +199,7 @@ class File(base.Wrapper):
         backup_tell = self.tell()
         self.seek(0)
         attributes["_file_data"] = self.read()
+        print self.filename, "storing {} bytes of data".format(attributes["_file_data"])
         self.seek(backup_tell)
         del attributes["wrapped_object"]
         del attributes["file"]

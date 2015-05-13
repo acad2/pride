@@ -76,7 +76,7 @@ class Error_Handler(object):
     def bad_target(self, sock, error):
         sock.alert("Invalid target {}; {} {}", 
                    [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level=0)
+                   level='v')
         sock.delete()
         
     def unhandled(self, sock, error):
@@ -132,7 +132,7 @@ class Socket(base.Wrapper):
     def send(self, data):
         """ Sends data via the underlying _socketobject. The socket is first checked to
             ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        if components["Network"].is_writable(self):
+        if self in components["Network"].writable:
             return self.wrapped_object.send(data)
         else:
             raise NotWritableError
@@ -141,7 +141,7 @@ class Socket(base.Wrapper):
         """ Sends data via the underlying _socketobject to the specified address. The socket
             is first checked to ensure writability before sending. If the socket is not
             writable, NotWritableError is raised."""
-        if components["Network"].is_writable(self):
+        if self in components["Network"].writable:
             return self.wrapped_object.sendto(data, host_info)
         else:
             raise NotWritableError
@@ -172,6 +172,7 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
+        self.target = address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
@@ -179,7 +180,7 @@ class Socket(base.Wrapper):
                 raise
             if not self._connecting:
                 self._connecting = True
-                components["Network"].connect(self)            
+                components["Network"].connecting.add(self)            
 
     def on_connect(self):
         """ Performs any logic required when a Tcp connection succeeds. This method should
@@ -386,7 +387,7 @@ class Network(vmlibrary.Process):
                                     x in xrange(100))
         self._socket_range_size = range(1)
         
-        self._writable = set()
+        self.writable = set()
         self.connecting = set()
         super(Network, self).__init__(**kwargs)
         
@@ -402,7 +403,7 @@ class Network(vmlibrary.Process):
         self._sockets.add(sock)
         if not self.running:
             self.running = True        
-            self.run()
+            self._run()
                 
     def remove(self, sock):
         super(Network, self).remove(sock)
@@ -427,39 +428,38 @@ class Network(vmlibrary.Process):
         if not sockets:
             self.running = False
         else:
+            connecting = self.connecting
+            self.connecting = _connecting = set()
+            writable = self.writable = set()
+            expired = set()
+            still_connecting = set()      
             for chunk in self._socket_range_size:
                 # select has a max # of file descriptors it can handle, which
                 # is about 500 (at least on windows). We can avoid this limitation
                 # by sliding through the socket list in slices of 500 at a time
                 socket_list = sockets[self._slice_mapping[chunk]]
-                readable, writable, errors = select.select(socket_list, socket_list, [], 0.0)
+                readable, _writable, errors = select.select(socket_list, socket_list, [], 0.0)
                                 
-                writable = self._writable = set(writable)
-                connecting = self.connecting
+                writable.update(_writable)              
+                # if a tcp client is writable, it's connected     
+                for accepted in connecting.intersection(writable):
+                    accepted.on_connect()
+                    
+                # if not, then it's still waiting or the connection timed out
+                still_connecting = connecting.difference(writable)
+                for connection in still_connecting:
+                    connection.connection_attempts -= 1
+                    if not connection.connection_attempts:
+                        try:
+                            connection.connect(connection.target)
+                        except socket.error as error:
+                            expired.add(connection)
+                            handler = getattr(connection.error_handler, 
+                                ERROR_CODES[error.errno].lower(),
+                                connection.error_handler.unhandled)
+                            handler(connection, error)                                   
+                _connecting.update(still_connecting.difference(expired))
                 
-                if connecting:
-                    # if a tcp client is writable, it's connected
-                    accepted_connections = connecting.intersection(writable)
-                    if accepted_connections:
-                        for accepted in connecting.intersection(writable):
-                            accepted.on_connect()
-                        
-                    # if not, then it's still connecting or the connection failed
-                    still_connecting = connecting.difference(writable)    
-                    expired = set()                    
-                    if still_connecting:                        
-                        for connection in still_connecting:
-                            connection.connection_attempts -= 1
-                            if not connection.connection_attempts:
-                                try:
-                                    connection.connect(connection.target)
-                                except socket.error as error:
-                                    expired.add(connection)
-                                    handler = getattr(connection.error_handler, 
-                                        ERROR_CODES[error.errno].lower(),
-                                        connection.error_handler.unhandled)
-                                    handler(connection, error)                                   
-                    self.connecting = still_connecting.difference(expired)       
                 if readable:
                     for sock in readable:
                         try:
@@ -469,10 +469,3 @@ class Network(vmlibrary.Process):
                                     ERROR_CODES[error.errno].lower(),
                                     sock.error_handler.unhandled)
                             handler(sock, error)         
-            self.run_instruction.execute(priority=self.priority)
-                   
-    def connect(self, sock):
-        self.connecting.add(sock)
-                
-    def is_writable(self, sock):
-        return sock in self._writable

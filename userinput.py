@@ -71,9 +71,7 @@ class User_Input(vmlibrary.Process):
                 sys.stdout.write(" \b")
                 self.reaction(listener, message)
             self.input = ''
-            
-        self.run_instruction.execute(priority=self.priority)
-    
+                
     def __getstate__(self):
         attributes = super(User_Input, self).__getstate__()
         del attributes["thread"]

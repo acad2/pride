@@ -54,7 +54,8 @@ class Process(base.Reactor):
     defaults = base.Reactor.defaults.copy()
     defaults.update({"auto_start" : True,
                      "priority" : .04,
-                     "running" : True})
+                     "running" : True,
+                     "run_callback" : None})
     parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
 
     def __init__(self, **kwargs):
@@ -73,14 +74,18 @@ class Process(base.Reactor):
         result = self.run(*self.args, **self.kwargs)
         if self.running:
             self.run_instruction.execute(priority=self.priority, 
-                                         callback=self.callback)
+                                         callback=self.run_callback)
         return result
         
     def run(self):
         if self.target:
             self.target(*self.args, **self.kwargs)
             
-
+    def delete(self):
+        self.running = False
+        super(Process, self).delete()
+        
+        
 class Processor(Process):
     """ Removes enqueued Instructions via heapq.heappop, then
         performs the specified method call while handling the
@@ -103,7 +108,7 @@ class Processor(Process):
         sleep = time.sleep
         heappop = heapq.heappop
         _getattr = getattr        
-        on_resume = self.on_resume
+        
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
@@ -115,11 +120,7 @@ class Processor(Process):
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
-            instruction_info = execute_at, instruction, callback = heappop(instructions)
-            if instruction.component_name in self.paused:
-                on_resume[instruction.component_name].append(instruction_info)
-                continue
-                
+            instruction_info = execute_at, instruction, callback = heappop(instructions)                
             try:
                 call = _getattr(components[instruction.component_name],
                                            instruction.method)               

@@ -32,36 +32,29 @@ class DoS(vmlibrary.Process):
 
     defaults = vmlibrary.Process.defaults.copy()
     defaults.update({"salvo_size" : 100,
-                     "count" : 0,
                      "ip" : "localhost",
                      "port" : 80,
                      "target" : None,
-                     "timeout_notify" : False,
-                     "display_latency" : False,
-                     "display_progress" : False})
+                     "display_latency" : False})
 
     def __init__(self, **kwargs):
         super(DoS, self).__init__(**kwargs)
         self.latency = Latency(name="Salvo size: {}".format(self.salvo_size))
         self.options = {"target" : self.target,
                         "ip" : self.ip,
-                        "port" : self.port}
+                        "port" : self.port,
+                        "connection_attempts" : 1}
     def run(self):                                         
-        if self.display_progress:
-            self.count += 1
-            print "Launched {0} connections".format(self.count * self.salvo_size)
         if self.display_latency:
             latency = self.latency
             #print "launching salvo: {0} connections per second ({1} connections attempted)".format(self.latency.average.meta_average, (self.count * self.salvo_size))
             self.latency.update()
             self.latency.display()
             
-        options = self.options
         backup = Null_Connection.defaults.copy()
-        Null_Connection.defaults.update(options)
+        Null_Connection.defaults.update(self.options)
         for connection_number in xrange(self.salvo_size):
             self.create(Null_Connection)        
-        self.run_instruction.execute(self.priority)
         Null_Connection.defaults.update(backup)
         
         
@@ -119,7 +112,6 @@ class Scanner(vmlibrary.Process):
             self.port_range = low_port    
         
         yield_interval = self.yield_interval
-        run_instruction = self.run_instruction
         priority = self.priority
         for field_zero in xrange(subnet_zero, subnet_zero_range + 1):
             for field_one in xrange(subnet_one, subnet_one_range + 1):
@@ -132,7 +124,6 @@ class Scanner(vmlibrary.Process):
                                         verbosity=self.discovery_verbosity)
                             yield_interval -= 1
                             if not yield_interval:
-                                run_instruction.execute(priority)
                                 yield
                                 yield_interval = self.yield_interval
 
