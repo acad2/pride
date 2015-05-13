@@ -9,12 +9,11 @@ import traceback
 
 import mpre
 import mpre.base as base
-
 import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
 Instruction = mpre.Instruction
-component = mpre.component
+components = mpre.components
            
 def Authenticated(function):
     def call(instance, sender, packet):
@@ -145,14 +144,9 @@ class Network_Service(network.Udp_Socket):
             if timer_function() - sent_at[id] > resend_after:
                 packet = packet_cache[id]
                 
-                self.alert("Resending {}",
-                           [id],
-                           level=0)
+                self.alert("Resending {}", [id], level=0)
                         
-                self.parallel_method("Network", "send", 
-                                self,
-                                packet,
-                                target)
+                components["Network"].send(self, packet, target)
                 self.resent.add((target, id))               
                
     def invalid_request(self, sender, packet):
@@ -413,7 +407,7 @@ class RPC_Request(network.Tcp_Socket):
         component_name, method, argument_bytestream = request.split(" ", 2)
         try:
             args, kwargs = pickle.loads(argument_bytestream)
-            call = getattr(component[component_name], method)
+            call = getattr(components[component_name], method)
             response = call(*args, **kwargs)
             response = pickle.dumps(response)
         except:

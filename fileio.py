@@ -14,7 +14,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.base as base
 import mpre.utilities as utilities
 import mpre.userinput
-component = mpre.component
+components = mpre.components
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -108,10 +108,10 @@ class Directory(base.Base):
         self.file_system, path = os.path.split(self.path)
         self.path, self.filename = os.path.split(path)
         self.full_path = os.path.sep.join(self.path, self.filename)
-        self.parallel_method("File_System", "add", self)        
+        components["File_System"].add(self)        
         
     def delete(self):
-        for _file in component["File_System"][self.full_path]:
+        for _file in components["File_System"][self.full_path]:
             #if _file is not self:
             _file.delete()
         super(Directory, self).delete()
@@ -145,19 +145,18 @@ class File(base.Wrapper):
             else:
                 self.file_system = file_system
                 path = _path
-                if "File_System" not in component:
+                if "File_System" not in components:
                     self.alert("File_System component does not exist", level='v')     
-                elif not component["File_System"].exists(file_system, file_type="file_system"):
+                elif not components["File_System"].exists(file_system, file_type="file_system"):
                     raise IOError("File system '{}' does not exist".format(file_system))
-                #else:
-                 #   raise RuntimeError("unhandled exception encountered in File __init__")
+
         self.path, self.filename = os.path.split(path)
         if not self.path:
             self.path = os.path.curdir
         
         self.mode = mode or self.mode
         try:
-            mpre.component["File_System"].add(self)
+            mpre.components["File_System"].add(self)
         except KeyError:
             self.alert("File_System does not exist", level='v')
             
@@ -215,7 +214,7 @@ class File(base.Wrapper):
         self.truncate(0)
         self.write(self.__dict__.pop("_file_data"))        
         self.flush()
-        component['File_System'].add(self)
+        components['File_System'].add(self)
             
     def delete(self):
         super(File, self).delete()

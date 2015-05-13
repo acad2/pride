@@ -10,6 +10,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.fileio as fileio
 from mpre.utilities import Latency
 Instruction = mpre.Instruction
+components = mpre.components
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
        
@@ -22,25 +23,23 @@ class Audio_Reactor(base.Reactor):
         self.listeners = []
         super(Audio_Reactor, self).__init__(**kwargs)
         if self.source_name:
-            self.parallel_method(self.source_name, "add_listener", 
-                                 self.instance_name)
+            components[self.source_name].add_listener(self.instance_name)
             
     def set_input_device(self, target_instance_name):
         self.alert("Setting input device to {}".format(target_instance_name), level=0)
         self_name = self.instance_name
         if self.source_name:
-            self.parallel_method(self.source_name, "remove_listener", self_name)
+            components[self.source_name].remove_listener(self_name)
             self.source_name = target_instance_name
         
-        self.parallel_method(target_instance_name, "add_listener", self_name)
+        components[target_instance_name].add_listener(self_name)
         
     def handle_audio_input(self, sender, audio_data):
         self.handle_audio_output(audio_data)
         
     def handle_audio_output(self, audio_data):
         for client in self.listeners:
-            self.parallel_method(client, "handle_audio_input", 
-                                 self.instance_name, audio_data)
+            components[client].handle_audio_input(self.instance_name, audio_data)
     
     def handle_end_of_stream(self):
         self.alert("end of stream", level=0)

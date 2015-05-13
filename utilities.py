@@ -167,10 +167,10 @@ def documentation(_object):
         for attribute in (attribute for attribute in 
                           _object.__dict__.keys() if "_" != attribute[0]):
             value = getattr(_object, attribute)
-            if hasattr(value, "function"):
+            if "Runtime_Decorator" == value.__class__.__name__:
                 docs = documentation(value.function)
                 docstring += "\n\n" + docs
-            elif hasattr(value, "im_func"):
+            elif callable(value):#hasattr(value, "im_func"):
                 docs = documentation(value)           
                 docstring += "\n\n" + docs
                 

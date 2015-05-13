@@ -11,9 +11,8 @@ timer_function = utilities.timer_function
 
 class Environment(object):
     
-    fields = ("Component_Resolve", "Instance_Count", "Instance_Name",
-              "Instance_Number", "Component_Memory", "Parents", "References_To",
-              "Reference_Location")
+    fields = ("components", "instance_count", "instance_name",
+              "instance_number", "parents", "references_to")
               
     def __init__(self):
         super(Environment, self).__init__()
@@ -25,37 +24,32 @@ class Environment(object):
         print "\nInstructions: {}".format([(instruction[0], str(instruction[1])) for 
                                            instruction in self.Instructions])
         
-        for attribute in ("Component_Resolve", "Instance_Count", "Instance_Name",
-                          "Instance_Number", "Component_Memory", "Parents",
-                          "References_To", "Reference_Location"):
+        for attribute in ("components", "instance_count", "instance_name",
+                          "instance_number", "parents", "references_to"):
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
     
     def replace(self, component, new_component):
-        components = self.Component_Resolve
+        components = self.components
         if isinstance(component, unicode) or isinstance(component, str):
-            component = self.Component_Resolve[component]
+            component = self.components[component]
 
         old_component_name = component.instance_name
         
-        self.Component_Resolve[old_component_name] = self.Component_Resolve.pop(new_component.instance_name, new_component)
+        self.components[old_component_name] = self.components.pop(new_component.instance_name, new_component)
         
-        self.Instance_Name[new_component] = self.Instance_Name.pop(component)
-        self.Instance_Number[new_component] = self.Instance_Number.pop(component)
-        
-        memory = self.Component_Memory
-        if new_component.instance_name in memory:
-            memory[old_component_name] = memory.pop(new_component.instance_name)
-        
-        parents = self.Parents
+        self.instance_name[new_component] = self.instance_name.pop(component)
+        self.instance_number[new_component] = self.instance_number.pop(component)
+
+        parents = self.parents
         if component in parents:
             parents[new_component] = parents.pop(component)
                 
         new_component.instance_name = old_component_name
-        references = self.References_To.get(old_component_name, set()).copy()
+        references = self.references_to.get(old_component_name, set()).copy()
         
         for referrer in references:
-            instance = self.Component_Resolve[referrer]
+            instance = self.components[referrer]
             instance.remove(component)
             instance.add(new_component)       
         
@@ -63,8 +57,8 @@ class Environment(object):
         try:
             objects = instance.objects
         except AttributeError: # non base objects have no .objects dictionary
-            instance_name = self.Instance_Name[instance]
-            parent = self.Component_Resolve[self.Parents[instance]]
+            instance_name = self.instance_name[instance]
+            parent = self.components[self.parents[instance]]
             parent.objects[instance.__class__.__name__].remove(instance)          
         else:
             instance_name = instance.instance_name
@@ -72,50 +66,47 @@ class Environment(object):
                 for children in objects.values():
                     [child.delete() for child in list(children)] 
                     
-        if instance in self.Parents:
-            del self.Parents[instance]
-        if instance_name in self.Component_Memory:
-            self.Component_Memory.pop(instance_name).close()    
+        if instance in self.parents:
+            del self.parents[instance]  
         
-        if instance_name in self.References_To:
-            for referrer in list(self.References_To[instance_name]):
-                self.Component_Resolve[referrer].remove(instance)
-            del self.References_To[instance_name]            
-        del self.Component_Resolve[instance_name]
-        del self.Instance_Name[instance]
-        del self.Instance_Number[instance]
+        if instance_name in self.references_to:
+            for referrer in list(self.references_to[instance_name]):
+                self.components[referrer].remove(instance)
+            del self.references_to[instance_name]            
+        del self.components[instance_name]
+        del self.instance_name[instance]
+        del self.instance_number[instance]
         
     def add(self, instance):
         instance_class = instance.__class__.__name__
         try:
-            self.Instance_Count[instance_class] = count = self.Instance_Count[instance_class] + 1
+            self.instance_count[instance_class] = count = self.instance_count[instance_class] + 1
         except KeyError:
-            count = self.Instance_Count[instance_class] = 0
+            count = self.instance_count[instance_class] = 0
        
         instance_name = instance_class + str(count) if count else instance_class
-        self.Component_Resolve[instance_name] = instance
+        self.components[instance_name] = instance
         try:
-            self.Instance_Name[instance] = instance.instance_name = instance_name
-            self.Instance_Number[instance] = instance.instance_number = count
+            self.instance_name[instance] = instance.instance_name = instance_name
+            self.instance_number[instance] = instance.instance_number = count
         except AttributeError:
-            self.Instance_Name[instance] = instance_name
-            self.Instance_Number[instance] = count
+            self.instance_name[instance] = instance_name
+            self.instance_number[instance] = count
 
     def __contains__(self, component):
-        if (component in self.Component_Resolve.keys() or
-            component in itertools.chain(self.Component_Resolve.values())):
+        if (component in self.components.keys() or
+            component in itertools.chain(self.components.values())):
             return True
         
     def update(self, environment):       
         for instruction in environment.Instructions:
             heapq.heappush(self.Instructions, instruction)
 
-        self.Component_Resolve.update(environment.Component_Resolve)
-        self.Component_Memory.update(environment.Component_Memory)
-        self.Parents.update(environment.Parents)
-        self.References_To.update(environment.References_To)
-        self.Instance_Number.update(environment.Instance_Number)
-        self.Instance_Count.update(environment.Instance_Count)
+        self.components.update(components)
+        self.parents.update(environment.parents)
+        self.references_to.update(environment.references_to)
+        self.instance_number.update(environment.instance_number)
+        self.instance_count.update(environment.instance_count)
         
     @contextlib.contextmanager
     def preserved(self):
@@ -177,14 +168,15 @@ class Instruction(object):
         self.args = args
         self.kwargs = kwargs
         
-    def execute(self, priority=0.0, callback=None, host_info=tuple(), transport_protocol="Tcp"):
+    def execute(self, priority=0.0, callback=None,
+                host_info=tuple(), transport_protocol="Tcp"):
         """ usage: instruction.execute(priority=0.0, callback=None)
         
             Submits an instruction to the processing queue. The instruction
             will be executed in priority seconds. An optional callback function 
             can be provided if the return value of the instruction is needed."""
         if host_info:
-            component["RPC_Handler"].make_request(callback, host_info, transport_protocol,
+            components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
                                                    self.component_name, self.method, 
                                                    self.args, self.kwargs)
         else:
@@ -201,4 +193,4 @@ class Instruction(object):
                                           method, args, kwargs)  
                                      
 environment = Environment()
-component = environment.Component_Resolve
+components = environment.components

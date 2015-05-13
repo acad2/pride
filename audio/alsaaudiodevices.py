@@ -2,8 +2,10 @@ import time
 import wave
 import contextlib
 
+import mpre
 import mpre.base as base
 import mpre.audio.audiolibrary as audiolibrary
+components = mpre.components
 
 # to install alsaaudio, use mpre.audio.utilities.install_pyalsaaudio
 import alsaaudio
@@ -88,20 +90,19 @@ class Audio_Input(Audio_Device):
             for _file in self.playing_files:
                 file_data = _file.read(byte_count)
                 for listener in self.playing_to[_file]:
-                    self.parallel_method(listener, "handle_audio_input",
-                                         _file.name, file_data)
+                    components[listener].handle_audio_input(_file.name, file_data)
                                                  
     def play_file(self, _file, listeners=("Audio_Output", )):
         self.playing_files.append(_file)
         self.playing_to[_file] = listeners
         for listener in listeners:
-            self.parallel_method(listener, "set_input_device", self.instance_name)
+            components[listener].set_input_device(self.instance_name)
 
     def stop_file(self, _file):
         self.playing_files.remove(_file)
         
         for listener in self.playing_to[_file]:
-            self.parallel_method(listener, "handle_end_of_stream")        
+            components[listener].handle_end_of_stream()
         del self.playing_to[_file]
         
         

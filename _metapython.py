@@ -13,7 +13,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.network2 as network2
 import mpre.utilities as utilities
 import mpre.fileio as fileio
-
+components = mpre.components
 Instruction = mpre.Instruction            
     
 if "__file__" not in globals():
@@ -311,6 +311,6 @@ class Metapython(base.Reactor):
         self.server = self.create(Interpreter_Service, **server_options)      
         
     def exit(self, exit_code=0):
-        self.parallel_method("Processor", "set_attributes", running=False)
+        components["Processor"].set_attributes(running=False)
         # cleanup/finalizers go here?
         sys.exit(exit_code)

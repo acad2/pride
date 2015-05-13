@@ -83,16 +83,6 @@ def save(self, attributes=None, _file=None):
         _file.write(saved)
     else:
         return saved
-
-def newsave(_object, _file=None):
-    try:
-        source = inspect.getsource(_object)
-    except TypeError:
-        source = inspect.getsource(_object.__class__)
-        name = _object.__class__.__name__
-    else:
-        name = _object.__name__
-    return source
     
 def load(attributes=None, _file=None):
     """ usage: load([attributes], [_file]) => restored_instance

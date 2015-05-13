@@ -46,20 +46,15 @@ class Process(base.Reactor):
         with the standard library threading/process model.
         
         Subclasses should overload the run method. A process may propagate
-        itself by executing a run instruction inside it's run method. While
-        processes support the reaction interface, use of a process presumes
-        the desire for some kind of explicitly timed Instruction. Examples
-        of processes include polling for user input or socket buffers
-        at various intervals.
-        
-        Some people may find the serial style, one frame at a time method
-        offered by processes easier to understand and follow then reactions.
-        Most things can be accomplished by either, though processes may be
-        less performant then parallel_methods/reactions"""
+        itself by executing a run instruction inside it's run method. 
+        Use of a process object presumes the desire for some kind of 
+        explicitly timed Instruction. Examples of real processes include 
+        polling for user input or socket buffers at various intervals."""
 
     defaults = base.Reactor.defaults.copy()
     defaults.update({"auto_start" : True,
-                     "priority" : .04})
+                     "priority" : .04,
+                     "running" : True})
     parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
 
     def __init__(self, **kwargs):
@@ -67,13 +62,20 @@ class Process(base.Reactor):
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)
 
-        self.run_instruction = Instruction(self.instance_name, "run")
+        self.run_instruction = Instruction(self.instance_name, "_run")
         if self.auto_start:
             Instruction(self.instance_name, "start").execute()
 
     def start(self):
-        self.run()
+        self._run()
 
+    def _run(self):
+        result = self.run(*self.args, **self.kwargs)
+        if self.running:
+            self.run_instruction.execute(priority=self.priority, 
+                                         callback=self.callback)
+        return result
+        
     def run(self):
         if self.target:
             self.target(*self.args, **self.kwargs)
@@ -92,23 +94,10 @@ class Processor(Process):
 
     def __init__(self, **kwargs):
         super(Processor, self).__init__(**kwargs)
-        self.paused = set()
-        self.on_resume = {}
-        
-    def pause(self, component_name):
-        self.paused.add(component_name)
-        self.on_resume[component_name] = []
-        
-    def resume(self, component_name):
-        self.paused.remove(component_name)
-        for instruction_info in self.on_resume[component_name]:
-            execute_at, instruction, callback = instruction_info
-            instruction.execute(execute_at, callback)
-        self.on_resume[component_name] = []
         
     def run(self):
         instructions = self.environment.Instructions
-        Component_Resolve = self.environment.Component_Resolve
+        components = mpre.components
         processor_name = self.instance_name
         
         sleep = time.sleep
@@ -132,8 +121,8 @@ class Processor(Process):
                 continue
                 
             try:
-                call = _getattr(Component_Resolve[instruction.component_name],
-                                                  instruction.method)               
+                call = _getattr(components[instruction.component_name],
+                                           instruction.method)               
             except component_errors as error:
                 if isinstance(error, KeyError):
                     error = "'{}' component does not exist".format(instruction.component_name)
@@ -155,4 +144,4 @@ class Processor(Process):
                                  format_traceback()))
             else:
                 if callback:
-                    callback(result)        
+                    callback(result)

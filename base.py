@@ -34,10 +34,9 @@
         - The alert method, which makes logging and statements 
           of varying verbosity simple and straight forward.
           
-        - parallel_method calls. This is the primary concurreny mechanism 
-          and is used in a similar capacity to Instruction objects.
-          The difference is that the call happens immediately and the return 
-          value from the specified method is available in the calling scope
+        - An instance name, which allows provides a reference
+          to the component from any context. Instance names are 
+          mapped to instances in mpre.components.
           
         - Decorator(s) and monkey patches may be specified via
           keyword argument to any method call. Note that this
@@ -54,7 +53,7 @@
         
         - Augmented docstrings. Information about class defaults
           and method names + argument signatures + method docstrings (if any)
-          is included automatically. 
+          is included automatically when you print base.__doc__. 
           
     Note that some features are facilitated by the metaclass. These include
     the argument parser, runtime decoration, and documentation.
@@ -64,7 +63,7 @@
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
     This name associates the instance to the instance_name in the
-    mpre.environment.Component_Resolve. The instance_name can be used to reference
+    mpre.environment.components. The instance_name can be used to reference
     the object from any scope, as long as the component exists."""
 import mmap
 import sys
@@ -83,10 +82,10 @@ import mpre
 import mpre.metaclass
 import mpre.persistence as persistence
 import mpre.utilities as utilities
-
 import mpre.importers as importers
 import mpre.module_utilities as module_utilities
 from mpre.errors import *
+components = mpre.components
 
 __all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
 
@@ -107,12 +106,12 @@ class Base(object):
                 "replace_reference_on_load" : True}
     
     def _get_parent_name(self):
-        return self.environment.Parents[self]
+        return self.environment.parents[self]
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
         environment = self.environment
-        return environment.Component_Resolve[environment.Parents[self]]
+        return components[environment.parents[self]]
     parent = property(_get_parent)
 
     environment = mpre.environment
@@ -160,7 +159,7 @@ class Base(object):
         if not getattr(instance, "_added", False):
             self.environment.add(instance)
         self.add(instance)
-        self.environment.Parents[instance] = self.instance_name
+        self.environment.parents[instance] = self.instance_name
         return instance
 
     def delete(self):
@@ -178,9 +177,9 @@ class Base(object):
         """ Usage: object.remove(instance)
         
             Removes an instance from self.objects. Modifies object.objects
-            and environment.References_To."""
+            and environment.references_to."""
         self.objects[instance.__class__.__name__].remove(instance)
-        self.environment.References_To[instance.instance_name].remove(self.instance_name)
+        self.environment.references_to[instance.instance_name].remove(self.instance_name)
         
     def add(self, instance):
         """ usage: object.add(instance)
@@ -197,11 +196,11 @@ class Base(object):
         siblings.append(instance)
         objects[instance_class] = siblings      
                     
-        instance_name = self.environment.Instance_Name[instance]
+        instance_name = self.environment.instance_name[instance]
         try:
-            self.environment.References_To[instance_name].add(self.instance_name)
+            self.environment.references_to[instance_name].add(self.instance_name)
         except KeyError:
-            self.environment.References_To[instance_name] = set((self.instance_name, ))      
+            self.environment.references_to[instance_name] = set((self.instance_name, ))      
             
     def alert(self, message="Unspecified alert message", format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -220,28 +219,8 @@ class Base(object):
         if self.verbosity >= level:            
             message = (self.instance_name + ": " + message.format(*format_args) if
                        format_args else self.instance_name + ": " + message)
-            return self.parallel_method("Alert_Handler", "_alert", message, level)            
-                        
-    def parallel_method(self, component_name, method_name, *args, **kwargs):
-        """ usage: base.parallel_method(component_name, method_name, 
-                                       *args, **kwargs) 
-                                       => component.method(*args, **kwargs)
-                  
-            Used to call the method of an existing external component.
-           
-            -component_name is a string of the instance_name of the component
-            -method_name is a string of the method to be called
-            -arguments and keyword arguments for the method may optionally
-             be supplied after the component_name and method_name
-             
-            The method is called immediately and the return value of the
-            method is made available as the return value of parallel_method.
-            
-            parallel_method allows for the use of an object without the
-            need for a reference to that object in the current scope."""
-        return getattr(self.environment.Component_Resolve[component_name], 
-                       method_name)(*args, **kwargs)
-                               
+            return components["Alert_Handler"]._alert(message, level)            
+                                                       
     def __getstate__(self):
         return self.__dict__.copy()
         
@@ -301,7 +280,7 @@ class Base(object):
         for key, value in attributes.items():
             modifier = attribute_modifier.get(key, '')
             if modifier == "reference":
-                attributes[key] = mpre.component[value]
+                attributes[key] = mpre.components[value]
             elif modifier == "save":
                 attributes[key] = Base.load(value) # may need to be pickle.dumps(value)
                 
@@ -363,47 +342,10 @@ class Reactor(Base):
     def reaction(self, component_name, message,
                  _response_to="None",
                  scope="local"):
-        """Usage: component.reaction(target_component, message, 
-                                    [scope='local'])
-        
-            calls a method on target_component. message is a string that
-            contains the method name followed by arguments separate by
-            spaces. 
-            
-            The scope keyword specifies the location of the expected
-            component, and the way the component will be reached.
-            
-            When scope is 'local', the component is the component that resides
-            under the specified name in environment.Component_Resolve. This
-            reaction happens immediately.
-            
-            The following is not implemented as of 3/1/2015:
-            When scope is 'global', the component is a parallel reactor
-            and the message will be written to memory. This reaction is
-            scheduled among worker processes.
-            
-            When scope is "network", the component is a remote reactor
-            on a remote machine and the message will be sent via a reaction 
-            with the service proxy, which sends the request via the network.
-            
-            If scope is 'network', then component_name is a tuple containing
-            the component name and a tuple containing the host address port"""
+        """Usage: current under revision. usage is discouraged because this will
+            likely be deprecated soon."""
         if scope is 'local':
-            self.parallel_method(component_name, "react", 
-                                 self.instance_name, message)
-       
-        """elif scope is 'global':
-            raise NotImplementedError
-            memory, pointers = self.environment.Component_Memory[component_name]
-                                                              
-            memory.write(packet)
-            pointers.append((self.instance_name, memory.tell()))
-            
-        elif scope is 'network':
-            raise NotImplementedError
-            component_name, host_info = component_name
-            self.parallel_method("Service_Proxy", "send_to", component_name, 
-                               host_info, self.instance_name, message)"""
+            components[component_name].react(self.instance_name, message)
                     
     def react(self, sender, packet):        
         command, value = packet.split(" ", 1)

@@ -14,7 +14,7 @@ class Reference(object):
         return self
     
     def __getattr__(self, attribute):
-        return getattr(environment.Component_Resolve[self.id], attribute)
+        return getattr(components[self.id], attribute)
 
     def dereference(self):
-        return environment.Component_Resolve[self.id]
+        return components[self.id]

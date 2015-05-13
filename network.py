@@ -23,10 +23,10 @@ import sys
 
 import mpre
 import mpre.vmlibrary as vmlibrary
-
 import mpre.base as base
 from utilities import Latency, Average
 Instruction = mpre.Instruction
+components = mpre.components
 
 NotWritableError = type("NotWritableError", (IOError, ), {"errno" : -1})
 ERROR_CODES = {-1 : "NotWritableError"}
@@ -121,7 +121,7 @@ class Socket(base.Wrapper):
                 
         if self.add_on_init:
             self.added_to_network = True
-            self.parallel_method("Network", "add", self)
+            components["Network"].add(self)
          
     def on_select(self):
         """ Used to customize behavior when a socket is readable according to select.select.
@@ -132,7 +132,7 @@ class Socket(base.Wrapper):
     def send(self, data):
         """ Sends data via the underlying _socketobject. The socket is first checked to
             ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        if self.parallel_method("Network", "is_writable", self):
+        if components["Network"].is_writable(self):
             return self.wrapped_object.send(data)
         else:
             raise NotWritableError
@@ -141,7 +141,7 @@ class Socket(base.Wrapper):
         """ Sends data via the underlying _socketobject to the specified address. The socket
             is first checked to ensure writability before sending. If the socket is not
             writable, NotWritableError is raised."""
-        if self.parallel_method("Network", "is_writable", self):
+        if components["Network"].is_writable(self):
             return self.wrapped_object.sendto(data, host_info)
         else:
             raise NotWritableError
@@ -179,7 +179,7 @@ class Socket(base.Wrapper):
                 raise
             if not self._connecting:
                 self._connecting = True
-                self.parallel_method("Network", "connect", self)            
+                components["Network"].connect(self)            
 
     def on_connect(self):
         """ Performs any logic required when a Tcp connection succeeds. This method should
@@ -193,7 +193,7 @@ class Socket(base.Wrapper):
     
     def close(self):
         if self.added_to_network:
-            self.parallel_method("Network", "remove", self)
+            components["Network"].remove(self)
         self.wrapped_object.close()
         self.closed = True
     

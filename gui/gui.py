@@ -11,7 +11,7 @@ import mpre.utilities as utilities
 import mpre.gui
 import mpre.gui.shapes
 Instruction = mpre.Instruction
-component = mpre.component
+components = mpre.components
 
 import sdl2
 import sdl2.ext
@@ -22,9 +22,9 @@ dark_color_scalar = .5
 light_color_scalar = 1.5
 
 def enable():
-    component["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")    
-    component["Metapython"].create("mpre.gui.gui.Organizer")
-    component["Metapython"].create("mpre.gui.gui.Drawing_Surface")
+    components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")    
+    components["Metapython"].create("mpre.gui.gui.Organizer")
+    components["Metapython"].create("mpre.gui.gui.Drawing_Surface")
     
 # provides the pack() functionality
 class Organizer(base.Base):
@@ -95,7 +95,7 @@ class Drawing_Surface(mpre.base.Base):
     def __init__(self, **kwargs):
         #self.renderers = {}
         super(Drawing_Surface, self).__init__(**kwargs)
-        sprite = component["SpriteFactory"].create_software_sprite(self.size, self.bpp, self.masks)
+        sprite = components["SpriteFactory"].create_software_sprite(self.size, self.bpp, self.masks)
         renderer = self.renderer = self.create("mpre.gui.sdllibrary.Renderer", window=sprite)
         self.sprite = sprite
         
@@ -114,7 +114,7 @@ class Drawing_Surface(mpre.base.Base):
         if textures:
             for texture in textures:
                 renderer.copy(texture)
-        return component["SpriteFactory"].from_surface(renderer.rendertarget)
+        return components["SpriteFactory"].from_surface(renderer.rendertarget)
                                 
  
 class Window_Object(mpre.gui.shapes.Coordinate_Linked):
@@ -142,7 +142,7 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
         super(Window_Object, self)._on_set(coordinate, value)    
     
     def _set_z(self, value):
-        component["SDL_Window"].draw(self)
+        components["SDL_Window"].draw(self)
         super(Window_Object, self)._set_z(value)
     z = property(mpre.gui.shapes.Coordinate_Linked._get_z, _set_z)
     
@@ -209,14 +209,14 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
 
     def draw(self, figure, *args, **kwargs):
         self._draw_operations.append((figure, args, kwargs))
-      #  self.texture = mpre.component["Drawing_Surface"].draw((figure, args, kwargs), 
+      #  self.texture = mpre.components["Drawing_Surface"].draw((figure, args, kwargs), 
       #                                                         background=self.texture)
                                                               
     def _draw_texture(self):
         textures = [child._draw_texture() for child in self.linked_shapes]
         if self.texture_invalid:
             self.draw_texture()       
-            self.texture = component["Drawing_Surface"].draw(self._draw_operations, textures)
+            self.texture = components["Drawing_Surface"].draw(self._draw_operations, textures)
             self._draw_operations = []
             self.texture_invalid = False            
         return self.texture
@@ -230,7 +230,7 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
     def pack(self, reset=False):
         if reset:
             self.x = self.y = 0
-        component["Organizer"](pack, self)
+        components["Organizer"](pack, self)
         #for item in self.linked_shapes:
          #   item.pack()
 

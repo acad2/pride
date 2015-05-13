@@ -3,7 +3,8 @@ import sys
 import string
 import heapq
 import ctypes
-from operator import itemgetter
+import itertools
+import operator
 
 import mpre
 import mpre.base as base
@@ -11,6 +12,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.utilities as utilities
 import mpre.gui
 Instruction = mpre.Instruction
+components = mpre.components
 
 import sdl2
 import sdl2.ext
@@ -54,13 +56,19 @@ class SDL_Window(SDL_Component):
         
         if self.showing:
             self.show()                              
-                
+    
+    def set_layer(self, instance, layer, old_layer):
+        try:
+            self.layers[layer].append(instance)
+        except KeyError:
+            self.layers[layer] = [instance]
+            
     def run(self):
         renderer = self.renderer
         renderer.clear()
         for instance_name in sorted(itertools.chain(self.objects.values()), 
                                     key=operator.attrgetter("z")):
-            instance = component[instance_name]            
+            instance = components[instance_name]            
             print "Drawing: ", instance_name
             render.copy(instance._draw_texture(), dstrect=instance.area)
         renderer.present()
@@ -186,7 +194,7 @@ class SDL_User_Input(vmlibrary.Process):
             if check(area, mouse_x, mouse_y):
                 possible.append((item, area, z))
         try:
-            instance, area, z = sorted(possible, key=itemgetter(2))[-1]
+            instance, area, z = sorted(possible, key=operator.itemgetter(2))[-1]
         except IndexError:
             self.alert("IndexError on mouse button down (No window objects under mouse)", level="v")
         else:
@@ -209,7 +217,7 @@ class SDL_User_Input(vmlibrary.Process):
         if self.active_item:
             x_change = motion.xrel
             y_change = motion.yrel
-            self.parallel_method(self.active_item, "mousemotion", x_change, y_change)
+            components[self.active_item].mousemotion(x_change, y_change)
             
         if self.popups:
             popups = self.popups
@@ -320,7 +328,7 @@ class Font_Manager(SDL_Component):
 if __name__ == "__main__":
     import mpre.gui.gui
     mpre.gui.gui.enable()
-    mpre.component["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+    mpre.components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
     source =\
     """def draw(shape, *args, **kwargs):
     Instruction("Homescreen", "draw", shape, *args, **kwargs).execute()
@@ -329,5 +337,5 @@ white = (255, 255, 255)
 green = (0, 115, 5)
 area100 = (100, 100, 200, 200)
     """
-    mpre.component["Metapython"].create("mpre._metapython.Shell", startup_definitions=source)
+    mpre.components["Metapython"].create("mpre._metapython.Shell", startup_definitions=source)
     #Instruction("Metapython", "create", "metapython.Shell", startup_definitions=source).execute()
