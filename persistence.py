@@ -3,8 +3,9 @@ import pickle
 import importlib
 import hmac
 
-import mpre.module_utilities as module_utilities
+import mpre.module_utilities
 from mpre.errors import CorruptPickleError
+create_module = mpre.module_utilities.create_module
 
 ASCIIKEY = ''.join(chr(x) for x in xrange(256))#os.urandom(512)
 
@@ -107,7 +108,7 @@ def load(attributes=None, _file=None):
                               incomplete_modules)
 
         for module_name, source, none in incomplete_modules:
-            module = module_utilities.create_module(module_name, source)
+            module = create_module(module_name, source)
             _required_modules.append((module_name, source, module))       
         
         self_class = getattr(module, class_name)

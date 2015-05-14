@@ -31,11 +31,11 @@ def ensure_file_exists(filepath, data=''):
         
         data is optional. if specified, the file will be truncated and 
         the data will written to the file"""
-    if not os.path.exists(filepath) or not os.path.isfile(filepath):
-        with open(filepath, mode) as _file:
-            if data:
-                _file.write(data)
-                _file.flush()
+    with open(filepath, 'a+') as _file:
+        if data:
+            file.truncate(0)
+            _file.write(data)
+            _file.flush()
                         
 @contextlib.contextmanager
 def file_contents_swapped(contents, filepath='', _file=None):

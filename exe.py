@@ -14,11 +14,13 @@ import mpre.importers
 class Loader(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib", "types", "hmac"),
-                     "embedded_objects" : ("mpre.persistence.authenticated_load", 
-                                           "mpre.persistence.load", 
-                                           "mpre.errors.CorruptPickleError",
-                                           "mpre.module_utilities.create_module"),
+    defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib",
+                                           "types", "hmac"),
+                     "variables" : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
+                     "definitions" : ("mpre.persistence.authenticated_load", 
+                                      "mpre.persistence.load", 
+                                      "mpre.errors.CorruptPickleError",
+                                      "mpre.module_utilities.create_module"),
                      "importer" : "mpre.package.Package_Importer"})
         
     def __init__(self, **kwargs):
@@ -29,9 +31,13 @@ class Loader(mpre.base.Base):
         source = ''
         for module_name in self.required_imports:
             source += "import " + module_name + "\n"
+        
+        for attribute, value in self.variables.items():
+            source += attribute + " = " + repr(utilities.resolve_string(value)) + "\n"
             
-        for _object in self.embedded_objects:
-            _object = utilities.resolve_string(_object)
+        for attribute_path in self.definitions:
+            _object = utilities.resolve_string(attribute_path)
+            print "Getting source for: ", attribute_path
             source += inspect.getsource(_object)
             if isinstance(_object, type):
                 source += "\n\n"
@@ -40,7 +46,7 @@ class Loader(mpre.base.Base):
                 
         source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
         source += "_importer = " + self.importer.split(".")[-1] + "\n"
-        source += "sys.meta_path = []"
+     #   source += "sys.meta_path = [_importer]"
         return source 
     
     
@@ -65,8 +71,8 @@ class Executable(mpre.base.Base):
         
         embed_package = "{}_package = r'''{}'''\n\n"
         add_to_path = "sys.meta_path.append(_importer(load({}_package)))\n\n"
-        for package in self.packages:
-            _file.write(embed_package.format(package.package_name, 'null'))#package.save()))
+      #  for package in self.packages:
+       #     _file.write(embed_package.format(package.package_name, 'null'))#package.save()))
        #     _file.write(add_to_path.format(package.package_name))
         _file.write("\n\n")
         _file.write(self.main_source)

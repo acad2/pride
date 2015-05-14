@@ -48,7 +48,7 @@ fs = components["File_System"]
 
 #_sqlite3 = _package.get_module("sqlite3")
  
-import mpre.gui.gui as gui
+#import mpre.gui.gui as gui
 #gui.enable()
 #create("mpre.gui.widgetlibrary.Homescreen")
 #r = components["Renderer"]
