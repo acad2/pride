@@ -3,17 +3,14 @@ import mpre.base
 
 class Shape(mpre.base.Base):
     
-    coordinates = ('x', 'y', 'w', 'h', 'z')
-    
+    coordinates = ('x', 'y', 'w', 'h', 'z')  
+    colors = ('r', 'g', 'b')
+      
     defaults = mpre.base.Base.defaults.copy()
-    defaults.update(dict(('_' + char, 0) for char in coordinates))
-    
-    def __init__(self, x=0, y=0, z=0, w=0, h=0, **kwargs):
-        self._x = x
-        self._y = y
-        self._z = z
-        self._w = w
-        self._h = h
+       
+    def __init__(self, **kwargs):
+        for coordinate in self.coordinates:
+            setattr(self, "_" + coordinate, 0)
         super(Shape, self).__init__(**kwargs)
   
     def _on_set(self, coordinate, value):
@@ -84,42 +81,45 @@ class Shape(mpre.base.Base):
     def _set_b(self, value):
         self._on_set('b', value)
     b = property(_get_b, _set_b)
-    
+       
     def _get_color(self):
         return (self.r, self.g, self.b)
     def _set_color(self, colors):
-        for index, color in enumerate(colors):
-            setattr(self, "_" + color, colors[index])
-    color = property(_get_color, _set_color)
-        
-        
+        self.r = colors[0]
+        self.g = colors[1]
+        self.b = colors[2]
+    color = property(_get_color, _set_color)  
+    
     
 class Bounded_Shape(Shape):
-        
-    colors = ('r', 'g', 'b')
+       
     defaults = Shape.defaults.copy()
-    defaults.update(dict((char + "_range", (0, 0)) for char in Shape.coordinates))
-    for color in colors:
-        defaults[color + "_range"] = (0, 255)
-        defaults["_" + color] = 0
     
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):       
+        max_width, max_height = mpre.gui.SCREEN_SIZE
+        self.w_range = (0, max_width)
+        self.h_range = (0, max_height)
+        for color in self.colors:
+            setattr(self, color + "_range", (0, 255))
         super(Bounded_Shape, self).__init__(**kwargs)
     
     def _on_set(self, coordinate, value):
-        lower_bound, upper_bound = getattr(self, coordinate + "_range", (value, value))
-        setter = super(Bounded_Shape, self)._on_set
-        setter(coordinate, max(lower_bound, min(value, upper_bound)))
-    
-    
+        lower_bound, upper_bound = getattr(self, 
+                                           coordinate + "_range", (value, value))
+        super(Bounded_Shape, self)._on_set(coordinate, 
+                                           max(lower_bound, min(value, upper_bound)))
+                                           
+                                
 class Coordinate_Linked(Bounded_Shape):
     
+    linked_coordinates = ('x', 'y')
+    
     def __init__(self, **kwargs):
-        self.linked_shapes = []
+        self.linked_shapes = []            
         super(Coordinate_Linked, self).__init__(**kwargs)
             
     def _on_set(self, coordinate, value):
-        if coordinate in self.coordinates: # dont modify colors of linked
+        if coordinate in self.linked_coordinates: 
             for shape in self.linked_shapes:
-                shape._on_set(coordinate, value)
+                setattr(shape, coordinate, value)
         super(Coordinate_Linked, self)._on_set(coordinate, value)

@@ -11,39 +11,7 @@ import mpre.module_utilities as module_utilities
 
 import mpre.base
 import mpre.fileio
-create_module = module_utilities.create_module
-
-class Package_Importer(object):
-    
-    def __init__(self, package):
-        self.package = package
-            
-    def find_module(self, module_path, path=None):
-        if module_path in self.package:
-            return self
-        return None
-        
-    def load_module(self, module_path):
-        try:
-            return self.package.get_module(module_path)
-        except ImportError:
-            print "Could not load module: ", module_path, module_path in self.package.sources
-            try:
-                return create_module(module_path, self.package.sources[module_path])
-            except:
-                print "Could not create module: ", module_path
-                raise
-            
-            
-class Module(types.ModuleType):
-    
-    def __new__(cls, module_name, source):
-        new_module = super(Module, cls).__new__(cls)        
-        module_code = compile(source, module_name, 'exec')
-        exec module_code in new_module.__dict__
-        new_module._source = source
-        return new_module
-        
+create_module = module_utilities.create_module 
         
 class Package(mpre.base.Base):
     

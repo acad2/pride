@@ -18,17 +18,7 @@ class Indicator(gui.Button):
         # draw a line from the top left corner of self to the midpoint of parent
         self.draw("line", (self.x, self.y, x + (w / 2), y + (h / 2)), color=self.outline_color)
         self.draw("text", parent.instance_name, area, color=(255, 255, 255))
-                       
-        
-class Title_Bar(gui.Container):
-        
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_modifier" : (lambda parent, child:
-                                        setattr(child, "y", child.y+child.size[1]))
-                    })
-    def draw_texture(self):
-        self.draw("text", self.parent.instance_name, (0, 0, 60, 12), color=self.color)
-        
+                               
         
 class Popup_Menu(gui.Container):
 
@@ -56,17 +46,13 @@ class Homescreen(gui.Window):
 class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_modifier" : (lambda parent, child:
-                                        setattr(child, "y", 
-                                               (parent.y+parent.size[1])-child.size[1]))
-                    })
-    # ^ aligns the bottom left corners of the parent and child object
-
+    defaults["pack_mode"] = "menu_bar"
+    
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
         self.create(Date_Time_Button)
-
-
+        
+        
 class Date_Time_Button(gui.Button):
 
     defaults = gui.Button.defaults.copy()
@@ -76,12 +62,12 @@ class Date_Time_Button(gui.Button):
         super(Date_Time_Button, self).__init__(**kwargs)        
         update = self.update_instruction = Instruction(self.instance_name, "update_time")        
         self.update_time()        
-        
+  
     def update_time(self):
         self.text = time.asctime()
         instance_name = self.instance_name
         
-        self.draw_texture()
+        self.texture_invalid = True
         self.update_instruction.execute(priority=1)        
 
 

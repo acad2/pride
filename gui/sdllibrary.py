@@ -5,6 +5,8 @@ import heapq
 import ctypes
 import itertools
 import operator
+import collections
+import pprint
 
 import mpre
 import mpre.base as base
@@ -31,19 +33,16 @@ class SDL_Window(SDL_Component):
     defaults = SDL_Component.defaults.copy()
     defaults.update({"size" : mpre.gui.SCREEN_SIZE,
                      "showing" : True,
+                     'z' : 0,
                      "name" : "Metapython",
-                     "color" : (0, 0, 0),
-                     "x" : 0,
-                     "y" : 0,
-                     "z" : 0,
                      "priority" : .04})
-        
+    
     def __init__(self, **kwargs):
-        self.draw_queue = []
         self.coordinate_tracker = {}
+        self.children = []
+        self.layers = collections.OrderedDict((x, []) for x in xrange(100))
         self.latency = utilities.Latency(name="framerate")
-        self.current_layer = 0
-        self.running = False
+        self.running = True
         super(SDL_Window, self).__init__(**kwargs)
 
         window = sdl2.ext.Window(self.name, size=self.size)
@@ -52,29 +51,56 @@ class SDL_Window(SDL_Component):
         renderer = self.renderer = self.create(Renderer, window=self)
         self.user_input = self.create(SDL_User_Input)
         self.run_instruction = Instruction(self.instance_name, "run")
-        self.run_instruction.execute()
-        
-        if self.showing:
-            self.show()                              
-    
-    def set_layer(self, instance, layer, old_layer):
-        try:
-            self.layers[layer].append(instance)
-        except KeyError:
-            self.layers[layer] = [instance]
-            
-    def run(self):
-        renderer = self.renderer
-        renderer.clear()
-        for instance_name in sorted(itertools.chain(self.objects.values()), 
-                                    key=operator.attrgetter("z")):
-            instance = components[instance_name]            
-            print "Drawing: ", instance_name
-            render.copy(instance._draw_texture(), dstrect=instance.area)
-        renderer.present()
-        #self.running = False
         self.run_instruction.execute(self.priority)
         
+        if self.showing:
+            self.show()  
+
+    def set_layer(self, instance, value):
+        try:
+            self.layers[instance.z].remove(instance)
+        except ValueError:
+            pass
+        self.layers[value].append(instance)    
+        
+    def create(self, *args, **kwargs):
+        instance = super(SDL_Window, self).create(*args, **kwargs)
+        if hasattr(instance, 'pack'):
+            instance.pack()
+        return instance
+    
+    def add(self, instance):
+        self.children.append(instance)
+        super(SDL_Window, self).add(instance)
+        
+    def remove(self, instance):
+        self.children.remove(instance)
+        super(SDL_Window, self).remove(instance)
+        
+    def run(self):
+        renderer = self.renderer
+        renderer.set_render_target(None)
+        renderer.clear()
+     #   raw_input("\nwaiting at loop entry...")
+      #  pprint.pprint(self.layers)
+        for layer, instances in self.layers.items():
+        #    self.alert("Drawing layer: {}", [layer], level=0)
+          #  components["Drawing_Surface"].draw(
+            for instance in instances:
+         #       print "Copying: ", instance
+                #if instance.texture_invalid:
+                #    print "Updating texture of: ", instance
+                texture = (instance._draw_texture() if instance.texture_invalid else 
+                           instance.texture)
+                renderer.copy(texture, dstrect=instance.area)
+            if not self.layers[layer + 1]:
+                break
+          #  self.layer_cache[layer] = renderer
+      #  raw_input("waiting before present...")       
+        renderer.present()
+        if self.running:
+            self.run_instruction.execute(self.priority)
+                            
     def get_mouse_state(self):
         mouse = sdl2.mouse
         x = ctypes.c_long(0)
@@ -102,10 +128,10 @@ class SDL_Window(SDL_Component):
 class SDL_User_Input(vmlibrary.Process):
 
     defaults = vmlibrary.Process.defaults.copy()
-    coordinate_tracker = {None : ((0, 0, 0, 0), 0)}
-
+    
     def __init__(self, **kwargs):
         self.active_item = None
+        self.coordinate_tracker = {}
         self.popups = []
         super(SDL_User_Input, self).__init__(**kwargs)
         self.uppercase_modifiers = (sdl2.KMOD_SHIFT, sdl2.KMOD_CAPS,
@@ -164,12 +190,12 @@ class SDL_User_Input(vmlibrary.Process):
 
     def run(self):
         events = sdl2.ext.get_events()
-        self.run_instruction.execute(self.priority)
+      #  self.run_instruction.execute(self.priority)
         for event in events:
             self.instruction_mapping[event.type](event)        
 
     def _update_coordinates(self, item, area, z):
-        SDL_User_Input.coordinate_tracker[item] = (area, z)
+        self.coordinate_tracker[item] = (area, z)
 
     def mouse_is_inside(self, area, mouse_pos_x, mouse_pos_y):
         x, y, w, h = area
@@ -199,13 +225,13 @@ class SDL_User_Input(vmlibrary.Process):
             self.alert("IndexError on mouse button down (No window objects under mouse)", level="v")
         else:
             self.active_item = instance
-            Instruction(instance, "press", mouse).execute()
+            instance.press(mouse)
 
     def handle_mousebuttonup(self, event):
         mouse = event.button
         area, z = self.coordinate_tracker[self.active_item]
         if self.mouse_is_inside(area, mouse.x, mouse.y):
-            Instruction(self.active_item, "release", mouse).execute()
+            self.active_item.release(mouse)
         self.active_item = None
 
     def handle_mousewheel(self, event):
@@ -217,7 +243,7 @@ class SDL_User_Input(vmlibrary.Process):
         if self.active_item:
             x_change = motion.xrel
             y_change = motion.yrel
-            components[self.active_item].mousemotion(x_change, y_change)
+            self.active_item.mousemotion(x_change, y_change)
             
         if self.popups:
             popups = self.popups
@@ -275,15 +301,19 @@ class Renderer(SDL_Component):
     defaults.update({"componenttypes" : tuple()})
 
     def __init__(self, **kwargs):
-        self.font_cache = {}
+        self.font_cache = {}        
         kwargs["wrapped_object"] = sdl2.ext.Renderer(kwargs["window"])
         super(Renderer, self).__init__(**kwargs)
         
         self.sprite_factory = self.create(Sprite_Factory, renderer=self)
         self.font_manager = self.create(Font_Manager)
-
+        self.instructions = dict((name, getattr(self, "draw_" + name)) for 
+                                  name in ("point", "line", "rect", "rect_width", "text"))
+        self.instructions["fill"] = self.fill
+        
     def draw_text(self, text, **kwargs):
-        self.copy(self.sprite_factory.from_text(text, fontmanager=self.font_manager, **kwargs))
+        self.copy(self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
+                                                **kwargs))
 
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")
@@ -296,7 +326,31 @@ class Renderer(SDL_Component):
             new_h = h - rect_size
             self.draw_rect((new_x, new_y, new_w, new_h), **kwargs)
 
+    def merge_layers(self, textures):
+        self.clear()
+        for texture in textures:
+            self.copy(texture)
+        return self.sprite_factory.from_surface(self.rendertarget.get_surface())
+    
+    def set_render_target(self, texture):
+        code = sdl2.SDL_SetRenderTarget(self.wrapped_object.renderer, texture)
+        if code < 0:
+            raise ValueError("error code {}. Could not set render target of renderer {} to texture {}".format(code, self.wrapped_object.renderer, texture))
+            
+    def draw(self, texture, draw_instructions, background=None):
+        self.set_render_target(texture)
+       # sdl2.SDL_SetRenderTarget(self.wrapped_object.renderer, texture)
+        self.clear()
+        if background:
+            self.copy(background)               
 
+        instructions = self.instructions
+        for shape, args, kwargs in draw_instructions:
+            self.alert("Performing: draw_{}({}{})", [shape, args, kwargs], level='v')
+            instructions[shape](*args, **kwargs)     
+        return texture
+        
+        
 class Sprite_Factory(SDL_Component):
 
     defaults = SDL_Component.defaults.copy()
@@ -312,7 +366,7 @@ class Font_Manager(SDL_Component):
     defaults.update({"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION, "resources",
                                                 "fonts", "Aero.ttf"),
                      "default_font_size" : 14,
-                     "default_color" : (15, 180, 35),
+                     "default_color" : (10, 150, 180),
                      "default_background" : (0, 0, 0)})
 
     def __init__(self, **kwargs):

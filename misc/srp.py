@@ -42,7 +42,7 @@ class Authentication_Service(mpre.base.Base):
         private_key = hash_function(salt, username, password)
         password_verifier = pow(g, private_key, N)
         _file = self.create("mpre.fileio.Encrypted_File", 
-                            self.instance_name + "\\" + username + ".pwv")
+                            self.instance_name + "\\" + username + ".pwf")
         self.user_file[username] = _file.instance_name
         _file.write(salt)
         _file.write(str(password_verifier))

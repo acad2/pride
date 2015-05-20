@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import inspect
+import binascii
 
 import mpre.base
 
@@ -37,15 +38,14 @@ class Loader(mpre.base.Base):
             
         for attribute_path in self.definitions:
             _object = utilities.resolve_string(attribute_path)
-            print "Getting source for: ", attribute_path
             source += inspect.getsource(_object)
             if isinstance(_object, type):
                 source += "\n\n"
             else:
                 source += "\n"
                 
-        source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
-        source += "_importer = " + self.importer.split(".")[-1] + "\n"
+        #source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
+        #source += "_importer = " + self.importer.split(".")[-1] + "\n"
      #   source += "sys.meta_path = [_importer]"
         return source 
     
@@ -67,15 +67,18 @@ class Executable(mpre.base.Base):
                 
     def build(self):
         _file = self.file        
-        _file.write(self.loader.source + "\n\n")      
+      #  _file.write(self.loader.source + "\n")      
         
         embed_package = "{}_package = r'''{}'''\n\n"
         add_to_path = "sys.meta_path.append(_importer(load({}_package)))\n\n"
-      #  for package in self.packages:
-       #     _file.write(embed_package.format(package.package_name, 'null'))#package.save()))
+      #  from mpre.persistence import authenticated_dump, ASCIIKEY
+        
+        for package in self.packages:
+            _file.write(embed_package.format(package.package_name, 
+                                             binascii.hexlify(package.save())))
        #     _file.write(add_to_path.format(package.package_name))
-        _file.write("\n\n")
-        _file.write(self.main_source)
+        #_file.write("\n\n")
+       # _file.write(self.main_source)
         _file.flush()
         print "Compiling..."
         mpre._compile.py_to_compiled([self.filename], 'exe')        

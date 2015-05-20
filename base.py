@@ -125,10 +125,8 @@ class Base(object):
         attributes.update(kwargs)
         if kwargs.get("parse_args"):
             attributes.update(self.parser.get_options(attributes))        
-        
         self.set_attributes(**attributes)        
-        self.environment.add(self)
-        self._added = True
+        self.environment.add(self)      
         
     def set_attributes(self, **kwargs):
         """ usage: object.set_attributes(attr1=value1, attr2=value2).
@@ -156,8 +154,6 @@ class Base(object):
             instance_type = utilities.resolve_string(instance_type)
         instance = instance_type(*args, **kwargs)
 
-        if not getattr(instance, "_added", False):
-            self.environment.add(instance)
         self.add(instance)
         self.environment.parents[instance] = self.instance_name
         return instance

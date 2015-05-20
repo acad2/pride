@@ -23,100 +23,57 @@ light_color_scalar = 1.5
 
 def enable():
     components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")    
-    components["Metapython"].create("mpre.gui.gui.Organizer")
-    components["Metapython"].create("mpre.gui.gui.Drawing_Surface")
-    
-# provides the pack() functionality
+    components["Metapython"].create("mpre.gui.gui.Organizer")        
+
 class Organizer(base.Base):
-
-    def __init__(self, *args, **kwargs):
-        super(Organizer, self).__init__(*args, **kwargs)
-
+    
     def pack(self, item):
+     #   self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode], level=0)
         pack = getattr(self, "pack_{0}".format(item.pack_mode))
-       # raise NotImplementedError
-        siblings = item.parent.objects[item.__class__.__name__]
-        pack(item, siblings.index(item), len(siblings))
-
-    def pack_horizontal(self, item, count, length):
         parent = item.parent
+        pack(parent, item, parent.children.index(item), len(parent.children))        
+      #  self.alert("Finished packing {}: {}", [item, item.area], level=0)
+        
+    def pack_horizontal(self, parent, item, count, length):
         item.z = parent.z + 1
-        item.size = (parent.size[0]/length, parent.size[1])
-        item.x = (item.size[0]*count)+parent.x
+        #print "Setting {}.area to: ({} / {} (={}), {}".format(item, parent.w, length, parent.w / length, parent.h)
+        item.size = (parent.w / length, parent.h)
+        item.x = (item.w * count) + parent.x
         item.y = parent.y
 
-    def pack_vertical(self, item, count, length):
-        parent = item.parent
+    def pack_vertical(self, parent, item, count, length):
         item.z = parent.z + 1
-        item.size = (parent.size[0], parent.size[1]/length)
-        item.y = (item.size[1]*count)+parent.y
+        item.size = (parent.w, parent.h / length)
+        item.y = (item.h * count) + parent.y
         item.x = parent.x
 
-    def pack_grid(self, item, count, length):
+    def pack_grid(self, parent, item, count, length):
         grid_size = sqrt(length)
 
         if grid_size != floor(grid_size):
-            grid_size = floor(grid_size)+1
-
+            grid_size = floor(grid_size) + 1
         position = (int(floor((count / grid_size))), (count % grid_size))
 
-        parent = item.parent
         item.z = parent.z + 1
-        item.size = int(parent.size[0]/grid_size), int(parent.size[1]/grid_size)
-        item.x = (item.size[0]*position[1])+parent.x
-        item.y = (item.size[1]*position[0])+parent.y
+        item.size = int(parent.w / grid_size), int(parent.h / grid_size)
+        item.x = (item.w * position[1]) + parent.x
+        item.y = (item.h * position[0]) + parent.y
 
-    def pack_text(self, item, count, length):
-        parent = item.parent
+    def pack_text(self, parent, item, count, length):
         item.z = parent.z + 1
-        item.x = parent.x + parent.x_width + parent.x_spacing
+        item.x = parent.x + parent.w + parent.x_spacing
         item.y = parent.y
 
-    def pack_menu_bar(self, item, count, length):
-        parent = item.parent
+    def pack_menu_bar(self, parent, item, count, length):
         item.z = parent.z + 1
         item.x = parent.x
         item.y = parent.y
-        item.size = (parent.size[0], int(parent.size[1]*.03))
+        item.size = (parent.w, int(parent.h * .03))
 
-    def pack_z(self, item, count, length):
-        parent = item.parent
+    def pack_z(self, parent, item, count, length):
         item.z = parent.z + 1
 
-        
-# provides an interface to draw primitives onto a surface
-class Drawing_Surface(mpre.base.Base):
-    
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"size" : mpre.gui.SCREEN_SIZE,
-                     "bpp" : 32,
-                     "masks" : None})
-                     
-    def __init__(self, **kwargs):
-        #self.renderers = {}
-        super(Drawing_Surface, self).__init__(**kwargs)
-        sprite = components["SpriteFactory"].create_software_sprite(self.size, self.bpp, self.masks)
-        renderer = self.renderer = self.create("mpre.gui.sdllibrary.Renderer", window=sprite)
-        self.sprite = sprite
-        
-        self.instructions = dict((name, getattr(renderer, "draw_" + name)) for 
-                                  name in ("point", "line", "rect", "rect_width", "text"))
-        self.instructions["fill"] = renderer.fill
-        
-    def draw(self, draw_instructions, textures=tuple()):
-        renderer = self.renderer
-        renderer.clear()
-        
-        instructions = self.instructions
-        for shape, args, kwargs in draw_instructions:
-            instructions[shape](*args, **kwargs)
-            
-        if textures:
-            for texture in textures:
-                renderer.copy(texture)
-        return components["SpriteFactory"].from_surface(renderer.rendertarget)
-                                
- 
+
 class Window_Object(mpre.gui.shapes.Coordinate_Linked):
 
     defaults = mpre.gui.shapes.Coordinate_Linked.defaults.copy()
@@ -134,15 +91,17 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
                      "pack_on_init" : True,
                      "texture_invalid" : True,
                      "texture" : None,
+                     "text" : '',
                      "sdl_window" : "SDL_Window"})
     Hotkeys = {}
     
     def _on_set(self, coordinate, value):
-        self.texture_invalid = True
-        super(Window_Object, self)._on_set(coordinate, value)    
-    
+        self.texture_invalid = True     
+        super(Window_Object, self)._on_set(coordinate, value)
+        components["SDL_User_Input"]._update_coordinates(self, self.area, self.z)
+                                                         
     def _set_z(self, value):
-        components["SDL_Window"].draw(self)
+        components["SDL_Window"].set_layer(self, value)
         super(Window_Object, self)._set_z(value)
     z = property(mpre.gui.shapes.Coordinate_Linked._get_z, _set_z)
     
@@ -156,34 +115,34 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
     rect = property(_get_rect)
 
     def __init__(self, **kwargs):
-        self._draw_operations = []
-        self.draw_queue = []   
-        super(Window_Object, self).__init__(**kwargs)
+        self.children, self.draw_queue, self._draw_operations = [], [], []
+        self.pack_count = {}
+        self._layer_index = 0
+        
         max_w, max_h = mpre.gui.SCREEN_SIZE
         self.x_range = (0, max_w)
         self.w_range = (0, max_w)
         self.y_range = (0, max_h)
         self.h_range = (0, max_h)
-        self.z_range = (0, mpre.gui.MAX_LAYER)    
-        kwargs.update(self.defaults)
-        self.x = kwargs['x']# if 'x' in kwargs else 0
-        self.y = kwargs['y']# if 'y' in kwargs else 0
-        self.z = kwargs['z']# if 'z' in kwargs else 0
-        if 'size' in kwargs:
-            self.size = kwargs['size']
-        else:
-            self.w = kwargs['w']# if 'w' in kwargs else 0
-            self.h = kwargs['h']# if 'h' in kwargs else 0
-            
+        self.z_range = (0, mpre.gui.MAX_LAYER)   
+        super(Window_Object, self).__init__(**kwargs)
+        
+        self.texture = (components["SpriteFactory"].create_texture_sprite(
+                        components["Renderer"].wrapped_object,
+                        self.size,
+                        access=sdl2.SDL_TEXTUREACCESS_TARGET))
+                        
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
         return super(Window_Object, self).create(*args, **kwargs)
                 
     def add(self, instance):
+        self.children.append(instance)
         self.linked_shapes.append(instance)
         super(Window_Object, self).add(instance)
 
     def remove(self, instance):
+        self.children.remove(instance)
         self.linked_shapes.remove(instance)
         super(Window_Object, self).remove(instance)
         
@@ -193,7 +152,8 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
     def release(self, mouse):
         self.held = False
         self.click(mouse)
-
+        self.alert("Releasing", level=0)
+        
     def click(self, mouse):
         if mouse.button == 3:
             self.create("mpre.gui.widgetlibrary.Right_Click_Menu", x=mouse.x, y=mouse.y)
@@ -208,48 +168,34 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
             self.y += y_change
 
     def draw(self, figure, *args, **kwargs):
+        # draw operations are enqueud and processed in batches
         self._draw_operations.append((figure, args, kwargs))
-      #  self.texture = mpre.components["Drawing_Surface"].draw((figure, args, kwargs), 
-      #                                                         background=self.texture)
-                                                              
+                                                               
     def _draw_texture(self):
-        textures = [child._draw_texture() for child in self.linked_shapes]
-        if self.texture_invalid:
-            self.draw_texture()       
-            self.texture = components["Drawing_Surface"].draw(self._draw_operations, textures)
-            self._draw_operations = []
-            self.texture_invalid = False            
-        return self.texture
+        self.draw_texture()  
+        components["Renderer"].draw(self.texture.texture, self._draw_operations)
+        self._draw_operations = []
+        self.texture_invalid = False            
+        return self.texture.texture
         
     def draw_texture(self):
-      #  print "filling area: ", self.area
-        self.draw("fill", self.area, color=(0, 0, 0))
-        self.draw("rect", (0, 0, 100, 150), color=(200, 15, 15))
-        self.draw("text", "yus", size=self.w, color=(255, 155, 155))
+        self.draw("fill", self.area, color=(25, 25, 45))
+        self.draw("rect", self.area, color=(155, 155, 255))
+        if self.text:
+            self.draw("text", self.text, bg_color=(25, 25, 45), color=(255, 155, 155))
         
     def pack(self, reset=False):
         if reset:
             self.x = self.y = 0
-        components["Organizer"](pack, self)
-        #for item in self.linked_shapes:
-         #   item.pack()
-
-    def remove(self, item):
-        self.linked_shapes.remove(item)
-        super(Window_Object, self).remove(item)
+        components["Organizer"].pack(self)
+        for item in self.children:
+            item.pack()
 
     
 class Window(Window_Object):
 
     defaults = Window_Object.defaults.copy()
-    defaults.update({"show_title_bar" : False,
-                     "pack_mode" : "z"})
-
-    def __init__(self, **kwargs):
-        super(Window, self).__init__(**kwargs)
-
-        #if getattr(self, "title_bar", None):
-        self.create("mpre.gui.widgetlibrary.Title_Bar")
+    defaults.update({"pack_mode" : "z"})
 
     
 class Container(Window_Object):
@@ -257,9 +203,6 @@ class Container(Window_Object):
     defaults = Window_Object.defaults.copy()
     defaults.update({"alpha" : 1,
                      "pack_mode" : "vertical"})
-
-    def __init__(self, **kwargs):
-        super(Container, self).__init__(**kwargs)
 
 
 class Button(Window_Object):
@@ -269,9 +212,6 @@ class Button(Window_Object):
                      "text" : "Button",
                      "text_color" : (255, 130, 25)})
 
-    def __init__(self, **kwargs):
-        super(Button, self).__init__(**kwargs)
-
     def draw_texture(self):
         super(Button, self).draw_texture()
-        self.draw("text", self.text, self.area, color=self.text_color)
+        self.draw("text", self.text, color=self.text_color)
