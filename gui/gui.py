@@ -25,6 +25,10 @@ def enable():
     components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")    
     components["Metapython"].create("mpre.gui.gui.Organizer")        
 
+def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
+    _create_texture = components["SpriteFactory"].create_texture_sprite
+    return _create_texture(components["Renderer"].wrapped_object, size, access=access)
+                      
 class Organizer(base.Base):
     
     def pack(self, item):
@@ -74,51 +78,47 @@ class Organizer(base.Base):
         item.z = parent.z + 1
 
 
-class Window_Object(mpre.gui.shapes.Coordinate_Linked):
+class Window_Object(mpre.gui.shapes.Bounded_Shape):
 
-    defaults = mpre.gui.shapes.Coordinate_Linked.defaults.copy()
+    defaults = mpre.gui.shapes.Bounded_Shape.defaults.copy()
     defaults.update({'x' : 0,
                      'y' : 0,
                      'z' : 0,
                      'size' : mpre.gui.SCREEN_SIZE,
-                     "background_color" : (0, 0, 0),
-                     "color" : (R, G, B),
+                     "background_color" : (25, 25, 45),
+                     "color" : (155, 155, 255),
+                     "text_color" : (145, 165, 235),
                      "outline_width" : 5,
                      "pack_mode" : '',
                      "held" : False,
-                     "pack_modifier" : '',
-                     "color_scalar" : .6,
-                     "pack_on_init" : True,
-                     "texture_invalid" : True,
                      "texture" : None,
                      "text" : '',
                      "sdl_window" : "SDL_Window"})
     Hotkeys = {}
     
     def _on_set(self, coordinate, value):
-        self.texture_invalid = True     
+        if coordinate in ("w", "h", 'r', 'g', 'b') and not self.texture_invalid:
+            self.texture_invalid = True   
+        components["SDL_Window"].invalidate_layer(self.z)
         super(Window_Object, self)._on_set(coordinate, value)
-        components["SDL_User_Input"]._update_coordinates(self, self.area, self.z)
-                                                         
+                                                                 
     def _set_z(self, value):
         components["SDL_Window"].set_layer(self, value)
         super(Window_Object, self)._set_z(value)
-    z = property(mpre.gui.shapes.Coordinate_Linked._get_z, _set_z)
+    z = property(mpre.gui.shapes.Bounded_Shape._get_z, _set_z)
     
-    def _get_outline_color(self):
-        return (int(self.color[0]*self.color_scalar), int(self.color[1]*\
-        self.color_scalar), int(self.color[2]*self.color_scalar))
-    outline_color = property(_get_outline_color)
-
-    def _get_rect(self):
-        return sdl2.SDL_Rect(*self.area)
-    rect = property(_get_rect)
-
+    def _get_text(self):
+        return self._text
+    def _set_text(self, value):
+        self._text = value
+        components["SDL_Window"].invalidate_layer(self.z)
+    text = property(_get_text, _set_text)
+    
     def __init__(self, **kwargs):
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
         self._layer_index = 0
-        
+        self.texture_invalid = True
         max_w, max_h = mpre.gui.SCREEN_SIZE
         self.x_range = (0, max_w)
         self.w_range = (0, max_w)
@@ -127,10 +127,10 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
         self.z_range = (0, mpre.gui.MAX_LAYER)   
         super(Window_Object, self).__init__(**kwargs)
         
-        self.texture = (components["SpriteFactory"].create_texture_sprite(
-                        components["Renderer"].wrapped_object,
-                        self.size,
-                        access=sdl2.SDL_TEXTUREACCESS_TARGET))
+        self.texture = create_texture(self.size)#(components["SpriteFactory"].create_texture_sprite(
+                    #    components["Renderer"].wrapped_object,
+                    #    self.size,
+                     #   access=sdl2.SDL_TEXTUREACCESS_TARGET))
                         
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
@@ -138,21 +138,24 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
                 
     def add(self, instance):
         self.children.append(instance)
-        self.linked_shapes.append(instance)
+    #    self.linked_shapes.append(instance)
         super(Window_Object, self).add(instance)
 
     def remove(self, instance):
         self.children.remove(instance)
-        self.linked_shapes.remove(instance)
+     #   self.linked_shapes.remove(instance)
         super(Window_Object, self).remove(instance)
         
     def press(self, mouse):
         self.held = True
+        for instance in self.children:
+            instance.held = True
+        self.alert("Pressing", level='v')
 
     def release(self, mouse):
         self.held = False
         self.click(mouse)
-        self.alert("Releasing", level=0)
+        self.alert("Releasing", level='v')
         
     def click(self, mouse):
         if mouse.button == 3:
@@ -164,11 +167,18 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
 
     def mousemotion(self, x_change, y_change):
         if self.held:
+            _x, _y = self.position            
             self.x += x_change
             self.y += y_change
-
+            x_difference = self.x - _x
+            y_difference = self.y - _y
+            for instance in self.children:
+                instance.held = True
+                instance.mousemotion(x_difference, y_difference)
+                instance.held = False
+                
     def draw(self, figure, *args, **kwargs):
-        # draw operations are enqueud and processed in batches
+        # draw operations are enqueud and processed in batches by Renderer.draw
         self._draw_operations.append((figure, args, kwargs))
                                                                
     def _draw_texture(self):
@@ -179,14 +189,12 @@ class Window_Object(mpre.gui.shapes.Coordinate_Linked):
         return self.texture.texture
         
     def draw_texture(self):
-        self.draw("fill", self.area, color=(25, 25, 45))
-        self.draw("rect", self.area, color=(155, 155, 255))
+        self.draw("fill", self.area, color=self.background_color)
+        self.draw("rect", self.area, color=self.color)
         if self.text:
-            self.draw("text", self.text, bg_color=(25, 25, 45), color=(255, 155, 155))
+            self.draw("text", self.text, bg_color=self.background_color, color=self.text_color)
         
-    def pack(self, reset=False):
-        if reset:
-            self.x = self.y = 0
+    def pack(self):
         components["Organizer"].pack(self)
         for item in self.children:
             item.pack()
@@ -210,8 +218,4 @@ class Button(Window_Object):
     defaults = Window_Object.defaults.copy()
     defaults.update({"shape" : "rect",
                      "text" : "Button",
-                     "text_color" : (255, 130, 25)})
-
-    def draw_texture(self):
-        super(Button, self).draw_texture()
-        self.draw("text", self.text, color=self.text_color)
+                     "pack_mode" : "vertical"})

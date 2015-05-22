@@ -8,16 +8,19 @@ Instruction = mpre.Instruction
 
 
 class Indicator(gui.Button):  
-        
+    
+    defaults = gui.Button.defaults.copy()
+    
     def draw_texture(self):
         super(Indicator, self).draw_texture()
         parent = self.parent
         x, y, w, h = parent.area
-
-        area = self.area = (self.x, self.y, len(self.parent.instance_name) * 7, 16)
+        self.w = len(self.parent.instance_name) * 7
+        self.h = 16
+     
         # draw a line from the top left corner of self to the midpoint of parent
-        self.draw("line", (self.x, self.y, x + (w / 2), y + (h / 2)), color=self.outline_color)
-        self.draw("text", parent.instance_name, area, color=(255, 255, 255))
+        self.draw("line", (self.x, self.y, x + (w / 2), y + (h / 2)), color=(255, 235, 155))
+        self.draw("text", parent.instance_name, color=(255, 255, 255))
                                
         
 class Popup_Menu(gui.Container):
@@ -50,6 +53,7 @@ class Task_Bar(gui.Container):
     
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
+        self.create(Indicator)
         self.create(Date_Time_Button)
         
         
