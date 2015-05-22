@@ -106,15 +106,12 @@ class Base(object):
                 "replace_reference_on_load" : True}
     
     def _get_parent_name(self):
-        return self.environment.parents[self]
+        return mpre.environment.parents[self]
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
-        environment = self.environment
-        return components[environment.parents[self]]
+        return components[mpre.environment.parents[self]]
     parent = property(_get_parent)
-
-    environment = mpre.environment
         
     def __init__(self, **kwargs):
        #  self = super(Base, cls).__new__(cls, *args, **kwargs)
@@ -126,7 +123,7 @@ class Base(object):
         if kwargs.get("parse_args"):
             attributes.update(self.parser.get_options(attributes))        
         self.set_attributes(**attributes)        
-        self.environment.add(self)      
+        mpre.environment.add(self)      
         
     def set_attributes(self, **kwargs):
         """ usage: object.set_attributes(attr1=value1, attr2=value2).
@@ -150,12 +147,15 @@ class Base(object):
             Use of the create method over direct instantiation can allow even 
             'regular' python objects to have a reference and be usable via parallel_methods 
             and Instruction objects."""
-        if not isinstance(instance_type, type):
-            instance_type = utilities.resolve_string(instance_type)
-        instance = instance_type(*args, **kwargs)
+        self_name = self.instance_name
+        mpre.environment.last_creator = self_name
+        try:
+            instance = instance_type(*args, **kwargs)
+        except TypeError:
+            instance = utilities.resolve_string(instance_type)(*args, **kwargs)        
 
         self.add(instance)
-        self.environment.parents[instance] = self.instance_name
+        mpre.environment.parents[instance] = self_name
         return instance
 
     def delete(self):
@@ -166,7 +166,7 @@ class Base(object):
             the object can be collected by the python garbage collector"""
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        self.environment.delete(self)
+        mpre.environment.delete(self)
         self._deleted = True
         
     def remove(self, instance):
@@ -175,7 +175,7 @@ class Base(object):
             Removes an instance from self.objects. Modifies object.objects
             and environment.references_to."""
         self.objects[instance.__class__.__name__].remove(instance)
-        self.environment.references_to[instance.instance_name].remove(self.instance_name)
+        mpre.environment.references_to[instance.instance_name].remove(self.instance_name)
         
     def add(self, instance):
         """ usage: object.add(instance)
@@ -192,11 +192,11 @@ class Base(object):
         siblings.append(instance)
         objects[instance_class] = siblings      
                     
-        instance_name = self.environment.instance_name[instance]
+        instance_name = mpre.environment.instance_name[instance]
         try:
-            self.environment.references_to[instance_name].add(self.instance_name)
+            mpre.environment.references_to[instance_name].add(self.instance_name)
         except KeyError:
-            self.environment.references_to[instance_name] = set((self.instance_name, ))      
+            mpre.environment.references_to[instance_name] = set((self.instance_name, ))      
             
     def alert(self, message="Unspecified alert message", format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -290,9 +290,9 @@ class Base(object):
             may be extended by subclasses to customize functionality for instances created
             by the load method."""                
         self.set_attributes(**attributes)
-        self.environment.add(self)
+        mpre.environment.add(self)
         if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
-            self.environment.replace(attributes["instance_name"], self)
+            mpre.environment.replace(attributes["instance_name"], self)
         self.alert("Loaded", level='v')
         
     def update(self):
@@ -312,10 +312,10 @@ class Base(object):
         attributes = new_self.defaults.copy()
         attributes["_required_modules"] = class_base._required_modules
         new_self.set_attributes(**attributes)
-        self.environment.add(new_self)        
+        mpre.environment.add(new_self)        
         
         attributes = self.__dict__
-        self.environment.replace(self, new_self)
+        mpre.environment.replace(self, new_self)
         new_self.set_attributes(**attributes)
         return new_self
                 

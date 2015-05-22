@@ -26,7 +26,7 @@ font_module = sdl2.sdlttf
 class SDL_Component(base.Proxy):
 
     defaults = base.Proxy.defaults.copy()
-
+    
 
 class SDL_Window(SDL_Component):
 
@@ -34,6 +34,7 @@ class SDL_Window(SDL_Component):
     defaults.update({"size" : mpre.gui.SCREEN_SIZE,
                      "showing" : True,
                      'z' : 0,
+                     "area" : (0, 0) + mpre.gui.SCREEN_SIZE,
                      "name" : "Metapython",
                      "priority" : .04})
     
@@ -112,13 +113,13 @@ class SDL_Window(SDL_Component):
                 user_input._update_coordinates(instance, instance.area, instance.z)
                 _texture = instance.texture.texture
                 if instance.texture_invalid:
-                    if instance.instance_name == "Task_Bar":
-                        instance.alert("Drawing texture", level=0)
+                 #   if instance.instance_name == "Task_Bar":
+                  #      instance.alert("Drawing texture", level=0)
                     instance.draw_texture()
                     renderer.set_render_target(_texture)
                     for operation, args, kwargs in instance._draw_operations:
-                        if instance.instance_name == "Task_Bar":
-                            print "Performing: ", operation
+                     #   if instance.instance_name == "Task_Bar":
+                      #      print "Performing: ", operation
                         draw_instructions[operation](*args, **kwargs)
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
@@ -227,12 +228,6 @@ class SDL_User_Input(vmlibrary.Process):
     def _update_coordinates(self, item, area, z):
         self.coordinate_tracker[item] = (area, z)
 
-    def mouse_is_inside(self, area, mouse_pos_x, mouse_pos_y):
-        x, y, w, h = area
-        if mouse_pos_x >= x and mouse_pos_x <= x + w:
-            if mouse_pos_y >= y and mouse_pos_y <= y + h:
-                return True
-
     def handle_unhandled_event(self, event):
         self.alert("{0} passed unhandled", [event.type], 'vv')
 
@@ -243,11 +238,11 @@ class SDL_User_Input(vmlibrary.Process):
         mouse = event.button
         mouse_x = mouse.x
         mouse_y = mouse.y
-        check = self.mouse_is_inside
+        
         possible = []
         for item, coords in self.coordinate_tracker.items():
             area, z = coords
-            if check(area, mouse_x, mouse_y):
+            if mpre.gui.point_in_area(area, (mouse_x, mouse_y)):
                 possible.append((item, area, z))
         try:
             instance, area, z = sorted(possible, key=operator.itemgetter(2))[-1]
@@ -260,7 +255,7 @@ class SDL_User_Input(vmlibrary.Process):
     def handle_mousebuttonup(self, event):
         mouse = event.button
         area, z = self.coordinate_tracker[self.active_item]
-        if self.mouse_is_inside(area, mouse.x, mouse.y):
+        if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
             self.active_item.release(mouse)
        
     def handle_mousewheel(self, event):
@@ -277,7 +272,7 @@ class SDL_User_Input(vmlibrary.Process):
         if self.popups:
             popups = self.popups
             for item in popups:
-                if not self.mouse_is_inside(item.area, motion.x, motion.y):
+                if not mpre.gui.point_in_area(item.area, (motion.x, motion.y)):
                     Instruction(item.parent.instance_name, "draw_texture").execute()
                     popups.remove(item)
                     item.delete()

@@ -28,15 +28,17 @@ def enable():
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
     _create_texture = components["SpriteFactory"].create_texture_sprite
     return _create_texture(components["Renderer"].wrapped_object, size, access=access)
-                      
+    
 class Organizer(base.Base):
     
     def pack(self, item):
      #   self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode], level=0)
         pack = getattr(self, "pack_{0}".format(item.pack_mode))
         parent = item.parent
+    #    if hasattr(parent, "children"):
+     #       print "index and container size: ", parent.children.index(item), len(parent.children)
         pack(parent, item, parent.children.index(item), len(parent.children))        
-      #  self.alert("Finished packing {}: {}", [item, item.area], level=0)
+     #   self.alert("Finished packing {}: {}", [item, item.area], level=0)
         
     def pack_horizontal(self, parent, item, count, length):
         item.z = parent.z + 1
@@ -158,6 +160,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.alert("Releasing", level='v')
         
     def click(self, mouse):
+        return
         if mouse.button == 3:
             self.create("mpre.gui.widgetlibrary.Right_Click_Menu", x=mouse.x, y=mouse.y)
             self.draw_texture()
@@ -170,6 +173,15 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
             _x, _y = self.position            
             self.x += x_change
             self.y += y_change
+            
+            if not mpre.gui.point_in_area(self.parent.area, self.position):
+                if self in self.parent.children:
+                    self.parent.remove(self)                    
+                    self.parent.pack({"position" : self.parent.position})                    
+            elif self not in self.parent.children:    
+                self.parent.add(self)
+                self.parent.pack({"position" : self.parent.position})
+                                
             x_difference = self.x - _x
             y_difference = self.y - _y
             for instance in self.children:
@@ -194,8 +206,11 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         if self.text:
             self.draw("text", self.text, bg_color=self.background_color, color=self.text_color)
         
-    def pack(self):
+    def pack(self, modifiers=None):
         components["Organizer"].pack(self)
+        if modifiers:
+            for attribute, value in modifiers.items():
+                setattr(self, attribute, value)
         for item in self.children:
             item.pack()
 

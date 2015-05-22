@@ -10,11 +10,17 @@ Instruction = mpre.Instruction
 class Indicator(gui.Button):  
     
     defaults = gui.Button.defaults.copy()
+    defaults["pack_mode"] = "horizontal"
     
+    def __init__(self, **kwargs):
+        super(Indicator, self).__init__(**kwargs)
+        self.w = len(mpre.environment.last_creator) * 7
+        self.h = 16
+        
     def draw_texture(self):
         super(Indicator, self).draw_texture()
         parent = self.parent
-        x, y, w, h = parent.area
+        x, y, w, h = parent.area   
         self.w = len(self.parent.instance_name) * 7
         self.h = 16
      
@@ -23,20 +29,6 @@ class Indicator(gui.Button):
         self.draw("text", parent.instance_name, color=(255, 255, 255))
                                
         
-class Popup_Menu(gui.Container):
-
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"popup" : True,
-                     "pack_modifier" : (lambda parent, child: 
-                                        setattr(child, "position", 
-                                               (SCREEN_SIZE[0]/2, SCREEN_SIZE[1]/2)))
-                    })
-
-    def __init__(self, **kwargs):
-        super(Popup_Menu, self).__init__(**kwargs)
-        Instruction("User_Input", "add_popup", self).execute()
-
-
 class Homescreen(gui.Window):
 
     defaults = gui.Window.defaults.copy()
@@ -72,31 +64,4 @@ class Date_Time_Button(gui.Button):
         instance_name = self.instance_name
         
         self.texture_invalid = True
-        self.update_instruction.execute(priority=1)        
-
-
-class Right_Click_Menu(Popup_Menu):
-
-    defaults = Popup_Menu.defaults.copy()
-    defaults.update({"pack_mode": "z",
-                     "size" : (200, 150)})
-
-
-    def __init__(self, **kwargs):
-        super(Right_Click_Menu, self).__init__(**kwargs)
-        types = ("builtins", "private", "methods", "properties", "attributes")
-        attributes = dict((name, []) for name in types)
-        target = self.target
-        for attribute in dir(target):
-            if "__" in attribute:
-                attributes["builtins"].append(attribute)
-            elif "_" == attribute[0]:
-                attributes["private"].append(attribute)
-            elif callable(getattr(target, attribute)):
-                attributes["methods"].append(attribute)
-            elif type(getattr(target, attribute)) is property:
-                attributes["properties"].append(attribute)
-            else:
-                attributes["attributes"].append(attribute)
-        for name, collection in attributes.items():
-            self.create(Right_Click_Button, text=name, attributes=collection, size=(50, 50))
+        self.update_instruction.execute(priority=1)   

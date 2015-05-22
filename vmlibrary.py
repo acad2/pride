@@ -101,7 +101,7 @@ class Processor(Process):
         super(Processor, self).__init__(**kwargs)
         
     def run(self):
-        instructions = self.environment.Instructions
+        instructions = mpre.environment.Instructions
         components = mpre.components
         processor_name = self.instance_name
         
