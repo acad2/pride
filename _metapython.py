@@ -35,9 +35,9 @@ class Shell(network2.Authenticated_Client):
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
-        self.user_is_entering_definition = False            
-        self.reaction("User_Input", "add_listener " + self.instance_name)
-        
+        self.user_is_entering_definition = False     
+        components["User_Input"].add_listener(self.instance_name)
+                
     def login_result(self, sender, packet):
         response = super(Shell, self).login_result(sender, packet)
         if self.logged_in:
@@ -56,7 +56,7 @@ class Shell(network2.Authenticated_Client):
         else:
             self.execute_source(self.startup_definitions) 
                     
-    def handle_keystrokes(self, sender, keyboard_input):
+    def handle_keystrokes(self, keyboard_input):
         if not self.logged_in:
             return
         
@@ -90,15 +90,10 @@ class Shell(network2.Authenticated_Client):
         sys.stdout.write(self.prompt)
         
     def execute_source(self, source):
-        self.reaction(self.target, self.exec_code_request(self.target, source))
-        
-    def exec_code_request(self, sender, source):
         if not self.logged_in:
-            response = self.login(sender, source)
+            self.login()
         else:
-            self.respond_with("result")
-            response = "exec_code " + source
-        return response     
+            components[self.target].exec_code(self.instance_name, source)
         
     def result(self, sender, packet):
         if packet:
@@ -121,6 +116,7 @@ class Interpreter_Service(network2.Authenticated_Service):
         response = super(Interpreter_Service, self).login(sender, packet)
         if "success" in response.lower():
             username = self.logged_in[sender]
+            print "Sender logged in as: ", sender, username
             self.user_namespaces[username] = {"__name__" : "__main__",
                                               "__doc__" : '',
                                               "Instruction" : Instruction}
@@ -184,7 +180,7 @@ class Interpreter_Service(network2.Authenticated_Service):
             result = self.exec_code(sender[username], source)
             
         
-class Alert_Handler(base.Reactor):
+class Alert_Handler(base.Base):
     """ Provides the backend for the base.alert method. This component is automatically
         created by the Metapython component. The print_level and log_level attributes act
         as global filters for alerts; print_level and log_level may be specified as 
@@ -195,7 +191,7 @@ class Alert_Handler(base.Reactor):
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
                 
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"log_level" : 0,
                      "print_level" : 0,
                      "log_name" : "Alerts.log",
@@ -216,7 +212,7 @@ class Alert_Handler(base.Reactor):
             self.log.write(severity + message + "\n")
        
             
-class Metapython(base.Reactor):
+class Metapython(base.Base):
     """ Provides an entry point to the environment. Instantiating this component and
         calling the start_machine method starts the execution of the Processor component.
         It is encouraged to use the Metapython component when create-ing new top level
@@ -224,7 +220,7 @@ class Metapython(base.Reactor):
         of the Metapython component. Doing so allows for simple portability of an environment
         in regards to saving/loading the state of an entire application."""
 
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
                      "startup_components" : ("mpre.fileio.File_System", "vmlibrary.Processor",

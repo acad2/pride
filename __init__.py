@@ -174,7 +174,12 @@ class Instruction(object):
         
             Submits an instruction to the processing queue. The instruction
             will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed."""
+            can be provided if the return value of the instruction is needed.
+            
+            host_info may be specified to designate a remote machine that
+            the Instruction should be executed on. If host_info is supplied
+            and callback is None, the results of the instruction will be 
+            supplied to RPC_Handler.alert."""
         if host_info:
             components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
                                                    self.component_name, self.method, 

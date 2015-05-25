@@ -72,11 +72,11 @@ class Error_Handler(object):
         
     def eagain(self, sock, error):
         sock.alert("{}", [error], level=0)
-    
+        
     def bad_target(self, sock, error):
         sock.alert("Invalid target {}; {} {}", 
                    [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level='v')
+                   level=0)
         sock.delete()
         
     def unhandled(self, sock, error):
@@ -172,16 +172,20 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
+        if address[0] == "0.0.0.0":
+            address = ("localhost", address[1])
         self.target = address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
-            if error.errno != 10035:
-                raise
             if not self._connecting:
                 self._connecting = True
-                components["Network"].connecting.add(self)            
-
+                components["Network"].connecting.add(self)
+            else:
+                raise
+        else:
+            self.on_connect()
+            
     def on_connect(self):
         """ Performs any logic required when a Tcp connection succeeds. This method should
             be overloaded by subclasses."""
@@ -449,6 +453,7 @@ class Network(vmlibrary.Process):
                 still_connecting = connecting.difference(writable)
                 for connection in still_connecting:
                     connection.connection_attempts -= 1
+                    #connection.alert("Attempts remaining: {}".format(connection.connection_attempts), level=0)
                     if not connection.connection_attempts:
                         try:
                             connection.connect(connection.target)

@@ -14,9 +14,9 @@ components = mpre.components
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
        
-class Audio_Reactor(base.Reactor):
+class Audio_Reactor(base.Base):
     
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"source_name" : ''})
     
     def __init__(self, **kwargs):
@@ -190,9 +190,9 @@ class Config_Utility(vmlibrary.Process):
             Instruction(self.instance_name, "delete").execute()
 
             
-class Audio_Manager(base.Reactor):
+class Audio_Manager(base.Base):
 
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"config_file_name" : '',
                      "use_defaults" : True,
                      "configure" : False})

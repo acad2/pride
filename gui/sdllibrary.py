@@ -113,13 +113,13 @@ class SDL_Window(SDL_Component):
                 user_input._update_coordinates(instance, instance.area, instance.z)
                 _texture = instance.texture.texture
                 if instance.texture_invalid:
-                 #   if instance.instance_name == "Task_Bar":
-                  #      instance.alert("Drawing texture", level=0)
+                    if instance.instance_name == "Task_Bar":
+                        instance.alert("Drawing texture", level=0)
                     instance.draw_texture()
                     renderer.set_render_target(_texture)
                     for operation, args, kwargs in instance._draw_operations:
-                     #   if instance.instance_name == "Task_Bar":
-                      #      print "Performing: ", operation
+                        if instance.instance_name == "Task_Bar":
+                            print "Performing: ", operation
                         draw_instructions[operation](*args, **kwargs)
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
@@ -293,15 +293,13 @@ class SDL_User_Input(vmlibrary.Process):
                     except KeyError:
                         pass
                     raise NotImplementedError
-                    #stdin.write(key)
+                    
                 else:
                     hotkey = self.get_hotkey(self.active_item, (key, modifier))
                     if hotkey:
                         hotkey.execute()
             else:
                 raise NotImplementedError
-                #stdin.write(key)
-            #sys.stdout.write(key)
 
     def get_hotkey(self, instance, key_press):
         try:

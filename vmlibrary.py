@@ -27,7 +27,7 @@ import mpre.utilities as utilities
 Instruction = mpre.Instruction
 timer_function = utilities.timer_function
 
-class Process(base.Reactor):
+class Process(base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
         Create a logical process. Note that while Process objects
@@ -51,7 +51,7 @@ class Process(base.Reactor):
         explicitly timed Instruction. Examples of real processes include 
         polling for user input or socket buffers at various intervals."""
 
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"auto_start" : True,
                      "priority" : .04,
                      "running" : True,

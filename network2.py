@@ -172,9 +172,9 @@ class Network_Service(network.Udp_Socket):
         return response
         
         
-class Authenticated_Service(base.Reactor):
+class Authenticated_Service(base.Base):
     
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"database_filename" : ":memory:",
                      "login_message" : 'login success',
                      "hash_rounds" : 100000})
@@ -257,9 +257,8 @@ class Authenticated_Service(base.Reactor):
                 attempts = invalid_attempts.get(sender, 0)
                 invalid_attempts.setdefault(sender, attempts + 1)
                 response = "failed 0"            
+        components[sender].login_result(self.instance_name, response)        
                 
-        return "login_result " + response
-        
     def register(self, sender, packet):
         database = self.database#sqlite3.connect(self.database_filename)
         cursor = database.cursor()
@@ -287,8 +286,8 @@ class Authenticated_Service(base.Reactor):
             self.alert("{} {} {} registered successfully",
                        [username, email, sender],
                        level='vv')
-        return "register_results " + response
-
+        components[sender].register_results(response)
+        
     def logout(self, sender, packet):
         if sender in self.logged_in:            
             del self.logged_in[sender]
@@ -306,9 +305,9 @@ class Authenticated_Service(base.Reactor):
             del self.logged_in[user]
 
       
-class Authenticated_Client(base.Reactor):
+class Authenticated_Client(base.Base):
             
-    defaults = base.Reactor.defaults.copy()
+    defaults = base.Base.defaults.copy()
     defaults.update({"email" : '',
                      "username" : "",
                      "password" : '',
@@ -320,19 +319,19 @@ class Authenticated_Client(base.Reactor):
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)        
         self.logged_in = False
-        self.reaction(self.target, self.login())        
+        self.login()      
         
-    def login(self, sender=None, packet=None):
-        self.alert("Attempting to login", level=0)#'v')
+    def login(self):
+        self.alert("Attempting to login", level=0)
         
         username = (self.username if self.username else 
                     raw_input("Please provide username for {}: ".format(
                                self.instance_name)))
                     
         password = self.password if self.password else getpass.getpass()
-        return "login {} {}".format(username, password)
-                
-    def register(self, sender, packet):        
+        return components[self.target].login(self.instance_name, username + " " + password)
+                        
+    def register(self, packet):        
         self.alert(packet, 
                   (self.email, self.username, "*" * len(self.password)),
                    level=0)
@@ -349,12 +348,12 @@ class Authenticated_Client(base.Reactor):
                     raw_input("Please register a username: "))
                     
         password = self.password if self.password else getpass.getpass()        
-        
-        return "register {} {} {}".format(email, username, password)
-    
-    def register_results(self, sender, packet):
+        components[self.target].register(self.instance_name, 
+                                         ' '.join((email, username, password)))
+                                         
+    def register_results(self, packet):
         if "success" in packet:
-            return self.login(sender, packet)
+            return self.login()
         else:
             self.alert("Error encountered when attempting to register with {}\n{}",
                        [sender, packet])
@@ -365,7 +364,7 @@ class Authenticated_Client(base.Reactor):
             self.logged_in = True
         elif "register" in packet:
             flag, message = packet.split(" ", 1)
-            return self.register(sender, message)
+            self.register(message)
         else:
             failed, code = packet.split(" ", 1)
             error = self.login_errors[code]
@@ -374,20 +373,31 @@ class Authenticated_Client(base.Reactor):
                     
 class RPC_Handler(mpre.base.Base):
     
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"servers" : ("mpre.network2.RPC_Server", )})
+    
+    def __init__(self, **kwargs):
+        super(RPC_Handler, self).__init__(**kwargs)
+        for server_type in self.servers:
+            self.create(server_type)
+            
     def make_request(self, callback, host_info, transport_protocol, component_name, 
                      method, args, kwargs):
         arguments = pickle.dumps((args, kwargs))
         request = ' '.join((component_name, method, arguments))
-        self.create(RPC_Requester, transport_protocol, target=host_info, request=request, 
+        self.create(RPC_Requester, target=host_info, request=request, 
                     callback=callback if callback is not None else self.alert)
  
 
 class RPC_Server(network.Server):
     
+    defaults = network.Server.defaults.copy()
+    defaults["port"] = 40022
+    
     def __init__(self, **kwargs):
         super(RPC_Server, self).__init__(**kwargs)
         self.Tcp_Socket_type = RPC_Request
-            
+        
     
 class RPC_Requester(network.Tcp_Client):
     

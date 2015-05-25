@@ -259,7 +259,7 @@ class Encrypted_File(File):
         return key
     
     def write(self, data):
-       # print "Writing data to encrypted file"#, data
+        return self.wrapped_object.write(data)
         original_position = position = self.tell()
         slices = self.slices                    
         block_size = self.block_size
@@ -307,6 +307,7 @@ class Encrypted_File(File):
                         self.data_pointers else {})     
                 
     def read(self, size=-1):
+        return self.wrapped_object.read(size)
       #  print "Reading encrypted data"
         original_position = position = self.tell()
         block_size = self.block_size
@@ -336,10 +337,10 @@ class Encrypted_File(File):
         
     def encrypt(self, data):
       #  data = binascii.hexlify(data)
-        return utilities.convert(data, self.asciikey, self.key)
+        return data #utilities.convert(data, self.asciikey, self.key)
         
     def decrypt(self, data):
-        return utilities.convert(data, self.key, self.asciikey)
+        return data #utilities.convert(data, self.key, self.asciikey)
        # return binascii.unhexlify(data)
         
 
@@ -481,7 +482,7 @@ class File_System(base.Base):
                             directory[key] = {}
                             directory = directory[key]   
                         else:
-                            raise IOError("Directory '{}' does not exist".format(key))           
+                            raise IOError("Directory '{}' does not exist".format(key))     
                     else:
                         pprint.pprint(file_system)
                         raise IOError("File '{}' does not exist".format(current_directory))

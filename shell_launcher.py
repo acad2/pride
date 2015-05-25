@@ -50,15 +50,8 @@ fs = components["File_System"]
  
 import mpre.gui.gui as gui
 gui.enable()
-components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
-#components["SDL_Window"].running = False
-#result = []
-#for item in ("Homescreen", "Task_Bar", "Date_Time_Button"):
- #   result.append(components[item]._draw_texture())
-#merged = components["Drawing_Surface"].merge_layers(result)
-    
-#r = components["Renderer"]
-#h = components["Homescreen"]
+h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+t = components["Task_Bar"]
 
 #import mpre.package
 #p = mpre.package.Package(mpre)

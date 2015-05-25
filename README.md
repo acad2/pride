@@ -12,14 +12,14 @@ A: A pacakge that provides various features aimed at increasing productivity and
     
 Q: What features does it offer?
 
-A: Most features are aimed at productivity and improving the minimum standard for quality:
+A: Most features are aimed at productivity and general purpose application capabilities:
    1. Automatically generated documentation (docstrings and websites)
    2. Automatically generated command line argument parser
    3. Automatic verbosity handling and logging 
    4. Simple concurrency mechanisms which seldom require locking primitives of any kind 
    5. The ability to be updated from source at runtime without pausing or stopping execution
    6. The ability to take snapshots of application state, and restore snapshots at any point
-   7. An interactive interpreter usable from your application (or remotely if enabled)
+   7. An interactive interpreter usable from your application or remotely if enabled
    
 Q: Where can I learn more?
 

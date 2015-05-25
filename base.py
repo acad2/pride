@@ -320,62 +320,14 @@ class Base(object):
         return new_self
                 
         
-class Reactor(Base):
-    """ usage: Reactor(attribute=value, ...) => reactor_instance
-    
-        Adds reaction framework on top of a Base object. 
-        Reactions are event triggered chains of method calls
-        
-        This class is a recent addition and is far from final in it's api and
-        implementation. """
-    
-    defaults = Base.defaults.copy()
-    
-    def __init__(self, **kwargs):
-        super(Reactor, self).__init__(**kwargs)        
-        self._respond_with = []
-                
-    def reaction(self, component_name, message,
-                 _response_to="None",
-                 scope="local"):
-        """Usage: current under revision. usage is discouraged because this will
-            likely be deprecated soon."""
-        if scope is 'local':
-            components[component_name].react(self.instance_name, message)
-                    
-    def react(self, sender, packet):        
-        command, value = packet.split(" ", 1)
-                                   
-        self.alert("handling response {} {}",
-                   [command, value[:32]],
-                   level='vv')
-        
-        method = (getattr(self, self._respond_with.pop(0)) if 
-                  self._respond_with else getattr(self, command))                  
-        response = method(sender, value)
-        
-        if response:                                
-            self.alert("Sending response; To: {}, Response: {}",
-                       [sender, response],
-                       level='vvv')
-            self.reaction(sender, response)                    
-    
-    def respond_with(self, method_name):
-        """ usage: self.respond_with(method)
-        
-            Specifies what method should be called when the component
-            specified by a reaction returns its response."""
-        self._respond_with.append(method_name)
-        
-
-class Wrapper(Reactor):
-    """ A wrapper to allow 'regular' python objects to function as a Reactor.
+class Wrapper(Base):
+    """ A wrapper to allow 'regular' python objects to function as a Base.
         The attributes on this wrapper will overload the attributes
         of the wrapped object. Any attributes not present on the wrapper object
         will be gotten from the underlying wrapped object. This class
         acts primarily as a wrapper and secondly as the wrapped object."""
      
-    defaults = Reactor.defaults.copy()
+    defaults = Base.defaults.copy()
     defaults.update({"wrapped_object" : None})
     wrapped_object_name = ''
     
@@ -391,11 +343,11 @@ class Wrapper(Reactor):
         self.wrapped_object = _object
         
         
-class Proxy(Reactor):
+class Proxy(Base):
     """ usage: Proxy(wrapped_object=my_object) => proxied_object
     
        Produces an instance that will act as the object it wraps and as an
-       Reactor object simultaneously. The object will act primarily as
+       Base object simultaneously. The object will act primarily as
        the wrapped object and secondly as a proxy object. This means that       
        Proxy attributes are get/set on the underlying wrapped object first,
        and if that object does not have the attribute or it cannot be
