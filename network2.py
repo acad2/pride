@@ -392,8 +392,9 @@ class RPC_Handler(mpre.base.Base):
 class RPC_Server(network.Server):
     
     defaults = network.Server.defaults.copy()
-    defaults["port"] = 40022
-    
+    defaults.update({"port" : 40022,
+                     "interface" : "localhost"})
+        
     def __init__(self, **kwargs):
         super(RPC_Server, self).__init__(**kwargs)
         self.Tcp_Socket_type = RPC_Request
@@ -415,6 +416,7 @@ class RPC_Request(network.Tcp_Socket):
     def recv(self, network_packet_size):
         request = super(RPC_Request, self).recv(network_packet_size)
         component_name, method, argument_bytestream = request.split(" ", 2)
+        RPC_Request.requester_adress = self.getpeername()
         try:
             args, kwargs = pickle.loads(argument_bytestream)
             call = getattr(components[component_name], method)
@@ -424,6 +426,7 @@ class RPC_Request(network.Tcp_Socket):
             response = pickle.dumps(traceback.format_exc())
         self.send(response)
         self.delete()
+        RPC_Request.requester_address = None
         
         
 if __name__ == "__main__":

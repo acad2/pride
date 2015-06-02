@@ -50,13 +50,13 @@ def is_affirmative(input):
 class User_Input(vmlibrary.Process):
     """ Captures user input and provides the input to any listening component"""
     defaults = vmlibrary.Process.defaults.copy()
-    
+    defaults.update({"thread_started" : False,
+                     "input" : ''})
+                     
     def __init__(self, **kwargs):
         self.listeners = []
-        super(User_Input, self).__init__(**kwargs)        
-        self.thread_started = False
-        self.thread = Thread(target=self.read_input)
-        self.input = ''
+        super(User_Input, self).__init__(**kwargs)       
+        self.thread = Thread(target=self.read_input)        
         
     def run(self):
         if not self.thread_started and input_waiting():

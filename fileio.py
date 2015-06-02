@@ -199,7 +199,7 @@ class File(base.Wrapper):
         backup_tell = self.tell()
         self.seek(0)
         attributes["_file_data"] = self.read()
-        print self.filename, "storing {} bytes of data".format(attributes["_file_data"])
+       # print self.filename, "storing {} bytes of data".format(attributes["_file_data"])
         self.seek(backup_tell)
         del attributes["wrapped_object"]
         del attributes["file"]
@@ -215,7 +215,8 @@ class File(base.Wrapper):
         self.truncate(0)
         self.write(self.__dict__.pop("_file_data"))        
         self.flush()
-        components['File_System'].add(self)
+        if "File_System" in components:
+            components['File_System'].add(self)
             
     def delete(self):
         super(File, self).delete()

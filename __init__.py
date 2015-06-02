@@ -184,6 +184,9 @@ class Instruction(object):
             components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
                                                    self.component_name, self.method, 
                                                    self.args, self.kwargs)
+    #    elif not priority:
+    #        return (getattr(components[self.component_name], self.method)
+    #                (*self.args, **self.kwargs))
         else:
             execute_at = self.execute_at = timer_function() + priority
             heapq.heappush(environment.Instructions, 

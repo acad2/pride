@@ -10,7 +10,7 @@ import contextlib
 import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
-import mpre.network2 as network2
+import mpre.authentication as authentication
 import mpre.utilities as utilities
 import mpre.fileio as fileio
 components = mpre.components
@@ -21,16 +21,15 @@ if "__file__" not in globals():
 else:
     FILEPATH = os.path.split(__file__)[0]
     
-class Shell(network2.Authenticated_Client):
+class Shell(authentication.Authenticated_Client):
     """ Provides the client side of the interpreter session. Handles keystrokes and
         sends them to the Interpreter_Service to be executed."""
-    defaults = network2.Authenticated_Client.defaults.copy()
-    defaults.update({"email" : '',
-                     "username" : "root",
+    defaults = authentication.Authenticated_Client.defaults.copy()
+    defaults.update({"username" : "root",
                      "password" : "password",
                      "prompt" : ">>> ",
                      "startup_definitions" : '',
-                     "target" : "Interpreter_Service"})
+                     "target_service" : "Interpreter_Service"})
                      
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
@@ -38,14 +37,13 @@ class Shell(network2.Authenticated_Client):
         self.user_is_entering_definition = False     
         components["User_Input"].add_listener(self.instance_name)
                 
-    def login_result(self, sender, packet):
-        response = super(Shell, self).login_result(sender, packet)
-        if self.logged_in:
-            sys.stdout.write(">>> ")
-            if self.startup_definitions:
-                self.handle_startup_definitions()                
-        return response
-     
+    def on_login(self, message):
+        self.alert("{}", [message], level=0)
+        sys.stdout.write(">>> ")
+        self.logged_in = True
+        if self.startup_definitions:
+            self.handle_startup_definitions()                
+             
     def handle_startup_definitions(self):
         try:
             compile(self.startup_definitions, "Shell", 'exec')
@@ -93,17 +91,19 @@ class Shell(network2.Authenticated_Client):
         if not self.logged_in:
             self.login()
         else:
-            components[self.target].exec_code(self.instance_name, source)
-        
-    def result(self, sender, packet):
+            Instruction(self.target_service, "exec_code",
+                        source).execute(host_info=self.host_info,
+                                        callback=self.result)
+                        
+    def result(self, packet):
         if packet:
             sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet)
         
         
-class Interpreter_Service(network2.Authenticated_Service):
+class Interpreter_Service(authentication.Authenticated_Service):
     """ Provides the server side of the interactive interpreter. Receives keystrokes
         and attempts to compile + exec them."""
-    defaults = network2.Authenticated_Service.defaults.copy()
+    defaults = authentication.Authenticated_Service.defaults.copy()
     defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
     
     def __init__(self, **kwargs):
@@ -112,26 +112,22 @@ class Interpreter_Service(network2.Authenticated_Service):
         super(Interpreter_Service, self).__init__(**kwargs)
         self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+')
                 
-    def login(self, sender, packet):
-        response = super(Interpreter_Service, self).login(sender, packet)
-        if "success" in response.lower():
-            username = self.logged_in[sender]
-            print "Sender logged in as: ", sender, username
+    def login(self, username, credentials):
+        response = super(Interpreter_Service, self).login(username, credentials)
+        if username in self.user_secret:
+            sender = components["RPC_Server"].requester_address
             self.user_namespaces[username] = {"__name__" : "__main__",
                                               "__doc__" : '',
                                               "Instruction" : Instruction}
             self.user_session[username] = ''
-            string_info = (username, sender,
-                           sys.version, sys.platform, self.copyright)
-        
-            greeting = "Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info)
-            response = "login_result success " + greeting
-
+            string_info = (username, sender, sys.version, sys.platform, self.copyright)        
+            response = ("Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info), response[1])
         return response
         
-    @network2.Authenticated
-    def exec_code(self, sender, packet):
+    @authentication.Authenticated
+    def exec_code(self, packet):
         log = self.log        
+        sender = components["RPC_Server"].requester_address
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
                   packet)                  
@@ -225,7 +221,8 @@ class Metapython(base.Base):
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
                      "startup_components" : ("mpre.fileio.File_System", "vmlibrary.Processor",
                                              "mpre._metapython.Alert_Handler", "mpre.userinput.User_Input",
-                                             "mpre.network.Network", "mpre.network2.RPC_Handler"),
+                                             "mpre.network.Network", "mpre.rpc.RPC_Handler",
+                                             "mpre.srp.Secure_Remote_Password"),
                      "interface" : "0.0.0.0",
                      "port" : 40022,
                      "prompt" : ">>> ",

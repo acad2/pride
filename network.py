@@ -312,12 +312,14 @@ class Tcp_Client(Tcp_Socket):
     defaults.update({"ip" : "",
                      "port" : 80,
                      "target" : tuple(),
-                     "auto_connect" : True})
-    del defaults["interface"]
-
+                     "auto_connect" : True,
+                     "as_port" : 0})
+    
     def __init__(self, **kwargs):
-        super(Tcp_Client, self).__init__(**kwargs)
-        
+        super(Tcp_Client, self).__init__(**kwargs)        
+        if self.as_port:
+            self.bind((self.interface, self.as_port))
+            
         if not self.target:
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)

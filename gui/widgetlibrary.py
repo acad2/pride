@@ -46,15 +46,15 @@ class Task_Bar(gui.Container):
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
         self.create(Indicator)
-        self.create(Text_Field)
+   #     self.create(Text_Field)
         self.create(Date_Time_Button)
         
 
-class Text_Field(gui.Button):
+"""class Text_Field(gui.Button):
             
     def click(self, mouse):
         if mouse.button == 0:
-            self.
+            self."""
     
     
 class Date_Time_Button(gui.Button):
