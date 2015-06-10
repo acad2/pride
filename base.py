@@ -106,11 +106,11 @@ class Base(object):
                 "replace_reference_on_load" : True}
     
     def _get_parent_name(self):
-        return mpre.environment.parents[self]
+        return mpre.environment.parents.get(self, mpre.environment.last_creator)
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
-        return components[mpre.environment.parents[self]]
+        return components[self.parent_name]
     parent = property(_get_parent)
         
     def __init__(self, **kwargs):
@@ -120,8 +120,8 @@ class Base(object):
         attributes = self.defaults.copy()
         attributes["objects"] = {}
         attributes.update(kwargs)
-        if kwargs.get("parse_args"):
-            attributes.update(self.parser.get_options(attributes))        
+        if attributes.get("parse_args"):
+            attributes.update(self.parser.get_options(attributes))       
         self.set_attributes(**attributes)        
         mpre.environment.add(self)      
         
@@ -154,6 +154,8 @@ class Base(object):
         except TypeError:
             instance = utilities.resolve_string(instance_type)(*args, **kwargs)        
 
+        if instance not in mpre.environment.instance_name:
+            mpre.environment.add(instance)
         self.add(instance)
         mpre.environment.parents[instance] = self_name
         return instance
@@ -238,6 +240,7 @@ class Base(object):
             
             If the calling object is one that has been created via the update method, the 
             returned state will include any required source code to rebuild the object."""
+        print self, "Saving"
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
@@ -246,8 +249,11 @@ class Base(object):
             saved_objects[component_type] = new_values = []
             for value in sorted(values, key=operator.attrgetter("instance_name")):
                 if hasattr(value, "save"):     
-                    found_objects.append(value)
-                    new_values.append(value.save())
+                    saved_object = value.save()
+                    if saved_object:
+                        found_objects.append(value)
+                        print self, "Saving child: ", value
+                        new_values.append(saved_object)
                     
         attribute_type = attributes["_attribute_type"] = {}
         for key, value in attributes.items():
@@ -255,8 +261,11 @@ class Base(object):
                 attributes[key] = value.instance_name
                 attribute_type[key] = "reference"
             elif hasattr(value, "save"):
-                attributes[key] = value.save()
-                attribute_type[key] = "saved"      
+                print "Calling", value, value.save
+                saved_object = value.save()
+                if saved_objec:
+                    attributes[key] = saved_object
+                    attribute_type[key] = "saved"      
         return persistence.save(self, attributes, _file)    
             
     @staticmethod

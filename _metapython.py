@@ -165,7 +165,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
                 sys.stdout.close()
                 sys.stdout = backup                
         log.flush()        
-        return "result " + result
+        return result
         
     def __setstate__(self, state):     
         super(Interpreter_Service, self).__setstate__(state)
@@ -181,7 +181,7 @@ class Alert_Handler(base.Base):
         created by the Metapython component. The print_level and log_level attributes act
         as global filters for alerts; print_level and log_level may be specified as 
         command line arguments upon program startup to globally control verbosity/logging."""
-    level_map = {0 : "",
+    level_map = {0 : "message ",
                 'v' : "notification ",
                 'vv' : "verbose notification ",
                 'vvv' : "very verbose notification ",
@@ -191,10 +191,12 @@ class Alert_Handler(base.Base):
     defaults.update({"log_level" : 0,
                      "print_level" : 0,
                      "log_name" : "Alerts.log",
-                     "log_is_persistent" : False})
-             
+                     "log_is_persistent" : False,
+                     "parse_args" : True})
+    
+    parser_ignore = ("parse_args", "log_is_persistent")
+    
     def __init__(self, **kwargs):
-        kwargs["parse_args"] = True
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
         
@@ -257,7 +259,7 @@ class Metapython(base.Base):
         with open(self.command, 'r') as module_file:
             source = module_file.read()
         Instruction(self.instance_name, "exec_command", source).execute()
-     
+             
     def exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')

@@ -28,15 +28,24 @@ class RPC_Server(mpre.network.Server):
     
     defaults = mpre.network.Server.defaults.copy()
     defaults.update({"port" : 40022,
-                     "interface" : "localhost"})
+                     "interface" : "localhost",
+                     "Tcp_Socket_type" : "mpre.rpc.RPC_Request"})
         
     def __init__(self, **kwargs):
         super(RPC_Server, self).__init__(**kwargs)
-        self.Tcp_Socket_type = RPC_Request
+                
+    def __getstate__(self):
+        attributes = super(RPC_Server, self).__getstate__()
+        attributes["objects"] = {}
         
-    
+        return attributes
+
+        
 class RPC_Requester(mpre.network.Tcp_Client):
     
+    def save(self):
+        return None
+        
     def on_connect(self):
         self.send(self.request)
         
@@ -48,6 +57,9 @@ class RPC_Requester(mpre.network.Tcp_Client):
  
 class RPC_Request(mpre.network.Tcp_Socket):
     
+    def save(self):
+        return None
+        
     def recv(self, network_packet_size):
         request = super(RPC_Request, self).recv(network_packet_size)
         component_name, method, argument_bytestream = request.split(" ", 2)

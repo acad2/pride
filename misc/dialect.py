@@ -172,5 +172,7 @@ if __name__ == "__main__":
         source = _file.read()
         _file.seek(0)
         translated = translator.translate(_file)    
+        with open("translated_network.py", 'w') as new_file:
+            new_file.write(translated)
     print translated
 

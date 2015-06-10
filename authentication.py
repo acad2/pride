@@ -106,7 +106,9 @@ class Authenticated_Client(mpre.base.Base):
                 self.on_login(message)
             else:
                 self.alert("Login failed", level=0)           
-            
+        self.client.delete()
+        del self.client
+        
     def on_login(self, message):
         self.logged_in = True
         self.alert("Login success {}", [message], level=0)

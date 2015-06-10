@@ -84,7 +84,7 @@ class Secure_Remote_Password(mpre.base.Base):
         cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
                        "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
         database.commit()
-        
+    
     def register(self, username, password):
         database = sqlite3.connect(self.database_filename)
         database.text_factory = str
@@ -158,12 +158,21 @@ class Secure_Remote_Password(mpre.base.Base):
         K = H( pow(A * pow(v, u, N), b, N))      
         
         if M != H( H(N) ^ H(g), H(username), salt, A, B, K):
-            self.alert("Proof of K mismatch from user '{}'", [username], level=0)
+            self.alert("Proof of K mismatch from user '{}'", [username], level='v')
             yield None, "Invalid username or password"
         else:
             yield K, H(A, M, K)
           
-    
+    def __getstate__(self):
+        attributes = super(Secure_Remote_Password).__getstate__()
+        del attributes["login_threads"]
+        return attributes
+        
+    def on_load(self, attributes):
+        super(Secure_Remote_Password, self).on_load(self, attributes)
+        self.login_threads = {}
+        
+        
 class SRP_Client(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()

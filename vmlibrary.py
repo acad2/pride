@@ -95,10 +95,15 @@ class Processor(Process):
         
     defaults = Process.defaults.copy()
     defaults.update({"running" : True,
-                     "auto_start" : False})
+                     "auto_start" : False,
+                     "execution_verbosity" : 'vvv',
+                     "parse_args" : True})
 
+    parser_ignore = ("running", "auto_start")
+    
     def __init__(self, **kwargs):
         super(Processor, self).__init__(**kwargs)
+        assert self.parse_args
         
     def run(self):
         instructions = mpre.environment.Instructions
@@ -116,7 +121,7 @@ class Processor(Process):
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
                                   level=0)
-        execution_alert = partial(alert, "executing instruction {}", level="vvv")
+        execution_alert = partial(alert, "executing instruction {}")
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
@@ -133,8 +138,8 @@ class Processor(Process):
             time_until = max(0, (execute_at - timer_function()))
             if time_until:
                 sleep(time_until)
-            
-            execution_alert([str(instruction)])           
+
+            execution_alert([str(instruction)], level=self.execution_verbosity)           
             try:
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:

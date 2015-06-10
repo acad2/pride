@@ -191,7 +191,22 @@ class Instruction(object):
             execute_at = self.execute_at = timer_function() + priority
             heapq.heappush(environment.Instructions, 
                           (execute_at, self, callback))
-            
+    
+    """def __getstate__(self):
+        print "Pickling Instruction", self.component_name, self.method
+        attributes = self.__dict__
+        callback = attributes.get("callback")
+        if callback:
+            attributes["callback"] = (callback.im_self, callback.__name__)
+        print "Pickled instruction", attributes
+        return attributes
+        
+    def __setstate__(self, state):
+        callback = state["callback"]
+        if callback is not None:
+            state["callback"] = getattr(components[callback[0]], callback[1])
+        super(Instruction, self).__setstate__(state)"""
+        
     def __str__(self):
         args = str(getattr(self, "args", ''))
         kwargs = str(getattr(self, "kwargs", ''))

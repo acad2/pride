@@ -4,7 +4,7 @@ import mpre.base
 class Shape(mpre.base.Base):
     
     coordinates = ('x', 'y', 'w', 'h', 'z')  
-    colors = ('r', 'g', 'b')
+    colors = ('r', 'g', 'b', 'a')
       
     defaults = mpre.base.Base.defaults.copy()
        
@@ -81,13 +81,23 @@ class Shape(mpre.base.Base):
     def _set_b(self, value):
         self._on_set('b', value)
     b = property(_get_b, _set_b)
-       
+     
+    def _get_a(self):
+        return self._a
+    def _set_a(self, value):
+        self._on_set('a', value)
+    a = property(_get_a, _set_a)
+    
     def _get_color(self):
-        return (self.r, self.g, self.b)
+        return (self.r, self.g, self.b, self.a)
     def _set_color(self, colors):
         self.r = colors[0]
         self.g = colors[1]
         self.b = colors[2]
+        try:
+            self.a = colors[3]
+        except IndexError:
+            self.a = 0
     color = property(_get_color, _set_color)  
     
     

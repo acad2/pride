@@ -52,6 +52,8 @@ import mpre.gui.gui as gui
 gui.enable()
 h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 t = components["Task_Bar"]
+d = components["Date_Time_Button"]
+i = components["Indicator"]
 
 #import mpre.package
 #p = mpre.package.Package(mpre)

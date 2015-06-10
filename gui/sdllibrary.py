@@ -7,6 +7,7 @@ import itertools
 import operator
 import collections
 import pprint
+import StringIO
 
 import mpre
 import mpre.base as base
@@ -33,36 +34,53 @@ class SDL_Window(SDL_Component):
     defaults = SDL_Component.defaults.copy()
     defaults.update({"size" : mpre.gui.SCREEN_SIZE,
                      "showing" : True,
+                     'position' : (0, 0),
+                     'x' : 0,
+                     'y' : 0,
                      'z' : 0,
+                     'w' : mpre.gui.SCREEN_SIZE[0],
+                     'h' : mpre.gui.SCREEN_SIZE[1],
                      "area" : (0, 0) + mpre.gui.SCREEN_SIZE,
                      "name" : "Metapython",
+                     "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
+                     "window_flags" : None, #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE 
                      "priority" : .04})
     
+    def _get_size(self):
+        return (self.w, self.h)
+    def _set_size(self, size):
+        self.w, self.h = size
+    size = property(_get_size, _set_size)
+    
     def __init__(self, **kwargs):
-        self.coordinate_tracker = {}
         self.max_layer = 1
-        self.children, self.invalid_layers = [], [0]
+        self.invalid_layer = 0
+        self.children = []
         self.layers = collections.OrderedDict((x, (None, [])) for x in xrange(100))
         self.latency = utilities.Latency(name="framerate")
         self.running = False
+        
         super(SDL_Window, self).__init__(**kwargs)
-        window = sdl2.ext.Window(self.name, size=self.size)
+        window = sdl2.ext.Window(self.name, size=self.size, flags=self.window_flags)
         self.wraps(window)
-
-        renderer = self.renderer = self.create(Renderer, window=self)
+        self.create(Window_Handler)
+        
+        self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
         self.run_instruction = Instruction(self.instance_name, "run")
-        self.run_instruction.execute(self.priority)
-        
+               
         if self.showing:
             self.show()  
 
     def invalidate_layer(self, layer):
-        self.invalid_layers.append(layer)
+        self.invalid_layer = min(self.invalid_layer, layer)
         if not self.running:
             self.running = True
-            self.run_instruction.execute()
-            
+            self.run_instruction.execute(priority=self.priority)
+    
+    def remove_from_layer(self, instance, z):
+        self.layers[z][1].remove(instance)
+        
     def set_layer(self, instance, value):
         z = instance.z
         try:
@@ -94,7 +112,8 @@ class SDL_Window(SDL_Component):
                 
         user_input = components["SDL_User_Input"]
         layers = self.layers
-        for layer_number in xrange(min(self.invalid_layers), self.max_layer + 1):
+      #  print
+        for layer_number in xrange(self.invalid_layer, self.max_layer + 1):
         #    self.alert("Drawing layer: {}", [layer_number], level=0)
             layer_info = layers[layer_number]
             
@@ -106,27 +125,31 @@ class SDL_Window(SDL_Component):
             renderer.clear()
             
             if layer_number:
-                previous_texture = layers[layer_number - 1][0]
-                renderer.copy(previous_texture)   
+                # copy previous layer as background
+                renderer.copy(layers[layer_number - 1][0])
         
             for instance in layer_components:
-                user_input._update_coordinates(instance, instance.area, instance.z)
-                _texture = instance.texture.texture
+                area = instance.area
+                user_input._update_coordinates(instance, area, instance.z)
+                                
                 if instance.texture_invalid:
-                    if instance.instance_name == "Task_Bar":
-                        instance.alert("Drawing texture", level=0)
+                 #   self.alert("Redrawing {} texture", [instance], level=0)
+                    _texture = instance.texture.texture
                     instance.draw_texture()
                     renderer.set_render_target(_texture)
                     for operation, args, kwargs in instance._draw_operations:
-                        if instance.instance_name == "Task_Bar":
-                            print "Performing: ", operation
+                        if operation == "text":
+                            if not args[0]:
+                                continue
                         draw_instructions[operation](*args, **kwargs)
+                        
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-                renderer.copy(_texture, dstrect=instance.area)
+                #self.alert("Copying {} texture to {}", [instance, area], level=0)
+                renderer.copy(instance.texture.texture, srcrect=area, dstrect=area)
                 
-        self.invalid_layers = [self.max_layer]
+        self.invalid_layer = self.max_layer
         renderer.set_render_target(None)
         renderer.copy(layer_texture)
         renderer.present()
@@ -138,32 +161,102 @@ class SDL_Window(SDL_Component):
         y = ctypes.c_long(0)
         buttons = mouse.SDL_GetMouseState(ctypes.byref(x), ctypes.byref(y))
 
-        states = ("BUTTON_LMASK", "BUTTON_RMASK", "BUTTON_MMASK", "BUTTON_X1MASK", "BUTTON_X2MASK")
-        states = (getattr(mouse, "SDL_{0}".format(state)) for state in states)
-        button_state = map(lambda mask: buttons & mask, states)
-        return ((x, y), button_state)
+        states = (mouse.SDL_BUTTON_LMASK, mouse.SDL_BUTTON_RMASK, mouse.SDL_BUTTON_MMASK,
+                  mouse.SDL_BUTTON_X1MASK, mouse.SDL_BUTTON_X2MASK)
+        return ((x.value, y.value), map(lambda mask: buttons & mask, states))
 
     def get_mouse_position(self):
         return self.get_mouse_state()[0]
 
-
-"""class Font(SDL_Component):
-
-    defaults = defaults.Font
-
+    def pack(self, modifiers=None):
+        for child in self.children:
+            if hasattr(child, 'pack'):
+                child.pack()
+            
+            
+class Window_Handler(mpre.base.Base):
+    
     def __init__(self, **kwargs):
-        super(Font, self).__init__(**kwargs)
-        self.wraps(font_module.TTF_OpenFont(self.font_path, self.size))"""
-
-
+        super(Window_Handler, self).__init__(**kwargs)
+        self.event_switch = {sdl2.SDL_WINDOWEVENT_SHOWN : self.handle_shown,
+                             sdl2.SDL_WINDOWEVENT_HIDDEN : self.handle_hidden,
+                             sdl2.SDL_WINDOWEVENT_EXPOSED : self.handle_exposed,
+                             sdl2.SDL_WINDOWEVENT_MOVED :  self.handle_moved,
+                             sdl2.SDL_WINDOWEVENT_RESIZED : self.handle_resized,
+                             sdl2.SDL_WINDOWEVENT_SIZE_CHANGED : self.handle_size_changed,
+                             sdl2.SDL_WINDOWEVENT_MINIMIZED : self.handle_minimized,
+                             sdl2.SDL_WINDOWEVENT_MAXIMIZED : self.handle_maximized,
+                             sdl2.SDL_WINDOWEVENT_RESTORED : self.handle_restored,
+                             sdl2.SDL_WINDOWEVENT_ENTER : self.handle_enter,
+                             sdl2.SDL_WINDOWEVENT_LEAVE : self.handle_leave,
+                             sdl2.SDL_WINDOWEVENT_FOCUS_GAINED : self.handle_focus_gained,
+                             sdl2.SDL_WINDOWEVENT_FOCUS_LOST : self.handle_focus_lost,
+                             sdl2.SDL_WINDOWEVENT_CLOSE : self.handle_close}
+    
+    def handle_event(self, event):
+     #   self.alert("Handling {}", [self.event_switch[event.window.event]], level=0)
+        self.event_switch[event.window.event](event)
+        
+    def handle_shown(self, event):
+        pass
+        
+    def handle_hidden(self, event):
+        pass
+        
+    def handle_exposed(self, event):
+        pass
+        
+    def handle_moved(self, event):
+        pass
+        
+    def handle_resized(self, event):
+        pass
+        
+    def handle_size_changed(self, event):
+        pass
+        
+    def handle_minimized(self, event):
+        pass
+        
+    def handle_maximized(self, event):
+        pass
+        
+    def handle_restored(self, event):
+        pass
+        
+    def handle_enter(self, event):
+        pass
+        
+    def handle_leave(self, event):
+        try:
+            components["SDL_User_Input"].active_item.held = False
+        except AttributeError:
+            pass
+        
+    def handle_focus_gained(self, event):
+        components["SDL_User_Input"]._ignore_click = True
+        
+    def handle_focus_lost(self, event):
+        try:
+            components["SDL_User_Input"].active_item.held = False
+        except AttributeError:
+            pass
+                
+    def handle_close(self, event):
+        pass
+        
+        
 class SDL_User_Input(vmlibrary.Process):
 
     defaults = vmlibrary.Process.defaults.copy()
+    defaults.update({"event_verbosity" : 0,
+                     "_ignore_click" : False,
+                     "active_item" : None})
     
     def __init__(self, **kwargs):
-        self.active_item = None
         self.coordinate_tracker = {}
         self.popups = []
+        self._stringio = StringIO.StringIO()
         super(SDL_User_Input, self).__init__(**kwargs)
         self.uppercase_modifiers = (sdl2.KMOD_SHIFT, sdl2.KMOD_CAPS,
                                     sdl2.KMOD_LSHIFT, sdl2.KMOD_RSHIFT)
@@ -217,65 +310,61 @@ class SDL_User_Input(vmlibrary.Process):
                               sdl2.SDL_TEXTEDITING : unhandled,
                               sdl2.SDL_TEXTINPUT : unhandled,
                               sdl2.SDL_USEREVENT : unhandled,
-                              sdl2.SDL_WINDOWEVENT : unhandled}
+                              sdl2.SDL_WINDOWEVENT : components["Window_Handler"].handle_event}
 
+        #self.constant_names = dict((key, [value for value in sdl2.__dict__.values if value == key][0]) for key in self.instruction_mapping)
     def run(self):
         events = sdl2.ext.get_events()
-      #  self.run_instruction.execute(self.priority)
         for event in events:
+         #   self.alert("Processing: {} {}", [event.type, self.instruction_mapping[event.type].__name__], level=self.event_verbosity)
             self.instruction_mapping[event.type](event)        
 
     def _update_coordinates(self, item, area, z):
         self.coordinate_tracker[item] = (area, z)
 
-    def handle_unhandled_event(self, event):
+    def handle_unhandled_event(self, event):        
         self.alert("{0} passed unhandled", [event.type], 'vv')
 
     def handle_quit(self, event):
         sys.exit()
-
-    def handle_mousebuttondown(self, event):
+        
+    def handle_mousebuttondown(self, event):        
         mouse = event.button
         mouse_x = mouse.x
         mouse_y = mouse.y
-        
-        possible = []
+    #    self.alert("mouse button down {} {}", [mouse_x, mouse_y], level=0)        
+        active_item = None
+        max_z = 0
         for item, coords in self.coordinate_tracker.items():
             area, z = coords
-            if mpre.gui.point_in_area(area, (mouse_x, mouse_y)):
-                possible.append((item, area, z))
-        try:
-            instance, area, z = sorted(possible, key=operator.itemgetter(2))[-1]
-        except IndexError:
-            self.alert("IndexError on mouse button down (No window objects under mouse)", level="v")
-        else:
-            self.active_item = instance
-            instance.press(mouse)
-
+            if z > max_z and mpre.gui.point_in_area(area, (mouse_x, mouse_y)):
+                max_z = z
+                active_item = item
+        #self.alert("Set active item to {}", [active_item], level=0)
+        self.active_item = active_item
+        if active_item:
+            if self._ignore_click:
+                self._ignore_click = False
+            else:
+                active_item.press(mouse)
+            
     def handle_mousebuttonup(self, event):
         mouse = event.button
-        area, z = self.coordinate_tracker[self.active_item]
-        if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
-            self.active_item.release(mouse)
+        active_item = self.active_item
+        if active_item and active_item.held:
+            area, z = self.coordinate_tracker[active_item]
+            if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
+                active_item.release(mouse)
        
     def handle_mousewheel(self, event):
         wheel = event.wheel
-        self.active_item.mousewheel(wheel.x, wheel.y)
+        if self.active_item:
+            self.active_item.mousewheel(wheel.x, wheel.y)
 
-    def handle_mousemotion(self, event):
+    def handle_mousemotion(self, event):        
         motion = event.motion
         if self.active_item:
-            x_change = motion.xrel
-            y_change = motion.yrel
-            self.active_item.mousemotion(x_change, y_change)
-            
-        if self.popups:
-            popups = self.popups
-            for item in popups:
-                if not mpre.gui.point_in_area(item.area, (motion.x, motion.y)):
-                    Instruction(item.parent.instance_name, "draw_texture").execute()
-                    popups.remove(item)
-                    item.delete()
+            self.active_item.mousemotion(motion.xrel, motion.yrel)
 
     def handle_keydown(self, event):
         try:
@@ -286,21 +375,37 @@ class SDL_User_Input(vmlibrary.Process):
             if key == "\r":
                 key = "\n"
             modifier = event.key.keysym.mod
-            if modifier:
-                if modifier in self.uppercase_modifiers:
-                    try:
-                        key = self.uppercase[key]
-                    except KeyError:
-                        pass
-                    raise NotImplementedError
-                    
+            hotkey = None
+            if modifier in self.uppercase_modifiers:
+                try:
+                    key = self.uppercase[key]
+                except KeyError:
+                    pass            
+            elif modifier:
+                hotkey = self.get_hotkey(self.active_item, (key, modifier))
+            
+            if hotkey:
+                hotkey.execute()
+            elif self.active_item and self.active_item.allow_text_edit:
+                """print "Editing text", ord(key)
+                file_like_object = self._stringio
+                file_like_object.truncate(0)
+                backup = sys.stdout
+                print "Reassigning stdout"
+                sys.stdout = file_like_object
+                print self.active_item.text + key
+                sys.stdout = backup
+                print "Restored stdout"
+                file_like_object.seek(0)
+                self.active_item.text = file_like_object.read()"""
+                
+                if ord(key) == 8: # backspace
+                    self.active_item.text = self.active_item.text[:-1]
                 else:
-                    hotkey = self.get_hotkey(self.active_item, (key, modifier))
-                    if hotkey:
-                        hotkey.execute()
-            else:
-                raise NotImplementedError
-
+                    self.active_item.text += key
+                                    
+                print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
+                
     def get_hotkey(self, instance, key_press):
         try:
             hotkey = instance.hotkeys.get(key_press)
@@ -313,27 +418,34 @@ class SDL_User_Input(vmlibrary.Process):
     def handle_keyup(self, event):
         pass
 
-    def add_popup(self, item):
-        self.popups.append(item)
-
 
 class Renderer(SDL_Component):
 
-    def __init__(self, **kwargs):
+    defaults = {"flags" : sdl2.SDL_RENDERER_ACCELERATED,
+                "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND}
+    def __init__(self, window, **kwargs):
         self.font_cache = {}        
-        kwargs["wrapped_object"] = sdl2.ext.Renderer(kwargs["window"])
+      
         super(Renderer, self).__init__(**kwargs)
+        self.wraps(sdl2.ext.Renderer(window, flags=self.flags))
+        self.blendmode = self.blendmode_flag
         
         self.sprite_factory = self.create(Sprite_Factory, renderer=self)
         self.font_manager = self.create(Font_Manager)
         self.instructions = dict((name, getattr(self, "draw_" + name)) for 
                                   name in ("point", "line", "rect", "rect_width", "text"))
         self.instructions["fill"] = self.fill
+        self.clear()
         
-    def draw_text(self, text, **kwargs):
-        self.copy(self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
-                                                **kwargs))
-
+    def draw_text(self, area, text, **kwargs):
+        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
+                                                **kwargs)
+        x, y, w, h = area
+        _w, _h = texture.size
+        self.copy(texture, dstrect=(x, y, 
+                                    _w if _w < w else w,
+                                    _h if _h < h else h))
+        
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")
         x, y, w, h = area        
@@ -351,7 +463,7 @@ class Renderer(SDL_Component):
             self.copy(texture)
         return self.sprite_factory.from_surface(self.rendertarget.get_surface())
     
-    def set_render_target(self, texture):
+    def set_render_target(self, texture):            
         code = sdl2.SDL_SetRenderTarget(self.wrapped_object.renderer, texture)
         if code < 0:
             raise ValueError("error code {}. Could not set render target of renderer {} to texture {}".format(code, self.wrapped_object.renderer, texture))
