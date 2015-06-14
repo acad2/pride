@@ -119,14 +119,14 @@ class Socket(base.Wrapper):
     def _set_os_recv_buffer_size(self, size):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
         Socket._buffer = bytearray(self.os_recv_buffer_size)
-        Socket._memoryview = _memoryview(Socket._buffer)
+        Socket._memoryview = memoryview(Socket._buffer)
     os_recv_buffer_size = property(_get_os_recv_buffer_size, _set_os_recv_buffer_size)  
     
     def _get_os_send_buffer_size(self):
         return self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
         
     def _set_os_send_buffer_size(self, size):
-        self.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, size)
     os_send_buffer_size = property(_get_os_send_buffer_size, _set_os_send_buffer_size)
     
     wrapped_object_name = 'socket'
@@ -174,7 +174,7 @@ class Socket(base.Wrapper):
         """ Receives data from a host. For Udp sockets this method is event triggered
             and called when the socket becomes readable according to select.select. Subclasses
             should extend this method to customize functionality for when data is received."""
-        byte_count, _from = self.socket.recvfrom_into(self._memoryview[_bytecount:], 
+        byte_count, _from = self.socket.recvfrom_into(self._memoryview, 
                                                       buffer_size or self.recvfrom_packet_size)
         return bytes(self._buffer[:byte_count]), _from
       
