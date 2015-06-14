@@ -3,9 +3,9 @@ import argparse
 import types
 import functools
 import ast
-import inspect
-import utilities
 from copy import copy
+
+import mpre.utilities as utilities
 
 class Docstring(object):
     """ A descriptor object used by the Documented metaclass. Augments

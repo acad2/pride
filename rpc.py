@@ -18,7 +18,7 @@ class RPC_Handler(mpre.base.Base):
             
     def make_request(self, callback, host_info, transport_protocol, component_name, 
                      method, args, kwargs):
-        arguments = pickle.dumps((args, kwargs))
+        arguments = pickle.dumps((args, kwargs), pickle.HIGHEST_PROTOCOL)
         request = ' '.join((component_name, method, arguments))
         self.create(RPC_Requester, target=host_info, request=request, 
                     callback=callback if callback is not None else self.alert)
@@ -49,8 +49,8 @@ class RPC_Requester(mpre.network.Tcp_Client):
     def on_connect(self):
         self.send(self.request)
         
-    def recv(self, network_packet_size):
-        packet = super(RPC_Requester, self).recv(network_packet_size)
+    def recv(self, buffer_size=0):
+        packet = super(RPC_Requester, self).recv(buffer_size)
         self.callback(pickle.loads(packet))
         self.delete()    
         
@@ -60,8 +60,8 @@ class RPC_Request(mpre.network.Tcp_Socket):
     def save(self):
         return None
         
-    def recv(self, network_packet_size):
-        request = super(RPC_Request, self).recv(network_packet_size)
+    def recv(self, buffer_size=0):
+        request = super(RPC_Request, self).recv(buffer_size)
         component_name, method, argument_bytestream = request.split(" ", 2)
         server = components["RPC_Server"]
         server.requester_address = self.getpeername()[0]   
@@ -70,9 +70,9 @@ class RPC_Request(mpre.network.Tcp_Socket):
             call = getattr(components[component_name], method)
         #    self.alert("Performing rpc {}.{}", [component_name, method], level=0)
             response = call(*args, **kwargs)
-            response = pickle.dumps(response)
-        except:
-            response = pickle.dumps(traceback.format_exc())
+            response = pickle.dumps(response, pickle.HIGHEST_PROTOCOL)
+        except BaseException as error:
+            response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)
         self.send(response)
         self.delete()
         server.requester_address = None

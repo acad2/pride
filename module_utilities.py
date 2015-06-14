@@ -1,7 +1,15 @@
 import types
 import sys
 import contextlib
-        
+import inspect
+import symtable
+
+#def unused_imports(module):
+#    source = inspect.getsource(module)
+#    symbol_table = symtable.symtable(source, "string", "exec")
+#    return [symbol.get_name() for symbol in symbol_table.get_symbols() if 
+#            symbol.is_imported() and not symbol.is_referenced()]
+            
 def create_module(module_name, source, context=None):
     """ Creates a module with the supplied name and source"""
     module_code = compile(source, module_name, 'exec')

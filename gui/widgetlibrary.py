@@ -12,8 +12,7 @@ class Indicator(gui.Button):
     defaults = gui.Button.defaults.copy()
     defaults.update({"pack_mode" : "horizontal",
                      "h" : 16,
-                     "line_color" : (255, 235, 155),
-                     "background_color" : (15, 25, 225, 225)})    
+                     "line_color" : (255, 235, 155)})    
     
     def __init__(self, **kwargs):
         super(Indicator, self).__init__(**kwargs)        
@@ -60,7 +59,7 @@ class Task_Bar(gui.Container):
         super(Task_Bar, self).__init__(**kwargs)
         parent_name = self.parent_name
         self.create(Indicator)
-        self.create(Date_Time_Button)
+       # self.create(Date_Time_Button)
         self.create(Delete_Button, parent_name)
         self.create(Text_Field)
         
@@ -70,11 +69,7 @@ class Text_Field(gui.Button):
     defaults = gui.Button.defaults.copy()
     defaults.update({"allow_text_edit" : True,
                      "h" : 16,
-                     "pack_mode" : "horizontal"})
-    
-    def pack(self, modifiers=None):
-        super(Text_Field, self).pack(modifiers)        
-     #   self.w = min(self.w, len(self.text) * 12)              
+                     "pack_mode" : "horizontal"})          
         
     
 class Date_Time_Button(gui.Button):

@@ -30,7 +30,7 @@ def update(instance_name):
     return components[instance_name].update()
     
 #f = create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
-fs = components["File_System"]
+#fs = components["File_System"]
 #ftest = fs.get_file("virtual\\test_directory\\test.disk")
 
 #d = create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
@@ -48,12 +48,12 @@ fs = components["File_System"]
 
 #_sqlite3 = _package.get_module("sqlite3")
  
-import mpre.gui.gui as gui
-gui.enable()
-h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
-t = components["Task_Bar"]
-d = components["Date_Time_Button"]
-i = components["Indicator"]
+#import mpre.gui.gui as gui
+#gui.enable()
+#h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+#t = components["Task_Bar"]
+#i = components["Indicator"]
+#d = components["Date_Time_Button"]
 
 #import mpre.package
 #p = mpre.package.Package(mpre)

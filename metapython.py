@@ -13,6 +13,7 @@ if __name__ == "__main__":
         try:
             metapython.start_machine()
         except BaseException as error:
+            raise
             if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
                 raise
             else:

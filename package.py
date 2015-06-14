@@ -232,3 +232,6 @@ class Documentation(mpre.base.Base):
             md_file.write(markdown_text)
             md_file.flush()
             
+if __name__ == "__main__":
+    import mpre
+    package = Package(mpre)

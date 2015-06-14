@@ -65,24 +65,13 @@
     This name associates the instance to the instance_name in the
     mpre.environment.components. The instance_name can be used to reference
     the object from any scope, as long as the component exists."""
-import mmap
-import sys
-import traceback
-import heapq
-import importlib
 import operator
-import inspect
-import hashlib
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
        
 import mpre
 import mpre.metaclass
-import mpre.persistence as persistence
-import mpre.utilities as utilities
-import mpre.importers as importers
+import mpre.persistence
+import mpre.utilities
+
 import mpre.module_utilities as module_utilities
 from mpre.errors import *
 components = mpre.components
@@ -152,7 +141,7 @@ class Base(object):
         try:
             instance = instance_type(*args, **kwargs)
         except TypeError:
-            instance = utilities.resolve_string(instance_type)(*args, **kwargs)        
+            instance = mpre.utilities.resolve_string(instance_type)(*args, **kwargs)        
 
         if instance not in mpre.environment.instance_name:
             mpre.environment.add(instance)
@@ -266,14 +255,14 @@ class Base(object):
                 if saved_objec:
                     attributes[key] = saved_object
                     attribute_type[key] = "saved"      
-        return persistence.save(self, attributes, _file)    
+        return mpre.persistence.save(self, attributes, _file)    
             
     @staticmethod
     def load(attributes='', _file=None):
         """ Loads and instance from a bytestream or file produced by save. This
             calls persistence.load but may look syntatically nicer."""
         assert attributes or _file
-        new_self, attributes = persistence.load(attributes, _file)
+        new_self, attributes = mpre.persistence.load(attributes, _file)
    
         saved_objects = attributes["objects"]
         objects = attributes["objects"] = {}
@@ -313,7 +302,8 @@ class Base(object):
            new, updated object. Attributes of the original object will be assigned
            to the updated object."""
         self.alert("Updating", level='v') 
-        class_base = utilities.updated_class(type(self))
+        
+        class_base = mpre.utilities.updated_class(type(self))
         class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
                 

@@ -3,10 +3,12 @@ import codeop
 import os
 import traceback
 import time
-import cStringIO
-import pickle
 import contextlib
-
+try:
+    import cStringIO as StringIO
+except ImportError:
+    import StringIO
+    
 import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
@@ -96,7 +98,11 @@ class Shell(authentication.Authenticated_Client):
                                         callback=self.result)
                         
     def result(self, packet):
-        if packet:
+        if not packet:
+            return
+        if isinstance(packet, BaseException):
+            raise packet
+        else:
             sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet)
         
         
@@ -138,7 +144,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
             result = traceback.format_exc()           
         else:                
             backup = sys.stdout            
-            sys.stdout = cStringIO.StringIO()
+            sys.stdout = StringIO.StringIO()
             
             namespace = (globals() if username == "root" else 
                          self.user_namespaces[username])
@@ -221,7 +227,8 @@ class Metapython(base.Base):
     defaults = base.Base.defaults.copy()
     defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
-                     "startup_components" : ("mpre.fileio.File_System", "vmlibrary.Processor",
+                     "startup_components" : (#"mpre.fileio.File_System", 
+                                             "mpre.vmlibrary.Processor",
                                              "mpre._metapython.Alert_Handler", "mpre.userinput.User_Input",
                                              "mpre.network.Network", "mpre.rpc.RPC_Handler",
                                              "mpre.srp.Secure_Remote_Password"),
@@ -308,4 +315,5 @@ class Metapython(base.Base):
     def exit(self, exit_code=0):
         components["Processor"].set_attributes(running=False)
         # cleanup/finalizers go here?
-        sys.exit(exit_code)
+        raise SystemExit
+        #sys.exit(exit_code)

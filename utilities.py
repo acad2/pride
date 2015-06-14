@@ -13,7 +13,7 @@ if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
-
+    
 def updated_class(_class, importer_type="mpre.importers.From_Disk"):
     # modules are garbage collected if not kept alive        
     required_modules = []        

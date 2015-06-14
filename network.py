@@ -93,7 +93,8 @@ class Socket(base.Wrapper):
     defaults.update({"blocking" : 0,
                      "timeout" : 0,
                      "add_on_init" : True,
-                     "network_packet_size" : 32768,
+                     "recvfrom_packet_size" : 65535,
+                     "recv_packet_size" : 32768,
                      "socket_family" : socket.AF_INET,
                      "socket_type" : socket.SOCK_STREAM,
                      "protocol" : socket.IPPROTO_IP,
@@ -105,9 +106,28 @@ class Socket(base.Wrapper):
                      "_connecting" : False,
                      "added_to_network" : False})
 
+    _buffer = bytearray(1024 * 1024)
+    _memoryview = memoryview(_buffer)
+    
     def _get_address(self):
         return (self.ip, self.port)
     address = property(_get_address)
+    
+    def _get_os_recv_buffer_size(self):
+        return self.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+        
+    def _set_os_recv_buffer_size(self, size):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
+        Socket._buffer = bytearray(self.os_recv_buffer_size)
+        Socket._memoryview = _memoryview(Socket._buffer)
+    os_recv_buffer_size = property(_get_os_recv_buffer_size, _set_os_recv_buffer_size)  
+    
+    def _get_os_send_buffer_size(self):
+        return self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+        
+    def _set_os_send_buffer_size(self, size):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+    os_send_buffer_size = property(_get_os_send_buffer_size, _set_os_send_buffer_size)
     
     wrapped_object_name = 'socket'
     
@@ -127,45 +147,36 @@ class Socket(base.Wrapper):
         """ Used to customize behavior when a socket is readable according to select.select.
             It is not likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead."""
-        return self.recvfrom(self.network_packet_size)
-        
-    def send(self, data):
-        """ Sends data via the underlying _socketobject. The socket is first checked to
-            ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket"""
-        if self in components["Network"].writable:
-            return self.wrapped_object.send(data)
-        else:
-            raise NotWritableError
-                             
-    def sendto(self, data, host_info):
-        """ Sends data via the underlying _socketobject to the specified address. The socket
-            is first checked to ensure writability before sending. If the socket is not
-            writable, NotWritableError is raised."""
-        if self in components["Network"].writable:
-            return self.wrapped_object.sendto(data, host_info)
-        else:
-            raise NotWritableError
-
+        return self.recvfrom()
+ 
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
-            when the socket becomes readable according to select.select. If . This
-            method is called for Tcp sockets and requires a connection."""
-        buffer_size = (self.network_packet_size if not buffer_size else
-                       buffer_size)
-        response = self.wrapped_object.recv(buffer_size)
-        if not response:
-            error = socket.error("Connection closed")
-            error.errno = CONNECTION_CLOSED
-            raise error
-        return response
+            when the socket becomes readable according to select.select. This
+            method is called for Tcp sockets and requires a connection.
+            
+            Note that this recv will return the entire contents of the OS buffer and 
+            does not need to be called in a loop."""
+        buffer_size = buffer_size or self.recv_packet_size 
+        _memoryview = self._memoryview
+        _byte_count = 0        
+        try:
+            while True:
+                byte_count = self.socket.recv_into(_memoryview[_byte_count:], buffer_size)
+                if not byte_count:
+                    break
+                _byte_count += byte_count                
+        except socket.error as error:
+            if error.errno != 10035:
+                raise        
+        return bytes(self._buffer[:_byte_count])
         
     def recvfrom(self, buffer_size=0):
         """ Receives data from a host. For Udp sockets this method is event triggered
             and called when the socket becomes readable according to select.select. Subclasses
             should extend this method to customize functionality for when data is received."""
-        buffer_size = (self.network_packet_size if not buffer_size else
-                       buffer_size)
-        return self.wrapped_object.recvfrom(buffer_size)
+        byte_count, _from = self.socket.recvfrom_into(self._memoryview[_bytecount:], 
+                                                      buffer_size or self.recvfrom_packet_size)
+        return bytes(self._buffer[:byte_count]), _from
       
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
@@ -244,7 +255,7 @@ class Tcp_Socket(Socket):
         super(Tcp_Socket, self).__init__(**kwargs)
 
     def on_select(self):
-        self.recv(self.network_packet_size)
+        self.recv()
         
         
 class Server(Tcp_Socket):
@@ -402,7 +413,7 @@ class Network(vmlibrary.Process):
         self._sockets = set()
         self.running = False
         self.update_instruction = Instruction(self.instance_name, "_update_range_size")
-        self.update_instruction.execute(self.update_priority)
+        #self.update_instruction.execute(self.update_priority)
         
     def add(self, sock):
         super(Network, self).add(sock)

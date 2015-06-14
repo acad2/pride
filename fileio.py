@@ -1,16 +1,13 @@
 import sys
 import mmap
 import os
-import pickle
 import StringIO
 import pprint
 import binascii
 import contextlib
-from contextlib import closing, contextmanager
 
 import mpre    
 import mpre.vmlibrary as vmlibrary
-
 import mpre.base as base
 import mpre.utilities as utilities
 import mpre.userinput

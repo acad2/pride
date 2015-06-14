@@ -1,13 +1,7 @@
-import heapq
-import ctypes
-from operator import attrgetter
-from sys import modules
 from math import floor, sqrt
 
 import mpre
 import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.utilities as utilities
 import mpre.gui
 import mpre.gui.shapes
 Instruction = mpre.Instruction
@@ -152,7 +146,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.texture = create_texture(mpre.gui.SCREEN_SIZE)
         
         self.glow_instruction = Instruction(self.instance_name, "glow")
-        #self.glow_instruction.execute(.16)
+        self.glow_instruction.execute(.16)
         
     def glow(self):
         #color = self.color
@@ -166,6 +160,9 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         a = color.a
         glow = self._glow_modifier = -20 if a == 255 else 20 if a == 0 else self._glow_modifier
         self.color = (color.r, color.g, color.b, a + glow)
+        
+      #  bg_color = self.background_color
+      #  self.background_color = (bg_color.r, bg_color.g, bg_color.b, bg_color.a + glow)
         self.glow_instruction.execute(.16)
         
     def create(self, *args, **kwargs):
@@ -228,7 +225,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                  #   self.parent.alert("Adding {}", [self], level=0)
                     self.parent.add(self)
                     self.parent.pack({"position" : self.parent.position})
-                
+                    #self.held = False                    
             x_difference = self.x - _x
             y_difference = self.y - _y
             for instance in self.children:
@@ -237,7 +234,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                 instance.held = False
                 
     def draw(self, figure, *args, **kwargs):
-        # draw operations are enqueud and processed in batches by Renderer.draw
+        # draw operations are enqueued and processed in batches by Renderer.draw
         self._draw_operations.append((figure, args, kwargs))
                                                                
     def _draw_texture(self):

@@ -1,12 +1,8 @@
 import os
 import sys
 import string
-import heapq
 import ctypes
-import itertools
-import operator
 import collections
-import pprint
 import StringIO
 
 import mpre
@@ -438,9 +434,10 @@ class Renderer(SDL_Component):
         self.clear()
         
     def draw_text(self, area, text, **kwargs):
-        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
-                                                **kwargs)
         x, y, w, h = area
+        kwargs.setdefault("width", w)
+        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
+                                                **kwargs)        
         _w, _h = texture.size
         self.copy(texture, dstrect=(x, y, 
                                     _w if _w < w else w,
