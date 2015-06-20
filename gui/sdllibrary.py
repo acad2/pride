@@ -108,6 +108,7 @@ class SDL_Window(SDL_Component):
                 
         user_input = components["SDL_User_Input"]
         layers = self.layers
+        screen_width, screen_height = self.size
       #  print
         for layer_number in xrange(self.invalid_layer, self.max_layer + 1):
         #    self.alert("Drawing layer: {}", [layer_number], level=0)
@@ -125,7 +126,14 @@ class SDL_Window(SDL_Component):
                 renderer.copy(layers[layer_number - 1][0])
         
             for instance in layer_components:
-                area = instance.area
+                dstrect = x, y, w, h = instance.area
+                x += instance.texture_window_x
+                y += instance.texture_window_y
+                if x + w > screen_width:
+                    w = screen_width - x
+                if y + h > screen_height:
+                    h = screen_height - y
+                area = x, y, w, h
                 user_input._update_coordinates(instance, area, instance.z)
                                 
                 if instance.texture_invalid:
@@ -142,8 +150,8 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-                #self.alert("Copying {} texture to {}", [instance, area], level=0)
-                renderer.copy(instance.texture.texture, srcrect=area, dstrect=area)
+                self.alert("Copying {} texture to {}", [instance, area], level=0)
+                renderer.copy(instance.texture.texture, srcrect=area, dstrect=dstrect)
                 
         self.invalid_layer = self.max_layer
         renderer.set_render_target(None)
@@ -439,9 +447,9 @@ class Renderer(SDL_Component):
         texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
                                                 **kwargs)        
         _w, _h = texture.size
-        self.copy(texture, dstrect=(x, y, 
-                                    _w if _w < w else w,
-                                    _h if _h < h else h))
+        self.copy(texture, dstrect=(x + 2, y + 2, 
+                                    (_w if _w < w else w) - 2,
+                                    _h))
         
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")

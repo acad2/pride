@@ -13,11 +13,7 @@ SDL_Rect = sdl2.SDL_Rect
 
 R, G, B, A = 0, 80, 255, 30
 dark_color_scalar = .5
-light_color_scalar = 1.5
-
-def enable():
-    components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")  
-    components["Metapython"].create("mpre.gui.gui.Organizer")        
+light_color_scalar = 1.5  
 
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
     _create_texture = components["SpriteFactory"].create_texture_sprite
@@ -128,11 +124,11 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def _set_color(self, colors):
         super(Window_Object, self)._set_color(colors)
     color = property(_get_color, _set_color)
-    
+        
     def __init__(self, **kwargs):
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
-        self._layer_index = 0
+        self.texture_window_x = self.texture_window_y = self._layer_index = 0
         self.texture_invalid = True
         self._glow_modifier = 20
         max_w, max_h = mpre.gui.SCREEN_SIZE
@@ -146,7 +142,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.texture = create_texture(mpre.gui.SCREEN_SIZE)
         
         self.glow_instruction = Instruction(self.instance_name, "glow")
-        self.glow_instruction.execute(.16)
+    #    self.glow_instruction.execute(.16)
         
     def glow(self):
         #color = self.color
@@ -257,7 +253,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                 setattr(self, attribute, value)
         for item in self.children:
             item.pack()
-
+              
     def delete(self):
         super(Window_Object, self).delete()
         components["SDL_Window"].remove_from_layer(self, self.z)
@@ -280,5 +276,8 @@ class Button(Window_Object):
 
     defaults = Window_Object.defaults.copy()
     defaults.update({"shape" : "rect",
-                     "text" : "Button",
                      "pack_mode" : "vertical"})
+                     
+    def __init__(self, **kwargs):
+        super(Button, self).__init__(**kwargs)
+        self.text = self.text or self.instance_name

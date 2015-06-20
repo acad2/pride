@@ -1,6 +1,5 @@
-""" Contains The root inheritance objects that provides many of the features
-    of the runtime environment. An object that inherits from mpre.base.Base will 
-    possess these capabilities:
+""" Contains The root inheritance objects that provides many features of the package. 
+    An object that inherits from mpre.base.Base will possess these capabilities:
         
         - When instantiating, arbitrary attributes may be assigned
           via keyword arguments
@@ -9,6 +8,9 @@
           of name:value pairs. These pairs will be assigned as attributes
           to new instances; Any attribute specified via keyword argument
           will override a default
+          
+        - An instance name, which provides a reference to the component from any context. 
+          Instance names are mapped to instance objects in mpre.components.
           
         - The flag parse_args=True may be passed to the call to 
           instantiate a new object. If so, then the metaclass
@@ -33,11 +35,7 @@
         
         - The alert method, which makes logging and statements 
           of varying verbosity simple and straight forward.
-          
-        - An instance name, which allows provides a reference
-          to the component from any context. Instance names are 
-          mapped to instances in mpre.components.
-          
+                    
         - Decorator(s) and monkey patches may be specified via
           keyword argument to any method call. Note that this
           functionality does not apply to python objects
@@ -64,7 +62,7 @@
     its name is simply type(instance).__name__, without 0 at the end.
     This name associates the instance to the instance_name in the
     mpre.environment.components. The instance_name can be used to reference
-    the object from any scope, as long as the component exists."""
+    the object from any scope, as long as the component exists at runtime."""
 import operator
        
 import mpre
@@ -76,23 +74,54 @@ import mpre.module_utilities as module_utilities
 from mpre.errors import *
 components = mpre.components
 
-__all__ = ["DeleteError", "AddError", "Base", "Reactor", "Wrapper", "Proxy"]
+__all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
 
-
+def load(attributes='', _file=None):
+    """ Loads and instance from a bytestream or file produced by mpre.base.Base.save. 
+        This is a higher level method then mpre.persistence.load."""
+    assert attributes or _file
+    
+    new_self, attributes = mpre.persistence.load(attributes, _file)
+    print "Loading: ", repr(new_self)
+    saved_objects = attributes["objects"]
+    objects = attributes["objects"] = {}
+    
+    for instance_type, saved_instances in saved_objects.items(): 
+        print '\t', repr(new_self), "Restoring: ", instance_type
+        objects[instance_type] = [load(instance) for instance in saved_instances]
+        if "RPC" in instance_type:
+            print not objects[instance_type]
+       # print '\t', repr(new_self), "Restored {} instances".format(len(objects[instance_type]))
+    attribute_modifier = attributes.pop("_attribute_type")
+    for key, value in attributes.items():
+        modifier = attribute_modifier.get(key, '')
+        if modifier == "reference":
+            print "\tRestored reference: ", value
+            attributes[key] = mpre.components[value]
+        elif modifier == "save":
+            print "\tLoading attribute: ", key
+            attributes[key] = load(value) # may need to be pickle.dumps(value)
+            
+    new_self.on_load(attributes)
+    return new_self
+        
 class Base(object):
 
     __metaclass__ = mpre.metaclass.Metaclass
-    
+                
+    # the default attributes new instances will initialize with.
+    defaults = {"verbosity" : '',
+                "_deleted" : False,
+                "replace_reference_on_load" : True,
+                "dont_save" : False,
+                "delete_verbosity" : 'vv'}    
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
     # class defaults dictionary. Specific attributes can be modified
     # or ignored by specifying them here.
-    parser_modifiers = {}
-            
-    # the default attributes new instances will initialize with.
-    defaults = {"verbosity" : '',
-                "_deleted" : False,
-                "replace_reference_on_load" : True}
+    parser_modifiers = {}    
+    parser_ignore = ("objects", "replace_reference_on_load", "_deleted", "parse_args", "dont_save")
+    exit_on_help = True
     
     def _get_parent_name(self):
         return mpre.environment.parents.get(self, mpre.environment.last_creator)
@@ -141,6 +170,8 @@ class Base(object):
         try:
             instance = instance_type(*args, **kwargs)
         except TypeError:
+            if isinstance(instance_type, type):
+                raise
             instance = mpre.utilities.resolve_string(instance_type)(*args, **kwargs)        
 
         if instance not in mpre.environment.instance_name:
@@ -155,6 +186,7 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
+        self.alert("Deleting", level=self.delete_verbosity)
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
         mpre.environment.delete(self)
@@ -165,7 +197,12 @@ class Base(object):
         
             Removes an instance from self.objects. Modifies object.objects
             and environment.references_to."""
-        self.objects[instance.__class__.__name__].remove(instance)
+        #self.alert("Removing {}", [instance], level=0)
+        try:
+            self.objects[instance.__class__.__name__].remove(instance)
+        except:
+            print self, "Failed to remove: ", instance
+            raise
         mpre.environment.references_to[instance.instance_name].remove(self.instance_name)
         
     def add(self, instance):
@@ -229,7 +266,7 @@ class Base(object):
             
             If the calling object is one that has been created via the update method, the 
             returned state will include any required source code to rebuild the object."""
-        print self, "Saving"
+        self.alert("Saving", level='v')
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
@@ -237,61 +274,38 @@ class Base(object):
         for component_type, values in objects.items():
             saved_objects[component_type] = new_values = []
             for value in sorted(values, key=operator.attrgetter("instance_name")):
-                if hasattr(value, "save"):     
-                    saved_object = value.save()
-                    if saved_object:
-                        found_objects.append(value)
-                        print self, "Saving child: ", value
-                        new_values.append(saved_object)
-                    
+                if hasattr(value, "save") and not getattr(value, "dont_save", False):   
+                    found_objects.append(value)
+                    new_values.append(value.save())
+
         attribute_type = attributes["_attribute_type"] = {}
         for key, value in attributes.items():
             if value in found_objects:
                 attributes[key] = value.instance_name
                 attribute_type[key] = "reference"
-            elif hasattr(value, "save"):
-                print "Calling", value, value.save
-                saved_object = value.save()
-                if saved_objec:
-                    attributes[key] = saved_object
-                    attribute_type[key] = "saved"      
+            elif hasattr(value, "save") and not getattr(value, "dont_save"):
+                attributes[key] = value.save()
+                attribute_type[key] = "saved"      
         return mpre.persistence.save(self, attributes, _file)    
             
-    @staticmethod
-    def load(attributes='', _file=None):
-        """ Loads and instance from a bytestream or file produced by save. This
-            calls persistence.load but may look syntatically nicer."""
-        assert attributes or _file
-        new_self, attributes = mpre.persistence.load(attributes, _file)
-   
-        saved_objects = attributes["objects"]
-        objects = attributes["objects"] = {}
-        
-        for instance_type, saved_instances in saved_objects.items(): 
-            objects[instance_type] = [Base.load(instance) for instance in saved_instances]
-            
-        attribute_modifier = attributes.pop("_attribute_type")
-        for key, value in attributes.items():
-            modifier = attribute_modifier.get(key, '')
-            if modifier == "reference":
-                attributes[key] = mpre.components[value]
-            elif modifier == "save":
-                attributes[key] = Base.load(value) # may need to be pickle.dumps(value)
-                
-        new_self.on_load(attributes)
-        return new_self
+    load = staticmethod(load) # see base.load at beginning of file
         
     def on_load(self, attributes):
         """ usage: base.on_load(attributes)
         
             Implements the behavior of an object after it has been loaded. This method 
             may be extended by subclasses to customize functionality for instances created
-            by the load method."""                
+            by the load method."""     
         self.set_attributes(**attributes)
         mpre.environment.add(self)
         if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
+#            for instance_type, instances in components[attributes["instance_name"]].objects.items():
+#                size = len(self.objects[instance_type])
+#                self.objects[instance_type] = list(set(instances + self.objects[instance_type]))
+#                if len(self.objects[instance_type]) != size:
+#                    print self, "Added additional instances to ", instance_type
             mpre.environment.replace(attributes["instance_name"], self)
-        self.alert("Loaded", level='v')
+        self.alert("on Loaded", level=0)#'v')
         
     def update(self):
         """usage: base_instance.update() => updated_base
@@ -329,6 +343,8 @@ class Wrapper(Base):
     defaults = Base.defaults.copy()
     defaults.update({"wrapped_object" : None})
     wrapped_object_name = ''
+    
+    parser_ignore = Base.parser_ignore + ("wrapped_object", )
     
     def __init__(self, **kwargs):
         super(Wrapper, self).__init__(**kwargs)

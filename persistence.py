@@ -9,6 +9,15 @@ create_module = mpre.module_utilities.create_module
 
 ASCIIKEY = ''.join(chr(x) for x in xrange(256))#os.urandom(512)
 
+def save_function(function):
+    try:
+        function_class = function.im_class
+    except AttributeError:
+        module = function.__module__
+    else:    
+        module = function_class.__module__ + '.' + function_class.__name__
+    return (module, function.__name__)
+    
 def authenticated_dump(py_object, secret_key, _file=None,  hash_algorithm=hashlib.sha512):
     """ usage: authenticated_dump(py_object, secret_key, _file=None, 
                                   hash_algorithm=hashlib.sha512) => authenticated_bytestream
@@ -17,7 +26,13 @@ def authenticated_dump(py_object, secret_key, _file=None,  hash_algorithm=hashli
         prepended to the bytestream via HMAC(secret_key, bytestream, hash_algorithm).hexdigest() + bytestream.
         If _file is supplied, the bytestream will be written to the file and not returned (as in pickle.dump),
         if _file is omitted, the authenticated bytestream will be returned (as in pickle.dumps)"""
-    bytestream = pickle.dumps(py_object)
+    try:
+        bytestream = pickle.dumps(py_object)
+    except TypeError:
+        import pprint
+        print "Failed to dump py_object: "
+        pprint.pprint(py_object)
+        raise
     result = hmac.HMAC(secret_key, bytestream, hash_algorithm).hexdigest() + bytestream
     if _file:
         _file.write(result)
@@ -35,13 +50,9 @@ def authenticated_load(bytestream, secret_key, hash_algorithm=hashlib.sha512):
         obtained via calling file.read()."""  
     if hasattr(bytestream, 'read'):
         bytestream = bytestream.read()
-        
+    
     mac_size = hash_algorithm().digestsize * 2
-    try:
-        pickled_object = bytestream[mac_size:]
-    except TypeError:
-        bytestream = bytestream.read()
-        pickled_object = bytestream[mac_size:]
+    pickled_object = bytestream[mac_size:]
     valid = hmac.compare_digest(bytestream[:mac_size], 
                                 hmac.HMAC(secret_key, pickled_object, hash_algorithm).hexdigest())
     if valid:
@@ -77,7 +88,6 @@ def save(self, attributes=None, _file=None):
         modules.append(module_info[-1])
     else:
         attributes["_required_module"] = (self.__module__, self.__class__.__name__)
-    
     saved = authenticated_dump(attributes, ASCIIKEY)
     
     if _file:
@@ -86,20 +96,17 @@ def save(self, attributes=None, _file=None):
         return saved
     
 def load(attributes=None, _file=None):
-    """ usage: load([attributes], [_file]) => restored_instance
+    """ usage: load([attributes], [_file]) => restored_instance, attributes
     
-        Loads state preserved by the save method. Loads an instance from either
-        a bytestream or file, as returned by the save method..
-        
-        To customize the behavior of an object after it has been loaded, one should
-        extend the on_load method.""" 
+        Loads state preserved by the persistence.save method. Loads an instance from either
+        a bytestream or file, as returned by the save method.""" 
     if _file:
         assert not attributes
         attributes = _file.read()  
     elif not attributes:
         raise ValueError("No attributes bytestream or file object supplied to load")
     attributes = authenticated_load(attributes, ASCIIKEY)   
-    
+    #print "Performed authenticated load of: ", attributes
     if "_required_modules" in attributes:
         _required_modules = []
         incomplete_modules = attributes["_required_modules"]

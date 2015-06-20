@@ -14,7 +14,7 @@ if __name__ == "__main__":
             metapython.start_machine()
         except BaseException as error:
             raise
-            if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
+            """if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
                 raise
             else:
                 metapython.alert("Critical Failure\n{}", [traceback.format_exc()], level=0)
@@ -24,7 +24,7 @@ if __name__ == "__main__":
                 if "reload" in response:
                     metapython = metapython.load(metapython.backup_point)
                # elif "request_fix" in response:
-                #    raise NotImplementedError
+                #    raise NotImplementedError"""
             
     metapython.alert("shutting down", [metapython.instance_name], level='v')
     metapython.exit()

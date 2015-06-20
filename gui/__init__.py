@@ -16,3 +16,8 @@ def point_in_area(area, position):
     if point_x >= x and point_x <= x + w:
         if point_y >= y and point_y <= y + h:
             return True
+            
+def enable():
+    import mpre
+    mpre.components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")  
+    mpre.components["Metapython"].create("mpre.gui.gui.Organizer")                 

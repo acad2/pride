@@ -56,7 +56,8 @@ class Process(base.Base):
                      "priority" : .04,
                      "running" : True,
                      "run_callback" : None})
-    parser_ignore = ("auto_start", "network_buffer", "keyboard_input")
+    parser_ignore = base.Base.parser_ignore + ("auto_start", "network_buffer", "keyboard_input",
+                                               "priority", "run_callback", )
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -99,7 +100,8 @@ class Processor(Process):
                      "execution_verbosity" : 'vvv',
                      "parse_args" : True})
 
-    parser_ignore = ("running", "auto_start")
+    parser_ignore = Process.parser_ignore + ("running", "auto_start")
+    exit_on_help = False
     
     def __init__(self, **kwargs):
         super(Processor, self).__init__(**kwargs)
@@ -125,16 +127,16 @@ class Processor(Process):
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
-            instruction_info = execute_at, instruction, callback = heappop(instructions)                
+            execute_at, instruction, callback = heappop(instructions)                
             try:
-                call = _getattr(components[instruction.component_name],
-                                           instruction.method)               
+                call = getattr(components[instruction.component_name],
+                               instruction.method)
             except component_errors as error:
                 if isinstance(error, KeyError):
-                    error = "'{}' component does not exist".format(instruction.component_name)
+                    error = "'{}' component does not exist".format(instruction.component_name)                        
                 component_alert((str(instruction), error)) 
                 continue
-            
+                    
             time_until = max(0, (execute_at - timer_function()))
             if time_until:
                 sleep(time_until)
@@ -148,6 +150,5 @@ class Processor(Process):
                 exception_alert((instruction.component_name,
                                  instruction.method,
                                  format_traceback()))
-            else:
-                if callback:
-                    callback(result)
+            if callback:
+                callback(result)

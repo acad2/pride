@@ -20,6 +20,7 @@ import struct
 import errno
 import traceback
 import sys
+import binascii
 
 import mpre
 import mpre.vmlibrary as vmlibrary
@@ -88,24 +89,31 @@ _error_handler = Error_Handler()
 class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
         Wrapper to a _socketobject. The default socket family is socket.AF_INET and
-        the default socket type is socket.SOCK_STREAM (a.k.a. a tcp socket)."""
+        the default socket type is socket.SOCK_STREAM (a tcp socket)."""
     defaults = base.Wrapper.defaults.copy()
-    defaults.update({"blocking" : 0,
-                     "timeout" : 0,
-                     "add_on_init" : True,
-                     "recvfrom_packet_size" : 65535,
-                     "recv_packet_size" : 32768,
-                     "socket_family" : socket.AF_INET,
-                     "socket_type" : socket.SOCK_STREAM,
-                     "protocol" : socket.IPPROTO_IP,
-                     "interface" : "0.0.0.0",
-                     "port" : 0,
-                     "connection_attempts" : 10,
-                     "bind_on_init" : False,
-                     "closed" : False,
-                     "_connecting" : False,
-                     "added_to_network" : False})
-
+    additional_defaults = {"blocking" : 0,
+                           "timeout" : 0,
+                           "add_on_init" : True,
+                           "recvfrom_packet_size" : 65535,
+                           "recv_packet_size" : 32768,
+                           "socket_family" : socket.AF_INET,
+                           "socket_type" : socket.SOCK_STREAM,
+                           "protocol" : socket.IPPROTO_IP,
+                           "interface" : "0.0.0.0",
+                           "port" : 0,
+                           "connection_attempts" : 10,
+                           "bind_on_init" : False,
+                           "closed" : False,
+                           "_connecting" : False,
+                           "added_to_network" : False,
+                           "replace_reference_on_load" : False}
+    defaults.update(additional_defaults)
+    
+    additional_parser_ignores = additional_defaults.keys()
+    additional_parser_ignores.remove("interface")
+    additional_parser_ignores.remove("port")
+    parser_ignore = base.Wrapper.parser_ignore + tuple(additional_parser_ignores)
+    
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
     
@@ -118,8 +126,6 @@ class Socket(base.Wrapper):
         
     def _set_os_recv_buffer_size(self, size):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
-        Socket._buffer = bytearray(self.os_recv_buffer_size)
-        Socket._memoryview = memoryview(Socket._buffer)
     os_recv_buffer_size = property(_get_os_recv_buffer_size, _set_os_recv_buffer_size)  
     
     def _get_os_send_buffer_size(self):
@@ -138,10 +144,13 @@ class Socket(base.Wrapper):
         super(Socket, self).__init__(**kwargs)
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
-                
+        
         if self.add_on_init:
             self.added_to_network = True
-            components["Network"].add(self)
+            try:
+                components["Network"].add(self)
+            except KeyError:
+                self.alert("Network component does not exist", level=0)
          
     def on_select(self):
         """ Used to customize behavior when a socket is readable according to select.select.
@@ -177,7 +186,13 @@ class Socket(base.Wrapper):
         byte_count, _from = self.socket.recvfrom_into(self._memoryview, 
                                                       buffer_size or self.recvfrom_packet_size)
         return bytes(self._buffer[:byte_count]), _from
-      
+    
+    #def send(self, data):
+    #    byte_count = len(data)
+    #    difference = self.socket.send(data) - byte_count
+    #    if difference:
+            
+        
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
             is called when the connection succeeds, or the appropriate error handler method
@@ -235,19 +250,48 @@ class Raw_Socket(Socket):
         
 class Packet_Sniffer(Raw_Socket):
             
+    defaults = Raw_Socket.defaults.copy()
+    defaults.update({"IP_HDRINCL" : 1})
+    
+    parser_ignore = Raw_Socket.parser_ignore + ("IP_HDRINCL", )
+    
     def __init__(self, **kwargs):
         super(Packet_Sniffer, self).__init__(**kwargs)
         self.bind((self.interface, self.port))
-        self.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+        self.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, self.IP_HDRINCL)
         if "nt" in sys.platform:
             self.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
+            
+    def close(self):
+        self.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+        super(Packet_Sniffer, self).close()
+        
+    #def recvfrom(self):
+    #    packet, _from = super(Packet_Sniffer, self).recvfrom()
+    #    print len(packet), packet
+    #    ethernet_header = struct.unpack("!6s6s2s", packet[:14])
+    #    print "Ethernet: destination mac: ", binascii.hexlify(ethernet_header[0])
+    #    print "Ethernet: source mac: ", binascii.hexlify(ethernet_header[1])
+    #    print "Ethernet: type: ", binascii.hexlify(ethernet_header[2])
+    #    
+    #    ip_header, source_ip, destination_ip = struct.unpack("!12s4s4s", packet[14:34])
+    #    print "Ip header: ", str(binascii.hexlify(ip_header))
+    #    print "Source address: ", str(binascii.hexlify(source_ip))
+    #    print "Destination address: ", str(binascii.hexlify(destination_ip))
+    #    if ord(ip_header[10]) == 6: # tcp header
+    #        tcp_header = struct.unpack("!2s2s16s", packet[34:54])
+    #        print "Tcp header: ", tcp_header
+    #    elif ord(ip_header[10]) == 17:
+    #        udp_header = struct.unpack("!HH", packet[34:42])
+    #        print "udp header: ", udp_header
         
         
 class Tcp_Socket(Socket):
 
     defaults = Socket.defaults.copy()
     defaults.update({"socket_family" : socket.AF_INET,
-                     "socket_type" : socket.SOCK_STREAM})
+                     "socket_type" : socket.SOCK_STREAM,
+                     "dont_save" : True})
     
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
@@ -263,11 +307,11 @@ class Server(Tcp_Socket):
     defaults = Tcp_Socket.defaults.copy()
     defaults.update({"port" : 80,
                      "backlog" : 50,
-                     "name" : "",
                      "reuse_port" : 0,
-                     "Tcp_Socket_type" : "network.Tcp_Socket",
-                     "share_methods" : ("on_connect", "client_socket_recv", "client_socket_send")})
+                     "Tcp_Socket_type" : "network.Tcp_Socket"})
 
+    parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", "Tcp_Socket_type")
+    
     def __init__(self, **kwargs):       
         super(Server, self).__init__(**kwargs)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
@@ -295,9 +339,7 @@ class Server(Tcp_Socket):
         
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket)
-        
-
-        
+                                 
         self.on_connect(connection, address)
         return connection, address
         
@@ -326,6 +368,8 @@ class Tcp_Client(Tcp_Socket):
                      "target" : tuple(),
                      "auto_connect" : True,
                      "as_port" : 0})
+    
+    parser_ignore = Tcp_Socket.parser_ignore + ("target", "auto_connect", "as_port")
     
     def __init__(self, **kwargs):
         super(Tcp_Client, self).__init__(**kwargs)        
@@ -364,6 +408,8 @@ class Multicast_Beacon(Udp_Socket):
                      "multicast_group" : "224.0.0.0",
                      "multicast_port" : 1929})
 
+    parser_ignore = Udp_Socket.parser_ignore + ("packet_ttl", )
+    
     def __init__(self, **kwargs):
         super(Multicast_Beacon, self).__init__(**kwargs)
         self.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.packet_ttl)
@@ -389,8 +435,7 @@ class Network(vmlibrary.Process):
         This component is created by default upon application startup, and in most cases will
         not require user interaction."""
     defaults = vmlibrary.Process.defaults.copy()
-    defaults.update({"handle_resends" : False,
-                     "number_of_sockets" : 0,
+    defaults.update({"number_of_sockets" : 0,
                      "priority" : .01,
                      "update_priority" : 5,
                      "_updating" : False,

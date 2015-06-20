@@ -32,7 +32,9 @@ class Shell(authentication.Authenticated_Client):
                      "prompt" : ">>> ",
                      "startup_definitions" : '',
                      "target_service" : "Interpreter_Service"})
-                     
+    
+    parser_ignore = authentication.Authenticated_Client.parser_ignore + ("prompt", )
+    
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
@@ -103,7 +105,7 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write("\b"*4 + "   " + "\b"*4 + packet)
+            sys.stdout.write(packet + self.prompt)
         
         
 class Interpreter_Service(authentication.Authenticated_Service):
@@ -116,12 +118,12 @@ class Interpreter_Service(authentication.Authenticated_Service):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter_Service, self).__init__(**kwargs)
-        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+')
+        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+', persistent=False)
                 
     def login(self, username, credentials):
         response = super(Interpreter_Service, self).login(username, credentials)
         if username in self.user_secret:
-            sender = components["RPC_Server"].requester_address
+            sender = self.requester_address
             self.user_namespaces[username] = {"__name__" : "__main__",
                                               "__doc__" : '',
                                               "Instruction" : Instruction}
@@ -133,7 +135,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
     @authentication.Authenticated
     def exec_code(self, packet):
         log = self.log        
-        sender = components["RPC_Server"].requester_address
+        sender = self.requester_address
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
                   packet)                  
@@ -180,41 +182,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
             source = self.user_session[username]
             self.user_session[username] = ''
             result = self.exec_code(sender[username], source)
-            
-        
-class Alert_Handler(base.Base):
-    """ Provides the backend for the base.alert method. This component is automatically
-        created by the Metapython component. The print_level and log_level attributes act
-        as global filters for alerts; print_level and log_level may be specified as 
-        command line arguments upon program startup to globally control verbosity/logging."""
-    level_map = {0 : "message ",
-                'v' : "notification ",
-                'vv' : "verbose notification ",
-                'vvv' : "very verbose notification ",
-                'vvvv' : "extremely verbose notification "}
-                
-    defaults = base.Base.defaults.copy()
-    defaults.update({"log_level" : 0,
-                     "print_level" : 0,
-                     "log_name" : "Alerts.log",
-                     "log_is_persistent" : False,
-                     "parse_args" : True})
-    
-    parser_ignore = ("parse_args", "log_is_persistent")
-    
-    def __init__(self, **kwargs):
-        super(Alert_Handler, self).__init__(**kwargs)
-        self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
-        
-    def _alert(self, message, level):
-        if not self.print_level or level <= self.print_level:
-            sys.stdout.write(message + "\n")
-        if level <= self.log_level:
-            severity = self.level_map.get(level, str(level))
-            # windows will complain about a file in + mode if this isn't done sometimes
-            self.log.seek(0, 1)
-            self.log.write(severity + message + "\n")
-       
+                   
             
 class Metapython(base.Base):
     """ Provides an entry point to the environment. Instantiating this component and
@@ -227,9 +195,9 @@ class Metapython(base.Base):
     defaults = base.Base.defaults.copy()
     defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
-                     "startup_components" : (#"mpre.fileio.File_System", 
+                     "startup_components" : (#"mpre.fileio.File_System",
                                              "mpre.vmlibrary.Processor",
-                                             "mpre._metapython.Alert_Handler", "mpre.userinput.User_Input",
+                                             "mpre.userinput.User_Input",
                                              "mpre.network.Network", "mpre.rpc.RPC_Handler",
                                              "mpre.srp.Secure_Remote_Password"),
                      "interface" : "0.0.0.0",
@@ -238,8 +206,9 @@ class Metapython(base.Base):
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
                      "startup_definitions" : ''})    
-    parser_ignore = ("environment_setup", "prompt", "copyright", 
-                     "traceback", "interface", "port")
+    parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt", "copyright", 
+                                               "traceback", "interface", "port", "interpreter_enabled",
+                                               "startup_components", "startup_definitions")
                      
     # make an optional "command" positional argument and allow both -h and --help flags
     parser_modifiers = {"command" : {"types" : ("positional", ),

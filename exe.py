@@ -16,20 +16,21 @@ class Loader(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib",
-                                           "types", "hmac"),
-                     "variables" : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
-                     "definitions" : ("mpre.persistence.authenticated_load", 
-                                      "mpre.persistence.load", 
-                                      "mpre.errors.CorruptPickleError",
-                                      "mpre.module_utilities.create_module"),
-                     "importer" : "mpre.package.Package_Importer"})
+                                           "types", "hmac", "binascii"),
+                     "variables"        : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
+                     "definitions"      : ("mpre.persistence.authenticated_load", 
+                                           "mpre.persistence.load",
+                                           "mpre.base.load", 
+                                           "mpre.errors.CorruptPickleError",
+                                           "mpre.module_utilities.create_module"),
+                     "importer"         : ''})
         
     def __init__(self, **kwargs):
         super(Loader, self).__init__(**kwargs)
         self.source = self.build()
         
     def build(self):
-        source = ''
+        source = '' 
         for module_name in self.required_imports:
             source += "import " + module_name + "\n"
         
@@ -44,9 +45,10 @@ class Loader(mpre.base.Base):
             else:
                 source += "\n"
                 
-        #source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
-        #source += "_importer = " + self.importer.split(".")[-1] + "\n"
-     #   source += "sys.meta_path = [_importer]"
+        if self.importer:
+            source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
+            source += "_importer = " + self.importer.split(".")[-1] + "\n"
+            source += "sys.meta_path = [_importer]"
         return source 
     
     
@@ -57,28 +59,32 @@ class Executable(mpre.base.Base):
                      "package" : None,
                      "file" : None,
                      "loader_type" : "mpre.exe.Loader",
-                     "main_source" : ''})   
+                     "main_source" : '',
+                     "use_unicode_literals" : True})   
                            
     def __init__(self, module, **kwargs):
         super(Executable, self).__init__(**kwargs)
         self.file = mpre.fileio.File(self.filename, 'w+b')
-        self.main_source = inspect.getsource(module) if not self.main_source else self.main_source
+        source = inspect.getsource(module) if not self.main_source else self.main_source
+        self.main_source = source.replace("from __future__ import unicode_literals", "#from __future__ import unicode_literals")
         self.loader = self.create(self.loader_type)
                 
     def build(self):
         _file = self.file        
-      #  _file.write(self.loader.source + "\n")      
+        if self.use_unicode_literals:
+            _file.write("from __future__ import unicode_literals\n")
         
-        embed_package = "{}_package = r'''{}'''\n\n"
-        add_to_path = "sys.meta_path.append(_importer(load({}_package)))\n\n"
-      #  from mpre.persistence import authenticated_dump, ASCIIKEY
+        _file.write(self.loader.source + "\n")      
         
+        embed_package = "{}_package = bytes('''{}''')\n\n"
+        add_to_path = "sys.meta_path.append(load({}_package))\n\n"
+            
         for package in self.packages:
             _file.write(embed_package.format(package.package_name, 
-                                             binascii.hexlify(package.save())))
-       #     _file.write(add_to_path.format(package.package_name))
-        #_file.write("\n\n")
-       # _file.write(self.main_source)
+                                             package.save()))
+            _file.write(add_to_path.format(package.package_name))
+        
+        _file.write(self.main_source)
         _file.flush()
         print "Compiling..."
         mpre._compile.py_to_compiled([self.filename], 'exe')        
@@ -90,7 +96,7 @@ if __name__ == "__main__":
     import mpre.package   
     #import mpre.fileio
     packages=[mpre.package.Package(mpre, include_source=True)]       
-    exe = Executable(mpre.metapython, packages=packages)
+    exe = Executable(mpre.metapython, packages=[mpre.base.Base(package_name="Test")])#packages)
     exe.build()
     print "Complete"
     #exe.alert("Complete", level=0)

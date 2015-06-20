@@ -128,7 +128,7 @@ class Parser_Metaclass(type):
     def __new__(cls, name, bases, attributes):
         new_class = super(Parser_Metaclass, cls).__new__(cls, name, bases, attributes)
         exit_on_help = attributes.get("exit_on_help", True)
-
+        
         base_class = bases[0]
         modifiers = getattr(base_class, "parser_modifiers", {}).copy()
 
@@ -153,6 +153,7 @@ class Parser_Metaclass(type):
         parser = Parser_Metaclass.command_parser.add_parser(name)
         new_class.parser = Parser(parser, modifiers, exit_on_help, name)
         return new_class
+    
     
 class Parser(object):
     """ Faciltates automatically generated command line parsers. Parser
@@ -214,6 +215,7 @@ class Parser(object):
         try:
             arguments, unused = parser.parse_known_args()
         except SystemExit:
+            print
             if exit_on_help:
                 raise
             try:
@@ -221,7 +223,7 @@ class Parser(object):
             except ValueError:
                 new_argv.pop(new_argv.index("--help"))
             arguments, unused = parser.parse_known_args()
-
+            
         if unused:
           #  new_argv = copy(Parser.sys_argv_backup)
             for unused_name in unused:

@@ -9,7 +9,7 @@ class UnauthorizedError(Warning): pass
 
 def Authenticated(function):
     def call(instance, *args, **kwargs):
-        if components["RPC_Server"].requester_address not in instance.logged_in:
+        if instance.requester_address not in instance.logged_in:
             raise UnauthorizedError("not logged in")
         return function(instance, *args, **kwargs)
         
@@ -43,7 +43,7 @@ class Authenticated_Service(mpre.base.Base):
         if username in self.logging_in:
             K, response = response
             self.user_secret[username] = K
-            self.logged_in[components["RPC_Server"].requester_address] = username
+            self.logged_in[self.requester_address] = username
             self.logging_in.remove(username)
             response = (self.login_message, response)
         else:
@@ -55,12 +55,15 @@ class Authenticated_Client(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"username" : '',
+                     "password" : '',
                      "target_service" : '',
                      "password_prompt" : "Please provide the pass phrase or word: ",
                      "protocol_client" : "mpre.srp.SRP_Client",
                      "host_info" : ("localhost", 40022),
                      "auto_login" : True,
                      "logged_in" : False})
+    
+    parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
     
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
@@ -72,8 +75,8 @@ class Authenticated_Client(mpre.base.Base):
     def register(self): 
         self.alert("Registering", level=0)
         Instruction(self.target_service, "register", self.username, 
-                    getpass.getpass(self.password_prompt)).execute(host_info=self.host_info,
-                                                                   callback=self.register_results)
+                    self.password or getpass.getpass(self.password_prompt)).execute(host_info=self.host_info,
+                                                                                    callback=self.register_results)
                
     def register_results(self, success):
         if success:
@@ -85,7 +88,7 @@ class Authenticated_Client(mpre.base.Base):
     
     def login(self):
         self.alert("Logging in...", level=0)
-        self.client = self.create(self.protocol_client, username=self.username)
+        self.client = self.create(self.protocol_client, username=self.username, password=self.password)
         Instruction(self.target_service, "login", 
                     *self.client.login()).execute(host_info=self.host_info,
                                                   callback=self.send_proof)    

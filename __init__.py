@@ -1,3 +1,4 @@
+import sys
 import heapq
 import mmap
 import itertools
@@ -192,20 +193,20 @@ class Instruction(object):
             heapq.heappush(environment.Instructions, 
                           (execute_at, self, callback))
     
-    """def __getstate__(self):
-        print "Pickling Instruction", self.component_name, self.method
-        attributes = self.__dict__
-        callback = attributes.get("callback")
-        if callback:
-            attributes["callback"] = (callback.im_self, callback.__name__)
-        print "Pickled instruction", attributes
-        return attributes
-        
-    def __setstate__(self, state):
-        callback = state["callback"]
-        if callback is not None:
-            state["callback"] = getattr(components[callback[0]], callback[1])
-        super(Instruction, self).__setstate__(state)"""
+    #def __getstate__(self):
+    #    print "Pickling Instruction", self.component_name, self.method
+    #    attributes = self.__dict__
+    #    callback = attributes.get("callback")
+    #    if callback:
+    #        attributes["callback"] = (callback.im_self, callback.__name__)
+    #   # print "Pickled instruction", attributes
+    #    return attributes
+    #    
+    #def __setstate__(self, state):
+    #    callback = state["callback"]
+    #    if callback is not None:
+    #        state["callback"] = getattr(components[callback[0]], callback[1])
+    #    super(Instruction, self).__setstate__(state)
         
     def __str__(self):
         args = str(getattr(self, "args", ''))
@@ -217,3 +218,42 @@ class Instruction(object):
                                      
 environment = Environment()
 components = environment.components
+
+# Things must be done in this order for Alert_Handler to exist inside this file
+import mpre.base
+
+class Alert_Handler(mpre.base.Base):
+    """ Provides the backend for the base.alert method. This component is automatically
+        created by the Metapython component. The print_level and log_level attributes act
+        as global filters for alerts; print_level and log_level may be specified as 
+        command line arguments upon program startup to globally control verbosity/logging."""
+    level_map = {0 : "message ",
+                'v' : "notification ",
+                'vv' : "verbose notification ",
+                'vvv' : "very verbose notification ",
+                'vvvv' : "extremely verbose notification "}
+                
+    defaults = base.Base.defaults.copy()
+    defaults.update({"log_level" : 0,
+                     "print_level" : 0,
+                     "log_name" : "Alerts.log",
+                     "log_is_persistent" : False,
+                     "parse_args" : True})
+    
+    parser_ignore = base.Base.parser_ignore + ("parse_args", "log_is_persistent", "verbosity")
+    exit_on_help = False
+    
+    def __init__(self, **kwargs):
+        super(Alert_Handler, self).__init__(**kwargs)
+        self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
+                
+    def _alert(self, message, level):
+        if not self.print_level or level <= self.print_level:
+            sys.stdout.write(message + "\n")
+        if level <= self.log_level:
+            severity = self.level_map.get(level, str(level))
+            # windows will complain about a file in + mode if this isn't done sometimes
+            self.log.seek(0, 1)
+            self.log.write(severity + message + "\n")
+            
+alert_handler = Alert_Handler()            

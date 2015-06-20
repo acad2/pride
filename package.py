@@ -61,7 +61,6 @@ class Package(mpre.base.Base):
         for _file in os.listdir(path):
             module_name, extension = os.path.splitext(_file)
             if module_name in self.ignore_modules or module_name == "__init__":
-         #       print "Ignoring module: ", _file
                 continue
             if extension in self.python_extensions:
                 modules.append(module_name) # this adds module_name while below adds package.module name, why?
@@ -74,7 +73,6 @@ class Package(mpre.base.Base):
                     if include_source:
                         sources[module_name] = source             
                 try:
-            #        print package_name, "Compiling", module_name, package_name, _file
                     _module = (sys.modules.get(module_name) or 
                                module_utilities.create_module(module_name, source,
                                                               context={"__file__" : _file,
@@ -98,7 +96,6 @@ class Package(mpre.base.Base):
                 # do subpackages later so modules in appear grouped by package in mkdocs.yml
                 _module = importlib.import_module(_file)
                 _module.__dict__.setdefault("__package__", _file)
-            #    print "Created subpackage: ", _file
                 _subpackages.append(_module)                
 
         package_options = {"sources" : sources,
@@ -107,19 +104,13 @@ class Package(mpre.base.Base):
                            "top_level_package" : top_level_package,
                            "required_packages" : required_packages,
                            "required_modules" : required_modules}
-                                      
-      #  for _package in required_packages:
-       #     _subpackages.append(importlib.import_module(_package))
-            
+  
         for subpackage in _subpackages:
             _package = self.create(Package, subpackage, **package_options)            
             required_packages.update(_package.required_packages)
             required_modules.update(_package.required_modules)            
             self.packages.append(_package)
-      #  for _package in required_packages.difference((module.__name__ for module in _subpackages)):
-        #    print self, "Creating a package for: ", _package
-          #  __package = self.create(Package, importlib.import_module(_package), **package_options)
-         #   required_packages.add(_package)
+
         self.required_packages = required_packages
         required_modules.update(modules)
         self.required_modules = sorted_modules = sorted(required_modules)        
@@ -200,11 +191,12 @@ class Documentation(mpre.base.Base):
         module = (_object if isinstance(_object, types.ModuleType) else 
                   sys.modules[module_name])
         path, _file = os.path.split(module.__file__)
-   
+        #print "Split module file into", module.__file__, path, _file
         self.package_name = package_name = (module.__package__ if 
                                             module.__package__ is not None else
                                             module.__name__.split('.')[0])
         md_filepath = os.path.join(path, "docs", package_name, module_name) + ".md"  
+        #print "Created md_filepath: ", md_filepath
         yml_entry = r"- ['{}', '{}', '{}']" + "\n"
 
         entry = yml_entry.format(os.path.join(package_name, module_name) + ".md", 

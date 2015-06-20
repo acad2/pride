@@ -14,21 +14,20 @@
   but is implemented in python via the pow function, while in python
   ^ means XOR.
   
-  N    A large safe prime (N = 2q+1, where q is prime)
-       All arithmetic is done modulo N.
-  g    A generator modulo N
-  k    Multiplier parameter (k = H(N, g) in SRP-6a, k = 3 for legacy SRP-6)
-  s    User's salt
-  I    Username
-  p    Cleartext Password
-  H()  One-way hash function
-  ^    XOR
-  pow (Modular) Exponentiation
-  u    Random scrambling parameter
-  a,b  Secret ephemeral values
-  A,B  Public ephemeral values
-  x    Private key (derived from p and s)
-  v    Password verifier"""
+  - N:    A large safe prime (N = 2q+1, where q is prime). All arithmetic is done modulo N.
+  - g:    A generator modulo N
+  - k:    Multiplier parameter (k = H(N, g) in SRP-6a, k = 3 for legacy SRP-6)
+  - s:    User's salt
+  - I:    Username
+  - p:   Cleartext Password
+  - H:  One-way hash function
+  - ^:    XOR
+  - pow: (Modular) Exponentiation
+  - u:    Random scrambling parameter
+  - a,b:  Secret ephemeral values
+  - A,B:  Public ephemeral values
+  - x:   Private key (derived from p and s)
+  - v:    Password verifier"""
 
 import hashlib
 import random
@@ -42,8 +41,11 @@ import mpre.errors
 
 class InsecureValueError(Warning): pass
 
-def _hash_function(*args):
-    return int(hashlib.sha256(':'.join(str(arg) for arg in args)).hexdigest(), 16)
+def _hash_function(*args, **kwargs):
+    """ Joins each argument with ':' into one concatenated string. Applies
+        kwargs["hash_function"] or hashlib.256 if not specified to the arguments.
+        return the integer value of the resulting hash_object.hexdigest."""        
+    return int(kwargs.get("hash_function", hashlib.sha256)(':'.join(str(arg) for arg in args)).hexdigest(), 16)
 
 def random_bits(n=1024):
     return random.SystemRandom().getrandbits(n) % N
@@ -73,13 +75,13 @@ class Secure_Remote_Password(mpre.base.Base):
                      "new_salt" : new_salt,
                      "hash_function" : _hash_function,
                      "verifier_file_system" : "virtual",
-                     "database_filename" : "user_registry"})
-                     
+                     "database_filename" : "user_registry"})     
+        
     def __init__(self, **kwargs):
         self.login_threads = {}
         super(Secure_Remote_Password, self).__init__(**kwargs)        
+        
         database = self.database = sqlite3.connect(self.database_filename)
-        #database.text_factory = str                    
         cursor = database.cursor()        
         cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
                        "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
@@ -164,19 +166,26 @@ class Secure_Remote_Password(mpre.base.Base):
             yield K, H(A, M, K)
           
     def __getstate__(self):
-        attributes = super(Secure_Remote_Password).__getstate__()
+        attributes = super(Secure_Remote_Password, self).__getstate__()
         del attributes["login_threads"]
+        del attributes["database"]
         return attributes
         
     def on_load(self, attributes):
-        super(Secure_Remote_Password, self).on_load(self, attributes)
+        super(Secure_Remote_Password, self).on_load(attributes)
         self.login_threads = {}
+        database = self.database = sqlite3.connect(self.database_filename)
+        cursor = database.cursor()        
+        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
+                       "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
+        database.commit()
         
         
 class SRP_Client(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"username" : "",
+                     "password" : '',
                      "thread" : None,
                      "hash_function" : _hash_function,
                      'N' : N,
@@ -218,7 +227,7 @@ class SRP_Client(mpre.base.Base):
         if u == 0:
             raise InsecureValueError
             
-        x = H(salt, H(self.username + ":" + getpass.getpass("Please provide the password: ")))         
+        x = H(salt, H(self.username + ":" + self.password or getpass.getpass("Please provide the password: ")))         
         K = H( pow(B - k * pow(g, x, N), self.a + u * x, N))
         
         M =  H( H(N) ^ H(g), H(self.username), salt, self.A, B, K)

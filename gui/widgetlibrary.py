@@ -7,6 +7,89 @@ import mpre.base as base
 Instruction = mpre.Instruction
 
 
+class Scroll_Bar(gui.Container):    
+    
+    defaults = gui.Container.defaults.copy()
+    defaults.update({"size_scalar" : 20,
+                     "max_size" : 100})
+                     
+    def _get_orientation(self):
+        return 'x' if self.pack_mode == "horizontal" else 'y'
+    orientation = property(_get_orientation)
+    
+    def __init__(self, **kwargs):
+        super(Scroll_Bar, self).__init__(**kwargs)
+        orientation = self.orientation
+        self.create("mpre.gui.widgetlibrary.Decrement_Button", target=self.parent_name, attribute=orientation)
+        self.create("mpre.gui.widgetlibrary.Scroll_Button", target=self.parent_name, attribute=orientation)
+        self.create("mpre.gui.widgetlibrary.Increment_Button", target=self.parent_name, attribute=orientation)
+        
+    def pack(self, modifiers=None):
+        modify = 'h' if self.pack_mode == "horizontal" else 'w'
+        super(Scroll_Bar, self).pack(modifiers or 
+                                    {modify : min(self.max_size,
+                                                  int(getattr(self.parent, modify) / self.size_scalar))})
+        
+        
+class Decrement_Button(gui.Button):            
+     
+    def _get_amount(self):
+        return self.w if self.attribute == 'x' else self.h
+    amount = property(_get_amount)
+    
+    def left_click(self, mouse):
+        attribute = self.attribute
+        instance = mpre.components[self.target]
+        if self.attribute == 'x':
+            instance.texture_window_x -= self.amount
+        else:
+            print "Scroll texture window up"
+            instance.texture_window_y -= self.amount    
+        
+
+class Scroll_Button(gui.Button):
+    pass        
+    """def _get_x(self):
+        return super(Scroll_Button, self)._get_x()
+    def _set_x(self, value):
+        super(Scroll_Button, self)._set_x(value)
+        mpre.components[self.target].texture_window_x += valu
+        instance.srcrect = self.x, srcrect[1], srcrect[2], srcrect[3]
+    x = property(_get_x, _set_x)
+    
+    def _get_y(self):
+        return super(Scroll_Button, self)._get_y()
+    def _set_y(self, value):
+        super(Scroll_Button, self)._set_y(value)
+        instance = mpre.components[self.target]
+        srcrect = instance.srcrect
+        instance.srcrect = srcrect[0], self.y, srcrect[2], srcrect[3]
+    y = property(_get_y, _set_y)
+    
+    def pack(self, modifiers=None):
+        super(Scroll_Button, self).pack(modifiers)
+        x, y, w, h  = mpre.components[self.target].srcrect
+        if self.attribute == 'x':
+            self.x = x
+        else:
+            self.y = y     """   
+        
+    
+class Increment_Button(gui.Button):            
+     
+    def _get_amount(self):
+        return self.w if self.attribute == "horizontal" else self.h
+    amount = property(_get_amount)
+    
+    def left_click(self, mouse):
+        attribute = self.attribute
+        instance = mpre.components[self.target]
+        if self.attribute == 'x':
+            instance.texture_window_x += self.amount
+        else:
+            instance.texture_window_y += self.amount       
+
+        
 class Indicator(gui.Button):  
     
     defaults = gui.Button.defaults.copy()
@@ -71,7 +154,11 @@ class Text_Field(gui.Button):
                      "h" : 16,
                      "pack_mode" : "horizontal"})          
         
-    
+    def __init__(self, **kwargs):
+        super(Text_Field, self).__init__(**kwargs)
+        self.create(Scroll_Bar)
+        
+        
 class Date_Time_Button(gui.Button):
 
     defaults = gui.Button.defaults.copy()

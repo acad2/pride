@@ -1,25 +1,27 @@
 import mpre
 
-Instruction = mpre.Instruction
-
 options = {"parse_args" : True,
            "startup_definitions" : ''}
 
 # feel free to customize
 definitions = \
-r"""import mpre.base as base
+r"""import mpre.base
 import mpre
 
 environment = mpre.environment
 components = mpre.components
-from mpre._metapython import Metapython
 from mpre.importers import From_Disk
 from mpre.utilities import documentation
 
 __from_disk_importer = From_Disk()
 from_disk_import = __from_disk_importer.load_module
 
-
+#def restart():
+    
+    
+def save(instance_name, _file=None):
+    return components[instance_name].save(_file=None)
+    
 def create(instance_type, *args, **kwargs):
     return components["Metapython"].create(instance_type, *args, **kwargs)
 
@@ -41,19 +43,19 @@ def update(instance_name):
 #e.seek(0)
 #print e.read()
 
-#_package = create("mpre.package.Package", mpre, include_documentation=True)
+_package = create("mpre.package.Package", mpre, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
 #print _package.documentation["mpre"].markdown
 
 #_sqlite3 = _package.get_module("sqlite3")
  
-#import mpre.gui.gui as gui
-#gui.enable()
+#import mpre.gui
+#mpre.gui.enable()
 #h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #t = components["Task_Bar"]
 #i = components["Indicator"]
-#d = components["Date_Time_Button"]
+##d = components["Date_Time_Button"]
 
 #import mpre.package
 #p = mpre.package.Package(mpre)
@@ -65,9 +67,11 @@ def update(instance_name):
 
 #z = s(constructor)
 #newz = l(z) # does not call .on_load
+
+sniffer = create("mpre.network.Packet_Sniffer")
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    Instruction("Metapython", "create", "_metapython.Shell", **options).execute()
+    components["Metapython"].create("_metapython.Shell", **options)

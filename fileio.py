@@ -193,11 +193,14 @@ class File(base.Wrapper):
         
     def __getstate__(self):
         attributes = super(File, self).__getstate__()
-        backup_tell = self.tell()
-        self.seek(0)
-        attributes["_file_data"] = self.read()
-       # print self.filename, "storing {} bytes of data".format(attributes["_file_data"])
-        self.seek(backup_tell)
+        if self.persistent:
+            backup_tell = self.tell()
+            self.seek(0)
+            attributes["_file_data"] = self.read()
+            print self.filename, "storing {} bytes of data".format(len(attributes["_file_data"]))
+            self.seek(backup_tell)
+        else:
+            attributes["_file_data"] = ''
         del attributes["wrapped_object"]
         del attributes["file"]
         return attributes

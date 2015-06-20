@@ -14,6 +14,10 @@ if "win" in sys.platform:
 else:
     timer_function = time.time
     
+def deindent(string, levels=1):
+    return '\n'.join((line.replace("    ", '', levels) for line in 
+                      string.replace("\t", "    ").split('\n')))
+                      
 def updated_class(_class, importer_type="mpre.importers.From_Disk"):
     # modules are garbage collected if not kept alive        
     required_modules = []        
@@ -58,17 +62,22 @@ def convert(old_value, old_base, new_base):
     return ''.join(reversed(new_value))
                 
 def resolve_string(string):
-    """Given an attribute string of ...x.y.z, import ...x.y and return z"""
-    module_name = string.split(".")   
-    class_name = module_name.pop(-1)
-    module_name = '.'.join(module_name)
-    if not module_name:
-        module_name = "__main__"
-    
-    _from = sys.modules[module_name] if module_name in sys.modules\
-            else importlib.import_module(module_name)
-    return getattr(_from, class_name)
-
+    """Given an attribute string of a.b...z, return the object z"""
+    result = None
+    module_name = string
+    attributes = []
+    while not result:
+        try:
+            result = (sys.modules[module_name] if module_name in 
+                      sys.modules else importlib.import_module(module_name))
+        except ImportError:
+            module_name = module_name.split('.')
+            attributes.append(module_name.pop())
+            module_name = '.'.join(module_name)
+            
+    for attribute in reversed(attributes):
+        result = getattr(result, attribute)
+    return result    
     
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 
@@ -92,7 +101,13 @@ def function_header(function):
     try:
         code = function.func_code
     except AttributeError:
-        raise ValueError("could not locate code object of {}".format(function))
+        try:
+            code = function.im_func.func_code
+        except AttributeError:
+            try:
+                code = function.im_func.func.func_code
+            except AttributeError:
+                raise ValueError("could not locate code object of {}".format(function))
         
     arguments = inspect.getargs(code)
     _arguments = ', '.join(arguments.args )
@@ -111,6 +126,10 @@ def usage(_object):
         name = _object.__name__
         arguments = function_header(_object)
         return_type = ''
+    elif hasattr(_object, "function"):
+        name = _object.__name__
+        arguments = function_header(_object.function)
+        return_type = ''
     elif hasattr(_object, "defaults") and isinstance(_object.defaults, dict):
         name = _object.__name__ if isinstance(_object, type) else type(_object).__name__
         spacing = ''
@@ -120,13 +139,13 @@ def usage(_object):
             spacing = '\n' + (len(name) + len("usage: ({")) * " "
         arguments += "})"    
         return_type = " => {}".format(name)
-    elif getattr(_object, "__class__", '') == "Runtime_Decorator":
+    elif type(_object).__name__ == "Runtime_Decorator":
         name = _object.function.__name__
         arguments = function_header(_object.function)
         return_type = ''
     elif hasattr(_object, "__call__"):
         name = _object.__name__ if isinstance(_object, type) else type(_object).__name__
-        arguments = function_header(_object.__call__)
+        arguments = function_header(_object)
         return_type = ''
     else:
         raise ValueError("Unsupported object: {}".format(_object))
@@ -134,8 +153,7 @@ def usage(_object):
     
 def documentation(_object):
     new_section = "{}\n==============\n\n"
-    new_subsection = "{}\n--------------\n\n"
-    new_function = "- **{}**"
+    new_subsection = "\n\n{}\n--------------\n\n"
     if isinstance(_object, types.ModuleType):        
         module_name = _object.__name__
         docstring = new_section.format(module_name)
@@ -146,11 +164,11 @@ def documentation(_object):
             if isinstance(value, type) or callable(value) and "built-in" not in str(value):
                 docs = documentation(value)
                 if docs:
-                    docstring += "\n\n" + docs
+                    docstring += new_subsection.format(attribute) + docs #"\n\n" + docs#
             
     elif isinstance(_object, type):
         class_name = _object.__name__
-        docstring = new_subsection.format(class_name)
+        docstring = ''#new_subsection.format(class_name)
         docs = _object.__dict__["__doc__"]
         if docs.__class__.__name__ == "Docstring":
             docs = _object.__doc    
@@ -172,7 +190,7 @@ def documentation(_object):
                 docstring += "\n\n" + docs
             elif callable(value):#hasattr(value, "im_func"):
                 docs = documentation(value)           
-                docstring += "\n\n" + docs
+                docstring += "\n\n- " + docs
                 
     elif callable(_object):
         try:
@@ -180,18 +198,17 @@ def documentation(_object):
         except AttributeError:
             docstring = ''
         else:
-            #docstring = new_function.format(function_name)
+            new_function = "**{}**"
             beginning = "usage: " + function_name            
             try:
                 docstring = (new_function.format(function_name) + 
                              usage(_object)[len(beginning):] + ":")
             except ValueError:
-                docstring = new_function.format(function_name) + "**:"
+                docstring = new_function.format(function_name) + ":"
             docstring += "\n\n\t\t"
             docstring += (_object.__doc__ if _object.__doc__ is not None else 
-                          "No documentation available") + "\n"
-            #docstring += "\n\n\t\t" + ge
-            #docstring += method_header + ":\n\n\t\t  " + function_docstring.replace("\n", "\n\t\t ") + "\n"
+                          "\t\tNo documentation available") + "\n"
+
     elif _object.__class__.__name__ == "Runtime_Decorator":
         docstring = documentation(_object.function)
         
