@@ -3,7 +3,7 @@ import getpass
 import mpre
 import mpre.base
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
 
 class UnauthorizedError(Warning): pass
 
@@ -32,14 +32,14 @@ class Authenticated_Service(mpre.base.Base):
     def register(self, username, password):        
         self.alert("Attempting to register '{}'", [username], level='v')
         if self.allow_registration:
-            registered = components[self.protocol_component].register(username, password)
+            registered = objects[self.protocol_component].register(username, password)
             if registered:
                 return True
          
     def login(self, username, credentials):
         if username in self.user_secret:
             self.alert("Detected multiple login attempt on account {}", [username], level='v')
-        response = components[self.protocol_component].login(username, credentials)
+        response = objects[self.protocol_component].login(username, credentials)
         if username in self.logging_in:
             K, response = response
             self.user_secret[username] = K

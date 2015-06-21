@@ -54,7 +54,7 @@ def new_salt(size):
     return os.urandom(64)
  
 # N, g, and H (the hash function) are configurable, to change them simply supply
-# new values to the Secure_Remote_Password components when initializing them. 
+# new values to the Secure_Remote_Password objects when initializing them. 
 # Note these values must be the same for both client and server.
 N = int(''.join(str(ord(char)) for char in 
         """MIGHAoGBAN01lQw6DEtRySBBm+Sxl2ivcYmNB6UHovD1m4JOzZKXdHSg/V2S8j5q
@@ -241,7 +241,7 @@ class SRP_Client(mpre.base.Base):
             return True         
          
 def test_srp():
-    authentication_service = components["Secure_Remote_Password"]
+    authentication_service = objects["Secure_Remote_Password"]
     client = SRP_Client(username="root", verbosity='vvv')
     
     #authentication_service.register("root", "password"):
@@ -257,7 +257,7 @@ def test_srp():
         return K
   
 if __name__ == "__main__":
-    if "Secure_Remote_Password" not in mpre.components:
-        mpre.components["Metapython"].create(Secure_Remote_Password)
+    if "Secure_Remote_Password" not in mpre.objects:
+        mpre.objects["Metapython"].create(Secure_Remote_Password)
     if test_srp():
         print "SRP Success"    

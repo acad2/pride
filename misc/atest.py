@@ -16,11 +16,11 @@ class Authenticated_Service(mpre.base.Base):
         
     def register(self, username, password):
         if self.allow_registration:
-            if components["Secure_Remote_Password"].register(username, password):
+            if objects["Secure_Remote_Password"].register(username, password):
                 return True
                 
     def login(self, username, credentials):
-        response = components["Secure_Remote_Password"].login(username, credentials)
+        response = objects["Secure_Remote_Password"].login(username, credentials)
         if username in self.logging_in:
             K, response = response
             self.user_secret[username] = K
@@ -88,5 +88,5 @@ def test():
     client.login()
     
 if __name__ == "__main__":
-    mpre.components["Metapython"].create("mpre.misc.srp.Secure_Remote_Password")
+    mpre.objects["Metapython"].create("mpre.misc.srp.Secure_Remote_Password")
     test()

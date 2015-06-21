@@ -9,7 +9,7 @@ r"""import mpre.base
 import mpre
 
 environment = mpre.environment
-components = mpre.components
+objects = mpre.objects
 from mpre.importers import From_Disk
 from mpre.utilities import documentation
 
@@ -20,19 +20,19 @@ from_disk_import = __from_disk_importer.load_module
     
     
 def save(instance_name, _file=None):
-    return components[instance_name].save(_file=None)
+    return objects[instance_name].save(_file=None)
     
 def create(instance_type, *args, **kwargs):
-    return components["Metapython"].create(instance_type, *args, **kwargs)
+    return objects["Metapython"].create(instance_type, *args, **kwargs)
 
 def delete(instance_name):
-    components[instance_name].delete()
+    objects[instance_name].delete()
                                      
 def update(instance_name):
-    return components[instance_name].update()
+    return objects[instance_name].update()
     
 #f = create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
-#fs = components["File_System"]
+#fs = objects["File_System"]
 #ftest = fs.get_file("virtual\\test_directory\\test.disk")
 
 #d = create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
@@ -52,17 +52,17 @@ _package = create("mpre.package.Package", mpre, include_documentation=True)
  
 #import mpre.gui
 #mpre.gui.enable()
-#h = components["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
-#t = components["Task_Bar"]
-#i = components["Indicator"]
-##d = components["Date_Time_Button"]
+#h = objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+#t = objects["Task_Bar"]
+#i = objects["Indicator"]
+##d = objects["Date_Time_Button"]
 
 #import mpre.package
 #p = mpre.package.Package(mpre)
 
 #update("Metapython")
 #update("Metapython")
-#x = components["Metapython"].save()
+#x = objects["Metapython"].save()
 #y = mpre.base.Base.load(x) # calls .on_load automatically
 
 #z = s(constructor)
@@ -74,4 +74,4 @@ sniffer = create("mpre.network.Packet_Sniffer")
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    components["Metapython"].create("_metapython.Shell", **options)
+    objects["Metapython"].create("_metapython.Shell", **options)

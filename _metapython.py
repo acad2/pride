@@ -15,7 +15,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.authentication as authentication
 import mpre.utilities as utilities
 import mpre.fileio as fileio
-components = mpre.components
+objects = mpre.objects
 Instruction = mpre.Instruction            
     
 if "__file__" not in globals():
@@ -24,14 +24,14 @@ else:
     FILEPATH = os.path.split(__file__)[0]
     
 class Shell(authentication.Authenticated_Client):
-    """ Provides the client side of the interpreter session. Handles keystrokes and
-        sends them to the Interpreter_Service to be executed."""
+    """ Handles keystrokes and sends python source to the Interpreter to be executed.
+        This requires authentication."""
     defaults = authentication.Authenticated_Client.defaults.copy()
     defaults.update({"username" : "root",
                      "password" : "password",
                      "prompt" : ">>> ",
                      "startup_definitions" : '',
-                     "target_service" : "Interpreter_Service"})
+                     "target_service" : "Interpreter"})
     
     parser_ignore = authentication.Authenticated_Client.parser_ignore + ("prompt", )
     
@@ -39,7 +39,7 @@ class Shell(authentication.Authenticated_Client):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
         self.user_is_entering_definition = False     
-        components["User_Input"].add_listener(self.instance_name)
+        objects["User_Input"].add_listener(self.instance_name)
                 
     def on_login(self, message):
         self.alert("{}", [message], level=0)
@@ -108,20 +108,24 @@ class Shell(authentication.Authenticated_Client):
             sys.stdout.write(packet + self.prompt)
         
         
-class Interpreter_Service(authentication.Authenticated_Service):
-    """ Provides the server side of the interactive interpreter. Receives keystrokes
-        and attempts to compile + exec them."""
+class Interpreter(authentication.Authenticated_Service):
+    """ Executes python source. Requires authentication. The source code and 
+        return value of all requests are logged.
+        
+        usage: Instruction("Interpreter", "exec_code",
+                           my_source).execute(host_info=target_host)"""
+    
     defaults = authentication.Authenticated_Service.defaults.copy()
     defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
         self.user_session = {}
-        super(Interpreter_Service, self).__init__(**kwargs)
+        super(Interpreter, self).__init__(**kwargs)
         self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+', persistent=False)
                 
     def login(self, username, credentials):
-        response = super(Interpreter_Service, self).login(username, credentials)
+        response = super(Interpreter, self).login(username, credentials)
         if username in self.user_secret:
             sender = self.requester_address
             self.user_namespaces[username] = {"__name__" : "__main__",
@@ -133,15 +137,15 @@ class Interpreter_Service(authentication.Authenticated_Service):
         return response
         
     @authentication.Authenticated
-    def exec_code(self, packet):
+    def exec_code(self, source):
         log = self.log        
         sender = self.requester_address
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
-                  packet)                  
+                  source)                  
         result = ''                
         try:
-            code = compile(packet, "<stdin>", 'exec')
+            code = compile(source, "<stdin>", 'exec')
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:                
@@ -162,7 +166,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
                 else:
                     result = traceback.format_exc()
             else:
-                self.user_session[username] += packet
+                self.user_session[username] += source
             finally:
                 if remove_builtins:
                     del namespace["__builtins__"]
@@ -176,7 +180,7 @@ class Interpreter_Service(authentication.Authenticated_Service):
         return result
         
     def __setstate__(self, state):     
-        super(Interpreter_Service, self).__setstate__(state)
+        super(Interpreter, self).__setstate__(state)
         sender = dict((value, key) for key, value in self.logged_in.items())
         for username in self.user_session.keys():
             source = self.user_session[username]
@@ -185,12 +189,11 @@ class Interpreter_Service(authentication.Authenticated_Service):
                    
             
 class Metapython(base.Base):
-    """ Provides an entry point to the environment. Instantiating this component and
-        calling the start_machine method starts the execution of the Processor component.
-        It is encouraged to use the Metapython component when create-ing new top level
-        components in the environment. For example, the Network component is a child object
-        of the Metapython component. Doing so allows for simple portability of an environment
-        in regards to saving/loading the state of an entire application."""
+    """ The "main" class. Provides an entry point to the environment. 
+        Instantiating this component and calling the start_machine method 
+        starts the execution of the Processor component.
+        
+        startup"""
 
     defaults = base.Base.defaults.copy()
     defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
@@ -279,10 +282,10 @@ class Metapython(base.Base):
         server_options = {"name" : self.instance_name,
                           "interface" : self.interface,
                           "port" : self.port}        
-        self.server = self.create(Interpreter_Service, **server_options)      
+        self.server = self.create(Interpreter, **server_options)      
         
     def exit(self, exit_code=0):
-        components["Processor"].set_attributes(running=False)
+        objects["Processor"].set_attributes(running=False)
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)

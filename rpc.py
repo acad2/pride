@@ -5,7 +5,7 @@ import mpre
 import mpre.base
 import mpre.network
 import mpre.persistence
-components = mpre.components
+objects = mpre.objects
 
 class RPC_Handler(mpre.base.Base):
     
@@ -71,7 +71,7 @@ class RPC_Request(mpre.network.Tcp_Socket):
     def recv(self, buffer_size=0):
         request = super(RPC_Request, self).recv(buffer_size)
         component_name, method, argument_bytestream = request.split(" ", 2)
-        instance = components[component_name]
+        instance = objects[component_name]
         instance.requester_address = self.getpeername()[0]   
         try:
             args, kwargs = pickle.loads(argument_bytestream)

@@ -27,7 +27,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.base as base
 from utilities import Latency, Average
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
 
 NotWritableError = type("NotWritableError", (IOError, ), {"errno" : -1})
 ERROR_CODES = {-1 : "NotWritableError"}
@@ -148,7 +148,7 @@ class Socket(base.Wrapper):
         if self.add_on_init:
             self.added_to_network = True
             try:
-                components["Network"].add(self)
+                objects["Network"].add(self)
             except KeyError:
                 self.alert("Network component does not exist", level=0)
          
@@ -206,7 +206,7 @@ class Socket(base.Wrapper):
         except socket.error as error:
             if not self._connecting:
                 self._connecting = True
-                components["Network"].connecting.add(self)
+                objects["Network"].connecting.add(self)
             else:
                 raise
         else:
@@ -224,7 +224,7 @@ class Socket(base.Wrapper):
     
     def close(self):
         if self.added_to_network:
-            components["Network"].remove(self)
+            objects["Network"].remove(self)
         self.wrapped_object.close()
         self.closed = True
     

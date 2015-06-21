@@ -12,9 +12,9 @@ def install_pyalsaaudio():
     os.system("sudo pip install pyalsaaudio")
     
 def ensure_audio_enabled(**kwargs):
-    components = mpre.environment.components
-    if "Audio_Manager" not in components:
-        components["Metapython"].create("mpre.audio.audiolibrary.Audio_Manager", **kwargs)
+    objects = mpre.environment.objects
+    if "Audio_Manager" not in objects:
+        objects["Metapython"].create("mpre.audio.audiolibrary.Audio_Manager", **kwargs)
                     
       
 def enable_audio(parent="Metapython"):

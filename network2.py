@@ -13,7 +13,7 @@ import mpre.network as network
 import mpre.fileio as fileio
 from mpre.utilities import Latency, timer_function
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
            
 class Network_Service(network.Udp_Socket):
     
@@ -137,7 +137,7 @@ class Network_Service(network.Udp_Socket):
                 
                 self.alert("Resending {}", [id], level=0)
                         
-                components["Network"].send(self, packet, target)
+                objects["Network"].send(self, packet, target)
                 self.resent.add((target, id))               
                
     def invalid_request(self, sender, packet):

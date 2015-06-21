@@ -19,5 +19,5 @@ def point_in_area(area, position):
             
 def enable():
     import mpre
-    mpre.components["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")  
-    mpre.components["Metapython"].create("mpre.gui.gui.Organizer")                 
+    mpre.objects["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")  
+    mpre.objects["Metapython"].create("mpre.gui.gui.Organizer")                 

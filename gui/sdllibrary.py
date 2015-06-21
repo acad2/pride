@@ -11,7 +11,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.utilities as utilities
 import mpre.gui
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
 
 import sdl2
 import sdl2.ext
@@ -106,7 +106,7 @@ class SDL_Window(SDL_Component):
         renderer.set_render_target(None)
         renderer.clear()
                 
-        user_input = components["SDL_User_Input"]
+        user_input = objects["SDL_User_Input"]
         layers = self.layers
         screen_width, screen_height = self.size
       #  print
@@ -233,16 +233,16 @@ class Window_Handler(mpre.base.Base):
         
     def handle_leave(self, event):
         try:
-            components["SDL_User_Input"].active_item.held = False
+            objects["SDL_User_Input"].active_item.held = False
         except AttributeError:
             pass
         
     def handle_focus_gained(self, event):
-        components["SDL_User_Input"]._ignore_click = True
+        objects["SDL_User_Input"]._ignore_click = True
         
     def handle_focus_lost(self, event):
         try:
-            components["SDL_User_Input"].active_item.held = False
+            objects["SDL_User_Input"].active_item.held = False
         except AttributeError:
             pass
                 
@@ -314,7 +314,7 @@ class SDL_User_Input(vmlibrary.Process):
                               sdl2.SDL_TEXTEDITING : unhandled,
                               sdl2.SDL_TEXTINPUT : unhandled,
                               sdl2.SDL_USEREVENT : unhandled,
-                              sdl2.SDL_WINDOWEVENT : components["Window_Handler"].handle_event}
+                              sdl2.SDL_WINDOWEVENT : objects["Window_Handler"].handle_event}
 
         #self.constant_names = dict((key, [value for value in sdl2.__dict__.values if value == key][0]) for key in self.instruction_mapping)
     def run(self):

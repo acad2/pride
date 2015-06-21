@@ -39,7 +39,7 @@ class Decrement_Button(gui.Button):
     
     def left_click(self, mouse):
         attribute = self.attribute
-        instance = mpre.components[self.target]
+        instance = mpre.objects[self.target]
         if self.attribute == 'x':
             instance.texture_window_x -= self.amount
         else:
@@ -53,7 +53,7 @@ class Scroll_Button(gui.Button):
         return super(Scroll_Button, self)._get_x()
     def _set_x(self, value):
         super(Scroll_Button, self)._set_x(value)
-        mpre.components[self.target].texture_window_x += valu
+        mpre.objects[self.target].texture_window_x += valu
         instance.srcrect = self.x, srcrect[1], srcrect[2], srcrect[3]
     x = property(_get_x, _set_x)
     
@@ -61,14 +61,14 @@ class Scroll_Button(gui.Button):
         return super(Scroll_Button, self)._get_y()
     def _set_y(self, value):
         super(Scroll_Button, self)._set_y(value)
-        instance = mpre.components[self.target]
+        instance = mpre.objects[self.target]
         srcrect = instance.srcrect
         instance.srcrect = srcrect[0], self.y, srcrect[2], srcrect[3]
     y = property(_get_y, _set_y)
     
     def pack(self, modifiers=None):
         super(Scroll_Button, self).pack(modifiers)
-        x, y, w, h  = mpre.components[self.target].srcrect
+        x, y, w, h  = mpre.objects[self.target].srcrect
         if self.attribute == 'x':
             self.x = x
         else:
@@ -83,7 +83,7 @@ class Increment_Button(gui.Button):
     
     def left_click(self, mouse):
         attribute = self.attribute
-        instance = mpre.components[self.target]
+        instance = mpre.objects[self.target]
         if self.attribute == 'x':
             instance.texture_window_x += self.amount
         else:
@@ -121,7 +121,7 @@ class Delete_Button(gui.Button):
         self.target=target
                 
     def left_click(self, mouse):
-        mpre.components[self.target].delete()
+        mpre.objects[self.target].delete()
         
         
 class Homescreen(gui.Window):

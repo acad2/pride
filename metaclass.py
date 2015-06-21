@@ -177,6 +177,7 @@ class Parser(object):
 
         default_modifiers = {"types" : ("long", )}
         self_modifiers = self.modifiers
+       # positionals = 0
         for name in argument_names:
             modifiers = self_modifiers.get(name, default_modifiers)
             if modifiers == "ignore":
@@ -189,7 +190,8 @@ class Parser(object):
             for arg_type in info.pop("types"):
                 if arg_type != "positional":
                     temporary["dest"] = name
-
+            #    else:
+            #        positionals += 1
                 default_value = argument_info[name]
                 temporary["default"] = default_value
                 value_type = type(default_value)
@@ -243,6 +245,14 @@ class Parser(object):
 
             arguments, unused = parser.parse_known_args()
             sys.argv = copy(Parser.sys_argv_backup)
+        
+        #while positionals:
+        #    for item in sys.argv[1:]:
+        #        if "-" != item[0]:
+        #            sys.argv.remove(item)
+        #            positionals -= 1
+        #            break            
+            
         return arguments
 
     def get_options(self, argument_info):

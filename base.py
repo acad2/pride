@@ -10,7 +10,7 @@
           will override a default
           
         - An instance name, which provides a reference to the component from any context. 
-          Instance names are mapped to instance objects in mpre.components.
+          Instance names are mapped to instance objects in mpre.objects.
           
         - The flag parse_args=True may be passed to the call to 
           instantiate a new object. If so, then the metaclass
@@ -61,7 +61,7 @@
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
     This name associates the instance to the instance_name in the
-    mpre.environment.components. The instance_name can be used to reference
+    mpre.environment.objects. The instance_name can be used to reference
     the object from any scope, as long as the component exists at runtime."""
 import operator
        
@@ -72,7 +72,7 @@ import mpre.utilities
 
 import mpre.module_utilities as module_utilities
 from mpre.errors import *
-components = mpre.components
+objects = mpre.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
 
@@ -97,7 +97,7 @@ def load(attributes='', _file=None):
         modifier = attribute_modifier.get(key, '')
         if modifier == "reference":
             print "\tRestored reference: ", value
-            attributes[key] = mpre.components[value]
+            attributes[key] = mpre.objects[value]
         elif modifier == "save":
             print "\tLoading attribute: ", key
             attributes[key] = load(value) # may need to be pickle.dumps(value)
@@ -128,7 +128,7 @@ class Base(object):
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
-        return components[self.parent_name]
+        return objects[self.parent_name]
     parent = property(_get_parent)
         
     def __init__(self, **kwargs):
@@ -243,7 +243,7 @@ class Base(object):
         if self.verbosity >= level:            
             message = (self.instance_name + ": " + message.format(*format_args) if
                        format_args else self.instance_name + ": " + message)
-            return components["Alert_Handler"]._alert(message, level)            
+            return objects["Alert_Handler"]._alert(message, level)            
                                                        
     def __getstate__(self):
         return self.__dict__.copy()
@@ -299,7 +299,7 @@ class Base(object):
         self.set_attributes(**attributes)
         mpre.environment.add(self)
         if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
-#            for instance_type, instances in components[attributes["instance_name"]].objects.items():
+#            for instance_type, instances in objects[attributes["instance_name"]].objects.items():
 #                size = len(self.objects[instance_type])
 #                self.objects[instance_type] = list(set(instances + self.objects[instance_type]))
 #                if len(self.objects[instance_type]) != size:

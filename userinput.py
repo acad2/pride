@@ -3,7 +3,7 @@ from threading import Thread
 
 import mpre
 import mpre.vmlibrary as vmlibrary
-components = mpre.components
+objects = mpre.objects
 
 try:
     from msvcrt import getwch, kbhit
@@ -71,7 +71,7 @@ class User_Input(vmlibrary.Process):
                 # newline will be written but listener won't receive
                 # keystrokes until the next read_input
                 sys.stdout.write(" \b")
-                components[listener].handle_keystrokes(self.input)
+                objects[listener].handle_keystrokes(self.input)
                 
             self.input = ''
                 
@@ -87,7 +87,7 @@ class User_Input(vmlibrary.Process):
         self.input = ''
         
     def add_listener(self, sender):
-        """ Adds a component to listeners. components added this way must support a    
+        """ Adds a component to listeners. objects added this way must support a    
             handle_keystrokes method"""
         self.listeners.append(sender)
         

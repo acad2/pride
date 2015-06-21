@@ -17,7 +17,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.audio.audiolibrary as audiolibrary
 from mpre.utilities import Latency
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
 
 @contextmanager
 def _alsa_errors_suppressed():
@@ -152,7 +152,7 @@ class Audio_Input(Audio_Device):
         self.playing_to[_file] = listeners
         
         for listener in listeners:
-            components[listener].set_input_device(self.instance_name)
+            objects[listener].set_input_device(self.instance_name)
             if listener in self.listeners:
                 self.listeners.remove(listener)
                 self.preserved_listeners.append(listener)
@@ -161,7 +161,7 @@ class Audio_Input(Audio_Device):
         self.playing_files.remove(_file)
         
         for listener in self.playing_to[_file]:
-            components[listener].handle_end_of_stream()
+            objects[listener].handle_end_of_stream()
             if listener in self.preserved_listeners:
                 self.preserved_listeners.remove(listener)
                 self.listeners.append(listener)
@@ -194,7 +194,7 @@ class Audio_Input(Audio_Device):
             for _file in self.playing_files:
                 file_data = _file.read(byte_count)
                 for listener in self.playing_to[_file]:
-                    components[listener].handle_audio_input(_file.name, file_data)
+                    objects[listener].handle_audio_input(_file.name, file_data)
                     
         self.refresh_instruction.execute(self.priority)
         

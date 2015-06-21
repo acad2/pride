@@ -11,7 +11,7 @@ import mpre.vmlibrary as vmlibrary
 import mpre.base as base
 import mpre.utilities as utilities
 import mpre.userinput
-components = mpre.components
+objects = mpre.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -33,7 +33,16 @@ def ensure_file_exists(filepath, data=''):
             file.truncate(0)
             _file.write(data)
             _file.flush()
-                        
+   
+@contextlib.contextmanager
+def current_working_directory(directory_name):
+    backup = os.getcwd()
+    os.chdir(directory_name)
+    try:
+        yield
+    finally:
+        os.chdir(backup)
+    
 @contextlib.contextmanager
 def file_contents_swapped(contents, filepath='', _file=None):
     """ Enters a context where the data of the supplied file/filepath are the 
@@ -105,10 +114,10 @@ class Directory(base.Base):
         self.file_system, path = os.path.split(self.path)
         self.path, self.filename = os.path.split(path)
         self.full_path = os.path.sep.join(self.path, self.filename)
-        components["File_System"].add(self)        
+        objects["File_System"].add(self)        
         
     def delete(self):
-        for _file in components["File_System"][self.full_path]:
+        for _file in objects["File_System"][self.full_path]:
             #if _file is not self:
             _file.delete()
         super(Directory, self).delete()
@@ -142,9 +151,9 @@ class File(base.Wrapper):
             else:
                 self.file_system = file_system
                 path = _path
-                if "File_System" not in components:
+                if "File_System" not in objects:
                     self.alert("File_System component does not exist", level='v')     
-                elif not components["File_System"].exists(file_system, file_type="file_system"):
+                elif not objects["File_System"].exists(file_system, file_type="file_system"):
                     raise IOError("File system '{}' does not exist".format(file_system))
 
         self.path, self.filename = os.path.split(path)
@@ -153,7 +162,7 @@ class File(base.Wrapper):
         
         self.mode = mode or self.mode
         try:
-            mpre.components["File_System"].add(self)
+            mpre.objects["File_System"].add(self)
         except KeyError:
             self.alert("File_System does not exist", level='v')
             
@@ -215,8 +224,8 @@ class File(base.Wrapper):
         self.truncate(0)
         self.write(self.__dict__.pop("_file_data"))        
         self.flush()
-        if "File_System" in components:
-            components['File_System'].add(self)
+        if "File_System" in objects:
+            objects['File_System'].add(self)
             
     def delete(self):
         super(File, self).delete()

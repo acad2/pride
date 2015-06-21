@@ -5,7 +5,7 @@ import mpre.base as base
 import mpre.gui
 import mpre.gui.shapes
 Instruction = mpre.Instruction
-components = mpre.components
+objects = mpre.objects
 
 import sdl2
 import sdl2.ext
@@ -16,8 +16,8 @@ dark_color_scalar = .5
 light_color_scalar = 1.5  
 
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
-    _create_texture = components["SpriteFactory"].create_texture_sprite
-    return _create_texture(components["Renderer"].wrapped_object, size, access=access)
+    _create_texture = objects["SpriteFactory"].create_texture_sprite
+    return _create_texture(objects["Renderer"].wrapped_object, size, access=access)
     
 class Organizer(base.Base):
     
@@ -94,11 +94,11 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
        #                ('w', 'h', 'r', 'g', 'b', 'a', 'x', 'y'))
         if not self.texture_invalid and coordinate in ('x', 'y', 'w', 'h', 'r', 'g', 'b', 'a'):
             self.texture_invalid = True   
-        components["SDL_Window"].invalidate_layer(self.z)
+        objects["SDL_Window"].invalidate_layer(self.z)
         super(Window_Object, self)._on_set(coordinate, value)
                                                                  
     def _set_z(self, value):
-        components["SDL_Window"].set_layer(self, value)
+        objects["SDL_Window"].set_layer(self, value)
         super(Window_Object, self)._set_z(value)
     z = property(mpre.gui.shapes.Bounded_Shape._get_z, _set_z)
     
@@ -107,7 +107,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def _set_text(self, value):
         self._text = value
         if not self.texture_invalid:
-            components["SDL_Window"].invalidate_layer(self.z)
+            objects["SDL_Window"].invalidate_layer(self.z)
             self.texture_invalid = True
     text = property(_get_text, _set_text)
     
@@ -116,7 +116,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def _set_bg_color(self, color):
         self.texture_invalid = True
         self._background_color = sdl2.ext.Color(*color)
-        components["SDL_Window"].invalidate_layer(self.z)
+        objects["SDL_Window"].invalidate_layer(self.z)
     background_color = property(_get_bg_color, _set_bg_color)
     
     def _get_color(self):
@@ -210,10 +210,10 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
             self.y += y_change
             
             if top_level:
-                mouse_position = components["SDL_Window"].get_mouse_position()            
+                mouse_position = objects["SDL_Window"].get_mouse_position()            
                 if not mpre.gui.point_in_area(self.parent.area, mouse_position):
                     if self in self.parent.children:
-                    #    self.parent.alert("Removing {}; {} not in {}", [self, components["SDL_Window"].get_mouse_position(), self.parent.area], level=0)
+                    #    self.parent.alert("Removing {}; {} not in {}", [self, objects["SDL_Window"].get_mouse_position(), self.parent.area], level=0)
                         self.parent.remove(self)                    
                         self.parent.pack({"position" : self.parent.position})
                         self.z -= 1
@@ -235,7 +235,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                                                                
     def _draw_texture(self):
         self.draw_texture()  
-        components["Renderer"].draw(self.texture.texture, self._draw_operations)
+        objects["Renderer"].draw(self.texture.texture, self._draw_operations)
         self._draw_operations = []
         self.texture_invalid = False            
         return self.texture.texture
@@ -247,7 +247,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
             self.draw("text", self.area, self.text, bg_color=self.background_color, color=self.text_color)
         
     def pack(self, modifiers=None):
-        components["Organizer"].pack(self)
+        objects["Organizer"].pack(self)
         if modifiers:
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
@@ -256,8 +256,8 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
               
     def delete(self):
         super(Window_Object, self).delete()
-        components["SDL_Window"].remove_from_layer(self, self.z)
-        del components["SDL_User_Input"].coordinate_tracker[self]
+        objects["SDL_Window"].remove_from_layer(self, self.z)
+        del objects["SDL_User_Input"].coordinate_tracker[self]
         
         
 class Window(Window_Object):

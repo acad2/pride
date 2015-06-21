@@ -14,7 +14,7 @@ class Reference(object):
         return self
     
     def __getattr__(self, attribute):
-        return getattr(components[self.id], attribute)
+        return getattr(objects[self.id], attribute)
 
     def dereference(self):
-        return components[self.id]
+        return objects[self.id]

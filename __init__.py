@@ -12,7 +12,7 @@ timer_function = utilities.timer_function
 
 class Environment(object):
     
-    fields = ("components", "instance_count", "instance_name",
+    fields = ("objects", "instance_count", "instance_name",
               "instance_number", "parents", "references_to")
               
     def __init__(self):
@@ -25,19 +25,19 @@ class Environment(object):
         print "\nInstructions: {}".format([(instruction[0], str(instruction[1])) for 
                                            instruction in self.Instructions])
         
-        for attribute in ("components", "instance_count", "instance_name",
+        for attribute in ("objects", "instance_count", "instance_name",
                           "instance_number", "parents", "references_to"):
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
     
     def replace(self, component, new_component):
-        components = self.components
+        objects = self.objects
         if isinstance(component, unicode) or isinstance(component, str):
-            component = self.components[component]
+            component = self.objects[component]
 
         old_component_name = component.instance_name
         
-        self.components[old_component_name] = self.components.pop(new_component.instance_name, new_component)
+        self.objects[old_component_name] = self.objects.pop(new_component.instance_name, new_component)
         
         self.instance_name[new_component] = self.instance_name.pop(component)
         self.instance_number[new_component] = self.instance_number.pop(component)
@@ -50,7 +50,7 @@ class Environment(object):
         references = self.references_to.get(old_component_name, set()).copy()
         
         for referrer in references:
-            instance = self.components[referrer]
+            instance = self.objects[referrer]
             instance.remove(component)
             instance.add(new_component)       
         
@@ -59,7 +59,7 @@ class Environment(object):
             objects = instance.objects
         except AttributeError: # non base objects have no .objects dictionary
             instance_name = self.instance_name[instance]
-            parent = self.components[self.parents[instance]]
+            parent = self.objects[self.parents[instance]]
             parent.objects[instance.__class__.__name__].remove(instance)          
         else:
             instance_name = instance.instance_name
@@ -72,9 +72,9 @@ class Environment(object):
         
         if instance_name in self.references_to:
             for referrer in list(self.references_to[instance_name]):
-                self.components[referrer].remove(instance)
+                self.objects[referrer].remove(instance)
             del self.references_to[instance_name]            
-        del self.components[instance_name]
+        del self.objects[instance_name]
         del self.instance_name[instance]
         del self.instance_number[instance]
         
@@ -86,7 +86,7 @@ class Environment(object):
             count = self.instance_count[instance_class] = 0
        
         instance_name = instance_class + str(count) if count else instance_class
-        self.components[instance_name] = instance
+        self.objects[instance_name] = instance
         try:
             self.instance_name[instance] = instance.instance_name = instance_name
             self.instance_number[instance] = instance.instance_number = count
@@ -95,15 +95,15 @@ class Environment(object):
             self.instance_number[instance] = count
 
     def __contains__(self, component):
-        if (component in self.components.keys() or
-            component in itertools.chain(self.components.values())):
+        if (component in self.objects.keys() or
+            component in itertools.chain(self.objects.values())):
             return True
         
     def update(self, environment):       
         for instruction in environment.Instructions:
             heapq.heappush(self.Instructions, instruction)
 
-        self.components.update(components)
+        self.objects.update(objects)
         self.parents.update(environment.parents)
         self.references_to.update(environment.references_to)
         self.instance_number.update(environment.instance_number)
@@ -182,11 +182,11 @@ class Instruction(object):
             and callback is None, the results of the instruction will be 
             supplied to RPC_Handler.alert."""
         if host_info:
-            components["RPC_Handler"].make_request(callback, host_info, transport_protocol,
+            objects["RPC_Handler"].make_request(callback, host_info, transport_protocol,
                                                    self.component_name, self.method, 
                                                    self.args, self.kwargs)
     #    elif not priority:
-    #        return (getattr(components[self.component_name], self.method)
+    #        return (getattr(objects[self.component_name], self.method)
     #                (*self.args, **self.kwargs))
         else:
             execute_at = self.execute_at = timer_function() + priority
@@ -205,7 +205,7 @@ class Instruction(object):
     #def __setstate__(self, state):
     #    callback = state["callback"]
     #    if callback is not None:
-    #        state["callback"] = getattr(components[callback[0]], callback[1])
+    #        state["callback"] = getattr(objects[callback[0]], callback[1])
     #    super(Instruction, self).__setstate__(state)
         
     def __str__(self):
@@ -217,7 +217,7 @@ class Instruction(object):
                                           method, args, kwargs)  
                                      
 environment = Environment()
-components = environment.components
+objects = environment.objects
 
 # Things must be done in this order for Alert_Handler to exist inside this file
 import mpre.base

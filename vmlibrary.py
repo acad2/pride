@@ -109,7 +109,7 @@ class Processor(Process):
         
     def run(self):
         instructions = mpre.environment.Instructions
-        components = mpre.components
+        objects = mpre.objects
         processor_name = self.instance_name
         
         sleep = time.sleep
@@ -129,7 +129,7 @@ class Processor(Process):
         while instructions and self.running:            
             execute_at, instruction, callback = heappop(instructions)                
             try:
-                call = getattr(components[instruction.component_name],
+                call = getattr(objects[instruction.component_name],
                                instruction.method)
             except component_errors as error:
                 if isinstance(error, KeyError):
