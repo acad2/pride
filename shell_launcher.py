@@ -16,6 +16,15 @@ from mpre.utilities import documentation
 __from_disk_importer = From_Disk()
 from_disk_import = __from_disk_importer.load_module
 
+def open_firefox():
+    try:
+        import selenium.webdriver
+    except ImportError:
+        pass
+    else:
+        return selenium.webdriver.Firefox()
+        
+    
 #def restart():
     
     
@@ -43,7 +52,7 @@ def update(instance_name):
 #e.seek(0)
 #print e.read()
 
-_package = create("mpre.package.Package", mpre, include_documentation=True)
+#_package = create("mpre.package.Package", mpre, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
 #print _package.documentation["mpre"].markdown
@@ -68,7 +77,12 @@ _package = create("mpre.package.Package", mpre, include_documentation=True)
 #z = s(constructor)
 #newz = l(z) # does not call .on_load
 
-sniffer = create("mpre.network.Packet_Sniffer")
+#sniffer = create("mpre.network.Packet_Sniffer")
+import socket
+scroogle = socket.gethostbyname("google.com")
+
+#ssl_server = create("mpre.networkssl.SSL_Server")
+#ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
 """
 
 options["startup_definitions"] += definitions

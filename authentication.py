@@ -15,13 +15,15 @@ def Authenticated(function):
         
     return call    
 
+        
 class Authenticated_Service(mpre.base.Base):
     """ Warning: not yet secure by any means"""
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"allow_registration" : True,
                      "protocol_component" : "Secure_Remote_Password",
                      "database_filename" : "user_registry",
-                     "login_message" : ''})
+                     "login_message" : '',
+                     "requester_address" : 'localhost'})
     
     def __init__(self, **kwargs):
         self.user_secret = {} # maps username to shared secret

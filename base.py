@@ -353,9 +353,11 @@ class Wrapper(Base):
             
     def __getattr__(self, attribute):
         return getattr(self.wrapped_object, attribute)        
-                       
+                        
     def wraps(self, _object):
         self.wrapped_object = _object
+        if self.wrapped_object_name:
+            setattr(self, self.wrapped_object_name, _object)
         
         
 class Proxy(Base):
@@ -369,6 +371,8 @@ class Proxy(Base):
        assigned, the action is performed on the proxy instead. This
        prioritization is the opposite of the Wrapper class."""
 
+    wrapped_object_name = ''
+    
     def __init__(self, **kwargs):
         wraps = super(Proxy, self).__getattribute__("wraps")
         try:
@@ -379,7 +383,7 @@ class Proxy(Base):
             wraps(wrapped_object)
         super(Proxy, self).__init__(**kwargs)
 
-    def wraps(self, obj, set_defaults=False):
+    def wraps(self, _object, set_defaults=False):
         """ usage: wrapper.wraps(object)
             
             Makes the supplied object the object that is wrapped
@@ -390,8 +394,10 @@ class Proxy(Base):
         if set_defaults:
             for attribute, value in self.defaults.items():
                 set_attr(attribute, value)
-        set_attr("wrapped_object", obj)
-
+        set_attr("wrapped_object", _object)
+        if self.wrapped_object_name:
+            set_attr(self.wrapped_object_name, _object)
+            
     def __getattribute__(self, attribute):
         try:
             wrapped_object = super(Proxy, self).__getattribute__("wrapped_object")

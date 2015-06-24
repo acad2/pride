@@ -11,8 +11,12 @@ def sys_meta_path_switched(new_meta_path):
         yield
     finally:
         sys.meta_path = backup
-        
 
+@contextlib.contextmanager        
+def imports_from_disk():
+    with sys_meta_path_switched([From_Disk()]):
+        yield
+        
 class From_Disk(object):
         
     def __init__(self, modules=tuple()):

@@ -39,8 +39,8 @@ class Shell(authentication.Authenticated_Client):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
         self.user_is_entering_definition = False     
-        objects["User_Input"].add_listener(self.instance_name)
-                
+        objects["Keyword_Handler"].add_keyword('', self.handle_keystrokes)
+        
     def on_login(self, message):
         self.alert("{}", [message], level=0)
         sys.stdout.write(">>> ")
@@ -105,7 +105,7 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write(packet + self.prompt)
+            sys.stdout.write(packet)# + self.prompt)
         
         
 class Interpreter(authentication.Authenticated_Service):
@@ -201,16 +201,15 @@ class Metapython(base.Base):
                      "startup_components" : (#"mpre.fileio.File_System",
                                              "mpre.vmlibrary.Processor",
                                              "mpre.userinput.User_Input",
+                                             "mpre.userinput.Keyword_Handler",
                                              "mpre.network.Network", "mpre.rpc.RPC_Handler",
                                              "mpre.srp.Secure_Remote_Password"),
-                     "interface" : "0.0.0.0",
-                     "port" : 40022,
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
                      "startup_definitions" : ''})    
     parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt", "copyright", 
-                                               "traceback", "interface", "port", "interpreter_enabled",
+                                               "traceback", "interpreter_enabled",
                                                "startup_components", "startup_definitions")
                      
     # make an optional "command" positional argument and allow both -h and --help flags
@@ -229,14 +228,14 @@ class Metapython(base.Base):
             setattr(self, component.instance_name.lower(), component)
             
         if self.startup_definitions:
-            Instruction(self.instance_name, "exec_command", 
-                        self.startup_definitions).execute() 
+            self.exec_command(self.startup_definitions)           
                         
         if self.interpreter_enabled:
-            Instruction(self.instance_name, "start_service").execute()
-     
+            self.interpreter = self.enable_interpreter()
+                 
         with open(self.command, 'r') as module_file:
             source = module_file.read()
+            
         Instruction(self.instance_name, "exec_command", source).execute()
              
     def exec_command(self, source):
@@ -278,11 +277,8 @@ class Metapython(base.Base):
         """ Begins the processing of Instruction objects."""
         self.processor.run()
     
-    def start_service(self):
-        server_options = {"name" : self.instance_name,
-                          "interface" : self.interface,
-                          "port" : self.port}        
-        self.server = self.create(Interpreter, **server_options)      
+    def enable_interpreter(self):      
+        return self.create(Interpreter)      
         
     def exit(self, exit_code=0):
         objects["Processor"].set_attributes(running=False)

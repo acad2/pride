@@ -69,7 +69,8 @@ class Process(base.Base):
             Instruction(self.instance_name, "start").execute()
 
     def start(self):
-        self._run()
+        self.run_instruction.execute(priority=self.priority,
+                                     callback=self.run_callback)
 
     def _run(self):
         result = self.run(*self.args, **self.kwargs)

@@ -48,6 +48,13 @@ except:
     CONNECTION_RESET = errno.ECONNRESET
     CONNECTION_CLOSED = errno.ENOTCONN
  
+#try:
+#    import ssl
+#except ImportError:
+#    pass
+#else:
+#    ERROR_CODES[ssl.SSL_ERROR_SSL] = "SSL_ERROR_SSL"
+    
 ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                     CONNECTION_IN_PROGRESS : "CONNECTION_IN_PROGRESS",
                     CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
@@ -83,6 +90,10 @@ class Error_Handler(object):
     def unhandled(self, sock, error):
         sock.alert("Unhandled error:{} {}", [errno.errorcode[error.errno], error], level=0)
         sock.delete()
+    
+    def bind_error(self, sock, error):
+        sock.alert("socket.error when binding to {}", (sock.port, ), 0)
+        return sock.handle_bind_error()
         
 _error_handler = Error_Handler()
        
@@ -105,6 +116,7 @@ class Socket(base.Wrapper):
                            "bind_on_init" : False,
                            "closed" : False,
                            "_connecting" : False,
+                           "connected" : False,
                            "added_to_network" : False,
                            "replace_reference_on_load" : False}
     defaults.update(additional_defaults)
@@ -154,7 +166,7 @@ class Socket(base.Wrapper):
          
     def on_select(self):
         """ Used to customize behavior when a socket is readable according to select.select.
-            It is not likely that one would overload this method; End users probably want
+            It is less likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead."""
         return self.recvfrom()
  
@@ -214,8 +226,10 @@ class Socket(base.Wrapper):
             
     def on_connect(self):
         """ Performs any logic required when a Tcp connection succeeds. This method should
-            be overloaded by subclasses."""
-        self.alert("Connected", level=0)
+            be extended by subclasses. If on_connect is overloaded instead of extended,
+            ensure that the self.connected flag is set to True."""
+        self.connected = True
+        self.alert("Connected", level='v')
                 
     def delete(self):
         if not self.closed:
@@ -308,20 +322,22 @@ class Server(Tcp_Socket):
     defaults.update({"port" : 80,
                      "backlog" : 50,
                      "reuse_port" : 0,
-                     "Tcp_Socket_type" : "network.Tcp_Socket"})
+                     "Tcp_Socket_type" : "network.Tcp_Socket",
+                     "allow_port_zero" : False})
 
-    parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", "Tcp_Socket_type")
+    parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", "Tcp_Socket_type",
+                                                "allow_port_zero")
     
     def __init__(self, **kwargs):       
         super(Server, self).__init__(**kwargs)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
 
-        bind_success = True
+        bind_success = True        
         try:
             self.bind((self.interface, self.port))
-        except socket.error:
-            self.alert("socket.error when binding to {}", (self.port, ), 0)
-            bind_success = self.handle_bind_error()
+        except socket.error as error:
+            bind_success = self.error_handler.bind_error(self, error)
+                        
         if bind_success:
             self.alert("Listening at: {}:{}".format(self.interface, self.port), level='v')
             self.listen(self.backlog)
@@ -335,7 +351,7 @@ class Server(Tcp_Socket):
                 raise
                 
     def accept(self):
-        _socket, address = self.wrapped_object.accept()
+        _socket, address = self.socket.accept()
         
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket)
@@ -350,8 +366,7 @@ class Server(Tcp_Socket):
         else:
             self.alert("{0}\nAddress already in use. Deleting {1}\n",
                        (traceback.format_exc(), self.instance_name), 0)
-            instruction = Instruction(self.instance_name, "delete")
-            instruction.execute()
+            self.delete()
  
     def on_connect(self, connection, address):
         """ Connection logic that the server should apply when a new client has connected.
@@ -466,7 +481,7 @@ class Network(vmlibrary.Process):
         self._sockets.add(sock)
         if not self.running:
             self.running = True        
-            self._run()
+            self.start()
                 
     def remove(self, sock):
         super(Network, self).remove(sock)
@@ -529,6 +544,8 @@ class Network(vmlibrary.Process):
                         try:
                             sock.on_select()
                         except socket.error as error:
+                            import traceback
+                            print traceback.format_exc()
                             handler = getattr(sock.error_handler, 
                                     ERROR_CODES[error.errno].lower(),
                                     sock.error_handler.unhandled)
