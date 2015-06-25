@@ -188,7 +188,7 @@ class Socket(base.Wrapper):
                 _byte_count += byte_count                
         except socket.error as error:
             if error.errno != 10035:
-                raise        
+                raise   
         return bytes(self._buffer[:_byte_count])
         
     def recvfrom(self, buffer_size=0):

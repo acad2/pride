@@ -20,6 +20,9 @@ def get_user_input(prompt):
     sys.__stdout__.write(prompt)
     sys.__stdout__.flush()
     return raw_input()
+
+def get_permission(prompt):
+    return get_selection(prompt, bool)
     
 def get_selection(prompt, answers):
     selection = None

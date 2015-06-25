@@ -4,6 +4,7 @@ import pickle
 import mpre
 import mpre.base
 import mpre.network
+import mpre.networkssl
 import mpre.persistence
 objects = mpre.objects
 
@@ -26,7 +27,7 @@ class RPC_Handler(mpre.base.Base):
                       callback=callback if callback is not None else self.alert)
  
 
-class RPC_Server(mpre.network.Server):
+class RPC_Server(mpre.networkssl.SSL_Server):
     
     defaults = mpre.network.Server.defaults.copy()
     defaults.update({"port" : 40022,
@@ -43,9 +44,9 @@ class RPC_Server(mpre.network.Server):
         return attributes
 
      
-class RPC_Requester(mpre.network.Tcp_Client):
+class RPC_Requester(mpre.networkssl.SSL_Client):
     
-    defaults = mpre.network.Tcp_Client.defaults.copy()
+    defaults = mpre.networkssl.SSL_Client.defaults.copy()
     defaults.update({"dont_save" : True})
     
     def __getstate__(self):
@@ -53,7 +54,7 @@ class RPC_Requester(mpre.network.Tcp_Client):
         state["callback"] = mpre.persistence.save_function(state["callback"])
         return state
         
-    def on_connect(self):
+    def on_authentication(self):
         self.send(self.request)
         
     def recv(self, buffer_size=0):
@@ -62,9 +63,9 @@ class RPC_Requester(mpre.network.Tcp_Client):
         self.delete()    
         
  
-class RPC_Request(mpre.network.Tcp_Socket):
+class RPC_Request(mpre.networkssl.SSL_Socket):
     
-    defaults = mpre.network.Tcp_Socket.defaults.copy()
+    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
     defaults.update({"dont_save" : True,
                      "rpc_verbosity" : 'v'})
    

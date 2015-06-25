@@ -132,9 +132,8 @@ class Base(object):
     parent = property(_get_parent)
         
     def __init__(self, **kwargs):
-       #  self = super(Base, cls).__new__(cls, *args, **kwargs)
         # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the call to __init__                
+        # defaults dictionary and should be set in the call to __init__       
         attributes = self.defaults.copy()
         attributes["objects"] = {}
         attributes.update(kwargs)
@@ -345,7 +344,7 @@ class Wrapper(Base):
     wrapped_object_name = ''
     
     parser_ignore = Base.parser_ignore + ("wrapped_object", )
-    
+        
     def __init__(self, **kwargs):
         super(Wrapper, self).__init__(**kwargs)
         if self.wrapped_object_name:

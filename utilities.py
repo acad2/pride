@@ -93,8 +93,7 @@ def shell(command, shell=False):
         and also:        
             "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" """        
     if not shell:
-        command = shlex.split(command)
-        print "Creating: ", command
+        command = shlex.split(command)        
     process = subprocess.Popen(command, shell=shell)
     return process.communicate()[0]
     

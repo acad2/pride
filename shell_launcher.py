@@ -79,7 +79,6 @@ def update(instance_name):
 
 #sniffer = create("mpre.network.Packet_Sniffer")
 import socket
-scroogle = socket.gethostbyname("google.com")
 
 #ssl_server = create("mpre.networkssl.SSL_Server")
 #ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
