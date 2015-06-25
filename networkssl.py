@@ -23,6 +23,8 @@ WRAP_SOCKET_OPTIONS = ("keyfile", "certfile", "server_side", "cert_reqs",
                        "suppress_ragged_eofs", "ciphers")   
 
 def generate_self_signed_certificate(name="server"):
+    """ Creates a name.key, name.csr, and name.crt file. These files can
+        be used for the keyfile and certfile options for an ssl server socket"""
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
     delete_program = "rm" if openssl == "openssl" else "del" # rm on linux, del on windows
     shell = mpre.utilities.shell
@@ -33,14 +35,12 @@ def generate_self_signed_certificate(name="server"):
     shell("{} x509 -req -days 365 -in {}.csr -signkey {}.key -out {}.crt".format(openssl, name, name, name))
     shell("{} {}.pass.key".format(delete_program, name), True)
         
-class SSL_Error_Handler(mpre.network.Error_Handler):
-    
-    def ssl_error_ssl(self, _socket, error):
-        _socket.alert("{}".format(error), level=0)
-        
-              
 class SSL_Client(mpre.network.Tcp_Client):
-        
+    
+    """ An asynchronous client side Tcp socket wrapped in an ssl socket.
+        Users should extend on_authentication instead of on_connect to
+        initiate data transfer; on_connect is used to start the
+        ssl handshake"""
     defaults = mpre.network.Tcp_Client.defaults.copy()
     defaults.update(SSL_DEFAULTS)    
     
@@ -75,6 +75,10 @@ class SSL_Client(mpre.network.Tcp_Client):
 
 class SSL_Socket(mpre.network.Tcp_Socket):
     
+    """ An asynchronous server side client socket wrapped in an ssl socket.
+        Users should override the on_authentication method instead of
+        on_connect"""
+        
     defaults = mpre.network.Tcp_Socket.defaults.copy()
     defaults.update(SSL_DEFAULTS)
     defaults.update({"server_side" : True,
@@ -106,7 +110,7 @@ class SSL_Socket(mpre.network.Tcp_Socket):
             self.on_authentication()
             
     def on_authentication(self):
-        self.alert("Authenticated", level=0)
+        self.alert("Authenticated", level='v')
                 
         
 class SSL_Server(mpre.network.Server):

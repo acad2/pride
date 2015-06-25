@@ -11,10 +11,13 @@ objects = mpre.objects
 class RPC_Handler(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"servers" : {"Tcp" : "mpre.rpc.RPC_Server"}})
+    defaults.update({"servers" : {"Tcp" : "mpre.rpc.RPC_Server"},
+                     "current_connections" : None})
     
     def __init__(self, **kwargs):
         super(RPC_Handler, self).__init__(**kwargs)
+        self.current_connections = self.current_connections or {}
+        
         for server_protocol, server_type in self.servers.items():
             setattr(self, "{}_server".format(server_protocol), self.create(server_type))
             
@@ -22,9 +25,14 @@ class RPC_Handler(mpre.base.Base):
                      method, args, kwargs):
         arguments = pickle.dumps((args, kwargs), pickle.HIGHEST_PROTOCOL)
         request = ' '.join((component_name, method, arguments))
-        server = getattr(self, "{}_server".format(transport_protocol))
-        server.create(RPC_Requester, target=host_info, request=request, 
-                      callback=callback if callback is not None else self.alert)
+        if host_info in self.current_connections:
+            requester = self.current_connections[host_info]
+            requester.make_request(callback, request)
+        else:
+            server = getattr(self, "{}_server".format(transport_protocol))
+            connection = server.create(RPC_Requester, target=host_info, 
+                                       request=request, callback=callback if callback else self.alert)
+            self.current_connections[host_info] = connection
  
 
 class RPC_Server(mpre.networkssl.SSL_Server):
@@ -49,19 +57,27 @@ class RPC_Requester(mpre.networkssl.SSL_Client):
     defaults = mpre.networkssl.SSL_Client.defaults.copy()
     defaults.update({"dont_save" : True})
     
+    def __init__(self, **kwargs):
+        self._callbacks = []
+        super(RPC_Requester, self).__init__(**kwargs)
+                
     def __getstate__(self):
         state = super(RPC_Requester, self).__getstate__()
         state["callback"] = mpre.persistence.save_function(state["callback"])
         return state
         
     def on_authentication(self):
-        self.send(self.request)
+        self.make_request(self.callback, self.request)
+    
+    def make_request(self, callback, request):
+        self.send(request)
+        self._callbacks.append(callback)
         
     def recv(self, buffer_size=0):
         packet = super(RPC_Requester, self).recv(buffer_size)
-        self.callback(pickle.loads(packet))
-        self.delete()    
-        
+        callback = self._callbacks.pop(0)
+        callback(pickle.loads(packet))
+                
  
 class RPC_Request(mpre.networkssl.SSL_Socket):
     
@@ -84,5 +100,4 @@ class RPC_Request(mpre.networkssl.SSL_Socket):
             self.alert("Exception executing {}.{}", [component_name, method], level='v')
             response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)
         instance.requester_address = None
-        self.send(response)
-        self.delete()        
+        self.send(response)     
