@@ -78,7 +78,7 @@ def update(instance_name):
 #newz = l(z) # does not call .on_load
 
 #sniffer = create("mpre.network.Packet_Sniffer")
-import socket
+#import socket
 
 #ssl_server = create("mpre.networkssl.SSL_Server")
 #ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))

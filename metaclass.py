@@ -159,6 +159,7 @@ class Parser(object):
     """ Faciltates automatically generated command line parsers. Parser
         instances are class attributes assigned by the Parser_Metaclass"""
     sys_argv_backup = copy(sys.argv)
+    sys_argv = sys.argv
     __metaclass__ = Documented
     
     def __init__(self, parser, modifiers, exit_on_help, name):
@@ -177,7 +178,7 @@ class Parser(object):
 
         default_modifiers = {"types" : ("long", )}
         self_modifiers = self.modifiers
-       # positionals = 0
+        positionals = 0
         for name in argument_names:
             modifiers = self_modifiers.get(name, default_modifiers)
             if modifiers == "ignore":
@@ -190,8 +191,9 @@ class Parser(object):
             for arg_type in info.pop("types"):
                 if arg_type != "positional":
                     temporary["dest"] = name
-            #    else:
-            #        positionals += 1
+                else:
+                    positionals += 1
+                    
                 default_value = argument_info[name]
                 temporary["default"] = default_value
                 value_type = type(default_value)
@@ -211,23 +213,29 @@ class Parser(object):
         for argument_name, options in arguments.items():
             parser.add_argument(argument_name, **options)
 
-        new_argv = copy(Parser.sys_argv_backup)
+        new_argv = Parser.sys_argv
         sys.argv = new_argv
 
         try:
             arguments, unused = parser.parse_known_args()
-        except SystemExit:
+        except SystemExit as error:
             print
             if exit_on_help:
                 raise
             try:
-                new_argv.pop(new_argv.index("-h"))
+                index = new_argv.index("-h")
             except ValueError:
-                new_argv.pop(new_argv.index("--help"))
+                try:
+                    index = new_argv.index("--help")
+                except ValueError:
+                    raise error
+                    
+            removed = new_argv.pop(index)
             arguments, unused = parser.parse_known_args()
+            new_argv.insert(removed)
             
         if unused:
-          #  new_argv = copy(Parser.sys_argv_backup)
+            new_argv = sys.argv = copy(Parser.sys_argv)
             for unused_name in unused:
                 index = new_argv.index(unused_name)
                 new_argv.pop(index)
@@ -244,15 +252,21 @@ class Parser(object):
                             pass
 
             arguments, unused = parser.parse_known_args()
-            sys.argv = copy(Parser.sys_argv_backup)
+            sys.argv = Parser.sys_argv
         
-        #while positionals:
-        #    for item in sys.argv[1:]:
-        #        if "-" != item[0]:
-        #            sys.argv.remove(item)
-        #            positionals -= 1
-        #            break            
-            
+        is_keyword_argument = False
+        while positionals and len(sys.argv) > 1: 
+            for item in sys.argv[1:]:
+                if "-" != item[0]:
+                    if is_keyword_argument:
+                        is_keyword_argument = False
+                        continue
+                    sys.argv.remove(item)
+                    positionals -= 1
+                    break            
+                else:
+                    is_keyword_argument = True
+        Parser.sys_argv = sys.argv        
         return arguments
 
     def get_options(self, argument_info):

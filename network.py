@@ -550,3 +550,8 @@ class Network(vmlibrary.Process):
                                     ERROR_CODES[error.errno].lower(),
                                     sock.error_handler.unhandled)
                             handler(sock, error)         
+                            
+    def __getstate__(self):
+        state = super(Network, self).__getstate__()
+        state["writable"] = set()
+        return state

@@ -135,8 +135,10 @@ class Interpreter(authentication.Authenticated_Service):
             string_info = (username, sender, sys.version, sys.platform, self.copyright)        
             response = ("Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info), response[1])
         return response
-        
-    @authentication.Authenticated
+    
+    @authentication.blacklisted
+    @authentication.whitelisted
+    @authentication.authenticated
     def exec_code(self, source):
         log = self.log        
         sender = self.requester_address

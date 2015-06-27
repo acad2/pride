@@ -7,11 +7,30 @@ objects = mpre.objects
 
 class UnauthorizedError(Warning): pass
 
-def Authenticated(function):
+def blacklisted(function):
+    def call(instance, *args, **kwargs):
+        if instance.requester_address in instance.blacklist:
+            instance.alert("{} {}".format(UnauthorizedError("Denied blacklisted client"), instance.requester_address), level='v')
+        else:
+            return function(instance, *args, **kwargs)
+    
+    return call
+    
+def whitelisted(function):
+    def call(instance, *args, **kwargs):
+        if instance.requester_address not in instance.whitelist:            
+            instance.alert("{} {}".format(UnauthorizedError("Denied non whitelisted client"), instance.requester_address), level=0)#'v')
+        else:
+            return function(instance, *args, **kwargs)
+            
+    return call
+    
+def authenticated(function):
     def call(instance, *args, **kwargs):
         if instance.requester_address not in instance.logged_in:
-            raise UnauthorizedError("not logged in")
-        return function(instance, *args, **kwargs)
+            self.alert("{} {}".format(UnauthorizedError("not logged in"), instance.requester_address), level='v')
+        else:
+            return function(instance, *args, **kwargs)
         
     return call    
 
@@ -29,6 +48,8 @@ class Authenticated_Service(mpre.base.Base):
         self.user_secret = {} # maps username to shared secret
         self.logging_in = set()
         self.logged_in = {} # maps host info to username
+        self.whitelist = ["127.0.0.1"]
+        self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
                        
     def register(self, username, password):        

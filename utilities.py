@@ -214,6 +214,8 @@ def documentation(_object):
 
     elif _object.__class__.__name__ == "Runtime_Decorator":
         docstring = documentation(_object.function)
+    else:
+        raise ValueError("Unsupported object {} with type: {}".format(_object, type(_object)))
         
     return docstring
 

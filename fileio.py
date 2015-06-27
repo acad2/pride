@@ -17,8 +17,11 @@ def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
     
        If the named folder does not exist, it is created"""
-    if not os.path.exists(pathname) or not os.path.isdir(pathname):
-        os.mkdir(pathname)
+    path_progress = r''
+    for directory in os.path.split(pathname):
+        path_progress = os.path.join(path_progress, directory)
+        if not os.path.exists(path_progress) or not os.path.isdir(path_progress):
+            os.mkdir(path_progress)            
   
 def ensure_file_exists(filepath, data=''):
     """usage: ensure_file_exists(filepath, [data=''])
@@ -27,13 +30,16 @@ def ensure_file_exists(filepath, data=''):
         If the file does not exist, it is created
         
         data is optional. if specified, the file will be truncated and 
-        the data will written to the file"""
+        the data will written to the file. The file contents will be
+        nothing but the specified data"""
+    path, _filename = os.path.split(filepath)
+    ensure_folder_exists(path)
     with open(filepath, 'a+') as _file:
         if data:
-            file.truncate(0)
+            _file.truncate(0)
             _file.write(data)
             _file.flush()
-   
+
 @contextlib.contextmanager
 def current_working_directory(directory_name):
     backup = os.getcwd()
@@ -539,7 +545,7 @@ class Mmap(object):
             """    
     def __new__(cls, filename, file_position=0, blocks=0):
         if filename is -1:
-            result = mmap.mmap(-1, file_position)
+            result = mmap.mmap(-1, file_position or 8192 if 'win' in sys.platform else 0)
         else:
             result = Mmap.new_mmap(filename, file_position, blocks)
         return result

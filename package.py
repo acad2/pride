@@ -182,9 +182,12 @@ class Package(mpre.base.Base):
         
         
 class Documentation(mpre.base.Base):
-        
+    
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"top_level_package" : ''})
+    
     def __init__(self, _object, **kwargs):
-        super(Documentation, self).__init__(**kwargs)            
+        super(Documentation, self).__init__(**kwargs)    
         markdown = self.markdown = utilities.documentation(_object)
         module_name = (_object.__module__ if hasattr(_object, "__module__") else
                        _object.__name__).split(".")[-1]
@@ -192,13 +195,15 @@ class Documentation(mpre.base.Base):
                   sys.modules[module_name])
         path, _file = os.path.split(module.__file__)
         #print "Split module file into", module.__file__, path, _file
-        self.package_name = package_name = (module.__package__ if 
-                                            module.__package__ is not None else
-                                            module.__name__.split('.')[0])
-        md_filepath = os.path.join(path, "docs", package_name, module_name) + ".md"  
-        #print "Created md_filepath: ", md_filepath
+        package_name = (module.__package__ if 
+                        module.__package__ is not None else
+                        module.__name__.split('.')[0])
+        
+        package_name = package_name.rsplit(".", 1)[-1]
+        md_filepath = os.path.join(path, "docs", package_name, module_name) + ".md" 
+        self.md_filepath = md_filepath
+        
         yml_entry = r"- ['{}', '{}', '{}']" + "\n"
-
         entry = yml_entry.format(os.path.join(package_name, module_name) + ".md", 
                                  package_name, module_name)
                                      
@@ -220,9 +225,10 @@ class Documentation(mpre.base.Base):
                 _file.flush()                                                            
         
     def write_markdown_file(self, markdown_text, filename):
-        with mpre.fileio.File("disk" + os.path.sep + filename, 'w') as md_file: 
-            md_file.write(markdown_text)
-            md_file.flush()
+        mpre.fileio.ensure_file_exists(filename, markdown_text)
+        #with mpre.fileio.File(filename, 'w') as md_file:             
+        #    md_file.write(markdown_text)
+        #    md_file.flush()
             
 if __name__ == "__main__":
     import mpre

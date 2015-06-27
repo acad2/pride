@@ -125,12 +125,14 @@ class Keyword_Handler(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"keyword_handlers" : None,
-                     "allow_shell" : True})
+                     "allow_shell" : True,
+                     "default_handler" : None})
                      
     def __init__(self, **kwargs):
         super(Keyword_Handler, self).__init__(**kwargs)
-        self.keyword_handlers = self.keyword_handlers or {"$" : functools.partial(mpre.utilities.shell, 
-                                                                                  shell=self.allow_shell)}
+        self.keyword_handlers = (self.keyword_handlers or 
+                                 {"$" : functools.partial(mpre.utilities.shell, 
+                                                          shell=self.allow_shell)})
         mpre.objects["User_Input"].add_listener(self.instance_name)
         
     def add_keyword(self, keyword, handler):
@@ -147,6 +149,7 @@ class Keyword_Handler(mpre.base.Base):
             matched_token = [keyword for keyword in self.keyword_handlers.keys() if
                              line[:len(keyword)] == keyword][0]
         except IndexError:
-            self.default_handler(line)
+            if self.default_handler:
+                self.default_handler(line)
         else:
             self.keyword_handlers[matched_token](line[len(matched_token):])
