@@ -63,6 +63,10 @@ N = int(''.join(str(ord(char)) for char in
 g = 2
 k = _hash_function(N, g)
 
+ADD_USER = "INSERT INTO Credentials VALUES(?, ?, ?)"
+REMOVE_USER = "DELETE FROM Credentials WHERE username = ?"
+SELECT_USER = "SELECT salt, verifier FROM Credentials WHERE username = ?"
+
 class Secure_Remote_Password(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
@@ -76,17 +80,43 @@ class Secure_Remote_Password(mpre.base.Base):
         self.login_threads = {}
         super(Secure_Remote_Password, self).__init__(**kwargs)        
         
+        database = self.database = sqlite3.connect(self.database_filename)
+        cursor = database.cursor()        
+        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
+                       "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
+        database.commit()
+    
+    def register(self, username, password):
+        database = sqlite3.connect(self.database_filename)
+        database.text_factory = str
+        cursor = database.cursor()
+        cursor.execute(SELECT_USER, (username, ))
+        registered = cursor.fetchone()
+        
+        if not registered:       
+            salt, password_verifier = self.new_verifier(username, password)            
+            try:
+                cursor.execute(ADD_USER, (username, salt, str(password_verifier)))
+            except sqlite3.IntegrityError:
+                self.alert("Attempted to register an already existing user '{}'", 
+                           [username], level='v')
+                database.rollback()
+            else:
+                database.commit()
+            database.close()                
+            return True
+
     def new_verifier(self, username, password):
         salt = self.new_salt(64)
         private_key = self.hash_function(salt, self.hash_function(username + ":" + password))
         password_verifier = pow(self.g, private_key, self.N)        
         return salt, password_verifier
         
-    def login(self, username, response, salt=None, verifier=None):
-        self.alert("{} attempting to log in", [username], level='vv')
+    def login(self, username, response):
+        self.alert("{} attempting to log in", [username], level='v')
         if username not in self.login_threads:
             A = response
-            thread = self.login_threads[username] = self._login(username, A, salt, verifier)
+            thread = self.login_threads[username] = self._login(username, A)
             result = next(thread)
         else:
             thread = self.login_threads[username]
@@ -99,13 +129,25 @@ class Secure_Remote_Password(mpre.base.Base):
                 result = ''
         return result
         
-    def _login(self, username, A, salt, verifier):
+    def _login(self, username, A):
         N = self.N
         if A % N == 0:
             self.alert("Received an insecure A value from client {}", [username], level='v')
             raise InsecureValueError
-        s = salt
-        v = int(verifier)
+        
+        database = sqlite3.connect(self.database_filename)
+        database.text_factory = str
+        cursor = database.cursor()
+        
+        cursor.execute(SELECT_USER, (username, ))
+        registered = cursor.fetchone()
+        if not registered:
+            # pretend to go through login process with a fake verifier
+            salt, verifier = s, v = self.new_verifier(username, self.new_salt(64))
+            self.alert("Verifying unregistered user", level=0)
+        else:
+            salt, verifier = s, v = registered
+        v = int(v)    
         H = self.hash_function        
         g = self.g            
         b = random_bits()

@@ -125,8 +125,8 @@ class Tracer(object):
             else:
                 source = source_info["module"].split("\n")[call_info["line_number"]]
 
-                for attribute, value in frame_locals.items():
-                    source = source.replace(attribute, str(value))
+                #for attribute, value in frame_locals.items():
+                #    source = source.replace(attribute, attribute + "::" + str(value))
                 print source
                 #self.source += source
                 #self.debug += "call to %s from %s line %s\n" % \
@@ -160,14 +160,3 @@ class Dump_Source(Tracer):
             super(Dump_Source, self).__call__(*args, **kwargs)
             sys.stdout = old_stdout
             file.close()
-
-
-class Log_Arguments(object):
-
-    def __init__(self, function):
-        self.function = function
-
-    def __call__(self, *args, **kwargs):
-        print "\calling %s with args: %s and kwargs: %s" % (self.function, args, kwargs)
-        return self.function(*args, **kwargs)
- 

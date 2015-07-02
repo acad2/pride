@@ -256,13 +256,13 @@ class Parser(object):
         
         is_keyword_argument = False
         while positionals and len(sys.argv) > 1: 
+            positionals -= 1
             for item in sys.argv[1:]:
                 if "-" != item[0]:
                     if is_keyword_argument:
                         is_keyword_argument = False
                         continue
                     sys.argv.remove(item)
-                    positionals -= 1
                     break            
                 else:
                     is_keyword_argument = True

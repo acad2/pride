@@ -64,7 +64,7 @@ class Shell(authentication.Authenticated_Client):
         
         self.lines += keyboard_input
         lines = self.lines
-                
+        write_prompt = True        
         if lines != "\n":            
             try:
                 code = codeop.compile_command(lines, "<stdin>", "exec")
@@ -83,13 +83,13 @@ class Shell(authentication.Authenticated_Client):
                     else:
                         self.lines = ''
                         self.execute_source(lines)
+                        write_prompt = False
                 else:
                     self.user_is_entering_definition = True
                     self.prompt = "... "
-        else:
-            self.lines = ''
-        
-        sys.stdout.write(self.prompt)
+       # else:
+       #     self.prompt = self.lines = ''
+        objects["Command_Line"].set_prompt(self.prompt)
         
     def execute_source(self, source):
         if not self.logged_in:
@@ -105,7 +105,7 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write(packet)# + self.prompt)
+            sys.stdout.write('\b' * 4 + packet + self.prompt)
         
         
 class Interpreter(authentication.Authenticated_Service):
@@ -142,6 +142,7 @@ class Interpreter(authentication.Authenticated_Service):
     def exec_code(self, source):
         log = self.log        
         sender = self.requester_address
+        
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
                   source)                  
@@ -202,8 +203,7 @@ class Metapython(base.Base):
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
                      "startup_components" : (#"mpre.fileio.File_System",
                                              "mpre.vmlibrary.Processor",
-                                             "mpre.userinput.User_Input",
-                                             "mpre.userinput.Keyword_Handler",
+                                             "mpre.userinput.Command_Line",
                                              "mpre.network.Network", "mpre.rpc.RPC_Handler",
                                              "mpre.srp.Secure_Remote_Password"),
                      "prompt" : ">>> ",

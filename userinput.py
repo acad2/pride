@@ -17,14 +17,20 @@ except:
         return select.select([sys.stdin], [], [], 0.0)[0]
       
 def get_user_input(prompt):
+    """ raw_input function that plays nicely when sys.stdout is swapped """
     sys.__stdout__.write(prompt)
     sys.__stdout__.flush()
     return raw_input()
 
 def get_permission(prompt):
+    """ Displays prompt to the user. Attempts to infer whether or not the supplied
+        user input is affirmative or negative via userinput.is_affirmative. """
     return get_selection(prompt, bool)
     
 def get_selection(prompt, answers):
+    """ Displays prompt to the user. Only input from the supplied answers iterable
+        will be accepted. bool may be specified as answers in order to extract
+        a True/False response. """
     selection = None
     while selection is None:
         selection = get_user_input(prompt)
@@ -34,35 +40,40 @@ def get_selection(prompt, answers):
             selection = None if selection not in answers else selection
     return selection            
     
-def is_affirmative(input):
+def is_affirmative(input, affirmative_words=("affirmative", "true")):
+    """ Attempt to infer whether the supplied input is affirmative. """
     if not input:
         return None
-    lowered = input.lower()
-    y_location = lowered.find('y')
-    n_location = lowered.find('n')
-    if y_location != -1:
-        if n_location != -1:
-            is_positive = True if y_location < n_location else False
-        else:
-            is_positive = True
-    elif n_location != -1:
-        is_positive = False       
-    for affirmative in ("affirmative", "true"):            
-        if affirmative in input:                
+    lowered = input.lower()    
+    for affirmative in affirmative_words:            
+        if affirmative in lowered:                
             is_positive = True
             break    
+    else:        
+        y_location = lowered.find('y')
+        n_location = lowered.find('n')
+        if y_location != -1:
+            if n_location != -1:
+                is_positive = True if y_location < n_location else False
+            else:
+                is_positive = True
+        elif n_location != -1:
+            is_positive = False       
+
     return is_positive
 
-class User_Input(mpre.vmlibrary.Process):
-    """ Captures user input and provides the input to any listening component"""
+class Command_Line(mpre.vmlibrary.Process):
+    """ Captures user input and provides the input to the keyword handler."""
     defaults = mpre.vmlibrary.Process.defaults.copy()
     defaults.update({"thread_started" : False,
-                     "input" : ''})
+                     "input" : '',
+                     "write_prompt" : True,
+                     "prompt" : ">>> "})
                      
     def __init__(self, **kwargs):
-        self.listeners = []
-        super(User_Input, self).__init__(**kwargs)       
+        super(Command_Line, self).__init__(**kwargs)       
         self.thread = threading.Thread(target=self.read_input)        
+        self.keyword_handler = self.create("mpre.userinput.Keyword_Handler")
         
     def run(self):
         if not self.thread_started and input_waiting():
@@ -70,35 +81,24 @@ class User_Input(mpre.vmlibrary.Process):
             self.thread_started = True
             
         if self.input:
-            message = "handle_keystrokes " + self.input
-            for listener in self.listeners:
-                # for reasons still not understood by me, if sys.stdout
-                # is not written to here then at random intervals
-                # newline will be written but listener won't receive
-                # keystrokes until the next read_input
-                sys.stdout.write(" \b")
-                objects[listener].handle_keystrokes(self.input)
-                
-            self.input = ''
-                
+            self.keyword_handler.handle_keystrokes(self.input)
+            self.input = ''                
+            if self.write_prompt:
+                sys.stdout.write(self.prompt)
+    
+    def set_prompt(self, prompt):
+        self.prompt = prompt
+        
     def __getstate__(self):
-        attributes = super(User_Input, self).__getstate__()
+        attributes = super(Command_Line, self).__getstate__()
         del attributes["thread"]
         return attributes
     
     def on_load(self, attributes):
-        super(User_Input, self).on_load(attributes)
+        super(Command_Line, self).on_load(attributes)
         self.thread = threading.Thread(target=self.read_input)
         self.thread_started = False
         self.input = ''
-        
-    def add_listener(self, sender):
-        """ Adds a component to listeners. objects added this way must support a    
-            handle_keystrokes method"""
-        self.listeners.append(sender)
-        
-    def remove_listener(self, sender, argument):
-        self.listeners.remove(sender)
         
     def read_input(self):        
         self.input = sys.stdin.readline()
@@ -109,19 +109,23 @@ class User_Input(mpre.vmlibrary.Process):
 class Keyword_Handler(mpre.base.Base):
     """ usage: objects["Keyword_Handler"].add_keyword('keyword', handler_function)
         
-        A command line utility that will examine user entered lines for an
-        initial keyword, and call the appropriate handler if the keyword
-        was found. For example, typing "$ dir" into the metapython shell
-        will run the dir command on the system command line. This behavior
-        is extensible via the add_keyword and remove_keyword methods.
+        Examines user entered lines for an initial keyword, and call the 
+        appropriate handler if the keyword was found. 
         
-        Note that keywords must be the first word of the line in order
-        for the keyword to be recognized.
+        For example, typing "shell dir" into the metapython shell will run the dir 
+        command on the system command line. This behavior is extensible via the 
+        add_keyword, remove_keyword, and get_handler methods.
+        
+        Note that keywords must be the first word of the line. 
         
         The default handler, which is what is used when no keywords were
-        found, is the _metapython.Shell. The default handler can be
-        set by specifying '' (empty string) as the keyword when calling
-        add_keyword."""
+        found, is the _metapython.Shell. 
+        
+        The default handler can be set by specifying '' (empty string) as 
+        the keyword when calling add_keyword. 
+        
+        Blocking and immediately obtaining user input can be accomplished via
+        the userinput.get_x functions"""
     
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"keyword_handlers" : None,
@@ -131,15 +135,17 @@ class Keyword_Handler(mpre.base.Base):
     def __init__(self, **kwargs):
         super(Keyword_Handler, self).__init__(**kwargs)
         self.keyword_handlers = (self.keyword_handlers or 
-                                 {"$" : functools.partial(mpre.utilities.shell, 
-                                                          shell=self.allow_shell)})
-        mpre.objects["User_Input"].add_listener(self.instance_name)
-        
+                                 {"shell" : functools.partial(mpre.utilities.shell, 
+                                                              shell=self.allow_shell)})
+                
     def add_keyword(self, keyword, handler):
         if not keyword:
             self.default_handler = handler
         else:
             self.keyword_handlers[keyword] = handler
+    
+    def get_handler(self, keyword):
+        return self.keyword_handlers.get(keyword, self.default_handler)        
         
     def remove_keyword(self, keyword):
         del self.keyword_handlers[keyword]
@@ -153,3 +159,29 @@ class Keyword_Handler(mpre.base.Base):
                 self.default_handler(line)
         else:
             self.keyword_handlers[matched_token](line[len(matched_token):])
+            
+    def __getstate__(self):
+        state = super(Keyword_Handler, self).__getstate__()
+        callback = state["default_handler"]
+        if callback:
+            name = callback.__name__
+            module = callback.__module__
+            try:
+                _class = type(callback.im_self).__name__
+            except AttributeError:
+                _class = ''
+            state["default_handler"] = (module, _class, name)
+        return state
+        
+    def on_load(self, state):
+        callback = state["default_handler"]
+        if callback:
+            module, _class, name = callback
+            if _class:
+                callback = getattr(objects[_class], name)
+            else:
+                module = importlib.import_module(module)
+                callback = getattr(module, name)
+        
+        state["default_handler"] = callback    
+        super(Keyword_Handler, self).on_load(state)

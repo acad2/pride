@@ -340,7 +340,7 @@ class LRU_Cache(object):
         deque = self.deque = collections.deque(maxlen=size)
         deque.extend(keys)
         
-        # testing for x in ... is significantly faster with a set
+        # testing x in ... is significantly faster with a set
         self.contains = set(keys)
         self.size = size
         
@@ -349,7 +349,7 @@ class LRU_Cache(object):
         
         # when no entry has been evicted (cache is not full or entry was
         # already in it), return a non hashable object so all keys 
-        # (None, False, etc) will remain valid for users.
+        # (None, False, etc) will remain usable.
         self.no_eviction = []
         
     def _add(self, item):
@@ -393,38 +393,40 @@ class LRU_Cache(object):
         self.dict[key] = value
         self.contains.add(key)    
         
-class Module_Listing(object):
-
-    def __init__(self, _file):
-        super(Module_Listing, self).__init__()
-        self.file = _file        
-
-    def from_help(self):
-        helper = pydoc.Helper(output=self.file)
-        helper("modules")
-
-    def read_file(self):
-        file = self.file
-        file.seek(0)
-        text = file.read()
-        return text
-
-    def trim(self, text):
-        _file = StringIO(text)
-        found = []
-        count = 0
-        for line in _file.readlines():
-            if line.split(" ").count("") > 2:
-                found += line.split()
-
-        return ' '.join(found)
-
-    def get_modules(self):
-        self.from_help()
-        original = self.read_file()
-        return self.trim(original)
-
-    def make_file(self, filename):
-        with open(filename, 'w') as _file:
-            _file.write(self.get_modules())
-            _file.flush()        
+class Reversible_Mapping(object):
+    
+    def __init__(self, dictionary=None, max_size=None, **kwargs):
+        self.keys = collections.deque(maxlen=max_size)
+        self.values = collections.deque(maxlen=max_size)
+        self.key_index_tracker = {}
+        self.value_index_tracker = {}
+        
+        if dictionary:
+            dictionary.update(kwargs)
+            for key, value in dictionary.items():
+                self[key] = value
+        elif kwargs:        
+            for key, value in kwargs.items():
+                self[key] = value
+            
+    def __setitem__(self, key, value):
+        try:
+            index = self.key_index_tracker[key]
+        except KeyError:
+            pass
+        else:
+            self.keys.pop(index)
+            self.values.pop(index)
+            
+        self.keys.append(key)
+        self.values.append(value)
+        self.value_index_tracker[id(value), value] = self.key_index_tracker[key] = len(self.keys) - 1
+        
+    def __getitem__(self, key):
+        return self.values[self.key_index_tracker[key]]
+        
+    def reverse_lookup(self, value):
+        return self.keys[self.value_index_tracker[id(value), value]]    
+        
+    def __contains__(self, key):
+        return key in self.key_index_tracker

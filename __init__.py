@@ -170,7 +170,7 @@ class Instruction(object):
         self.kwargs = kwargs
         
     def execute(self, priority=0.0, callback=None,
-                host_info=tuple(), transport_protocol="Tcp"):
+                host_info=tuple(), transport_protocol="tcp"):
         """ usage: instruction.execute(priority=0.0, callback=None)
         
             Submits an instruction to the processing queue. The instruction
@@ -227,20 +227,21 @@ class Alert_Handler(mpre.base.Base):
         created by the Metapython component. The print_level and log_level attributes act
         as global filters for alerts; print_level and log_level may be specified as 
         command line arguments upon program startup to globally control verbosity/logging."""
-    level_map = {0 : "message ",
+    level_map = {0 : 'alert ',
+                '' : "stdout ",
                 'v' : "notification ",
                 'vv' : "verbose notification ",
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
                 
-    defaults = base.Base.defaults.copy()
-    defaults.update({"log_level" : 0,
-                     "print_level" : 0,
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"log_level" : '',
+                     "print_level" : '',
                      "log_name" : "Alerts.log",
                      "log_is_persistent" : False,
                      "parse_args" : True})
     
-    parser_ignore = base.Base.parser_ignore + ("parse_args", "log_is_persistent", "verbosity")
+    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", "log_is_persistent", "verbosity")
     exit_on_help = False
     
     def __init__(self, **kwargs):
@@ -248,7 +249,7 @@ class Alert_Handler(mpre.base.Base):
         self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
                 
     def _alert(self, message, level):
-        if not self.print_level or level <= self.print_level:
+        if self.print_level is 0 or level <= self.print_level:
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
             severity = self.level_map.get(level, str(level))

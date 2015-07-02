@@ -11,7 +11,7 @@ objects = mpre.objects
 class RPC_Handler(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"servers" : {"Tcp" : "mpre.rpc.RPC_Server"},
+    defaults.update({"servers" : {"tcp" : "mpre.rpc.RPC_Server"},
                      "current_connections" : None})
     
     def __init__(self, **kwargs):
@@ -20,7 +20,7 @@ class RPC_Handler(mpre.base.Base):
         
         for server_protocol, server_type in self.servers.items():
             setattr(self, "{}_server".format(server_protocol), self.create(server_type))
-            
+                
     def make_request(self, callback, host_info, transport_protocol, component_name, 
                      method, args, kwargs):
         arguments = pickle.dumps((args, kwargs), pickle.HIGHEST_PROTOCOL)
@@ -32,9 +32,20 @@ class RPC_Handler(mpre.base.Base):
             server = getattr(self, "{}_server".format(transport_protocol))
             connection = server.create(RPC_Requester, target=host_info, 
                                        request=request, callback=callback if callback else self.alert)
+            
             self.current_connections[host_info] = connection
  
-
+    def delete(self):
+        for connection in self.current_connections.values():
+            connection.close()
+        super(RPC_Handler, self).delete()
+        
+    def __getstate__(self):
+        state = super(RPC_Handler, self).__getstate__()
+        state["current_connections"] = {}
+        return state
+            
+        
 class RPC_Server(mpre.networkssl.SSL_Server):
     
     defaults = mpre.network.Server.defaults.copy()
@@ -51,7 +62,7 @@ class RPC_Server(mpre.networkssl.SSL_Server):
         
         return attributes
 
-     
+    
 class RPC_Requester(mpre.networkssl.SSL_Client):
     
     defaults = mpre.networkssl.SSL_Client.defaults.copy()
@@ -100,4 +111,11 @@ class RPC_Request(mpre.networkssl.SSL_Socket):
             self.alert("Exception executing {}.{}", [component_name, method], level='v')
             response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)
         instance.requester_address = None
+        #print self, "Sending response: ", response[:128]
         self.send(response)     
+        
+
+#class Signed_Request(mpre.networkssl.SSL_Socket):
+#    
+#    def recv(self, buffer_size=0):
+#        request = super(Signed_Request, self).recv(buffer_size)       

@@ -16,7 +16,8 @@ SSL_DEFAULTS = {"keyfile" : None,
                 "do_handshake_on_connect" : False,
                 "suppress_ragged_eofs" : True, 
                 "ciphers" : None,
-                "ssl_authenticated" : False}
+                "ssl_authenticated" : False,
+                "dont_save" : True}
                 
 WRAP_SOCKET_OPTIONS = ("keyfile", "certfile", "server_side", "cert_reqs", 
                        "ssl_version", "ca_certs", "do_handshake_on_connect", 
@@ -71,8 +72,8 @@ class SSL_Client(mpre.network.Tcp_Client):
                         
     def on_authentication(self):
         self.alert("Authenticated", level=0)
+            
         
-
 class SSL_Socket(mpre.network.Tcp_Socket):
     
     """ An asynchronous server side client socket wrapped in an ssl socket.

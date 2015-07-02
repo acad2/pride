@@ -103,3 +103,39 @@ def get_required_sources(modules):
                 module_source[module_name] = None
 
     return module_source
+    
+class Module_Listing(object):
+
+    def __init__(self, _file):
+        super(Module_Listing, self).__init__()
+        self.file = _file        
+
+    def from_help(self):
+        helper = pydoc.Helper(output=self.file)
+        helper("modules")
+
+    def read_file(self):
+        file = self.file
+        file.seek(0)
+        text = file.read()
+        return text
+
+    def trim(self, text):
+        _file = StringIO(text)
+        found = []
+        count = 0
+        for line in _file.readlines():
+            if line.split(" ").count("") > 2:
+                found += line.split()
+
+        return ' '.join(found)
+
+    def get_modules(self):
+        self.from_help()
+        original = self.read_file()
+        return self.trim(original)
+
+    def make_file(self, filename):
+        with open(filename, 'w') as _file:
+            _file.write(self.get_modules())
+            _file.flush()        

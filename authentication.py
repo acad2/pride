@@ -1,9 +1,15 @@
+import sqlite3
 import getpass
 
 import mpre
 import mpre.base
+import mpre.utilities
 Instruction = mpre.Instruction
 objects = mpre.objects
+
+ADD_USER = "INSERT INTO Credentials VALUES(?, ?, ?)"
+REMOVE_USER = "DELETE FROM Credentials WHERE username = ?"
+SELECT_USER = "SELECT salt, verifier FROM Credentials WHERE username = ?"
 
 class UnauthorizedError(Warning): pass
 
@@ -47,29 +53,68 @@ class Authenticated_Service(mpre.base.Base):
     def __init__(self, **kwargs):
         self.user_secret = {} # maps username to shared secret
         self.logging_in = set()
-        self.logged_in = {} # maps host info to username
-        self.whitelist = ["127.0.0.1"]
+        self.logged_in = mpre.utilities.Reversible_Mapping() # maps host info to username
+        self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
-                       
+        
+        self.database_filename = "{}_{}".format(self.instance_name, self.database_filename)
+        database = self.database = sqlite3.connect(self.database_filename)
+        cursor = database.cursor()        
+        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
+                       "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
+        database.commit()
+        
     def register(self, username, password):        
         self.alert("Attempting to register '{}'", [username], level='v')
         if self.allow_registration:
-            registered = objects[self.protocol_component].register(username, password)
-            if registered:
+            database = sqlite3.connect(self.database_filename)
+            database.text_factory = str
+            cursor = database.cursor()
+            cursor.execute(SELECT_USER, (username, ))
+            registered = cursor.fetchone()
+            
+            if not registered:       
+                salt, password_verifier = objects["Secure_Remote_Password"].new_verifier(username, password)            
+                try:
+                    cursor.execute(ADD_USER, (username, salt, str(password_verifier)))
+                except sqlite3.IntegrityError:
+                    self.alert("Attempted to register an already existing user '{}'", 
+                               [username], level='v')
+                    database.rollback()
+                else:
+                    database.commit()
+                database.close()                
                 return True
          
     def login(self, username, credentials):
         if username in self.user_secret:
             self.alert("Detected multiple login attempt on account {}", [username], level='v')
-        response = objects[self.protocol_component].login(username, credentials)
+        
         if username in self.logging_in:
-            K, response = response
-            self.user_secret[username] = K
-            self.logged_in[self.requester_address] = username
-            self.logging_in.remove(username)
-            response = (self.login_message, response)
+            K, response = objects[self.protocol_component].login(username, credentials)
+            if K:
+                self.user_secret[username] = K
+                self.logged_in[self.requester_address] = username
+                self.logging_in.remove(username)
+                response = (self.login_message, response)
+            else:
+                response = (K, response)
         else:
+            database = sqlite3.connect(self.database_filename)
+            database.text_factory = str
+            cursor = database.cursor()
+            
+            cursor.execute(SELECT_USER, (username, ))
+            registered = cursor.fetchone()
+            if not registered:
+                # pretend to go through login process with a fake verifier
+                salt, verifier = s, v = self.new_verifier(username, self.new_salt(64))
+                self.alert("Verifying unregistered user", level=0)
+            else:
+                salt, verifier = s, v = registered
+            
+            response = objects[self.protocol_component].login(username, credentials, salt, verifier)        
             self.logging_in.add(username)
         return response
         
@@ -90,8 +135,9 @@ class Authenticated_Client(mpre.base.Base):
     
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
-        if not self.username or not self.target_service:
-            raise mpre.errors.ArgumentError("username or target_service not supplied")
+        self.username = self.username or mpre.userinput.get_user_input("Please provide a username: ")
+        if not self.target_service:
+            raise mpre.errors.ArgumentError("target_service not supplied")
         if self.auto_login:
             self.login()
             

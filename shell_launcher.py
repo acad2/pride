@@ -82,6 +82,9 @@ def update(instance_name):
 
 #ssl_server = create("mpre.networkssl.SSL_Server")
 #ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
+
+#objects["Metapython"].create(Message_Server)
+#client = objects["Metapython"].create(Message_Client)
 """
 
 options["startup_definitions"] += definitions

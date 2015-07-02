@@ -248,7 +248,20 @@ class Socket(base.Wrapper):
         del stats["socket"]
         return stats
         
- 
+    def on_load(self, attributes):
+        super(Socket, self).on_load(attributes)
+        self.wraps(socket.socket(self.socket_family, self.socket_type, self.protocol))
+        self.setblocking(self.blocking)
+        self.settimeout(self.timeout)
+        
+        if self.add_on_init:
+            self.added_to_network = True
+            try:
+                objects["Network"].add(self)
+            except KeyError:
+                self.alert("Network component does not exist", level=0)
+                
+        
 class Raw_Socket(Socket):
     
     defaults = Socket.defaults.copy()
@@ -553,5 +566,11 @@ class Network(vmlibrary.Process):
                             
     def __getstate__(self):
         state = super(Network, self).__getstate__()
-        state["writable"] = set()
+        state["connecting"], state["writable"], state["_sockets"] = set(), set(), set()
+        state["sockets"] = []        
         return state
+        
+    def on_load(self, attributes):
+        super(Network, self).on_load(attributes)
+        for _socket in itertools.chain(self.objects.values()):
+            self.sockets.append(_socket)

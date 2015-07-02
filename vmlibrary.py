@@ -103,11 +103,7 @@ class Processor(Process):
 
     parser_ignore = Process.parser_ignore + ("running", "auto_start")
     exit_on_help = False
-    
-    def __init__(self, **kwargs):
-        super(Processor, self).__init__(**kwargs)
-        assert self.parse_args
-        
+            
     def run(self):
         instructions = mpre.environment.Instructions
         objects = mpre.objects

@@ -80,7 +80,7 @@ def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by mpre.base.Base.save. 
         This is a higher level method then mpre.persistence.load."""
     assert attributes or _file
-    
+        
     new_self, attributes = mpre.persistence.load(attributes, _file)
     print "Loading: ", repr(new_self)
     saved_objects = attributes["objects"]
@@ -161,9 +161,11 @@ class Base(object):
             object will call .add on the created object, which
             performs reference tracking maintainence. 
             
-            Use of the create method over direct instantiation can allow even 
-            'regular' python objects to have a reference and be usable via parallel_methods 
-            and Instruction objects."""
+            Use of the create method provides an instance_name
+            reference to the instance. The instance does not need
+            to be a Base object to receive an instance_name this way.
+            Non Base objects can retrieve their instance name via
+            mpre.environment.instance_name."""
         self_name = self.instance_name
         mpre.environment.last_creator = self_name
         try:
@@ -225,7 +227,7 @@ class Base(object):
         except KeyError:
             mpre.environment.references_to[instance_name] = set((self.instance_name, ))      
             
-    def alert(self, message="Unspecified alert message", format_args=tuple(), level=0):
+    def alert(self, message="Unspecified alert message", format_args=tuple(), level=''):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may be printed
@@ -239,15 +241,16 @@ class Base(object):
         a lower verbosity indicates a less verbose notification, while 0 indicates
         a message that should not be suppressed. log_level and print_level
         may passed in as command line arguments to globally control verbosity."""
-        if self.verbosity >= level:            
-            message = (self.instance_name + ": " + message.format(*format_args) if
-                       format_args else self.instance_name + ": " + message)
-            return objects["Alert_Handler"]._alert(message, level)            
+        #if self.verbosity >= level:            
+        message = (self.instance_name + ": " + message.format(*format_args) if
+                   format_args else self.instance_name + ": " + message)
+        return objects["Alert_Handler"]._alert(message, level)            
                                                        
     def __getstate__(self):
         return self.__dict__.copy()
         
     def __setstate__(self, state):
+        print repr(self), "set state -\\" * 10
         self.on_load(state)
               
     def __str__(self):
@@ -265,7 +268,7 @@ class Base(object):
             
             If the calling object is one that has been created via the update method, the 
             returned state will include any required source code to rebuild the object."""
-        self.alert("Saving", level='v')
+        self.alert("Saving", level=0)#'v')
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
@@ -273,9 +276,10 @@ class Base(object):
         for component_type, values in objects.items():
             saved_objects[component_type] = new_values = []
             for value in sorted(values, key=operator.attrgetter("instance_name")):
-                if hasattr(value, "save") and not getattr(value, "dont_save", False):   
+                if hasattr(value, "save"):
                     found_objects.append(value)
-                    new_values.append(value.save())
+                    if not getattr(value, "dont_save", False):   
+                        new_values.append(value.save())
 
         attribute_type = attributes["_attribute_type"] = {}
         for key, value in attributes.items():
@@ -297,14 +301,12 @@ class Base(object):
             by the load method."""     
         self.set_attributes(**attributes)
         mpre.environment.add(self)
-        if self.replace_reference_on_load and self.instance_name != attributes["instance_name"]:
-#            for instance_type, instances in objects[attributes["instance_name"]].objects.items():
-#                size = len(self.objects[instance_type])
-#                self.objects[instance_type] = list(set(instances + self.objects[instance_type]))
-#                if len(self.objects[instance_type]) != size:
-#                    print self, "Added additional instances to ", instance_type
+        
+        if (self.replace_reference_on_load and 
+            self.instance_name != attributes["instance_name"]):
             mpre.environment.replace(attributes["instance_name"], self)
-        self.alert("on Loaded", level=0)#'v')
+            
+        self.alert("Loaded", level='v')
         
     def update(self):
         """usage: base_instance.update() => updated_base
