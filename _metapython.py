@@ -39,7 +39,7 @@ class Shell(authentication.Authenticated_Client):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
         self.user_is_entering_definition = False     
-        objects["Keyword_Handler"].add_keyword('', self.handle_keystrokes)
+        objects["Keyword_Handler"].set_default(self.handle_keystrokes, set_backup=True)
         
     def on_login(self, message):
         self.alert("{}", [message], level='')

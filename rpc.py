@@ -124,13 +124,15 @@ class RPC_Requester(mpre.networkssl.SSL_Client):
         if isinstance(arguments, BaseException):
             if type(arguments) in (KeyboardInterrupt, SystemExit):
                 raise arguments
-            self.alert("{}: {} when calling request with callback {}.{}", 
-                       (type(arguments), arguments, 
-                        callback.im_self, callback.__name__), 
-                       level=0)
+            
+            self.alert("{}: {} when performing last request", 
+                       (type(arguments), arguments), level=0)
         else:
-            #self.alert("performing callback: {}".format(callback.__name__), level=0)
-            callback(arguments)
+            if not callback:
+                if arguments:
+                    self.alert("received reply: {}".format(arguments))
+            else:
+                callback(arguments)
         
         if not self.callback and self._requests:       
             self.callback, request = self._requests.pop(0)

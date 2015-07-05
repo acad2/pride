@@ -107,14 +107,14 @@ class Command_Line(mpre.vmlibrary.Process):
         
         
 class Keyword_Handler(mpre.base.Base):
-    """ usage: objects["Keyword_Handler"].add_keyword('keyword', handler_function)
+    """ usage: objects["Keyword_Handler"].set_keyword('keyword', handler_function)
         
         Examines user entered lines for an initial keyword, and call the 
         appropriate handler if the keyword was found. 
         
         For example, typing "shell dir" into the metapython shell will run the dir 
         command on the system command line. This behavior is extensible via the 
-        add_keyword, remove_keyword, and get_handler methods.
+        set_keyword, remove_keyword, and get_handler methods.
         
         Note that keywords must be the first word of the line. 
         
@@ -122,7 +122,7 @@ class Keyword_Handler(mpre.base.Base):
         found, is the _metapython.Shell. 
         
         The default handler can be set by specifying '' (empty string) as 
-        the keyword when calling add_keyword. 
+        the keyword when calling set_keyword. 
         
         Blocking and immediately obtaining user input can be accomplished via
         the userinput.get_x functions"""
@@ -137,15 +137,21 @@ class Keyword_Handler(mpre.base.Base):
         self.keyword_handlers = (self.keyword_handlers or 
                                  {"shell" : functools.partial(mpre.utilities.shell, 
                                                               shell=self.allow_shell)})
-                
-    def add_keyword(self, keyword, handler):
-        if not keyword:
-            self.default_handler = handler
-        else:
-            self.keyword_handlers[keyword] = handler
+    
+    def set_default(self, handler, set_backup=False):
+        self.default_handler = handler
+        if set_backup:
+            self.__default_handler = handler
+            
+    def set_keyword(self, keyword, handler):
+        self.keyword_handlers[keyword] = handler
     
     def get_handler(self, keyword):
-        return self.keyword_handlers.get(keyword, self.default_handler)        
+        if keyword == "__default":
+            result = self.__default_handler
+        else:
+            result = self.keyword_handlers.get(keyword, self.default_handler)        
+        return result
         
     def remove_keyword(self, keyword):
         del self.keyword_handlers[keyword]
@@ -185,3 +191,21 @@ class Keyword_Handler(mpre.base.Base):
         
         state["default_handler"] = callback    
         super(Keyword_Handler, self).on_load(state)
+        
+        
+class Switch_Keyword(mpre.base.Base):
+            
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"name" : "switch"})
+    
+    def __init__(self, **kwargs):
+        super(Switch_Keyword, self).__init__(**kwargs)
+        objects["Keyword_Handler"].set_keyword(self.name, self.handle_input)
+        
+    def handle_input(self, keystrokes):
+        keyword, new_handler_keyword = keystrokes.strip().split(" ", 1)
+        keyword_handler = objects["Keyword_Handler"]
+        if keyword == "default":
+            keyword_handler.set_default(keyword_handler.get_handler(new_handler_keyword))
+        else:
+            keyword_handler.set_keyword(keyword, keyword_handler.get_handler(new_handler_keyword))

@@ -420,13 +420,16 @@ class Reversible_Mapping(object):
             
         self.keys.append(key)
         self.values.append(value)
-        self.value_index_tracker[id(value), value] = self.key_index_tracker[key] = len(self.keys) - 1
+        self.value_index_tracker[value] = self.key_index_tracker[key] = len(self.keys) - 1
         
     def __getitem__(self, key):
         return self.values[self.key_index_tracker[key]]
         
     def reverse_lookup(self, value):
-        return self.keys[self.value_index_tracker[id(value), value]]    
+        return self.keys[self.value_index_tracker[value]]    
         
     def __contains__(self, key):
         return key in self.key_index_tracker
+        
+    def __str__(self):
+        return str(dict((key, self.values[index]) for index, key in enumerate(self.values)))
