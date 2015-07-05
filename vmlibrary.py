@@ -98,7 +98,7 @@ class Processor(Process):
     defaults = Process.defaults.copy()
     defaults.update({"running" : True,
                      "auto_start" : False,
-                     "execution_verbosity" : 'vvv',
+                     "execution_verbosity" : 'vvvv',
                      "parse_args" : True})
 
     parser_ignore = Process.parser_ignore + ("running", "auto_start")

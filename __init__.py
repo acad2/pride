@@ -183,8 +183,8 @@ class Instruction(object):
             supplied to RPC_Handler.alert."""
         if host_info:
             objects["RPC_Handler"].make_request(callback, host_info, transport_protocol,
-                                                   self.component_name, self.method, 
-                                                   self.args, self.kwargs)
+                                                self.component_name, self.method, 
+                                                self.args, self.kwargs)
     #    elif not priority:
     #        return (getattr(objects[self.component_name], self.method)
     #                (*self.args, **self.kwargs))

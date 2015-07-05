@@ -110,8 +110,7 @@ class Base(object):
     __metaclass__ = mpre.metaclass.Metaclass
                 
     # the default attributes new instances will initialize with.
-    defaults = {"verbosity" : '',
-                "_deleted" : False,
+    defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
                 "delete_verbosity" : 'vv'}    
@@ -130,10 +129,11 @@ class Base(object):
     def _get_parent(self):
         return objects[self.parent_name]
     parent = property(_get_parent)
-        
+            
     def __init__(self, **kwargs):
         # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the call to __init__       
+        # defaults dictionary and should be set in the call to __init__   
+       # self.verbosity = {}
         attributes = self.defaults.copy()
         attributes["objects"] = {}
         attributes.update(kwargs)

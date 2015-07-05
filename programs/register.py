@@ -17,7 +17,7 @@ class Registration(mpre.base.Base):
         self.client = self.create(self.service_type, username=username, password=self.password,
                                   host_info=self.host_info, auto_login=False)
         host_string = '' if not self.host_info else "@ {}".format(self.host_info)
-        self.alert("Attempting to register with {} {}".format(self.service_type, host_string))
+        self.alert("Attempting to register {} {}".format(self.service_type, host_string))
         self.client.register()        
         
 if __name__ == "__main__":

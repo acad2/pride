@@ -42,7 +42,7 @@ class Shell(authentication.Authenticated_Client):
         objects["Keyword_Handler"].add_keyword('', self.handle_keystrokes)
         
     def on_login(self, message):
-        self.alert("{}", [message], level=0)
+        self.alert("{}", [message], level='')
         sys.stdout.write(">>> ")
         self.logged_in = True
         if self.startup_definitions:
@@ -87,8 +87,8 @@ class Shell(authentication.Authenticated_Client):
                 else:
                     self.user_is_entering_definition = True
                     self.prompt = "... "
-       # else:
-       #     self.prompt = self.lines = ''
+        else:
+            self.lines = ''
         objects["Command_Line"].set_prompt(self.prompt)
         
     def execute_source(self, source):
@@ -203,9 +203,11 @@ class Metapython(base.Base):
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
                      "startup_components" : (#"mpre.fileio.File_System",
                                              "mpre.vmlibrary.Processor",
+                                             "mpre.network.Network", 
                                              "mpre.userinput.Command_Line",
-                                             "mpre.network.Network", "mpre.rpc.RPC_Handler",
-                                             "mpre.srp.Secure_Remote_Password"),
+                                             "mpre.srp.Secure_Remote_Password",
+                                             "mpre.rpc.Machine_Access",
+                                             "mpre.rpc.RPC_Handler"),
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
@@ -239,7 +241,7 @@ class Metapython(base.Base):
             source = module_file.read()
             
         Instruction(self.instance_name, "exec_command", source).execute()
-             
+                    
     def exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')

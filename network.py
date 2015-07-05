@@ -368,7 +368,7 @@ class Server(Tcp_Socket):
         
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket)
-                                 
+        
         self.on_connect(connection, address)
         return connection, address
         

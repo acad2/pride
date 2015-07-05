@@ -1,8 +1,8 @@
 """
   A python implementation of the secure remote password protocol for the
-  runtime environment. Authenticated_Service and Authenticated_Client 
-  default to using SRP for authentication, and in most cases should
-  be used instead of the Secure_Remote_Password component directly.
+  metapython runtime environment. Authenticated_Service and Authenticated_Client 
+  default to using SRP for authentication, and in most cases will
+  be used instead of the Secure_Remote_Password objects directly.
   
   N, g, and the hash function are customizable. Simply specify them
   as defaults or manually to the constructor. Note that for the protocol
@@ -89,23 +89,23 @@ class Secure_Remote_Password(mpre.base.Base):
             thread = self.login_threads[username] = self._login(username, A, salt, verifier)
             result = next(thread)
         else:
-            thread = self.login_threads[username]
+            thread = self.login_threads.pop(username)
             try:
                 result = thread.send(response)
-            except (StopIteration, InsecureValueError):
+            except InsecureValueError:
                 import traceback
                 self.alert("Unhandled exception during {} login:\n{}", [username, traceback.format_exc()], level=0)
-                del self.login_threads[username]
                 result = ''
         return result
         
     def _login(self, username, A, salt, verifier):
         N = self.N
         if A % N == 0:
-            self.alert("Received an insecure A value from client {}", [username], level='v')
+            self.alert("Received an insecure A value from client {}", [username], level=0)
             raise InsecureValueError
         s = salt
         v = int(verifier)
+        
         H = self.hash_function        
         g = self.g            
         b = random_bits()
@@ -115,7 +115,7 @@ class Secure_Remote_Password(mpre.base.Base):
         
         u = random_scrambling_parameter = H(A, B)
         K = H( pow(A * pow(v, u, N), b, N))      
-        
+
         if M != H( H(N) ^ H(g), H(username), salt, A, B, K):
             self.alert("Proof of K mismatch from user '{}'", [username], level='v')
             yield None, "Invalid username or password"
@@ -172,6 +172,7 @@ class SRP_Client(mpre.base.Base):
         return self.username, self.A
 
     def handle_challenge(self, response):
+    #    print self, "Challenge: ", response
         H = self.hash_function
         N = self.N
         g = self.g
@@ -184,7 +185,7 @@ class SRP_Client(mpre.base.Base):
         if u == 0:
             raise InsecureValueError
             
-        x = H(salt, H(self.username + ":" + self.password or getpass.getpass("Please provide the password: ")))         
+        x = H(salt, H(self.username + ":" + self.password or str(getpass.getpass("Please provide the password: "))))         
         K = H( pow(B - k * pow(g, x, N), self.a + u * x, N))
         
         M =  H( H(N) ^ H(g), H(self.username), salt, self.A, B, K)
@@ -195,7 +196,7 @@ class SRP_Client(mpre.base.Base):
         if server_proof != self.hash_function(self.A, client_proof, K):
             self.alert("Log in failed; Invalid proof of shared secret received server.", level='v')
         else:
-            return True         
+            return K         
          
 def test_srp():
     authentication_service = objects["Secure_Remote_Password"]

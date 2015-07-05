@@ -23,11 +23,15 @@ WRAP_SOCKET_OPTIONS = ("keyfile", "certfile", "server_side", "cert_reqs",
                        "ssl_version", "ca_certs", "do_handshake_on_connect", 
                        "suppress_ragged_eofs", "ciphers")   
 
-def generate_self_signed_certificate(name="server"):
+DEFAULT_CLIENT_CONTEXT = ssl.create_default_context()
+DEFAULT_SERVER_CONTEXT = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                       
+def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and arguments
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
+    name = name or mpre.userinput.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
-    delete_program = "rm" if openssl == "openssl" else "del" # rm on linux, del on windows
+    delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
     shell = mpre.utilities.shell
     
     shell("{} genrsa -aes256 -passout pass:x -out {}.pass.key 2048".format(openssl, name))
@@ -83,8 +87,8 @@ class SSL_Socket(mpre.network.Tcp_Socket):
     defaults = mpre.network.Tcp_Socket.defaults.copy()
     defaults.update(SSL_DEFAULTS)
     defaults.update({"server_side" : True,
-                     "certfile" : "server.crt",
-                     "keyfile" : "server.key"})
+                     "certfile" : "",
+                     "keyfile" : ""})
     
     def __init__(self, **kwargs):
         super(SSL_Socket, self).__init__(**kwargs)
