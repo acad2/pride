@@ -12,14 +12,14 @@ A: A pacakge that provides various features aimed at increasing productivity and
     
 Q: What features does it offer?
 
-A: Most features are aimed at productivity and general purpose application capabilities:
+A: Most features are aimed at productivity and improving the minimum standard for quality:
    1. Automatically generated documentation (docstrings and websites)
    2. Automatically generated command line argument parser
    3. Automatic verbosity handling and logging 
    4. Simple concurrency mechanisms which seldom require locking primitives of any kind 
    5. The ability to be updated from source at runtime without pausing or stopping execution
    6. The ability to take snapshots of application state, and restore snapshots at any point
-   7. An interactive interpreter usable from your application or remotely if enabled
+   7. An interactive interpreter usable from your application (or remotely if enabled)
    
 Q: Where can I learn more?
 
@@ -31,5 +31,3 @@ Q: What are the dependencies?
 A: Python 2.7+ is required. optional modules require additional dependencies:
    1. Low level audio support requires pyalsaaudio on linux or pyaudio otherwise
    2. SDL support requires SDL2.0 and pysdl2
-   3. documentation websites require mkdocs
-   4. creation of compiled executables requires Cython and gcc

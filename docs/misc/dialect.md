@@ -17,30 +17,33 @@ Method resolution order:
 
 - **translate_from**(self, _file):
 
-		No documentation available
+				No documentation available
 
 
 - **translate_to_file**(self, input_file, output_file):
 
-		No documentation available
+				No documentation available
 
 
 - **translate**(self, _file):
 
-		No documentation available
+				No documentation available
 
 
 - **save**(self, filename, mode):
 
-		No documentation available
+				No documentation available
 
 
 - **from_object**(self, object):
 
-		No documentation available
+				No documentation available
 
 
-- **StringIO****:
+StringIO
+--------------
+
+**StringIO**:
 
 		class StringIO([buffer])
 
@@ -55,7 +58,10 @@ Method resolution order:
     
 
 
-- **randint**(self, a, b):
+randint
+--------------
+
+**randint**(self, a, b):
 
 		Return random integer in range [a, b], including both end points.
         

@@ -25,18 +25,10 @@ Method resolution order:
 
 	(<class 'mpre.metaclass.Documented'>, <type 'type'>, <type 'object'>)
 
-Instance_Tracker
---------------
+- **make_docstring**(attributes):
 
-	 Provides instance tracking and counting attributes.
-    
-        Note as of 3/3/2015: the class must implement these attributes,
-        it is not performed by this metaclass
+				No documentation available
 
-
-Method resolution order: 
-
-	(<class 'mpre.metaclass.Instance_Tracker'>, <type 'type'>, <type 'object'>)
 
 Metaclass
 --------------
@@ -47,15 +39,13 @@ Metaclass
         The methods insert_metaclass and remove_metaclass may be used
         to alter the contents of this list.
         
-        Implementation currently under examination due to compiling with
-        cython being broken
+        Implementation currently under examination
 
 
 Method resolution order: 
 
 	(<class 'mpre.metaclass.Metaclass'>,
 	 <class 'mpre.metaclass.Documented'>,
-	 <class 'mpre.metaclass.Instance_Tracker'>,
 	 <class 'mpre.metaclass.Parser_Metaclass'>,
 	 <class 'mpre.metaclass.Method_Hook'>,
 	 <type 'type'>,
@@ -63,29 +53,35 @@ Method resolution order:
 
 - **remove_metaclass**(cls, metaclass):
 
-		No documentation available
+				No documentation available
 
 
 - **update_metaclass**(cls):
 
-		No documentation available
+				No documentation available
 
 
 - **insert_metaclass**(cls, metaclass, index):
 
-		No documentation available
+				No documentation available
 
 
 Method_Hook
 --------------
 
 	 Provides a hook on all methods for the new class. This metaclass
-        uses this hook to wrap each method in a Runtime_Decorator.
+        uses this hook to wrap each method in a Runtime_Decorator if it
+        is enabled. 
 
 
 Method resolution order: 
 
 	(<class 'mpre.metaclass.Method_Hook'>, <type 'type'>, <type 'object'>)
+
+- **decorate**(new_class):
+
+				No documentation available
+
 
 Parser
 --------------
@@ -98,14 +94,14 @@ Method resolution order:
 
 	(<class 'mpre.metaclass.Parser'>, <type 'object'>)
 
-- **get_options**(self, argument_info):
+- **get_options**(self):
 
-		No documentation available
+				No documentation available
 
 
-- **get_arguments**(self, argument_info):
+- **get_arguments**(self):
 
-		No documentation available
+				No documentation available
 
 
 Parser_Metaclass
@@ -118,6 +114,13 @@ Parser_Metaclass
 Method resolution order: 
 
 	(<class 'mpre.metaclass.Parser_Metaclass'>, <type 'type'>, <type 'object'>)
+
+- **make_parser**(new_class, name, modifiers, exit_on_help):
+
+				No documentation available
+
+
+- 
 
 Runtime_Decorator
 --------------
@@ -133,7 +136,10 @@ Method resolution order:
 
 	(<class 'mpre.metaclass.Runtime_Decorator'>, <type 'object'>)
 
-- **copy**(x):
+copy
+--------------
+
+**copy**(x):
 
 		Shallow copy operation on arbitrary Python objects.
 

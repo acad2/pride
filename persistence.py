@@ -56,11 +56,12 @@ def authenticated_load(bytestream, secret_key, hash_algorithm=hashlib.sha512):
     valid = hmac.compare_digest(bytestream[:mac_size], 
                                 hmac.HMAC(secret_key, pickled_object, hash_algorithm).hexdigest())
     if valid:
+        #print "\n\nunpickling: ", pickled_object
         return pickle.loads(pickled_object)
     else:
         raise CorruptPickleError("Message authentication code mismatch\n\n" + bytestream[:mac_size])
 
-def save(self, attributes=None, _file=None):
+def save(self, attributes=None, _file=None, key=ASCIIKEY):
     """ usage: base.save([attributes], [_file])
         
         Saves the state of the calling objects __dict__. If _file is not specified,
@@ -88,14 +89,14 @@ def save(self, attributes=None, _file=None):
         modules.append(module_info[-1])
     else:
         attributes["_required_module"] = (self.__module__, self.__class__.__name__)
-    saved = authenticated_dump(attributes, ASCIIKEY)
+    saved = authenticated_dump(attributes, key)
     
     if _file:
         _file.write(saved)
     else:
         return saved
     
-def load(attributes=None, _file=None):
+def load(attributes=None, _file=None, key=ASCIIKEY):
     """ usage: load([attributes], [_file]) => restored_instance, attributes
     
         Loads state preserved by the persistence.save method. Loads an instance from either
@@ -105,7 +106,7 @@ def load(attributes=None, _file=None):
         attributes = _file.read()  
     elif not attributes:
         raise ValueError("No attributes bytestream or file object supplied to load")
-    attributes = authenticated_load(attributes, ASCIIKEY)   
+    attributes = authenticated_load(attributes, key)   
     #print "Performed authenticated load of: ", attributes
     if "_required_modules" in attributes:
         _required_modules = []

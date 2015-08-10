@@ -56,8 +56,9 @@ class Process(base.Base):
                      "priority" : .04,
                      "running" : True,
                      "run_callback" : None})
-    parser_ignore = base.Base.parser_ignore + ("auto_start", "network_buffer", "keyboard_input",
-                                               "priority", "run_callback", )
+    parser_ignore = base.Base.parser_ignore + ("auto_start", "network_buffer",
+                                               "keyboard_input", "priority", 
+                                               "run_callback", )
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -73,7 +74,7 @@ class Process(base.Base):
                                      callback=self.run_callback)
 
     def _run(self):
-        result = self.run(*self.args, **self.kwargs)
+        result = self.run()
         if self.running:
             self.run_instruction.execute(priority=self.priority, 
                                          callback=self.run_callback)
@@ -81,7 +82,7 @@ class Process(base.Base):
         
     def run(self):
         if self.target:
-            self.target(*self.args, **self.kwargs)
+            return self.target(*self.args, **self.kwargs)
             
     def delete(self):
         self.running = False
@@ -107,8 +108,7 @@ class Processor(Process):
     def run(self):
         instructions = mpre.environment.Instructions
         objects = mpre.objects
-        processor_name = self.instance_name
-        
+                
         sleep = time.sleep
         heappop = heapq.heappop
         _getattr = getattr        
@@ -124,10 +124,10 @@ class Processor(Process):
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
-            execute_at, instruction, callback = heappop(instructions)                
+            execute_at, instruction, callback = heappop(instructions)
             try:
-                call = getattr(objects[instruction.component_name],
-                               instruction.method)
+                call = _getattr(objects[instruction.component_name],
+                                instruction.method)
             except component_errors as error:
                 if isinstance(error, KeyError):
                     error = "'{}' component does not exist".format(instruction.component_name)                        
@@ -137,8 +137,8 @@ class Processor(Process):
             time_until = max(0, (execute_at - timer_function()))
             if time_until:
                 sleep(time_until)
-
-            execution_alert([str(instruction)], level=self.execution_verbosity)           
+                                
+            execution_alert([instruction], level=self.execution_verbosity)           
             try:
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:
@@ -146,6 +146,6 @@ class Processor(Process):
                     raise
                 exception_alert((instruction.component_name,
                                  instruction.method,
-                                 format_traceback()))
+                                 format_traceback()))            
             if callback:
                 callback(result)

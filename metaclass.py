@@ -33,11 +33,13 @@ class Documented(type):
 
 class Method_Hook(type):
     """ Provides a hook on all methods for the new class. This metaclass
-        uses this hook to wrap each method in a Runtime_Decorator."""
+        uses this hook to wrap each method in a Runtime_Decorator if it
+        is enabled. """
         
     def __new__(cls, name, bases, attributes):        
         new_class = super(Method_Hook, cls).__new__(cls, name, bases, attributes)
-        Method_Hook.decorate(new_class)
+        if Runtime_Decorator.enabled:
+            Method_Hook.decorate(new_class)
         return new_class
         
     @staticmethod
@@ -58,6 +60,8 @@ class Runtime_Decorator(object):
 
         usage: wrapped_method(my_argument, decorator="decorators.Tracer")"""
     __metaclass__ = Documented
+    
+    enabled = False
     
     def __init__(self, function):
         self.function = function
@@ -115,15 +119,15 @@ class Runtime_Decorator(object):
             wrapped_function = item(wrapped_function)
         return wrapped_function
 
-
+        
 class Parser_Metaclass(type):
     """ Provides a command line parser for a class based upon 
         the class.defaults dictionary"""
 
     parser = argparse.ArgumentParser()
     command_parser = parser.add_subparsers(help="filename")
-    run_parser = command_parser.add_parser("run", help="execute the specified script")
-    profile_parser = command_parser.add_parser("profile", help="profile the specified script")
+    #run_parser = command_parser.add_parser("run", help="execute the specified script")
+    #profile_parser = command_parser.add_parser("profile", help="profile the specified script")
     
     def __new__(cls, name, bases, attributes):
         new_class = super(Parser_Metaclass, cls).__new__(cls, name, bases, attributes)
@@ -151,7 +155,7 @@ class Parser_Metaclass(type):
     @staticmethod
     def make_parser(new_class, name, modifiers, exit_on_help):
         parser = Parser_Metaclass.command_parser.add_parser(name)
-        new_class.parser = Parser(parser, modifiers, exit_on_help, name)
+        new_class.parser = Parser(parser, modifiers, exit_on_help, name, new_class.defaults)
         return new_class
     
     
@@ -162,14 +166,13 @@ class Parser(object):
     sys_argv = sys.argv
     __metaclass__ = Documented
     
-    def __init__(self, parser, modifiers, exit_on_help, name):
+    def __init__(self, parser, modifiers, exit_on_help, name, argument_info):
         super(Parser, self).__init__()
         self.parser = parser
         self.modifiers = modifiers
         self.exit_on_help = exit_on_help
         self.name = name
 
-    def get_arguments(self, argument_info):
         arguments = {}
         argument_names = argument_info.keys()
         switch = {"short" : "-",
@@ -177,14 +180,14 @@ class Parser(object):
                   "positional" : ""}
 
         default_modifiers = {"types" : ("long", )}
-        self_modifiers = self.modifiers
+        self_modifiers = modifiers
         positionals = 0
         for name in argument_names:
-            modifiers = self_modifiers.get(name, default_modifiers)
-            if modifiers == "ignore":
+            _modifiers = self_modifiers.get(name, default_modifiers)
+            if _modifiers == "ignore":
                 continue
             info = {}
-            for keyword_argument, value in modifiers.items():
+            for keyword_argument, value in _modifiers.items():
                 info[keyword_argument] = value
 
             temporary = {}
@@ -207,20 +210,20 @@ class Parser(object):
                 arg_name = switch[arg_type] + name
                 arguments[arg_name] = info
 
-        parser = self.parser
-        exit_on_help = self.exit_on_help
-
         for argument_name, options in arguments.items():
             parser.add_argument(argument_name, **options)
-
+        
+        self.positionals_count = positionals
+        
+    def get_arguments(self):
+        parser = self.parser
         new_argv = Parser.sys_argv
         sys.argv = new_argv
-
         try:
             arguments, unused = parser.parse_known_args()
         except SystemExit as error:
             print
-            if exit_on_help:
+            if self.exit_on_help:
                 raise
             try:
                 index = new_argv.index("-h")
@@ -230,9 +233,9 @@ class Parser(object):
                 except ValueError:
                     raise error
                     
-            removed = new_argv.pop(index)
+            removed_help = new_argv.pop(index)
             arguments, unused = parser.parse_known_args()
-            new_argv.insert(removed)
+            new_argv.insert(index, removed_help)
             
         if unused:
             new_argv = sys.argv = copy(Parser.sys_argv)
@@ -255,6 +258,8 @@ class Parser(object):
             sys.argv = Parser.sys_argv
         
         is_keyword_argument = False
+        positionals = self.positionals_count
+        
         while positionals and len(sys.argv) > 1: 
             positionals -= 1
             for item in sys.argv[1:]:
@@ -266,11 +271,11 @@ class Parser(object):
                     break            
                 else:
                     is_keyword_argument = True
-        Parser.sys_argv = sys.argv        
+        Parser.sys_argv = sys.argv     
         return arguments
 
-    def get_options(self, argument_info):
-        namespace = self.get_arguments(argument_info)
+    def get_options(self):
+        namespace = self.get_arguments()
         options = dict((key, getattr(namespace, key)) for key in namespace.__dict__.keys())
         return options
 

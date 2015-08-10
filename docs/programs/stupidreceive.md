@@ -3,7 +3,7 @@ stupidreceive
 
 
 
-_socketobject
+SocketType
 --------------
 
 	socket([family[, type[, proto]]]) -> socket object
@@ -51,7 +51,7 @@ Method resolution order:
 
 	(<class 'socket._socketobject'>, <type 'object'>)
 
-- **shutdown****:
+- **shutdown**method(name, self, *args):
 
 		shutdown(flag)
 
@@ -59,7 +59,7 @@ Shut down the reading side of the socket (flag == SHUT_RD), the writing side
 of the socket (flag == SHUT_WR), or both ends (flag == SHUT_RDWR).
 
 
-- **gettimeout****:
+- **gettimeout**thod(name, self, *args):
 
 		gettimeout() -> timeout
 
@@ -77,7 +77,7 @@ connection, and the address of the client.  For IP sockets, the address
 info is a pair (hostaddr, port).
 
 
-- **connect****:
+- **connect**emethod(name, self, *args):
 
 		connect(address)
 
@@ -85,7 +85,7 @@ Connect the socket to a remote address.  For IP sockets, the address
 is a pair (host, port).
 
 
-- **getsockname****:
+- **getsockname**hod(name, self, *args):
 
 		getsockname() -> address info
 
@@ -100,7 +100,7 @@ info is a pair (hostaddr, port).
 Close the socket.  It cannot be used after this call.
 
 
-- **getsockopt****:
+- **getsockopt**thod(name, self, *args):
 
 		getsockopt(level, option[, buffersize]) -> value
 
@@ -109,7 +109,7 @@ If a nonzero buffersize argument is given, the return value is a
 string of that length; otherwise it is an integer.
 
 
-- **connect_ex****:
+- **connect_ex**thod(name, self, *args):
 
 		connect_ex(address) -> errno
 
@@ -125,7 +125,7 @@ instead of raising an exception when an error occurs.
         and bufsize arguments are as for the built-in open() function.
 
 
-- **listen****:
+- **listen**cemethod(name, self, *args):
 
 		listen(backlog)
 
@@ -135,7 +135,7 @@ unaccepted connections that the system will allow before refusing new
 connections.
 
 
-- **setsockopt****:
+- **setsockopt**thod(name, self, *args):
 
 		setsockopt(level, option, value)
 
@@ -150,7 +150,7 @@ The value argument can either be an integer or a string.
         Return a new socket object connected to the same system resource.
 
 
-- **ioctl****:
+- **ioctl**ncemethod(name, self, *args):
 
 		ioctl(cmd, option) -> long
 
@@ -159,7 +159,7 @@ SIO_RCVALL:  'option' must be one of the socket.RCVALL_* constants.
 SIO_KEEPALIVE_VALS:  'option' is a tuple of (onoff, timeout, interval).
 
 
-- **getpeername****:
+- **getpeername**hod(name, self, *args):
 
 		getpeername() -> address info
 
@@ -167,7 +167,7 @@ Return the address of the remote endpoint.  For IP sockets, the address
 info is a pair (hostaddr, port).
 
 
-- **setblocking****:
+- **setblocking**hod(name, self, *args):
 
 		setblocking(flag)
 
@@ -176,14 +176,14 @@ setblocking(True) is equivalent to settimeout(None);
 setblocking(False) is equivalent to settimeout(0.0).
 
 
-- **fileno****:
+- **fileno**cemethod(name, self, *args):
 
 		fileno() -> integer
 
 Return the integer file descriptor of the socket.
 
 
-- **bind****:
+- **bind**ancemethod(name, self, *args):
 
 		bind(address)
 
@@ -192,7 +192,7 @@ pair (host, port); the host must refer to the local host. For raw packet
 sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])
 
 
-- **sendall****:
+- **sendall**emethod(name, self, *args):
 
 		sendall(data[, flags])
 
@@ -202,7 +202,7 @@ until all data is sent.  If an error occurs, it's impossible
 to tell how much data has been sent.
 
 
-- **settimeout****:
+- **settimeout**thod(name, self, *args):
 
 		settimeout(timeout)
 
@@ -212,7 +212,10 @@ the timeout feature and is equivalent to setblocking(1).
 Setting a timeout of zero is the same as setblocking(0).
 
 
-- **create_connection**(address, timeout, source_address):
+create_connection
+--------------
+
+**create_connection**(address, timeout, source_address):
 
 		Connect to *address* and return the socket object.
 
@@ -260,7 +263,10 @@ Method resolution order:
 	 <type 'exceptions.BaseException'>,
 	 <type 'object'>)
 
-- **getfqdn**(name):
+getfqdn
+--------------
+
+**getfqdn**(name):
 
 		Get fully qualified domain name from name.
 
@@ -289,7 +295,7 @@ Method resolution order:
 	 <type 'exceptions.BaseException'>,
 	 <type 'object'>)
 
-_socketobject
+socket
 --------------
 
 	socket([family[, type[, proto]]]) -> socket object
@@ -337,7 +343,7 @@ Method resolution order:
 
 	(<class 'socket._socketobject'>, <type 'object'>)
 
-- **shutdown****:
+- **shutdown**method(name, self, *args):
 
 		shutdown(flag)
 
@@ -345,7 +351,7 @@ Shut down the reading side of the socket (flag == SHUT_RD), the writing side
 of the socket (flag == SHUT_WR), or both ends (flag == SHUT_RDWR).
 
 
-- **gettimeout****:
+- **gettimeout**thod(name, self, *args):
 
 		gettimeout() -> timeout
 
@@ -363,7 +369,7 @@ connection, and the address of the client.  For IP sockets, the address
 info is a pair (hostaddr, port).
 
 
-- **connect****:
+- **connect**emethod(name, self, *args):
 
 		connect(address)
 
@@ -371,7 +377,7 @@ Connect the socket to a remote address.  For IP sockets, the address
 is a pair (host, port).
 
 
-- **getsockname****:
+- **getsockname**hod(name, self, *args):
 
 		getsockname() -> address info
 
@@ -386,7 +392,7 @@ info is a pair (hostaddr, port).
 Close the socket.  It cannot be used after this call.
 
 
-- **getsockopt****:
+- **getsockopt**thod(name, self, *args):
 
 		getsockopt(level, option[, buffersize]) -> value
 
@@ -395,7 +401,7 @@ If a nonzero buffersize argument is given, the return value is a
 string of that length; otherwise it is an integer.
 
 
-- **connect_ex****:
+- **connect_ex**thod(name, self, *args):
 
 		connect_ex(address) -> errno
 
@@ -411,7 +417,7 @@ instead of raising an exception when an error occurs.
         and bufsize arguments are as for the built-in open() function.
 
 
-- **listen****:
+- **listen**cemethod(name, self, *args):
 
 		listen(backlog)
 
@@ -421,7 +427,7 @@ unaccepted connections that the system will allow before refusing new
 connections.
 
 
-- **setsockopt****:
+- **setsockopt**thod(name, self, *args):
 
 		setsockopt(level, option, value)
 
@@ -436,7 +442,7 @@ The value argument can either be an integer or a string.
         Return a new socket object connected to the same system resource.
 
 
-- **ioctl****:
+- **ioctl**ncemethod(name, self, *args):
 
 		ioctl(cmd, option) -> long
 
@@ -445,7 +451,7 @@ SIO_RCVALL:  'option' must be one of the socket.RCVALL_* constants.
 SIO_KEEPALIVE_VALS:  'option' is a tuple of (onoff, timeout, interval).
 
 
-- **getpeername****:
+- **getpeername**hod(name, self, *args):
 
 		getpeername() -> address info
 
@@ -453,7 +459,7 @@ Return the address of the remote endpoint.  For IP sockets, the address
 info is a pair (hostaddr, port).
 
 
-- **setblocking****:
+- **setblocking**hod(name, self, *args):
 
 		setblocking(flag)
 
@@ -462,14 +468,14 @@ setblocking(True) is equivalent to settimeout(None);
 setblocking(False) is equivalent to settimeout(0.0).
 
 
-- **fileno****:
+- **fileno**cemethod(name, self, *args):
 
 		fileno() -> integer
 
 Return the integer file descriptor of the socket.
 
 
-- **bind****:
+- **bind**ancemethod(name, self, *args):
 
 		bind(address)
 
@@ -478,7 +484,7 @@ pair (host, port); the host must refer to the local host. For raw packet
 sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])
 
 
-- **sendall****:
+- **sendall**emethod(name, self, *args):
 
 		sendall(data[, flags])
 
@@ -488,7 +494,7 @@ until all data is sent.  If an error occurs, it's impossible
 to tell how much data has been sent.
 
 
-- **settimeout****:
+- **settimeout**thod(name, self, *args):
 
 		settimeout(timeout)
 

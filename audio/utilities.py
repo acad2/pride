@@ -12,10 +12,8 @@ def install_pyalsaaudio():
     os.system("sudo pip install pyalsaaudio")
     
 def ensure_audio_enabled(**kwargs):
-    objects = mpre.environment.objects
-    if "Audio_Manager" not in objects:
-        objects["Metapython"].create("mpre.audio.audiolibrary.Audio_Manager", **kwargs)
-                    
+    if "Audio_Manager" not in mpre.objects:
+        mpre.objects["Metapython"].create("mpre.audio.audiolibrary.Audio_Manager", **kwargs)                    
       
 def enable_audio(parent="Metapython"):
     """Executes the following instruction:
@@ -36,7 +34,3 @@ def wav_file_info(parse_args=True, **kwargs):
                       "sample_width", "number_of_frames"):
         print "{}: {}".format(attribute, getattr(wav_file, attribute))
 
-def record_wav_file(parse_args=True, **kwargs):
-    wav_file = audiolibrary.Wav_File(parse_args=parse_args, mode='wb', **kwargs)
-    mpre.Instruction("Audio_Manager", "record", 
-                          "Microphone", file=wav_file).execute()    

@@ -29,8 +29,8 @@ from utilities import Latency, Average
 Instruction = mpre.Instruction
 objects = mpre.objects
 
-NotWritableError = type("NotWritableError", (IOError, ), {"errno" : -1})
-ERROR_CODES = {-1 : "NotWritableError"}
+ERROR_CODES = {}
+
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
     BAD_TARGET = errno.WSAEINVAL
@@ -47,14 +47,7 @@ except:
     CONNECTION_WAS_ABORTED = errno.ECONNABORTED
     CONNECTION_RESET = errno.ECONNRESET
     CONNECTION_CLOSED = errno.ENOTCONN
- 
-#try:
-#    import ssl
-#except ImportError:
-#    pass
-#else:
-#    ERROR_CODES[ssl.SSL_ERROR_SSL] = "SSL_ERROR_SSL"
-    
+     
 ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                     CONNECTION_IN_PROGRESS : "CONNECTION_IN_PROGRESS",
                     CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
@@ -64,8 +57,31 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                
 HOST = socket.gethostbyname(socket.gethostname())
 
-class Error_Handler(object):
+class Socket_Error_Handler(mpre.base.Base):
     
+    verbosity = {"call_would_block" : 'vv',
+                 "connection_in_progress" : 0,
+                 "connection_closed" : 0,
+                 "connection_reset" : 0,
+                 "connection_was_aborted" : 0,
+                 "eagain" : 0,
+                 "bad_target" : 0,
+                 "unhandled" : 0,
+                 "bind_error" : 0}
+                 
+    def dispatch(self, sock, error, error_name):
+        sock.alert("{}".format(error), level=self.verbosity[error_name])
+        sock.delete()
+        
+    def call_would_block(self, sock, error):
+        if getattr(sock, "_connecting", False):
+            sock.latency.finish_measuring()
+            message = "Connection timed out after {:5f}\n{}"
+        else:
+            message = "{}"
+        sock.alert(message, [error], level=self.verbosity["call_would_block"])
+        sock.delete()
+        
     def connection_closed(self, sock, error):
         sock.alert("{}", [error], level=0)
         sock.delete()
@@ -95,7 +111,6 @@ class Error_Handler(object):
         sock.alert("socket.error when binding to {}", (sock.port, ), 0)
         return sock.handle_bind_error()
         
-_error_handler = Error_Handler()
        
 class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
@@ -104,14 +119,13 @@ class Socket(base.Wrapper):
     defaults = base.Wrapper.defaults.copy()
     additional_defaults = {"blocking" : 0,
                            "timeout" : 0,
-                           "add_on_init" : True,
-                           "recvfrom_packet_size" : 65535,
-                           "recv_packet_size" : 32768,
+                           "add_on_init" : True,                                        
                            "socket_family" : socket.AF_INET,
                            "socket_type" : socket.SOCK_STREAM,
                            "protocol" : socket.IPPROTO_IP,
                            "interface" : "0.0.0.0",
                            "port" : 0,
+                           "_byte_count" : 0,
                            "connection_attempts" : 10,
                            "bind_on_init" : False,
                            "closed" : False,
@@ -145,17 +159,24 @@ class Socket(base.Wrapper):
         
     def _set_os_send_buffer_size(self, size):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, size)
-    os_send_buffer_size = property(_get_os_send_buffer_size, _set_os_send_buffer_size)
+    os_send_buffer_size = property(_get_os_send_buffer_size, _set_os_send_buffer_size)    
+    # note that linux is supposed to have tcp auto tuning and setting the above manually
+    # may actually degrade performance. Note that on linux it is still advisable to raise
+    # the system max size for buffers, which the send/recv buffers are limited to.
+    # see networkutilities to modify the os buffer size.
+    # windows is basically the inverse: unless explicitly set by an admin there is no
+    # max os size for buffers, and benefits may be seen by tweaking the above.
     
     wrapped_object_name = 'socket'
     
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
-        self.error_handler = _error_handler
         super(Socket, self).__init__(**kwargs)
+        
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
+        self.recv_size = self.os_recv_buffer_size
         
         if self.add_on_init:
             self.added_to_network = True
@@ -175,20 +196,30 @@ class Socket(base.Wrapper):
             when the socket becomes readable according to select.select. This
             method is called for Tcp sockets and requires a connection.
             
-            Note that this recv will return the entire contents of the OS buffer and 
+            Note that this recv will return the entire contents of the buffer and 
             does not need to be called in a loop."""
-        buffer_size = buffer_size or self.recv_packet_size 
+        buffer_size = buffer_size or self.recv_size 
         _memoryview = self._memoryview
-        _byte_count = 0        
-        try:
+        try:        
             while True:
-                byte_count = self.socket.recv_into(_memoryview[_byte_count:], buffer_size)
+                byte_count = self.socket.recv_into(_memoryview[self._byte_count:], 
+                                                   buffer_size)                       
                 if not byte_count:
                     break
-                _byte_count += byte_count                
-        except socket.error as error:
-            if error.errno != 10035:
+                self._byte_count += byte_count                
+        except (ValueError, socket.error) as error:        
+            if isinstance(error, ValueError): # Socket._buffer is not big enough
+                old_buffer = Socket._buffer
+                del Socket._memoryview
+                del _memoryview
+                old_buffer.extend(bytearray(2 * len(old_buffer)))
+                Socket._memoryview = memoryview(old_buffer)
+                self.recv(buffer_size)                 
+            elif error.errno != 10035:
                 raise   
+                
+        _byte_count = self._byte_count
+        self._byte_count = 0
         return bytes(self._buffer[:_byte_count])
         
     def recvfrom(self, buffer_size=0):
@@ -196,27 +227,34 @@ class Socket(base.Wrapper):
             and called when the socket becomes readable according to select.select. Subclasses
             should extend this method to customize functionality for when data is received."""
         byte_count, _from = self.socket.recvfrom_into(self._memoryview, 
-                                                      buffer_size or self.recvfrom_packet_size)
+                                                      buffer_size or self.recv_size)
         return bytes(self._buffer[:byte_count]), _from
     
-    #def send(self, data):
-    #    byte_count = len(data)
-    #    difference = self.socket.send(data) - byte_count
-    #    if difference:
-            
+    def send(self, data):
+        """ Sends data to the connected endpoint. All of the data will be sent. """
+        _socket = self.socket
+        memory_view = memoryview(data)
+        byte_count = len(data)
+        position = 0
+        while position < byte_count:
+            sent = _socket.send(memory_view[position:])
+            position += sent            
         
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
-        if address[0] == "0.0.0.0":
-            address = ("localhost", address[1])
         self.target = address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
-            if not self._connecting:
+            if ERROR_CODES[error.errno] == "CONNECTION_IS_CONNECTED":
+                self.on_connect()
+            elif not self._connecting:
+                self._connection_attempts = self.connection_attempts
+                latency = self.latency = mpre.utilities.Latency(size=10)
+                latency.start_measuring()
                 self._connecting = True
                 objects["Network"].connecting.add(self)
             else:
@@ -228,7 +266,9 @@ class Socket(base.Wrapper):
         """ Performs any logic required when a Tcp connection succeeds. This method should
             be extended by subclasses. If on_connect is overloaded instead of extended,
             ensure that the self.connected flag is set to True."""
-        self.connected = True
+        self.latency.finish_measuring()
+        #buffer_size = round_trip_time * connection_bps # 100Mbps for default
+        self.connected = True        
         self.alert("Connected", level='v')
                 
     def delete(self):
@@ -246,6 +286,9 @@ class Socket(base.Wrapper):
         stats = super(Socket, self).__getstate__()
         del stats["wrapped_object"]
         del stats["socket"]
+        stats["connecting"] = False
+        stats["_connected"] = False
+        stats["added_to_network"] = False
         return stats
         
     def on_load(self, attributes):
@@ -255,13 +298,15 @@ class Socket(base.Wrapper):
         self.settimeout(self.timeout)
         
         if self.add_on_init:
-            self.added_to_network = True
             try:
                 objects["Network"].add(self)
             except KeyError:
                 self.alert("Network component does not exist", level=0)
+                self.added_to_network = False
+            else:
+                self.added_to_network = True
                 
-        
+                
 class Raw_Socket(Socket):
     
     defaults = Socket.defaults.copy()
@@ -336,24 +381,18 @@ class Server(Tcp_Socket):
                      "backlog" : 50,
                      "reuse_port" : 0,
                      "Tcp_Socket_type" : "network.Tcp_Socket",
-                     "allow_port_zero" : False})
+                     "allow_port_zero" : False,
+                     "dont_save" : False,
+                     "replace_reference_on_load" : True})
 
     parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", "Tcp_Socket_type",
                                                 "allow_port_zero")
     
     def __init__(self, **kwargs):       
         super(Server, self).__init__(**kwargs)
-        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
-
-        bind_success = True        
-        try:
-            self.bind((self.interface, self.port))
-        except socket.error as error:
-            bind_success = self.error_handler.bind_error(self, error)
-                        
-        if bind_success:
-            self.alert("Listening at: {}:{}".format(self.interface, self.port), level='v')
-            self.listen(self.backlog)
+#        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
+        self.bind((self.interface, self.port))
+        self.listen(self.backlog)
                     
     def on_select(self):
         try:
@@ -371,21 +410,17 @@ class Server(Tcp_Socket):
         
         self.on_connect(connection, address)
         return connection, address
-        
-    def handle_bind_error(self):
-        if self.allow_port_zero:
-            self.bind((self.interface, 0))
-            return True
-        else:
-            self.alert("{0}\nAddress already in use. Deleting {1}\n",
-                       (traceback.format_exc(), self.instance_name), 0)
-            self.delete()
  
     def on_connect(self, connection, address):
         """ Connection logic that the server should apply when a new client has connected.
             This method should be overloaded by subclasses"""
         self.alert("accepted connection {} from {}", 
                   (connection.instance_name, address),level="v")
+        
+    def on_load(self, attributes):
+        super(Server, self).on_load(attributes)
+        self.bind((self.ip, self.port))
+        self.listen(self.backlog)
         
         
 class Tcp_Client(Tcp_Socket):
@@ -476,63 +511,59 @@ class Network(vmlibrary.Process):
         # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
                                     x in xrange(100))
-        self._socket_range_size = range(1)
-        
-        self.writable = set()
+                        
         self.connecting = set()
-        super(Network, self).__init__(**kwargs)
-        
         self.sockets = []
-        self._sockets = set()
-        self.running = False
-        self.update_instruction = Instruction(self.instance_name, "_update_range_size")
-        #self.update_instruction.execute(self.update_priority)
+        super(Network, self).__init__(**kwargs)       
+        self._is_running = self.running = False
         
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)
-        self._sockets.add(sock)
         if not self.running:
             self.running = True        
             self.start()
                 
-    def remove(self, sock):
+    def remove(self, sock):   
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
-        self._sockets.remove(sock)
-        if sock in self.connecting:
-            self.connecting.remove(sock)
             
     def delete(self):
         super(Network, self).delete()
         del self.sockets
-        del self._sockets
+        del self.connecting
         
-    def _update_range_size(self):
-        load = self._socket_range_size = range((len(self.sockets) / 500) + 1)
-        # disable sleep under load
-        self.priority = self.defaults["priority"] if len(load) == 1 else 0.0 
-        self.update_instruction.execute(self.update_priority)
-
     def run(self):
         sockets = self.sockets
         if not sockets:
             self.running = False
         else:
+            error_handler = objects["Socket_Error_Handler"]       
+            readable, writable, empty_list = [], [], []
+            # select has a max # of file descriptors it can handle, which
+            # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
+            for socket_list in (sockets[self._slice_mapping[chunk_number]] for 
+                                chunk_number in xrange((len(sockets) / 500) + 1)):   
+                readable_sockets, writable_sockets, _ = select.select(socket_list,
+                                                                      socket_list, 
+                                                                      empty_list, 0.0)
+                if readable_sockets:
+                    readable.extend(readable_sockets)                
+                if writable_sockets:
+                    writable.extend(writable_sockets)
+                    
+            if readable:
+                for _socket in readable:
+                    try:
+                        _socket.on_select()
+                    except socket.error as error:
+                        self.alert("socket.error when reading on select: {}", error, level=0)
+                        error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower()) 
+                        
             connecting = self.connecting
-            self.connecting = _connecting = set()
-            writable = self.writable = set()
-            expired = set()
-            still_connecting = set()      
-            for chunk in self._socket_range_size:
-                # select has a max # of file descriptors it can handle, which
-                # is about 500 (at least on windows). We can avoid this limitation
-                # by sliding through the socket list in slices of 500 at a time
-                socket_list = sockets[self._slice_mapping[chunk]]
-                readable, _writable, errors = select.select(socket_list, socket_list, [], 0.0)
-                                
-                writable.update(_writable)              
-                # if a tcp client is writable, it's connected     
+            self.connecting = set()    
+            if connecting and writable:                            
+                # if a connecting tcp client is now writable, it's connected   
                 for accepted in connecting.intersection(writable):
                     accepted.on_connect()
                     
@@ -540,37 +571,27 @@ class Network(vmlibrary.Process):
                 still_connecting = connecting.difference(writable)
                 for connection in still_connecting:
                     connection.connection_attempts -= 1
-                    #connection.alert("Attempts remaining: {}".format(connection.connection_attempts), level=0)
                     if not connection.connection_attempts:
                         try:
                             connection.connect(connection.target)
-                        except socket.error as error:
-                            expired.add(connection)
-                            handler = getattr(connection.error_handler, 
-                                ERROR_CODES[error.errno].lower(),
-                                connection.error_handler.unhandled)
-                            handler(connection, error)                                   
-                _connecting.update(still_connecting.difference(expired))
+                        except socket.error as error:                            
+                            error_handler.dispatch(connection, error, 
+                                                   ERROR_CODES[error.errno].lower())           
+                    else:
+                        self.connecting.add(connection)                                  
                 
-                if readable:
-                    for sock in readable:
-                        try:
-                            sock.on_select()
-                        except socket.error as error:
-                            import traceback
-                            print traceback.format_exc()
-                            handler = getattr(sock.error_handler, 
-                                    ERROR_CODES[error.errno].lower(),
-                                    sock.error_handler.unhandled)
-                            handler(sock, error)         
-                            
     def __getstate__(self):
         state = super(Network, self).__getstate__()
-        state["connecting"], state["writable"], state["_sockets"] = set(), set(), set()
-        state["sockets"] = []        
+        state["connecting"] = set()
+        state["sockets"] = []
+      #  state["objects"] = dict((key, []) for key in state["objects"].keys())
+        state["_slice_mapping"] = None
         return state
         
     def on_load(self, attributes):
         super(Network, self).on_load(attributes)
-        for _socket in itertools.chain(self.objects.values()):
-            self.sockets.append(_socket)
+        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
+                                    x in xrange(100))
+       # sockets = self.sockets
+       # for values in self.objects.values():
+       #     sockets.extend(values)

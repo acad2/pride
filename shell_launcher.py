@@ -1,7 +1,9 @@
 import mpre
 
 options = {"parse_args" : True,
-           "startup_definitions" : ''}
+           "startup_definitions" : '',
+           "username" : "localhost",
+           "password" : ''}
 
 # feel free to customize
 definitions = \
@@ -40,18 +42,6 @@ def delete(instance_name):
 def update(instance_name):
     return objects[instance_name].update()
     
-#f = create("mpre.fileio.File", "virtual\\test_directory\\test.disk")
-#fs = objects["File_System"]
-#ftest = fs.get_file("virtual\\test_directory\\test.disk")
-
-#d = create("mpre.fileio.Directory", path=".\\test\\testdirectory", #file_system="virtual")
-
-#e = create("mpre.fileio.Encrypted_File", "virtual\\test_file.txt")
-#e.write("This is a test string. ")
-#e.write("And this is another.")
-#e.seek(0)
-#print e.read()
-
 #_package = create("mpre.package.Package", mpre, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
@@ -83,11 +73,37 @@ def update(instance_name):
 #ssl_server = create("mpre.networkssl.SSL_Server")
 #ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
 
-objects["Metapython"].create("mpre.voip.Message_Server")
-client = objects["Metapython"].create("mpre.voip.Message_Client", username="test", password='why')
+#objects["Metapython"].create("mpre.voip.Message_Server")
+#client = objects["Metapython"].create("mpre.voip.Message_Client", username="test", auto_login=False)
+
+#import mpre.gui
+#mpre.gui.enable()
+#life = create("mpre.Life.Game_Of_Life")
+
+#for x in xrange(1000): 
+#    rtt = create("mpre.networkutilities.RTT_Test", target=("192.168.1.254", 80))   
+
+#for x in xrange(10000): 
+#    x = create("mpre.shell.Command_Line")
+#    x.delete()
+    
+#import mpre._metapython
+#m = mpre._metapython.Metapython()
+#s = m.save()
+#import mpre.base
+#l = mpre.base.load(s) 
+
+import mpre.gui
+#mpre.gui.enable()
+#objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+#game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
+#game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
+#level = objects["Level"]
+
+#create("mpre.audio.audiolibrary.Audio_Manager")
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    objects["Metapython"].create("_metapython.Shell", **options)
+    objects["Metapython"].create("mpre._metapython.Shell", **options)

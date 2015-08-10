@@ -12,7 +12,11 @@ import mpre.module_utilities as module_utilities
 import mpre.base
 import mpre.fileio
 create_module = module_utilities.create_module 
-        
+    
+def build_documentation_site(module):
+    package = Package(module, include_documentation=True)
+    utilities.shell("mkdocs build")
+    
 class Package(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
@@ -191,10 +195,12 @@ class Documentation(mpre.base.Base):
         markdown = self.markdown = utilities.documentation(_object)
         module_name = (_object.__module__ if hasattr(_object, "__module__") else
                        _object.__name__).split(".")[-1]
+                       
         module = (_object if isinstance(_object, types.ModuleType) else 
                   sys.modules[module_name])
+                  
         path, _file = os.path.split(module.__file__)
-        #print "Split module file into", module.__file__, path, _file
+        
         package_name = (module.__package__ if 
                         module.__package__ is not None else
                         module.__name__.split('.')[0])
@@ -226,9 +232,7 @@ class Documentation(mpre.base.Base):
         
     def write_markdown_file(self, markdown_text, filename):
         mpre.fileio.ensure_file_exists(filename, markdown_text)
-        #with mpre.fileio.File(filename, 'w') as md_file:             
-        #    md_file.write(markdown_text)
-        #    md_file.flush()
+            
             
 if __name__ == "__main__":
     import mpre

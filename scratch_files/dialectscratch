@@ -1,0 +1,118 @@
+class Random_Dialect(Dialect):
+    """ usage: dialect = Dialect(dictionary) # create a dialect which switches keys for values
+        modified_input = dialect.translate(input) # perform the translation on text string
+        original_input = dialect.translate(modified_input, "from") # reverse a translation"""             
+    def __init__(self, **kwargs):
+        super(Random_Dialect, self).__init__(**kwargs)
+        self.delimiters = ['\t', ":", ',', '.', "(", ")", "\n", "#", "=", "+", "-", "*", "&", "%", "!", '[', ']', '{', '}', '"', "'", "\\", '/', "'''", '"""', '<', '>']#characters#(".", ",", "(", ")", ":", "\n", '#', "'''", '"""')
+
+    def random_word(self):
+        letters = string.ascii_letters
+        word = ''.join(letters[randint(0, len(letters)-1)] for x in xrange(1, randint(2, 8)))
+        """limit = randint(33, 128)
+        size = randint(2, 10)
+        word = ''.join(chr(randint(33, limit)) for x in xrange(randint(2, size)))"""
+        used = self.dictionary.values()
+        while word in used:
+            word = self.random_word()
+        return word
+
+    def translate(self, _file, mode="to"):
+        _file_text = _file.read()
+        dictionary = self.dictionary
+        delimiters = self.delimiters
+        _file_text = _file_text.replace("     ", '\t')
+        if mode == "to":
+            for delimiter in delimiters:
+                _file_text = _file_text.replace(delimiter, " {0} ".format(delimiter))
+
+        elif mode == "from":
+            dictionary = dict((value, key) for key, value in dictionary.items())
+
+        __file = StringIO(_file_text)
+        result = self._translate_file(__file, dictionary)
+        if mode == "from":
+            for delimiter in delimiters:
+                result = result.replace(" {0} ".format(delimiter), delimiter)
+        result = result.replace("\t", '     ')
+        return result
+
+    def _translate_file(self, _file, dictionary):
+        new_file = []
+        for line in _file.readlines():
+            new_line = []
+            for word in line.split(" "):
+                new_token = self._translate_word(word, dictionary)
+                new_line.append(new_token)
+            #    print "adding new token {0} from word {1}".format(new_token, word)
+            #print "appending \n{0}\n{1}\n".format(new_line, " ".join(new_line))
+            new_file.append(" ".join(new_line))
+        return "".join(new_file)
+
+    def _translate_word(self, word, dictionary):
+        try:
+            new_token = dictionary[word]
+        except KeyError:
+            try:
+                new_token = dictionary[word] = str(int(word))
+            except ValueError:
+                end = ""
+                if word and "\n" == word[-1]:
+                    end = "\n"
+                new_token = dictionary[word] = self.random_word() + end
+        return new_token
+
+
+class Obfuscated_Dialect(Random_Dialect):
+    
+    def __init__(self, **kwargs):
+        raise NotImplementedError
+        super(Obfuscated_Dialect, self).__init__(**kwargs)
+
+    def obfuscate(self, _file, mode="to"):
+        source = super(Obfuscated_Dialect, self).translate(_file, mode)
+        for delimiter in self.delimiters:
+            source = source.replace(" {0} ".format(delimiter), delimiter)
+      #  source = source.replace("\t", '     ')
+        return source
+    translated_file = StringIO(translated)
+    translated_back = verbose_dialect.translate_from(translated_file)
+    #print translated_back
+   # print source
+  #  print len(source), len(translated_back)
+   # for _dif in differ.compare(translated_back.split("\n"), source.split("\n")):
+     #   print _dif
+      #  print
+ #   assert translated_back == source
+    """key = Random_Dialect(**DICTIONARY)
+    key.save("key.mpy", mode="dictionary")
+
+    encrypted = key.translate(_file)
+    encrypted_file = open("{0}.mpy".format(filename), "w+")
+    encrypted_file.write(encrypted)
+    encrypted_file.flush()
+    encrypted_file.seek(0)
+    _file.seek(0)
+    print encrypted[:2048]
+    plain_text = key.translate(encrypted_file, "from")
+    print plain_text[:2048]
+    assert plain_text == source
+
+    key2 = Obfuscated_Dialect(**DICTIONARY)
+    obfuscated = key2.obfuscate(_file)
+    obfuscated_file = open("{0}.opy".format(filename), "w+")
+    obfuscated_file.write(obfuscated)
+    obfuscated_file.flush()
+    obfuscated_file.close()
+    print obfuscated
+    code = compile(obfuscated, 'encrypted', 'exec')
+   # exec code in locals(), globals()
+    #try:
+
+    #except AssertionError:
+     #   print "Assertion Error"
+      #  diff = difference.compare(source.splitlines(), plain_text.splitlines())
+       # print "\n".join(diff)
+
+    code = compile(plain_text, "encrypted", "exec")
+    exec code in locals(), globals()"""

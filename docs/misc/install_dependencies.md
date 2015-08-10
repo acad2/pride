@@ -3,7 +3,10 @@ install_dependencies
 
 
 
-- **install_python_dev**():
+install_python_dev
+--------------
+
+**install_python_dev**():
 
 		 usage: install_python_dev()
         

@@ -2,163 +2,167 @@ Crash course
 ============
 
 There is a root inheritance object named mpre.base.Base. Classes that inherit from Base
-will inherit a number of convenient methods and features. The vmlibrary.Process 
-class is a subclass of Base and is what you will often be working with.
-Let's define some demonstartion Process classes:
-
-    import mpre.vmlibrary as vmlibrary
-    import mpre.defaults
-    
-    # a vmlibrary.Process runs on the virtual machine
-    class Demo_ProcessA(vmlibrary.Process):
-        
-        # The attribute:value pairs in defaults are automatically 
-        # assigned in Base.__init__ unless overriden via kwargs
-        defaults = mpre.defaults.Process.copy()
-        defaults.update({"flag_is_set" : False,
-                         "data" : "Hello world from {}!"})
-                         
-        def __init__(self, **kwargs):
-            # any keyword argument given a value will be automatically
-            # assigned as an attribute to this object in super.__init__
-            # (no need for self.x = x...)
-            # The vmlibrary.Process class includes a default attribute
-            # auto_start, which, when True, __init__ will automatically
-            # enqueue the processes.run method via an Instruction
-            
-            super(Demo_Process, self).__init__(**kwargs)
-            
-        def run(self):            
-            if self.flag_is_set:
-                # the alert method will take the specified message
-                # with the supplied iterable of str.format args,
-                # and if the messages verbosity level is within
-                # the specified range it will be printed and/or 
-                # logged to disk. level=0 indicates an error
-                
-                self.alert("Inside {}.run, flag_is_set == True", 
-                           [self.instance_name],
-                           level='v')
-            
-            # send raw bytes to memory accessible by the Base object 
-            # known as Demo_ProcessB
-            
-            self.send_to("Demo_ProcessB", "Hello from {}!".format(self))
-            
-            # queue the run instruction to be called 
-            # again in self.priority seconds
-            
-            self.run_event.execute()
-            
-            
-    class Demo_ProcessB(vmlibrary.Process):
-        
-        defaults = mpre.defaults.Process.copy()
-        defaults.update({"check_for_messages" : True})
-        
-        def __init__(self, **kwargs):
-            super(Demo_ProcessB, self).__init__(**kwargs)
-            
-        def run(self):
-            if self.check_for_messages:
-                self.alert("{} Checking for messages...", 
-                           [self.instance_name],
-                           level='v')
-                           
-                # read_messages accesses the memory chunk owned
-                # by this object and returns an iterable of
-                # whatever messages have been recieved. This is
-                # the read counterpart of send_to
-                
-                messages = self.read_messages()
-                if messages:
-                    for message in messages:
-                        self.alert(message, level='vv')
-                        
-                    # Let's imagine this was a condition that warranted program exit
-                    # Instruction objects enqueue the processing of the specified
-                    # base component and method. The call is not executed in this scope,
-                    # but in the processors scope when it is time. The default Instruction
-                    # priority is 0.0, which means schedule immediately (unit is in seconds)
-                    
-                    Instruction("Metapython", "exit").execute()
-    
-    # Here's the less preferred way to start a process
-    # and a demonstration of attribute assignment via keyword argument
-    
-    demo_processa = Demo_ProcessA(auto_start=False)
-    Instruction("System", "add", demo_processa).execute()
-    
-    # Here is the preferred way to start a process. This one Instruction
-    # makes the System object instantiate a Demo_ProcessB object.
-    # Because of the auto_start=True flag, the new process also starts running.
-    
-    Instruction("System", "create", Demo_ProcessB, parse_args=True).execute()
-    
-    # We can refer to any Base object from anywhere via Instructions by specifying
-    # their instance_name as the first argument. An objects instance_name is a combination 
-    # of it's class name and instance number. An objects instance_number is the count
-    # of how many objects of that type have been instantiated so far. When the object is 
-    # instance number 0 of it's class, it can be referred to without the 0. But if we started 
-    # another Demo_ProcessA, that one would be Demo_ProcessA1 and would have to be referred
-    # to as such.
-    
-    # The second required argument to an Instruction is the method that should be called
-    # Instructions also accept *args and **kwargs to make them transparent with
-    # regular method calls.
-    
-    Instruction("Demo_ProcessA", "run").execute()
+will inherit a number of convenient methods and features. 
                     
 Base objects utilize a class.defaults dictionary. This dictionary contains
 attribute:value pairs that will automatically be assigned to new instances
-upon call to Base.\_\_init\_\_. Base objects accept any keyword arguments supplied
-to the call to instantiate an object. Attributes specified this way will override
+upon call to Base.\_\_init\_\_. Base objects specify arguments when initializing
+via keyword arguments. Attributes specified this way will override
 class default attributes.
 
-vmlibrary.Process \_\_init\_\_ checks for a self.auto_start flag. If this flag is True,
-an instruction is executed enqueueing the call to Process.start with the processor.
-This flag is True by default and may be altered via class.defaults or
-more commonly as keyword arguments in cases where such behavior is desired.
+    
+    class Test_Class(mpre.base.Base):
+        defaults = mpre.base.Base.defaults.copy()
+        defaults.update({"test_attribute" : 'value',
+                         "test_attribute2" : 100})
+                         
+    test_class = Test_Class(new_attribute="Testing", test_attribute=0.0)
+    print test_class.new_attribute
+    print test_class.test_attribute
+    print test_class.test_attribute2
+    
 
 class.defaults also provide the information required for automatic command line
-argument parsing. 
+argument parsing. By setting parse_args=True to, attributes of the instance
+can be assigned at program launch via command line arguments. Note this only
+works for attributes in the defaults dictionary.
 
-In our above example, Demo_ProcessA has the capability to accept --flag_is_set 
-and --data from the command line. This behavior is activated when required 
-via setting the keyword argument parse_args=True in the call to instantiate 
-the object in question. If there are attributes in the class.defaults that
-you do not want to be accessible via command line argument assignment, then
-specify those attributes in an iterable named parser_ignore in your class definition.
-If you desire short flags or positional arguments, then investigate the parser_modifiers
-class attribute. For an example, let's look at the mpre.metapython.Metapython class::
 
-    class Metapython(vmlibrary.Process):
+    class Test_Class(mpre.base.Base):
+        
+        defaults = mpre.base.Base.defaults.copy()
+        defaults.update({"test_flag" : True})
+        
+    test_class = Test_Class(parse_args=True)
+    
+    
+In the above example, the attribute "test_flag" on the instance test_class could
+potentially be set by supplying --test_flag False on the command line when launching
+the program.
 
-    defaults = defaults.Metapython
 
-    parser_ignore = ("environment_setup", "prompt", "copyright", "authentication_scheme",
-                     "traceback", "memory_size", "network_packet_size", 
-                     "interface", "port")
-                     
-    parser_modifiers = {"command" : {"types" : ("positional", ),
-                                     "nargs" : '?'},
-                        "help" : {"types" : ("short", "long"),
-                                  "nargs" : '?'}
-                        }
-    exit_on_help = False
-    # just the relevant segment
+Concurrency
+===================
+Concurrency is facilitated by being single threaded. All operations may proceed as 
+if they were atomic and no locking primitives are required. Each component generally only
+acts on data in its self namespace, the instance __dict__ attribute. Certain actions,
+such as creating new instances, have effects on the mpre.environment object. This object
+stores global data including the objects dictionary used to lookup instance names.
 
-Many attributes in this particular scenario are ignored because they clutter up
-the help list with pointless entries[1]_. 
+There are two mechanisms for local concurrency. The immediate method involves looking up
+the component name of the desired instance and getting the associated instance from
+mpre.objects. Here is an example:
+    
+    
+    def send_data(self, data):
+        # lookup the instance known as self.target_component and call
+        # instance.handle_data(data)
+        result = mpre.objects[self.target_component].handle_data(data)
+        
+        
+The futures method involves the use of mpre.Instruction objects. Instructions 
+are created with a component name, method name, and any positional/keyword 
+arguments for the method. These objects have an execute method which schedules
+the instruction to be performed in the specified number of seconds. These 
+instructions are not performed in the current scope and require the attachment
+of a callback if access to the return value is required:
+            
+    
+    class Test_Component(mpre.base.Base):
+        def __init__(self, **kwargs):
+            super(Test_Component, self).__init__(**kwargs)
+            self.update_instruction = Instruction(self.instance_name, 
+                                                  "update").execute(priority=60,
+                                                                    callback=self.schedule_update)
+                                                                    
+        def update(self):
+            new_instance = super(Test_Component, self).update()
+            new_instance.update_instruction.execute(priority=60,
+                                                    callback=new_instance.schedule_update)
+            
 
-In parser_modifiers, we have specified that the "command" argument should be
-positional, and the "nargs" modifier is "?", which means this argument is
-optional. The help command is made available with both -h and --help switches,
-as specified by the types short and long. It too is marked as optional. The
-exit_on_help flag determines whether or not to allow the propagation of SystemExit
-from the underlying argparse parser after --help is encountered.
+The above component, once initialized, will update itself from the source code
+on disk every 60 seconds. This also demonstrates the update method. Due to the
+fact that objects are referenced by string, updating them is in general
+a matter of rearranging the environment references of the old component with a
+newly created one. The update method preserves attributes across updated 
+instances.
 
----------------
-.. [1] This is also because metapython uses parse_args=True to retreive the 
-       command/module to run, and the user likely intends their arguments to go 
-       to that module and not metapython.
+Distributed concurrency is also handled by the Instruction object. This works
+in the same way that the previous futures concurrency demonstration did, except
+a host_name is specified to the Instruction.execute call. This host_name attribute
+is a (ip_address, port) 2-tuple. Provided there is a reachable host at this 
+address with a metapython process running and the named component present, the
+instruction will be performed transparently on the remote host. Note that 
+communication between hosts is secured by tls. Certain components may require
+authentication to access their methods remotely. Application level authentication is handled by the secure remote password protocol.
+
+    def load_file(_file):
+        file_object = mpre.base.load(_file)
+        print file_object.read()
+        
+    Instruction("File1", "save").execute(host_info("192.168.1.222", 40022),
+                                         callback=load_file)
+                                         
+                                         
+The above also demonstrates use of the save and load methods. Base objects
+can be preserved indefinitely via the save method. The bytestream produced
+by this method can be supplied to mpre.base.Base.load (or mpre.base.load, they
+are the same) and the component will be restored. The save and load methods
+are slightly higher level then basic pickling and will not balk at updated
+objects. The attributes and the information required to reconstruct an
+equivalent object are preserved. Saved pickle files have a message
+authentication code attached which prevents tampering. Note that this feature
+is not secure in its current implementation. A message authentication code does 
+nothing to protect against malicious pickles crafted by an authenticated party. 
+Until a secure alternative to pickle is implemented, only load objects from 
+sources you trust.
+
+Process objects
+===================
+Certain needs require events that occur at explicitly set intervals. This need
+is met by mpre.vmlibrary.Process objects. These objects fit a similar interface
+to pythons threading.Thread and multiprocessing.Process objects. Namely, they 
+have a start and run method. Process objects have a running attribute. While
+this attribute equals True, after the run method finishes, an instruction for 
+process_instance.run will be executed for process_instance.priority seconds. 
+To pause a process, set running to False. To end a Process object, use delete 
+in place of join.
+
+
+Network sockets
+===================
+Networking is facilitated via mpre.network. This module contains Wrappers 
+around pythons socket.socket objects. These wrappers have their recv
+calls event triggered by select.select. Sockets are customized for
+the application in question via extending the recv/recvfrom method.
+
+Note that Instruction objects can execute calls on remote machines by 
+specifying host information. This probably the most straightforward way to
+communicate application logic between machines, in terms of readability 
+and development time. 
+
+Serialization does take time though, so it is potentially more
+performant to extend sockets and write specific logic for the application in
+question. This is probably more true with applications that exchange very
+simple data very frequently. Applications that hope to share python objects
+will probably not benefit greatly from extending sockets as opposed to using
+Instructions.
+
+
+Pre existing projects
+===================
+If you have your own application developed and your own inheritance structure
+set, you can still make use of the features provided by a Base object. The
+mpre.base module provides Wrapper and Proxy classes that act simultaneously
+as the wrapped object and as a Base object. These objects automatically
+acquire the attributes of the object they wrap, in different priority. The
+attributes of a Wrapper object will only be accessed if the attribute was
+not available on the wrapped object. The attributes of a Proxy object will
+be gotten/set before using the wrapped objects attributes.
+
+A reference for non Base objects can be acquired by instantiating the
+object in question via the create factory method instead of instantiating
+the object directly. The objects instance name will be determined in the 
+same manner as a Base objects, that is it's __class__.__name__ + the
+number of such instances created so far.

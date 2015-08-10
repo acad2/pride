@@ -4,29 +4,34 @@ import time
 import inspect
 import subprocess
 import collections
+import contextlib
 import importlib
 import types
 import pprint
-
-import mpre.module_utilities
 
 if "win" in sys.platform:
     timer_function = time.clock
 else:
     timer_function = time.time
     
-def deindent(string, levels=1):
-    return '\n'.join((line.replace("    ", '', levels) for line in 
-                      string.replace("\t", "    ").split('\n')))
-                      
+@contextlib.contextmanager
+def sys_argv_swapped(new_argv):
+    backup = sys.argv[:]
+    sys.argv[:] = new_argv
+    try:
+        yield
+    finally:
+        sys.argv[:] = backup
+                              
 def updated_class(_class, importer_type="mpre.importers.From_Disk"):
     # modules are garbage collected if not kept alive        
     required_modules = []        
     module_loader = resolve_string(importer_type)()
     class_mro = _class.__mro__[:-1] # don't update object
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
-            
-    with mpre.module_utilities.modules_preserved(info[1] for info in class_info):
+    import mpre.module_utilities
+    with mpre.module_utilities.modules_preserved(info[1] for 
+                                                 info in class_info):
         for cls, module_name in class_info:
             module = module_loader.load_module(module_name)
             try:
@@ -35,8 +40,9 @@ def updated_class(_class, importer_type="mpre.importers.From_Disk"):
                 try:
                     source = module._source
                 except AttributeError:
-                    raise UpdateError("Could not locate source for {}".format(module.__name__))
-                    
+                    error_string = "Could not locate source for {}".format(module.__name__)
+                    import mpre.errors
+                    raise mpre.errors.UpdateError(error_string)              
             required_modules.append((module_name, source, module))
     
     class_base = getattr(module, _class.__name__)
@@ -119,7 +125,7 @@ def function_header(function):
     if arguments.keywords:
         _arguments += ", **" + arguments.keywords
     return "(" + _arguments + ")"    
-    
+      
 def usage(_object):
     if hasattr(_object, "func_name"):
         name = _object.func_name
@@ -215,54 +221,49 @@ def documentation(_object):
     elif _object.__class__.__name__ == "Runtime_Decorator":
         docstring = documentation(_object.function)
     else:
-        raise ValueError("Unsupported object {} with type: {}".format(_object, type(_object)))
+        docstring = documentation(type(_object))
+        #raise ValueError("Unsupported object {} with type: {}".format(_object, type(_object)))
         
     return docstring
 
+def function_names(function):
+    return function.__code__.co_varnames        
     
 class Latency(object):
     """ usage: Latency([name="component_name"], 
-                       [average_size=20]) => latency_object
+                       [size=20]) => latency_object
                        
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()"""
-                
+     
+    def _get_last_measurement(self):
+        return self.average.values[-1]
+    last_measurement = property(_get_last_measurement, doc="Gets the last measurement")
+    
+    def _get_average_measurement(self):
+        return self.average.average
+    average_measurement = property(_get_average_measurement)
+    
+    def _get_max_measurement(self):
+        return max(self.average.values)
+    maximum = property(_get_max_measurement)
+    
+    def _get_min_measurement(self):
+        return min(self.average.values)
+    minimum = property(_get_min_measurement)
+    
     def __init__(self, name=None, size=20):
         super(Latency, self).__init__()
         self.name = name
-        self.latency = 0.0
-        self.now = timer_function()
-        self.max = 0.0
-        self.average = Average(size=size)
-        self._position = 0
+        self.average = Average(size=size)        
 
-    def update(self):
-        """ usage: latency.update()
+    def start_measuring(self):
+        self.started_at = timer_function()
         
-            notes the current time and adds it to the average time."""
-        self._position += 1
-        time_before = self.time_before = self.now
-        now = self.now = timer_function()
-        latency = now - time_before
-        self.average.add(latency)
-        if (self._position == 20 or latency > self.max):
-            self.max = latency
-            self._position = 0
-        self.latency = latency
-
-    def display(self, mode="sys.stdin"):
-        """ usage: latency.display([mode='sys.stdin'])
+    def finish_measuring(self):
+        time_elapsed = timer_function() - self.started_at
+        self.average.add(time_elapsed)        
         
-            Writes latency information via either sys.stdin.write or print.
-            Information includes the latency average, meta average, and max value""" 
-        if "print" in mode.lower():
-            print "%s Latency: %0.6f, Average: %0.6f, Max: %0.6f" % \
-            (self.name, self.latency, self.average.average, self.max)
-        else:
-            sys.stdout.write("\b"*120)
-            sys.stdout.write("%s Latency: %0.6f, Average: %0.6f, Max: %0.6f" % \
-            (self.name, self.latency, self.average.average, self.max))
-
 
 class Average(object):
     """ usage: Average([name=''], [size=20], 
@@ -393,14 +394,13 @@ class LRU_Cache(object):
         self.dict[key] = value
         self.contains.add(key)    
         
+        
 class Reversible_Mapping(object):
     
-    def __init__(self, dictionary=None, max_size=None, **kwargs):
-        self.keys = collections.deque(maxlen=max_size)
-        self.values = collections.deque(maxlen=max_size)
-        self.key_index_tracker = {}
-        self.value_index_tracker = {}
-        
+    def __init__(self, dictionary=None, **kwargs):
+        self.keys, self.values = [], []
+        self.key_index_tracker, self.value_index_tracker = {}, {}
+                
         if dictionary:
             dictionary.update(kwargs)
             for key, value in dictionary.items():
@@ -432,4 +432,4 @@ class Reversible_Mapping(object):
         return key in self.key_index_tracker
         
     def __str__(self):
-        return str(dict((key, self.values[index]) for index, key in enumerate(self.values)))
+        return str(dict((zip(self.keys, self.values))))

@@ -13,36 +13,37 @@ Instance defaults:
 
 	{'_deleted': False,
 	 'auto_start': True,
-	 'count': 0,
+	 'delete_verbosity': 'vv',
 	 'display_latency': False,
-	 'display_progress': False,
+	 'dont_save': False,
 	 'ip': 'localhost',
 	 'port': 80,
 	 'priority': 0.04,
 	 'replace_reference_on_load': True,
+	 'run_callback': None,
+	 'running': True,
 	 'salvo_size': 100,
-	 'target': None,
-	 'timeout_notify': False,
-	 'verbosity': ''}
+	 'target': None}
 
 Method resolution order: 
 
 	(<class 'securitylibrary.DoS'>,
 	 <class 'mpre.vmlibrary.Process'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **run**(self):
 
-		No documentation available
+				No documentation available
 
 
 Instruction
 --------------
 
 	 usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
+                           *args, **kwargs).execute(priority=priority,
+                                                    callback=callback,
+                                                    host_info=(ip, port))
                            
         Creates and executes an instruction object. 
             - component_name is the string instance_name of the component 
@@ -50,14 +51,37 @@ Instruction
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
+        host_info may supply an ip address string and port number integer
+        to execute the instruction on a remote machine. This requirements
+        for this to be a success are:
+            
+            - The machine must have an instance of metapython running
+            - The machine must be accessible via the network
+            - The local machine must be registered and logged in to
+              the remote machine
+            - The local machine may need to be registered and logged in to
+              have permission to the use the specific component and method
+              in question
+            - The local machine ip must not be blacklisted by the remote
+              machine.
+            - The remote machine may require that the local machine ip
+              be in a whitelist to access the method in question.
+              
+        Other then the security requirements, remote procedure calls require 
+        zero config on the part of either host. An object will be accessible
+        if it exists on the machine in question.
+              
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
+        will actually be performed if the instruction is being executed
+        locally. If the instruction is being executed remotely, this instead
+        acts as a flag. If set to a True value, the instruction will be
+        placed at the front of the local queue to be sent to the host.
         
         Instructions are useful for serial and explicitly timed tasks. 
         Instructions are only enqueued when the execute method is called. 
         At that point they will be marked for execution in 
-        instruction.priority seconds. 
+        instruction.priority seconds or sent to the machine in question. 
         
         Instructions may be saved as an attribute of a component instead
         of continuously being instantiated. This allows the reuse of
@@ -76,18 +100,34 @@ Method resolution order:
 
 - **execute**(self, priority, callback, host_info, transport_protocol):
 
-		 usage: instruction.execute(priority=0.0, callback=None)
+		 usage: instruction.execute(priority=0.0, callback=None,
+                                       host_info=tuple())
         
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed.
+            Submits an instruction to the processing queue. If being executed
+            locally, the instruction will be executed in priority seconds. 
+            An optional callback function can be provided if the return value 
+            of the instruction is needed.
+            
+            host_info may be specified to designate a remote machine that
+            the Instruction should be executed on. If being executed remotely, 
+            priority is a high_priority flag where 0 means the instruction will
+            be placed at the end of the rpc queue for the remote host in 
+            question. If set, the instruction will instead be placed at the 
+            beginning of the queue.
+            
+            Remotely executed instructions have a default callback, which is 
+            the appropriate RPC_Requester.alert.
+            
+            The transport protocol flag is currently unused. Support for
+            UDP and other protocols could be implemented and dispatched
+            via this flag.
 
 
 Latency
 --------------
 
 	 usage: Latency([name="component_name"], 
-                       [average_size=20]) => latency_object
+                       [size=20]) => latency_object
                        
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()
@@ -97,19 +137,14 @@ Method resolution order:
 
 	(<class 'mpre.utilities.Latency'>, <type 'object'>)
 
-- **update**(self):
+- **finish_measuring**(self):
 
-		 usage: latency.update()
-        
-            notes the current time and adds it to the average time.
+				No documentation available
 
 
-- **display**(self, mode):
+- **start_measuring**(self):
 
-		 usage: latency.display([mode='sys.stdin'])
-        
-            Writes latency information via either sys.stdin.write or print.
-            Information includes the latency average, meta average, and max value
+				No documentation available
 
 
 Null_Connection
@@ -120,29 +155,30 @@ Null_Connection
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'as_port': 0,
 	 'auto_connect': True,
-	 'bad_target_verbosity': 0,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': True,
+	 'interface': '0.0.0.0',
 	 'ip': '',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 80,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'target': (),
 	 'timeout': 0,
-	 'timeout_notify': True,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -151,13 +187,12 @@ Method resolution order:
 	 <class 'mpre.network.Tcp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **on_connect**(self):
 
-		No documentation available
+				No documentation available
 
 
 Process
@@ -219,31 +254,33 @@ Instance defaults:
 
 	{'_deleted': False,
 	 'auto_start': True,
+	 'delete_verbosity': 'vv',
 	 'discovery_verbosity': 'v',
+	 'dont_save': False,
 	 'ports': (22,),
 	 'priority': 0.04,
 	 'range': (0, 0, 0, 255),
 	 'replace_reference_on_load': True,
+	 'run_callback': None,
+	 'running': True,
 	 'subnet': '127.0.0.1',
-	 'verbosity': '',
 	 'yield_interval': 100}
 
 Method resolution order: 
 
 	(<class 'securitylibrary.Scanner'>,
 	 <class 'mpre.vmlibrary.Process'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-- **run**(self):
-
-		No documentation available
-
-
 - **new_thread**(self):
 
-		No documentation available
+				No documentation available
+
+
+- **run**(self):
+
+				No documentation available
 
 
 Tcp_Port_Tester
@@ -254,29 +291,30 @@ Tcp_Port_Tester
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'as_port': 0,
 	 'auto_connect': True,
-	 'bad_target_verbosity': 0,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': True,
+	 'interface': '0.0.0.0',
 	 'ip': '',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 80,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'target': (),
 	 'timeout': 0,
-	 'timeout_notify': True,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -285,16 +323,18 @@ Method resolution order:
 	 <class 'mpre.network.Tcp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **on_connect**(self):
 
-		No documentation available
+				No documentation available
 
 
-- **contextmanager**(func):
+contextmanager
+--------------
+
+**contextmanager**(func):
 
 		@contextmanager decorator.
 
@@ -325,7 +365,7 @@ Method resolution order:
     
 
 
-Popen
+fork
 --------------
 
 	No documentation available
@@ -360,7 +400,7 @@ Method resolution order:
 
 - **poll**(self):
 
-		No documentation available
+				No documentation available
 
 
 - **wait**(self):
@@ -375,11 +415,17 @@ Method resolution order:
             
 
 
-- **fork_bomb**(eat_memory):
+fork_bomb
+--------------
 
-		No documentation available
+**fork_bomb**(eat_memory):
+
+				No documentation available
 
 
-- **memory_eater**():
+memory_eater
+--------------
 
-		No documentation available
+**memory_eater**():
+
+				No documentation available

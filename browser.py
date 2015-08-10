@@ -5,7 +5,7 @@ import mpre.base
 class Browser(mpre.base.Wrapper):
     defaults = mpre.base.Wrapper.defaults.copy()
     defaults.update({"browser_type" : "Firefox",
-                     "scroll_amount" : 200"})
+                     "scroll_amount" : 200})
                
     def __init__(self, **kwargs):
         super(Browser, self).__init__(**kwargs)

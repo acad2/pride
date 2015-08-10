@@ -1,0 +1,199 @@
+can dynamic secrets be used over UDP instead of wifi?
+
+conways game of life!
+
+maybe create a return_type dictionary for each class, where a key is a class method and
+it's value is the expected return type when that method is called.
+
+create the periodic table of everything. write a function that writes other functions, 
+where each created function is a combination of primitive operations.
+
+recently done:
+    updated and improved arg parsers
+    command line and programs - keywords, userinput deprecated
+    compiler and $ preprocessor directive    
+    networkssl SSL_Server now hosts the ssl wrap mechanism instead of SSL_Socket
+    more scalable SDL user input handling
+    wigetlibrary updates, progress on scroll bars
+    database    
+    
+known bugs:
+    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration.
+    memory leak in Network/sockets - sockets have no referrers??
+    
+things that could be done:
+    automatically compiling via cython.inline - stuck at libpython27_a
+    preemptive multiprocessing development
+    children descriptor?    
+    does set_attributes need to be a method? is it secure for rpc ?    
+    create/find secure pickle alternative - can't seriously use rpc or save/load otherwise
+        or distribute mac'd pickle'd Instructions of publicly available operations            
+    develop the gui
+    improve executable    
+    improve authentication service - scrutiny for design pitfalls and errors, resistances
+    system restore   
+    integrate ssl contexts into networkssl    
+    pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    
+    class update feature
+    --optimized flag that comments out alerts that are above a threshold
+    
+class System_Restore(mpre.vmlibrary.Process):
+    defaults = defaults.Process.copy()
+    System_Restore.update({"priority" : 300,
+                           "backup_limit" : 100})
+    
+    def __init__(self, **kwargs):        
+        super(System_Restore, self).__init__(**kwargs)
+        self.backups = collections.Deque([], self.backup_limit)
+        
+    def run(self):
+        self.backups.append(components["Metapython"].save())
+        
+    def restore(self, time_period=0):
+        if len(self.backups) < time_period:
+            raise ValueError("time_period too long; no backup old enough")
+        self.load(self.backups.pop(time_period))
+            
+            
+class Reliable_Udp(network.Udp_Socket):
+    
+    def __init__(self, **kwargs):
+        super(Reliable_Udp, self).__init__(**kwargs)
+        self.response_to = {}
+        
+    def sendto(self, data, target, response_to_packet='None'):
+        packet_id, packet = self.make_packet(data, response_to_packet)
+        self.socket.sendto(packet, target)
+        self.sent[packet_id] = (packet, target)
+    
+    def make_packet(self, data, response_to):
+        packet = response_to + " " + data
+        packet_id = hashlib.sha1(packet).digest()
+        return (packet_id, packet_id + " " + packet)
+        
+    def recvfrom(self, network_packet_size):
+        data, address = super(Reliable_Udp, self).recvfrom(network_packet_size)
+        packet_id, response_to, flags, data = data.split(" ", 2)
+        
+        # flags = dont_reply, repeat_count
+        
+        if response_to not in self.sent:
+            # responding to a packet not sent            
+            if address not in self.conversation_partners:
+                # haven't heard from you before either 
+                pass
+                
+        elif response_to == "None":
+            # a new conversation
+            self.conversation_partners.add(address)
+        else:
+            del self.sent[response_to]
+            
+        return data
+        
+             
+request1 sent
+    answer1 received
+        request2 sent
+            answer2 received
+                ...
+                
+request1 sent
+    no answer received
+        -= resend counter
+        repeat request1
+        
+            answer1 arrives late
+                expect and ignore repeat of answer1
+                    answer1 arrives again, ignore
+            
+            
+class Updateable(type):
+    
+    def __new__(cls, name, bases, attributes):
+        attributes.setdefault("_update_counter", 0)
+        attributes.setdefault("_instances" : [])
+        new_class = super(Updateable, cls).__new__(cls, name bases, attributes)
+        return new_class
+     
+    @classmethod
+    def update(cls):
+        source = inspect.getsource(cls) 
+        class_name = cls.__name__
+        module = utilities.create_module(class_name, source)
+        new_class = getattr(module, class_name)
+        
+    #    with module_utilities.modules_preserved():
+     #       sys.modules.clear()
+            
+        for name, value in cls.__dict__.items():
+            if not callable(value)
+                print "Updating {}.{} to {}".format(class_name, name, value)
+                setattr(new_class, name, value)       
+        
+        new_instances = new_class._instances = []
+        for instance in cls._instances:
+            new_instance = new_class.__new__(new_class)
+                  
+            # a mini replacement __init__
+            attributes = new_instance.defaults.copy()
+            attributes["_required_modules"] = class_base._required_modules
+            new_instance.set_attributes(**attributes)
+            self.environment.add(new_instance)        
+            
+            attributes = self.__dict__
+            self.environment.replace(self, new_instance)
+            new_instance.set_attributes(**attributes)
+            new_instances.append(new_instance)
+        new_class._instances = new_instances
+            
+    def save(cls, _file=None):
+        required_modules = []        
+        module_loader = resolve_string(importer_type)()
+        class_mro = _class.__mro__[:-1] # don't update object
+        class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
+                
+        with mpre.module_utilities.modules_preserved(info[1] for info in class_info):
+            for cls, module_name in class_info:    
+                module = importlib.import_module(module_name)
+                source = getattr(module, "_source", None) or inspect.getsource(module)
+                required_modules.append((module_name, source, None))
+    
+        result = (cls.__name__, required_modules)
+        if _file:
+            pickle.dump(result, _file)
+        else:
+            return pickle.dumps(result)
+            
+    def load(cls, stream='', _file=None):
+        assert stream or _file
+        if _file:
+            stream = _file.read()
+        class_name, required_modules = pickle.loads(stream)
+        with mpre.module_utilities.modules_preserved(info[0] for info in required_modules):
+            sys.modules.clear()
+            _required_modules = []
+            for module_name, source, none in required_modules:
+                    module = mpre.module_utilities.create_module(module_name, source)
+                    _required_modules.append((module_name, source,        
+                                             
+                                
+class Compiled(object):
+    
+    def __init__(self, function):
+        self.function = function
+        self.argument_types = {}
+        # strip off leading/ending ( and )
+        header = mpre.utilities.function_header(function)[1:-1]        
+        arguments = self.arguments = header.split(", ")
+        if arguments[0] == ''
+            arguments.pop(0)
+            
+    def __call__(self, *args, **kwargs):
+        # type each argument
+        argument_types = self.argument_types
+        for index, arg in enumerate(args):
+            key = "arg_{}".format(index)
+            if key in argument_types and type(arg) != argument_types[key]:
+                # create a new compiled function with this altered signature
+                                                

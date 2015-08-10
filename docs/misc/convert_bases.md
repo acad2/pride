@@ -21,7 +21,10 @@ Method resolution order:
         is the desired base you want the value in.
 
 
-- **convert**(old_value, old_base, new_base):
+convert
+--------------
+
+**convert**(old_value, old_base, new_base):
 
 		convert a value from one base another. base should be a list of length
     base containing the unique characters to be used to represent each value in
@@ -29,17 +32,26 @@ Method resolution order:
     is the desired base you want the value in.
 
 
-- **find_factors**(value, old_base):
+find_factors
+--------------
 
-		No documentation available
+**find_factors**(value, old_base):
 
-
-- **interpret_as**(value, new_base):
-
-		No documentation available
+				No documentation available
 
 
-- **randint**(self, a, b):
+interpret_as
+--------------
+
+**interpret_as**(value, new_base):
+
+				No documentation available
+
+
+randint
+--------------
+
+**randint**(self, a, b):
 
 		Return random integer in range [a, b], including both end points.
         

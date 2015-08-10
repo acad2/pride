@@ -1,17 +1,25 @@
+""" Stores global objects including instruction and the environment """
 import sys
+import importers        
+compiler = importers.Compiler()#preprocessors=(Dollar_Sign_Directive(), )) 
+#sys.meta_path.insert(0, compiler)
+
 import heapq
+import inspect
 import mmap
 import itertools
 import pprint
 import pickle
 import contextlib
 import copy
+import types
 
-import utilities
-timer_function = utilities.timer_function  
+import mpre.utilities
+timer_function = mpre.utilities.timer_function  
 
 class Environment(object):
-    
+    """ Stores global state for the process. This includes reference 
+        reference information, most importantly the objects dictionary. """
     fields = ("objects", "instance_count", "instance_name",
               "instance_number", "parents", "references_to")
               
@@ -22,15 +30,20 @@ class Environment(object):
             setattr(self, field, {})
                 
     def display(self):
-        print "\nInstructions: {}".format([(instruction[0], str(instruction[1])) for 
+        """ Pretty prints environment attributes """
+        print "\nInstructions: {}".format([(instruction[0], 
+                                           str(instruction[1])) for 
                                            instruction in self.Instructions])
         
-        for attribute in ("objects", "instance_count", "instance_name",
-                          "instance_number", "parents", "references_to"):
+        for attribute in self.fields:
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
     
     def replace(self, component, new_component):
+        """ Replaces the instance component with the specified new_component.
+            The new_component will be obtain the replaced components
+            instance_name reference. The old component should be garbage
+            collected. """
         objects = self.objects
         if isinstance(component, unicode) or isinstance(component, str):
             component = self.objects[component]
@@ -55,6 +68,8 @@ class Environment(object):
             instance.add(new_component)       
         
     def delete(self, instance):
+        """ Deletes an object from the environment. This is called by
+            instance.delete. """
         try:
             objects = instance.objects
         except AttributeError: # non base objects have no .objects dictionary
@@ -79,6 +94,9 @@ class Environment(object):
         del self.instance_number[instance]
         
     def add(self, instance):
+        """ Adds an instance to the environment. This is done automatically
+            for Base objects and for objects instantiated via the create
+            method. """
         instance_class = instance.__class__.__name__
         try:
             self.instance_count[instance_class] = count = self.instance_count[instance_class] + 1
@@ -99,7 +117,9 @@ class Environment(object):
             component in itertools.chain(self.objects.values())):
             return True
         
-    def update(self, environment):       
+    def update(self, environment):    
+        """ Updates the fields of the environment. This is currently
+            unused and may be deprecated. """
         for instruction in environment.Instructions:
             heapq.heappush(self.Instructions, instruction)
 
@@ -108,33 +128,13 @@ class Environment(object):
         self.references_to.update(environment.references_to)
         self.instance_number.update(environment.instance_number)
         self.instance_count.update(environment.instance_count)
-        
-    @contextlib.contextmanager
-    def preserved(self):
-        backups = [self.Instructions]        
-        for field in self.fields:
-            backups.append(getattr(self, field).copy())
-        try:
-            yield
-        finally:
-            self.Instructions = backups.pop(0)
-            for field in self.fields:
-                setattr(self, field, backups.pop(0))
-                        
-    def modify(self, container_name, item, method="add_key"):
-        container = getattr(self, container_name)
-        if method == "add_key":
-            key, value = item
-            container[key] = value
-        elif method == "remove_item":
-            del container[item]
-        else:
-            getattr(container, method)(item)
-                           
+                                   
         
 class Instruction(object):
     """ usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
+                           *args, **kwargs).execute(priority=priority,
+                                                    callback=callback,
+                                                    host_info=(ip, port))
                            
         Creates and executes an instruction object. 
             - component_name is the string instance_name of the component 
@@ -142,14 +142,37 @@ class Instruction(object):
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
+        host_info may supply an ip address string and port number integer
+        to execute the instruction on a remote machine. This requirements
+        for this to be a success are:
+            
+            - The machine must have an instance of metapython running
+            - The machine must be accessible via the network
+            - The local machine must be registered and logged in to
+              the remote machine
+            - The local machine may need to be registered and logged in to
+              have permission to the use the specific component and method
+              in question
+            - The local machine ip must not be blacklisted by the remote
+              machine.
+            - The remote machine may require that the local machine ip
+              be in a whitelist to access the method in question.
+              
+        Other then the security requirements, remote procedure calls require 
+        zero config on the part of either host. An object will be accessible
+        if it exists on the machine in question.
+              
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
+        will actually be performed if the instruction is being executed
+        locally. If the instruction is being executed remotely, this instead
+        acts as a flag. If set to a True value, the instruction will be
+        placed at the front of the local queue to be sent to the host.
         
         Instructions are useful for serial and explicitly timed tasks. 
         Instructions are only enqueued when the execute method is called. 
         At that point they will be marked for execution in 
-        instruction.priority seconds. 
+        instruction.priority seconds or sent to the machine in question. 
         
         Instructions may be saved as an attribute of a component instead
         of continuously being instantiated. This allows the reuse of
@@ -171,51 +194,41 @@ class Instruction(object):
         
     def execute(self, priority=0.0, callback=None,
                 host_info=tuple(), transport_protocol="tcp"):
-        """ usage: instruction.execute(priority=0.0, callback=None)
+        """ usage: instruction.execute(priority=0.0, callback=None,
+                                       host_info=tuple())
         
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed.
+            Submits an instruction to the processing queue. If being executed
+            locally, the instruction will be executed in priority seconds. 
+            An optional callback function can be provided if the return value 
+            of the instruction is needed.
             
             host_info may be specified to designate a remote machine that
-            the Instruction should be executed on. If host_info is supplied
-            and callback is None, the results of the instruction will be 
-            supplied to RPC_Handler.alert."""
+            the Instruction should be executed on. If being executed remotely, 
+            priority is a high_priority flag where 0 means the instruction will
+            be placed at the end of the rpc queue for the remote host in 
+            question. If set, the instruction will instead be placed at the 
+            beginning of the queue.
+            
+            Remotely executed instructions have a default callback, which is 
+            the appropriate RPC_Requester.alert.
+            
+            The transport protocol flag is currently unused. Support for
+            UDP and other protocols could be implemented and dispatched
+            via this flag."""
         if host_info:
-            objects["RPC_Handler"].make_request(callback, host_info, transport_protocol,
-                                                self.component_name, self.method, 
-                                                self.args, self.kwargs)
-    #    elif not priority:
-    #        return (getattr(objects[self.component_name], self.method)
-    #                (*self.args, **self.kwargs))
+            objects["RPC_Handler"].make_request(callback, host_info,
+                                                transport_protocol, priority,
+                                                self.component_name, 
+                                                self.method, self.args,
+                                                self.kwargs)
         else:
-            execute_at = self.execute_at = timer_function() + priority
             heapq.heappush(environment.Instructions, 
-                          (execute_at, self, callback))
-    
-    #def __getstate__(self):
-    #    print "Pickling Instruction", self.component_name, self.method
-    #    attributes = self.__dict__
-    #    callback = attributes.get("callback")
-    #    if callback:
-    #        attributes["callback"] = (callback.im_self, callback.__name__)
-    #   # print "Pickled instruction", attributes
-    #    return attributes
-    #    
-    #def __setstate__(self, state):
-    #    callback = state["callback"]
-    #    if callback is not None:
-    #        state["callback"] = getattr(objects[callback[0]], callback[1])
-    #    super(Instruction, self).__setstate__(state)
+                          (timer_function() + priority, self, callback))
         
     def __str__(self):
-        args = str(getattr(self, "args", ''))
-        kwargs = str(getattr(self, "kwargs", ''))
-        component = getattr(self, "component_name", '')
-        method = getattr(self, "method", '')
-        return "{}({}.{}, {}, {})".format(self.__class__.__name__, component, 
-                                          method, args, kwargs)  
-                                     
+        return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
+                                                   self.args, self.kwargs)
+
 environment = Environment()
 objects = environment.objects
 
@@ -223,10 +236,10 @@ objects = environment.objects
 import mpre.base
 
 class Alert_Handler(mpre.base.Base):
-    """ Provides the backend for the base.alert method. This component is automatically
-        created by the Metapython component. The print_level and log_level attributes act
-        as global filters for alerts; print_level and log_level may be specified as 
-        command line arguments upon program startup to globally control verbosity/logging."""
+    """ Provides the backend for the base.alert method. The print_level 
+        and log_level attributes act as global levels for alerts; 
+        print_level and log_level may be specified as command line arguments 
+        upon program startup to globally control verbosity/logging. """
     level_map = {0 : 'alert ',
                 '' : "stdout ",
                 'v' : "notification ",

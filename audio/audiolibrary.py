@@ -2,7 +2,6 @@ import pickle
 import wave
 import sys
 import os
-import contextlib
 
 import mpre
 import mpre.base as base
@@ -13,7 +12,12 @@ Instruction = mpre.Instruction
 objects = mpre.objects
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
-       
+   
+def record_wav_file(parse_args=False, **kwargs):
+    wav_file = Wav_File(parse_args=parse_args, mode='wb', **kwargs)
+    objects["Audio_Manager"].record("Microphone", file=wav_file)
+
+                     
 class Audio_Reactor(base.Base):
     
     defaults = base.Base.defaults.copy()
@@ -34,7 +38,7 @@ class Audio_Reactor(base.Base):
         
         objects[target_instance_name].add_listener(self_name)
         
-    def handle_audio_input(self, sender, audio_data):
+    def handle_audio_input(self, audio_data):
         self.handle_audio_output(audio_data)
         
     def handle_audio_output(self, audio_data):
@@ -54,13 +58,13 @@ class Audio_Reactor(base.Base):
             
 class Audio_File(fileio.File):
 
-    def handle_audio_input(self, sender, audio_data):
-        self.handle_write(None, audio_data)
+    def handle_audio_input(self, audio_data):
+        self.write(audio_data)
         
 
-class Wav_File(Audio_Reactor):
+class Wav_File(Audio_File):
 
-    defaults = Audio_Reactor.defaults.copy()
+    defaults = Audio_File.defaults.copy()
     defaults.update({"mode" : "rb",
                      "filename" : "",
                      "repeat" : False,
@@ -92,10 +96,7 @@ class Wav_File(Audio_Reactor):
             
         message = "opened wav file with channels: {0}, format: {1}, rate: {2}"
         self.alert(message, (self.channels, self.sample_width, self.rate), level="vv")
-    
-    def handle_audio_input(self, sender, audio_data):
-        self.write(audio_data)
-        
+            
     def read(self, size=None): # accepts size in bytes and converts to frame count   
         size = (size / 4) if size is not None else (self.audio_size / 4)
         

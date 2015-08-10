@@ -1,3 +1,4 @@
+""" Provides objects for file related tasks """
 import sys
 import mmap
 import os
@@ -5,12 +6,13 @@ import StringIO
 import pprint
 import binascii
 import contextlib
+import shutil
 
 import mpre    
 import mpre.vmlibrary as vmlibrary
 import mpre.base as base
 import mpre.utilities as utilities
-import mpre.userinput
+import mpre.shell
 objects = mpre.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
@@ -42,6 +44,7 @@ def ensure_file_exists(filepath, data=''):
 
 @contextlib.contextmanager
 def current_working_directory(directory_name):
+    """ Temporarily sets the current working directory """
     backup = os.getcwd()
     os.chdir(directory_name)
     try:
@@ -69,7 +72,7 @@ def file_contents_swapped(contents, filepath='', _file=None):
         _file.flush()
         _file.close() 
 
-        
+     
 class Cached(object):
     """ A memoization decorator that should work with any method and argument structure"""
     cache = {}
@@ -105,75 +108,37 @@ class Cached(object):
         else:
             print "references remaining for", key
         #self.handles[function][key] = handles[key]
-                
- 
-class Directory(base.Base):
-    
-    defaults = base.Base.defaults.copy()
-    
-    def __init__(self, **kwargs):
-        super(Directory, self).__init__(**kwargs)
-        if not self.path:
-            self.delete()
-            raise base.ArgumentError("Required argument 'path' not found")
-        
-        self.file_system, path = os.path.split(self.path)
-        self.path, self.filename = os.path.split(path)
-        self.full_path = os.path.sep.join(self.path, self.filename)
-        objects["File_System"].add(self)        
-        
-    def delete(self):
-        for _file in objects["File_System"][self.full_path]:
-            #if _file is not self:
-            _file.delete()
-        super(Directory, self).delete()
-                
+                                
         
 class File(base.Wrapper):
-    """ usage: File(filename='', mode='', file=None, file_system="disk", **kwargs) => file
+    """ usage: File(path='', mode='', 
+                    file=None, file_type='file', **kwargs) => file
     
-        Return a wrapper around a file like object. File objects are pickleable. 
-        Upon pickling the files data will be saved and upon loading the data restored. This
-        can be prevented by setting the persistent attribute to False.
-        The wrapped file can be specified by the file argument. If the file argument is not present,
-        the file named in filename will be opened in the specified mode."""
+        Return a wrapper around a file like object. File objects can be
+        saved and loaded. The files contents will be maintained if
+        persistent is True, which is the default.
+        The wrapped file can be specified by the file argument. 
+        If the file argument is not present, a file like object will
+        be opened and wrapped. The type may be specified by the file_type
+        attribute. The default is a regular file, which will require
+        an appropriate path and mode to be specified when initializing. """
         
     defaults = base.Wrapper.defaults.copy()
     defaults.update({"file" : None,
-                     "file_type" : "StringIO.StringIO",
-                     "file_system" : "disk",
-                     "is_directory" : False,
+                     "file_type" : "file",
                      "mode" : "",
                      "persistent" : True})
     
     def __init__(self, path='', mode='', **kwargs):  
         super(File, self).__init__(**kwargs)
-        if "file_system" not in kwargs:
-            try:
-                file_system, _path = path.split(os.path.sep, 1)
-            except ValueError:
-                file_system = self.file_system
-                _path = path
-            else:
-                self.file_system = file_system
-                path = _path
-                if "File_System" not in objects:
-                    self.alert("File_System component does not exist", level='v')     
-                elif not objects["File_System"].exists(file_system, file_type="file_system"):
-                    raise IOError("File system '{}' does not exist".format(file_system))
-
         self.path, self.filename = os.path.split(path)
         if not self.path:
             self.path = os.path.curdir
         
         self.mode = mode or self.mode
-        try:
-            mpre.objects["File_System"].add(self)
-        except KeyError:
-            self.alert("File_System does not exist", level='v')
-            
+
         if not self.file:
-            if self.file_system == "disk":      
+            if self.file_type == "file":      
                 self.file = open(path, self.mode)                
             else:
                 self.file = utilities.resolve_string(self.file_type)()             
@@ -222,7 +187,7 @@ class File(base.Wrapper):
         
     def on_load(self, attributes):
         super(File, self).on_load(attributes)
-        if self.file_system == "disk":
+        if self.file_type == "file":
             self.file = _file = open(self.filename, self.mode)
         else:
             self.file = _file = utilities.resolve_string(self.file_type)()
@@ -230,294 +195,11 @@ class File(base.Wrapper):
         self.truncate(0)
         self.write(self.__dict__.pop("_file_data"))        
         self.flush()
-        if "File_System" in objects:
-            objects['File_System'].add(self)
             
     def delete(self):
         super(File, self).delete()
         self.wrapped_object.close()
-                               
-        
-class Encrypted_File(File):
-    """ usage: Encrypted_File(_file, **kwargs) => encrypted_file
-               
-        Returns an Encrypted_File object. Calls to the write method will be encrypted with
-        encrypted_file.key (currently via the mpre.utilities.convert function), and reads will be decrypted using the same key. Currently only supports ascii. Should currently
-        be considered as a demonstartion only, please do not depend upon this to keep
-        information private.
-        
-        The key is only valid for as long as the instance exists. In order to preserve
-        the key, utilize the save method. The resulting pickle stream can later be
-        unpickled and supplied to the load method to recover the original instance with 
-        the appropriate key to decrypt the file."""
-    
-    defaults = File.defaults.copy()
-    defaults.update({"block_size" : 1024})
-        
-    def _get_keys(self):
-        return (self.key, self.data_pointers)
-    keys = property(_get_keys)
-    
-    def _get_ascii_key(self):
-        return ''.join(chr(ordinal) for ordinal in xrange(256))
-    asciikey = property(_get_ascii_key)
-    
-    def __init__(self, filename='', mode='', **kwargs):
-        super(Encrypted_File, self).__init__(filename, mode, **kwargs)
-        self.key = ''.join(ordinal for ordinal in self.derive_key())
-        self.data_pointers = []
-        self.slices = {}
-        
-    def derive_key(self):
-        key = []
-        while len(key) < 256:
-            key.extend(set(os.urandom(128)).difference(key))
-        return key
-    
-    def write(self, data):
-        return self.wrapped_object.write(data)
-        original_position = position = self.tell()
-        slices = self.slices                    
-        block_size = self.block_size
-        byte_count = 0
-        while data:
-            _data = self.encrypt(data[:block_size])
-            size = len(_data)
-            byte_count += size
-            current_position = position + size
-      #      print "Adding slice: ", position, current_position
-            slices[position] = _slice = slice(position, current_position)
-            self.data_pointers.append(_slice)
-            position = current_position
-            data = data[self.block_size:]
-            self[_slice] = _data
-          #  print "Wrote encrypted slice: ", _data
-        #    print "{} bytes left".format(len(data))
-        self.seek(original_position + byte_count)
-        #self.wrapped_object[self.data_pointers[-1]] = data
-    
-    def truncate(self, size=None):
-        if size is None:
-            size = self.tell()
-        self.file.truncate(size)
-        
-        for _slice in self.data_pointers:
-            start = _slice.start if _slice.start else 0
-            stop = _slice.stop if _slice.stop else 0
-            difference = 0
-            if size and size >= start and size < stop:
-                difference = size - stop
-                break
-        #print "Data pointers: ", self.data_pointers
-        if not size:
-            self.data_pointers = []
-            self.slices = {}
-        else:
-            data_pointers = self.data_pointers
-            slice_index = data_pointers.index(_slice)                    
-            data_pointers = data_pointers[:slice_index]       
-            previous_slice = data_pointers[-1]
-            data_pointers[-1] = slice(previous_slice.start, previous_slice.stop + difference)
-            self.data_pointers = data_pointers if size else []
-            self.slices = (dict((_slice.start, _slice) for _slice in self.data_pointers) if 
-                        self.data_pointers else {})     
-                
-    def read(self, size=-1):
-        return self.wrapped_object.read(size)
-      #  print "Reading encrypted data"
-        original_position = position = self.tell()
-        block_size = self.block_size
-        slices = self.slices
-        """offset = 0
-        if position not in slices:
-            print "Using custom offset"
-            for _slice in slices.values():
-                start = _slice.start if _slice.start is not None else 0
-                if position in range(_slice.start, _slice.stop):                    
-                    offset = position - start
-                    position = start
-                    break"""
-                    
-        result = r''
-        data = self[position:size]
-        data_size = size = len(data)
-        while size:
-        #    print "Reading position: ", position
-            new_data = self.decrypt(self[slices[position]])
-            result += new_data
-            byte_count = len(new_data)
-            position += byte_count
-            size -= byte_count
-        self.seek(original_position + data_size)
-        return result#[offset:]
-        
-    def encrypt(self, data):
-      #  data = binascii.hexlify(data)
-        return data #utilities.convert(data, self.asciikey, self.key)
-        
-    def decrypt(self, data):
-        return data #utilities.convert(data, self.key, self.asciikey)
-       # return binascii.unhexlify(data)
-        
-
-class File_System(base.Base):
-            
-    defaults = base.Base.defaults.copy()
-    defaults.update({"file_systems" : ("disk", "virtual"),
-                    "auto_start" : False})      
-    
-    def __init__(self, **kwargs):
-        super(File_System, self).__init__(**kwargs)
-        self.current_working_directory = {}
-        self.change_file_system(self.file_systems[0])
-        self.file_systems = set(self.file_systems) # no mutables in defaults
-        for file_system in self.file_systems:
-            setattr(self, file_system, {os.path.curdir : {}})      
-            if file_system == "disk":
-                self.change_directory(self.join(file_system, os.getcwd()))
-            else:
-                self.change_directory(self.join(file_system, file_system))
-        
-    def join(self, path_one, path_two):
-        return os.path.sep.join((path_one, path_two))
-            
-    def listdir(self, path):
-        _, is_file = os.path.splitext(path)
-        if is_file:
-            raise IOError("Path '{}' is not a directory".format(path))
-        return self.get_file(path).keys()
-    
-    def exists(self, path, file_type="file"):
-        if file_type == "file_system":
-            return path in self.file_systems
-        else:
-            try:
-                file_exists = self.get_file(path)
-            except IOError:
-                file_exists = False
-        return file_exists
-    
-    def new_file_system(self, file_system):
-        setattr(self, file_system, {})
-        self.change_directory(self.join(file_system, os.getcwd()))
-        self.file_systems.add(file_system)
-        
-    def add(self, _file):      
-       # print "Adding file: ", _file.file_system, _file.path, _file.filename
-        directory = self.get_file(self.join(_file.file_system, _file.path))
-        if _file.is_directory:
-            value = {}
-        else:
-            value = _file.instance_name
-        directory[_file.filename] = value
-        #super(File_System, self).add(_file)
-        
-    def __str__(self):
-        backup = sys.stdout
-        log = sys.stdout = StringIO.StringIO()
-        for file_system in self.file_systems:
-            print "\n{}:".format(file_system)
-            _file_system = getattr(self, file_system)
-            current_working_directory = os.path.curdir
-            removed = _file_system.pop(current_working_directory)
-            pprint.pprint(_file_system)
-            _file_system[current_working_directory] = removed
-        sys.stdout = backup
-        log.seek(0)
-        return log.read()
-        
-    def change_directory(self, path):
-        file_system, _path = path.split(os.path.sep, 1)
-        directory = self.get_file(path)
-        self.current_working_directory[file_system] = (path, directory)
-        file_system = getattr(self, file_system)
-        file_system[os.path.curdir] = directory
-        
-    def change_file_system(self, file_system):
-        if not self.exists(file_system, "file_system"):
-            raise ValueError("File system '{}' does not exist".format(file_system))
-        self.current_file_system = file_system
-        
-    def getcwd(self, file_system=''):
-        if not file_system:
-            file_system = self.current_file_system
-        return self.current_working_directory[file_system][0]
-        
-    def __getitem__(self, path):
-        return self.get_file(path)
-     
-    def __setitem__(self, path, value):
-        _path = path.split(os.path.sep)
-        self.get_file(os.path.join(*_path[:-1]))[_path[-1]] = value
-        
-    def get_file(self, path):  
-        try:
-            file_system, _path = path.split(os.path.sep, 1)
-        except ValueError: # os.path.sep was not in path
-            if path in self.file_systems:
-                return getattr(self, path)
-            _path = self.current_working_directory[self.current_file_system][1].get(path)
-            if _path:
-                return _path
-            raise ValueError("Invalid path '{}'".format(path))
-
-        _path, is_file = os.path.splitext(path)
-      #  print "Splitting path to acquir lookup chain: ", path
-        lookup_chain = path.split(os.path.sep)
-        _filename = lookup_chain.pop(-1) if is_file else None
-        _file_system = file_system
-        try:
-            file_system = getattr(self, file_system) 
-        except AttributeError:
-            raise ValueError("Invalid file_system '{}'".format(_file_system))
-       # print "\nGetting file; path:", path
-      #  print "Lookup chain: ", lookup_chain
-        if not lookup_chain:
-            directory = file_system[os.path.curdir]
-        else:
-            directory = file_system
-            for progress, key in enumerate(lookup_chain):
-                try:
-                #    print "\nLooking for node: ", key
-                    directory = directory[key]
-                except KeyError:             
-                    current_directory = os.path.sep.join(lookup_chain[1:progress + 1])
-             #       print "node {} does not exist".format(key)
-                    if key == _file_system:
-                        directory = file_system
-                    elif not is_file:   
-                        exists = os.path.exists(current_directory)
-                        if not exists:
-                            prompt = "Directory '{}' does not exist. Create it? y/n: "
-                            permission = mpre.userinput.get_selection(prompt.format(key), bool)
-                            if permission:
-                                ensure_folder_exists(current_directory)
-                                exists = True
-                        if exists:
-                        #   print "creating node: {}".format(key)
-                            directory[key] = {}
-                            directory = directory[key]   
-                        else:
-                            raise IOError("Directory '{}' does not exist".format(key))     
-                    else:
-                        pprint.pprint(file_system)
-                        raise IOError("File '{}' does not exist".format(current_directory))
-                
-        #pprint.pprint(file_system)        
-        result = directory
-        if _filename is not None:
-            try:
-                result = directory[_filename]
-            except KeyError:
-                file_not_found = "File '{}' does not exist in {} file system"
-                raise IOError(file_not_found.format(path, _file_system))
-        return result
-        
-    def remove(self, _file, file_system="disk"):
-      #  super(File_System, self).remove(_file)
-        directory = self.get_file(os.path.join(_file.file_system, _file.path))
-        del directory[_file.filename]
-          
+                                                
         
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 

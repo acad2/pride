@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+""" Provides classes for the main and basic components of the environment. """
 import sys
 import codeop
 import os
@@ -15,32 +17,32 @@ import mpre.vmlibrary as vmlibrary
 import mpre.authentication as authentication
 import mpre.utilities as utilities
 import mpre.fileio as fileio
+import mpre.shell
 objects = mpre.objects
 Instruction = mpre.Instruction            
-    
-if "__file__" not in globals():
-    FILEPATH = os.getcwd()
-else:
-    FILEPATH = os.path.split(__file__)[0]
+
     
 class Shell(authentication.Authenticated_Client):
-    """ Handles keystrokes and sends python source to the Interpreter to be executed.
-        This requires authentication."""
+    """ Handles keystrokes and sends python source to the Interpreter to 
+        be executed. This requires authentication via username/password."""
     defaults = authentication.Authenticated_Client.defaults.copy()
-    defaults.update({"username" : "root",
-                     "password" : "password",
+    defaults.update({"username" : "",
+                     "password" : "",
                      "prompt" : ">>> ",
                      "startup_definitions" : '',
                      "target_service" : "Interpreter"})
     
-    parser_ignore = authentication.Authenticated_Client.parser_ignore + ("prompt", )
+    parser_ignore = (authentication.Authenticated_Client.parser_ignore + 
+                     ("prompt", "auto_login", "target_service"))
+    
+    verbosity = authentication.Authenticated_Client.verbosity.copy()
+    verbosity["logging_in"] = ''
     
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
         self.lines = ''
         self.user_is_entering_definition = False     
-        objects["Keyword_Handler"].set_default(self.handle_keystrokes, set_backup=True)
-        
+                
     def on_login(self, message):
         self.alert("{}", [message], level='')
         sys.stdout.write(">>> ")
@@ -58,14 +60,18 @@ class Shell(authentication.Authenticated_Client):
         else:
             self.execute_source(self.startup_definitions) 
                     
-    def handle_keystrokes(self, keyboard_input):
+    def handle_input(self, input):
         if not self.logged_in:
             return
-        
-        self.lines += keyboard_input
+        if not input:
+            input = '\n'
+        else:
+            input = mpre.compiler.preprocess(input)
+            
+        self.lines += input
         lines = self.lines
-        write_prompt = True        
-        if lines != "\n":            
+        write_prompt = True  
+        if lines != "\n":     
             try:
                 code = codeop.compile_command(lines, "<stdin>", "exec")
             except (SyntaxError, OverflowError, ValueError) as error:
@@ -79,7 +85,7 @@ class Shell(authentication.Authenticated_Client):
                             self.prompt = ">>> "
                             self.lines = ''
                             self.execute_source(lines)
-                            self.user_is_entering_definition = False              
+                            self.user_is_entering_definition = False
                     else:
                         self.lines = ''
                         self.execute_source(lines)
@@ -107,7 +113,7 @@ class Shell(authentication.Authenticated_Client):
         else:
             sys.stdout.write('\b' * 4 + packet + self.prompt)
         
-        
+
 class Interpreter(authentication.Authenticated_Service):
     """ Executes python source. Requires authentication. The source code and 
         return value of all requests are logged.
@@ -128,15 +134,14 @@ class Interpreter(authentication.Authenticated_Service):
         response = super(Interpreter, self).login(username, credentials)
         if username in self.user_secret:
             sender = self.requester_address
-            self.user_namespaces[username] = {"__name__" : "__main__",
-                                              "__doc__" : '',
-                                              "Instruction" : Instruction}
+           # self.user_namespaces[username] = {"__name__" : "__main__",
+           #                                   "__doc__" : '',
+           #                                   "Instruction" : Instruction}
             self.user_session[username] = ''
             string_info = (username, sender, sys.version, sys.platform, self.copyright)        
             response = ("Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info), response[1])
         return response
     
-    @authentication.blacklisted
     @authentication.whitelisted
     @authentication.authenticated
     def exec_code(self, source):
@@ -146,21 +151,23 @@ class Interpreter(authentication.Authenticated_Service):
         username = self.logged_in[sender]
         log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
                   source)                  
-        result = ''                
+        result = ''         
         try:
-            code = compile(source, "<stdin>", 'exec')
+            code = mpre.compiler.compile_source(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:                
             backup = sys.stdout            
             sys.stdout = StringIO.StringIO()
             
-            namespace = (globals() if username == "root" else 
-                         self.user_namespaces[username])
+            namespace = globals()# if username == "root" else self.user_namespaces[username]
             remove_builtins = False
             if "__builtins__" not in namespace:
                 remove_builtins = True
                 namespace["__builtins__"] = __builtins__
+            
+            backup_raw_input = namespace["__builtins__"]["raw_input"]
+            namespace["__builtins__"]["raw_input"] = mpre.shell.get_user_input
             try:
                 exec code in namespace
             except BaseException as error:
@@ -171,6 +178,8 @@ class Interpreter(authentication.Authenticated_Service):
             else:
                 self.user_session[username] += source
             finally:
+                namespace["__builtins__"]["raw_input"] = backup_raw_input
+                
                 if remove_builtins:
                     del namespace["__builtins__"]
                 sys.stdout.seek(0)
@@ -178,7 +187,7 @@ class Interpreter(authentication.Authenticated_Service):
                 log.write("{}\n".format(result))
                 
                 sys.stdout.close()
-                sys.stdout = backup                
+                sys.stdout = backup           
         log.flush()        
         return result
         
@@ -194,29 +203,34 @@ class Interpreter(authentication.Authenticated_Service):
 class Metapython(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
-        starts the execution of the Processor component.
-        
-        startup"""
-
+        starts the execution of the Processor component."""
     defaults = base.Base.defaults.copy()
-    defaults.update({"command" : os.path.join(FILEPATH, "shell_launcher.py"),
+    defaults.update({"command" : os.path.join((os.getcwd() if "__file__" 
+                                               not in globals() else 
+                                               os.path.split(__file__)[0]), 
+                                              "shell_launcher.py"),
                      "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
                      "startup_components" : (#"mpre.fileio.File_System",
                                              "mpre.vmlibrary.Processor",
+                                             "mpre.network.Socket_Error_Handler",
                                              "mpre.network.Network", 
-                                             "mpre.userinput.Command_Line",
+                                             "mpre.shell.Command_Line",
                                              "mpre.srp.Secure_Remote_Password",
-                                             "mpre.rpc.Machine_Access",
                                              "mpre.rpc.RPC_Handler"),
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
                      "startup_definitions" : ''})    
-    parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt", "copyright", 
-                                               "traceback", "interpreter_enabled",
-                                               "startup_components", "startup_definitions")
                      
-    # make an optional "command" positional argument and allow both -h and --help flags
+    parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt",
+                                               "copyright", 
+                                               "traceback", 
+                                               "interpreter_enabled",
+                                               "startup_components", 
+                                               "startup_definitions")
+                     
+    # make an optional "command" positional argument and allow 
+    # both -h and --help flags
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
@@ -241,7 +255,7 @@ class Metapython(base.Base):
             source = module_file.read()
             
         Instruction(self.instance_name, "exec_command", source).execute()
-                    
+                
     def exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')

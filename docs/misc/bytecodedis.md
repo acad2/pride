@@ -107,26 +107,41 @@ Method resolution order:
 		od.itervalues -> an iterator over the values in od
 
 
-- **get_assignments**(function):
+get_assignments
+--------------
 
-		No documentation available
+**get_assignments**(function):
 
-
-- **get_opcode_info**(function):
-
-		No documentation available
+				No documentation available
 
 
-- **get_return_type**(function):
+get_opcode_info
+--------------
 
-		No documentation available
+**get_opcode_info**(function):
 
-
-- **get_variable_types**(method):
-
-		No documentation available
+				No documentation available
 
 
-- **translator**(statement):
+get_return_type
+--------------
 
-		No documentation available
+**get_return_type**(function):
+
+				No documentation available
+
+
+get_variable_types
+--------------
+
+**get_variable_types**(method):
+
+				No documentation available
+
+
+translator
+--------------
+
+**translator**(statement):
+
+				No documentation available

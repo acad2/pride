@@ -5,10 +5,10 @@ import ssl
 import mpre.base
 import mpre.network
 import mpre.utilities
-import mpre.userinput
+import mpre.shell
 
 SSL_DEFAULTS = {"keyfile" : None, 
-                "certfile" : None, 
+                "certfile" : None,
                 "server_side" : False, 
                 "cert_reqs" : ssl.CERT_NONE, 
                 "ssl_version" : ssl.PROTOCOL_SSLv23, 
@@ -17,19 +17,26 @@ SSL_DEFAULTS = {"keyfile" : None,
                 "suppress_ragged_eofs" : True, 
                 "ciphers" : None,
                 "ssl_authenticated" : False,
-                "dont_save" : True}
+                "dont_save" : True,
+                "server_hostname" : None,
+                "check_hostname" : False}
                 
-WRAP_SOCKET_OPTIONS = ("keyfile", "certfile", "server_side", "cert_reqs", 
-                       "ssl_version", "ca_certs", "do_handshake_on_connect", 
-                       "suppress_ragged_eofs", "ciphers")   
+try:
+    raise AttributeError
+    TEST_CONTEXT = ssl.create_default_context()
+except AttributeError: # old ssl; will use ssl.wrap_socket
+    WRAP_SOCKET_OPTIONS = ("keyfile", "certfile", "server_side", "cert_reqs", 
+                           "ssl_version", "ca_certs", "do_handshake_on_connect", 
+                           "suppress_ragged_eofs", "ciphers")      
+else: # python 2.7.9+ will use SSLContext.wrap_socket
+    WRAP_SOCKET_OPTIONS = ("server_side", "do_handshake_on_connect", 
+                           "suppress_ragged_eofs", "server_hostname")
 
-DEFAULT_CLIENT_CONTEXT = ssl.create_default_context()
-DEFAULT_SERVER_CONTEXT = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                       
+        
 def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and arguments
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
-    name = name or mpre.userinput.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
+    name = name or mpre.shell.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
     delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
     shell = mpre.utilities.shell
@@ -40,6 +47,12 @@ def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and
     shell("{} x509 -req -days 365 -in {}.csr -signkey {}.key -out {}.crt".format(openssl, name, name, name))
     shell("{} {}.pass.key".format(delete_program, name), True)
         
+def generate_rsa_keypair(name=''):
+    shell = mpre.utilities.shell
+    shell("openssl genrsa -out {}_private_key.pem 4096".format(name))
+    shell("openssl rsa -pubout -in {}_private_key.pem -out {}_public_key.pem".format(
+          name))
+            
 class SSL_Client(mpre.network.Tcp_Client):
     
     """ An asynchronous client side Tcp socket wrapped in an ssl socket.
@@ -54,15 +67,32 @@ class SSL_Client(mpre.network.Tcp_Client):
         
     def on_connect(self):
         super(SSL_Client, self).on_connect()
-        self.ssl_socket = ssl.wrap_socket(self.socket, **dict((attribute, getattr(self, attribute)) 
-                                                               for attribute in WRAP_SOCKET_OPTIONS))
+        try:
+            raise AttributeError
+            context = ssl.create_default_context()            
+        except AttributeError:
+            wrap_socket = ssl.wrap_socket
+        else:
+            context.load_verify_location
+            wrap_socket = context.wrap_socket  
+            if not self.check_hostname:
+                context.check_hostname = False
+            else:
+                assert context.check_hostname
+                assert self.server_hostname
+        self.ssl_socket = wrap_socket(self.socket, 
+                                      **dict((attribute, getattr(self, attribute)) 
+                                              for attribute in WRAP_SOCKET_OPTIONS))
         self.ssl_connect()
+        
         
     def ssl_connect(self):
         try:
             self.ssl_socket.do_handshake()
         except ssl.SSLError as error:
             if error.errno != ssl.SSL_ERROR_WANT_READ:
+                self.alert("Unhandled SSLError when performing handshake: {}",
+                           [error], level=0)
                 raise
         else:
             self.ssl_authenticated = True
@@ -85,16 +115,8 @@ class SSL_Socket(mpre.network.Tcp_Socket):
         on_connect"""
         
     defaults = mpre.network.Tcp_Socket.defaults.copy()
-    defaults.update(SSL_DEFAULTS)
-    defaults.update({"server_side" : True,
-                     "certfile" : "",
-                     "keyfile" : ""})
-    
-    def __init__(self, **kwargs):
-        super(SSL_Socket, self).__init__(**kwargs)
-        self.ssl_socket = ssl.wrap_socket(self.socket, **dict((attribute, getattr(self, attribute)) 
-                                                               for attribute in WRAP_SOCKET_OPTIONS))
-                                                               
+    defaults.update({"ssl_authenticated" : False})
+         
     def on_connect(self):
         self.ssl_connect()
         
@@ -109,6 +131,8 @@ class SSL_Socket(mpre.network.Tcp_Socket):
             self.ssl_socket.do_handshake()
         except ssl.SSLError as error:
             if error.errno != ssl.SSL_ERROR_WANT_READ:
+                self.alert("Unhandled SSLError when performing handshake: {}",
+                           [error], level=0)  
                 raise
         else:
             self.ssl_authenticated = True
@@ -123,4 +147,32 @@ class SSL_Server(mpre.network.Server):
     defaults = mpre.network.Server.defaults.copy()
     defaults.update(SSL_DEFAULTS)
     defaults.update({"port" : 443,
-                     "Tcp_Socket_type" : "mpre.networkssl.SSL_Socket"})       
+                     "Tcp_Socket_type" : "mpre.networkssl.SSL_Socket",
+                     "dont_save" : False,
+                     "server_side" : True,
+                     "certfile" : "server.crt",
+                     "keyfile" : "server.key"})       
+                     
+    def __init__(self, **kwargs):
+        super(SSL_Server, self).__init__(**kwargs)
+        try:
+            raise AttributeError
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        except AttributeError:
+            wrap_socket = ssl.wrap_socket
+        else:
+            context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
+            wrap_socket = context.wrap_socket   
+        self.wrap_socket = wrap_socket
+        
+    def accept(self):
+        _socket, address = self.socket.accept()
+        
+        connection = self.create(self.Tcp_Socket_type,
+                                 wrapped_object=_socket)
+        
+        connection.ssl_socket = self.wrap_socket(connection,
+                                                 **dict((attribute, getattr(self, attribute)) 
+                                                         for attribute in WRAP_SOCKET_OPTIONS))
+        self.on_connect(connection, address)
+        return connection, address

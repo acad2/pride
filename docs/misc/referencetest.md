@@ -15,4 +15,4 @@ Method resolution order:
 
 - **dereference**(self):
 
-		No documentation available
+				No documentation available

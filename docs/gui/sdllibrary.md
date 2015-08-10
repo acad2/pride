@@ -1,50 +1,6 @@
-sdllibrary
+gui.sdllibrary
 ==============
 
-
-
-Display_Wrapper
---------------
-
-	used by the display internally to display all objects
-
-
-Instance defaults: 
-
-	{'_deleted': False,
-	 'background_color': (0, 0, 0),
-	 'color': (0, 115, 10),
-	 'color_scalar': 0.6,
-	 'held': False,
-	 'layer': 1,
-	 'outline_width': 5,
-	 'pack_mode': '',
-	 'pack_modifier': '',
-	 'pack_on_init': True,
-	 'popup': False,
-	 'replace_reference_on_load': True,
-	 'sdl_window': 'SDL_Window',
-	 'size': [800, 600],
-	 'verbosity': '',
-	 'x': 0,
-	 'y': 0}
-
-Method resolution order: 
-
-	(<class 'sdllibrary.Display_Wrapper'>,
-	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
-	 <class 'mpre.base.Base'>,
-	 <type 'object'>)
-
-- **press**(self):
-
-		No documentation available
-
-
-- **click**(self):
-
-		No documentation available
 
 
 Font_Manager
@@ -57,18 +13,18 @@ Instance defaults:
 
 	{'_deleted': False,
 	 'default_background': (0, 0, 0),
-	 'default_color': (15, 180, 35),
+	 'default_color': (150, 150, 255),
 	 'default_font_size': 14,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'font_path': 'c:\\users\\_\\pythonbs\\mpre\\gui\\resources\\fonts\\Aero.ttf',
-	 'replace_reference_on_load': True,
-	 'verbosity': ''}
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.Font_Manager'>,
-	 <class 'sdllibrary.SDL_Component'>,
+	(<class 'gui.sdllibrary.Font_Manager'>,
+	 <class 'gui.sdllibrary.SDL_Component'>,
 	 <class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -76,7 +32,9 @@ Instruction
 --------------
 
 	 usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
+                           *args, **kwargs).execute(priority=priority,
+                                                    callback=callback,
+                                                    host_info=(ip, port))
                            
         Creates and executes an instruction object. 
             - component_name is the string instance_name of the component 
@@ -84,14 +42,37 @@ Instruction
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
+        host_info may supply an ip address string and port number integer
+        to execute the instruction on a remote machine. This requirements
+        for this to be a success are:
+            
+            - The machine must have an instance of metapython running
+            - The machine must be accessible via the network
+            - The local machine must be registered and logged in to
+              the remote machine
+            - The local machine may need to be registered and logged in to
+              have permission to the use the specific component and method
+              in question
+            - The local machine ip must not be blacklisted by the remote
+              machine.
+            - The remote machine may require that the local machine ip
+              be in a whitelist to access the method in question.
+              
+        Other then the security requirements, remote procedure calls require 
+        zero config on the part of either host. An object will be accessible
+        if it exists on the machine in question.
+              
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
+        will actually be performed if the instruction is being executed
+        locally. If the instruction is being executed remotely, this instead
+        acts as a flag. If set to a True value, the instruction will be
+        placed at the front of the local queue to be sent to the host.
         
         Instructions are useful for serial and explicitly timed tasks. 
         Instructions are only enqueued when the execute method is called. 
         At that point they will be marked for execution in 
-        instruction.priority seconds. 
+        instruction.priority seconds or sent to the machine in question. 
         
         Instructions may be saved as an attribute of a component instead
         of continuously being instantiated. This allows the reuse of
@@ -110,11 +91,27 @@ Method resolution order:
 
 - **execute**(self, priority, callback, host_info, transport_protocol):
 
-		 usage: instruction.execute(priority=0.0, callback=None)
+		 usage: instruction.execute(priority=0.0, callback=None,
+                                       host_info=tuple())
         
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed.
+            Submits an instruction to the processing queue. If being executed
+            locally, the instruction will be executed in priority seconds. 
+            An optional callback function can be provided if the return value 
+            of the instruction is needed.
+            
+            host_info may be specified to designate a remote machine that
+            the Instruction should be executed on. If being executed remotely, 
+            priority is a high_priority flag where 0 means the instruction will
+            be placed at the end of the rpc queue for the remote host in 
+            question. If set, the instruction will instead be placed at the 
+            beginning of the queue.
+            
+            Remotely executed instructions have a default callback, which is 
+            the appropriate RPC_Requester.alert.
+            
+            The transport protocol flag is currently unused. Support for
+            UDP and other protocols could be implemented and dispatched
+            via this flag.
 
 
 Renderer
@@ -126,27 +123,43 @@ Renderer
 Instance defaults: 
 
 	{'_deleted': False,
-	 'componenttypes': (),
-	 'replace_reference_on_load': True,
-	 'verbosity': ''}
+	 'blendmode_flag': 1,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'flags': 2,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.Renderer'>,
-	 <class 'sdllibrary.SDL_Component'>,
+	(<class 'gui.sdllibrary.Renderer'>,
+	 <class 'gui.sdllibrary.SDL_Component'>,
 	 <class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
+- **draw**(self, texture, draw_instructions, background):
+
+				No documentation available
+
+
+- **set_render_target**(self, texture):
+
+				No documentation available
+
+
 - **draw_rect_width**(self, area, **kwargs):
 
-		No documentation available
+				No documentation available
 
 
-- **draw_text**(self, text, rect, **kwargs):
+- **merge_layers**(self, textures):
 
-		No documentation available
+				No documentation available
+
+
+- **draw_text**(self, area, text, **kwargs):
+
+				No documentation available
 
 
 SDL_Component
@@ -157,13 +170,15 @@ SDL_Component
 
 Instance defaults: 
 
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.SDL_Component'>,
+	(<class 'gui.sdllibrary.SDL_Component'>,
 	 <class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -176,77 +191,72 @@ SDL_User_Input
 Instance defaults: 
 
 	{'_deleted': False,
+	 '_ignore_click': False,
+	 'active_item': None,
 	 'auto_start': True,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'event_verbosity': 0,
 	 'priority': 0.04,
 	 'replace_reference_on_load': True,
-	 'verbosity': ''}
+	 'run_callback': None,
+	 'running': True}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.SDL_User_Input'>,
+	(<class 'gui.sdllibrary.SDL_User_Input'>,
 	 <class 'mpre.vmlibrary.Process'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **handle_unhandled_event**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **run**(self):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_mousebuttonup**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_mousemotion**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_quit**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_mousebuttondown**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_mousewheel**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **handle_keydown**(self, event):
 
-		No documentation available
-
-
-- **mouse_is_inside**(self, area, mouse_pos_x, mouse_pos_y):
-
-		No documentation available
-
-
-- **add_popup**(self, item):
-
-		No documentation available
+				No documentation available
 
 
 - **handle_keyup**(self, event):
 
-		No documentation available
+				No documentation available
 
 
 - **get_hotkey**(self, instance, key_press):
 
-		No documentation available
+				No documentation available
 
 
 SDL_Window
@@ -258,48 +268,79 @@ SDL_Window
 Instance defaults: 
 
 	{'_deleted': False,
-	 'color': (0, 0, 0),
-	 'layer': 0,
+	 'area': (0, 0, 800, 600),
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'h': 600,
 	 'name': 'Metapython',
+	 'position': (0, 0),
+	 'priority': 0.04,
+	 'renderer_flags': 10,
 	 'replace_reference_on_load': True,
 	 'showing': True,
-	 'size': [800, 600],
-	 'verbosity': '',
+	 'size': (800, 600),
+	 'w': 800,
+	 'window_flags': None,
 	 'x': 0,
-	 'y': 0}
+	 'y': 0,
+	 'z': 0}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.SDL_Window'>,
-	 <class 'sdllibrary.SDL_Component'>,
+	(<class 'gui.sdllibrary.SDL_Window'>,
+	 <class 'gui.sdllibrary.SDL_Component'>,
 	 <class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-- **draw**(self, item, mode, area, z, *args, **kwargs):
+- **set_layer**(self, instance, value):
 
-		No documentation available
+				No documentation available
 
 
 - **run**(self):
 
-		No documentation available
+				No documentation available
 
 
-- **get_mouse_state**(self):
+- **remove**(self, instance):
 
-		No documentation available
+				No documentation available
 
 
-- **create**(self, *args, **kwargs):
+- **invalidate_layer**(self, layer):
 
-		No documentation available
+				No documentation available
 
 
 - **get_mouse_position**(self):
 
-		No documentation available
+				No documentation available
+
+
+- **get_mouse_state**(self):
+
+				No documentation available
+
+
+- **create**(self, *args, **kwargs):
+
+				No documentation available
+
+
+- **remove_from_layer**(self, instance, z):
+
+				No documentation available
+
+
+- **add**(self, instance):
+
+				No documentation available
+
+
+- **pack**(self, modifiers):
+
+				No documentation available
 
 
 Sprite_Factory
@@ -310,27 +351,108 @@ Sprite_Factory
 
 Instance defaults: 
 
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<class 'sdllibrary.Sprite_Factory'>,
-	 <class 'sdllibrary.SDL_Component'>,
+	(<class 'gui.sdllibrary.Sprite_Factory'>,
+	 <class 'gui.sdllibrary.SDL_Component'>,
 	 <class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-itemgetter
+Window_Handler
 --------------
 
-	itemgetter(item, ...) --> itemgetter object
+	No docstring found
 
-Return a callable object that fetches the given item(s) from its operand.
-After f = itemgetter(2), the call f(r) returns r[2].
-After g = itemgetter(2, 5, 3), the call g(r) returns (r[2], r[5], r[3])
 
+Instance defaults: 
+
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<type 'operator.itemgetter'>, <type 'object'>)
+	(<class 'gui.sdllibrary.Window_Handler'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
+
+- **handle_maximized**(self, event):
+
+				No documentation available
+
+
+- **handle_shown**(self, event):
+
+				No documentation available
+
+
+- **handle_restored**(self, event):
+
+				No documentation available
+
+
+- **handle_focus_gained**(self, event):
+
+				No documentation available
+
+
+- **handle_hidden**(self, event):
+
+				No documentation available
+
+
+- **handle_resized**(self, event):
+
+				No documentation available
+
+
+- **handle_size_changed**(self, event):
+
+				No documentation available
+
+
+- **handle_minimized**(self, event):
+
+				No documentation available
+
+
+- **handle_focus_lost**(self, event):
+
+				No documentation available
+
+
+- **handle_leave**(self, event):
+
+				No documentation available
+
+
+- **handle_event**(self, event):
+
+				No documentation available
+
+
+- **handle_exposed**(self, event):
+
+				No documentation available
+
+
+- **handle_close**(self, event):
+
+				No documentation available
+
+
+- **handle_enter**(self, event):
+
+				No documentation available
+
+
+- **handle_moved**(self, event):
+
+				No documentation available

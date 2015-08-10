@@ -3,8 +3,9 @@ import getpass
 
 import mpre
 import mpre.base
+import mpre.database
 import mpre.utilities
-import mpre.userinput
+import mpre.shell
 Instruction = mpre.Instruction
 objects = mpre.objects
 
@@ -12,84 +13,129 @@ ADD_USER = "INSERT INTO Credentials VALUES(?, ?, ?)"
 REMOVE_USER = "DELETE FROM Credentials WHERE username = ?"
 SELECT_USER = "SELECT salt, verifier FROM Credentials WHERE username = ?"
 
-class UnauthorizedError(Warning): pass
-
+class UnauthorizedError(Warning): pass         
+       
 def blacklisted(function):
+    """ Decorates a method to support an ip based blacklist. The address
+        of the current rpc requester is checked for membership in the method
+        owners blacklist attribute. If the requester ip is in the blacklist, 
+        the call will not be performed. """
     def call(instance, *args, **kwargs):
-        if instance.requester_address in instance.blacklist:
+        if instance.requester_address[0] in instance.blacklist:
             instance.alert("{} {}".format(UnauthorizedError("Denied blacklisted client"), instance.requester_address), level='v')
         else:
-            return function(instance, *args, **kwargs)
-    
+            return function(instance, *args, **kwargs)    
     return call
     
 def whitelisted(function):
+    """ Decorator to support an ip based whitelist. The address of the
+        current rpc requester is checked for membership in the method
+        owners whitelist attribute. If the requesters ip is not in the
+        whitelist, the call will not be performed. """
     def call(instance, *args, **kwargs):
-        if instance.requester_address not in instance.whitelist:            
-            instance.alert("{} {}".format(UnauthorizedError("Denied non whitelisted client"), instance.requester_address), level=0)#'v')
+        if instance.requester_address[0] not in instance.whitelist:            
+            instance.alert("{} {}".format(UnauthorizedError("Denied non whitelisted client"), instance.requester_address), level='v')
         else:
-            return function(instance, *args, **kwargs)
-            
+            return function(instance, *args, **kwargs)            
     return call
     
 def authenticated(function):
+    """ Decorator to support authentication requirements for method access.
+        The address of the current rpc requester is checked for membership
+        in the method owners logged_in attribute. If the requester ip is
+        not logged_in, the call will not be performed. 
+        
+        Note that the implementation may change to something non ip based. """
     def call(instance, *args, **kwargs):
         if instance.requester_address not in instance.logged_in:
-            self.alert("{} {}".format(UnauthorizedError("not logged in"), instance.requester_address), level='v')
+            instance.alert("{} {}".format(UnauthorizedError("not logged in"),
+                                          instance.requester_address), 
+                                          level='v')
         else:
-            return function(instance, *args, **kwargs)
-        
+            return function(instance, *args, **kwargs)        
     return call    
-
-        
+          
+    
 class Authenticated_Service(mpre.base.Base):
-    """ Warning: not yet secure by any means"""
+    """ Provides functionality for user registration and login, and
+        provides interface for use with blacklisted/whitelisted/authenticated
+        decorators. Currently uses the secure remote password protocol
+        for authentication. 
+        
+        Note that authentication is not automatically required for all
+        method calls on an Authenticated_Service object. Each method must
+        be decorated explicitly with the access controls desired."""
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"allow_registration" : True,
                      "protocol_component" : "Secure_Remote_Password",
-                     "database_filename" : "user_registry",
+                     "database_name" : '',
                      "login_message" : '',
-                     "requester_address" : 'localhost'})
+                     "requester_address" : None})
     
     def __init__(self, **kwargs):
         self.user_secret = {} # maps username to shared secret
         self.logging_in = set()
         self.logged_in = mpre.utilities.Reversible_Mapping() # maps host info to username
-        self.whitelist = ["127.0.0.1"]
+        self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
- 
-        self.database_filename = "{}_{}".format(self.instance_name, self.database_filename)
-        database = self.database = sqlite3.connect(self.database_filename)
-        cursor = database.cursor()        
-        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
-                       "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
-        database.commit()
-        
-    def register(self, username, password):        
+        name = self.database_name = (self.database_name or 
+                                     "{}_{}".format(self.instance_name, 
+                                                    "user_registry.db"))
+        self.database = self.create("database.Database", database_name=name,
+                                    text_factory=str)
+        self.database.create_table("Credentials", 
+                                   ("username TEXT PRIMARY KEY", "salt TEXT",   
+                                    "verifier BLOB"))
+        self.database.commit()
+                
+    def register(self, username, password):
+        """ Register a username and corresponding password. The
+            authenticated_service.allow_registration flag must be True or
+            registration will fail. If the username is already registered,
+            registration will fail. Returns True on successful registration. """
         self.alert("Attempting to register '{}'", [username], level='v')
         if self.allow_registration:
-            database = sqlite3.connect(self.database_filename)
-            database.text_factory = str
-            cursor = database.cursor()
-            cursor.execute(SELECT_USER, (username, ))
-            registered = cursor.fetchone()
-            if not registered:       
-                salt, password_verifier = objects["Secure_Remote_Password"].new_verifier(username, password)            
-                try:
-                    cursor.execute(ADD_USER, (username, salt, str(password_verifier)))
-                except sqlite3.IntegrityError as error:
-                    self.alert("Error registering {}: {}".format(username, error), level='v')
-                    database.rollback()
-                else:
-                    database.commit()
-                database.close()                
-                return True
+            database = self.database
+            try:
+                database.query("Credentials", 
+                               retrieve_fields=("salt", "verifier"), 
+                               where={"username" : username})
+            except sqlite3.OperationalError as error:
+                database.alert("{} when querying Credentials table".format(error), level=0)
+            else:
+                cursor = database.cursor
+                registered = cursor.fetchone()
+                if not registered:       
+                    salt, password_verifier = objects["Secure_Remote_Password"].new_verifier(username, password) 
+                    try:
+                        database.insert_into("Credentials", 
+                                            (username, salt, 
+                                             str(password_verifier)))
+                    except sqlite3.IntegrityError as error:
+                        database.alert("sqlite3 IntegrityError registering {}: {}",
+                                       (username, error), level=0)
+                        database.rollback()
+                    else:
+                        database.commit()
+                        return True
          
     def login(self, username, credentials):
-        if username in self.user_secret or self.requester_address in self.logged_in:
+        """ Attempt to log in as username using credentials. Due to
+            implementation details it is best to call this method only
+            via Authenticated_Client.login. 
+            
+            On login failure, provides non specific information as to why.
+            Nonexistant username login proceeds with a fake verifier to
+            defy timing attacks.
+
+            On login success, a login message and proof of the shared
+            secret are returned."""
+            
+        if (username in self.user_secret or 
+            self.requester_address in self.logged_in):
             self.alert("Detected multiple login attempt on account {} {}", 
-                       [username, self.requester_address], level='v')
+                       [username, self.requester_address], level=0)#'v')
             raise UnauthorizedError()
             
         if username in self.logging_in:
@@ -98,30 +144,41 @@ class Authenticated_Service(mpre.base.Base):
             response = (self.login_message, response)        
             #print self, "Sending response: ", response
             if K:
-                self.alert("{} logged in".format(username), level='vv')
+                self.alert("{} logged in".format(username), level=0)#'vv')
                 self.user_secret[username] = K
                 self.logged_in[self.requester_address] = username
         else:
-           # print self, "Beggining login of: ", username
-            database = sqlite3.connect(self.database_filename)
-            database.text_factory = str
-            cursor = database.cursor()
-            
-            cursor.execute(SELECT_USER, (username, ))
+            database = self.database
+            cursor = database.query("Credentials", 
+                                    retrieve_fields=("salt", "verifier"), 
+                                    where={"username" : username})
             registered = cursor.fetchone()
             if not registered:
                 # pretend to go through login process with a fake verifier
-                secure_remote_password = objects["Secure_Remote_Password"]
-                salt, verifier = s, v = secure_remote_password.new_verifier(username, secure_remote_password.new_salt(64))
+                srp = objects["Secure_Remote_Password"]
+                salt, verifier = srp.new_verifier(username, srp.new_salt(64))
                 self.alert("Verifying unregistered user", level='v')
             else:
-                salt, verifier = s, v = registered
-            
+                salt, verifier = registered
+                        
             response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
             self.logging_in.add(username)
         return response
         
-    
+    def __getstate__(self):
+        state = super(Authenticated_Service, self).__getstate__()
+        del state["database"]        
+        return state
+        
+    def on_load(self, attributes):
+        super(Authenticated_Service, self).on_load(attributes)
+        self.database = self.create("database.Database", database_name=name,
+                                    text_factory=str)
+        self.database.create_table("Credentials", 
+                                  ("username TEXT PRIMARY KEY", "salt TEXT", "verifier BLOB"))
+        self.database.commit()
+        
+        
 class Authenticated_Client(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
@@ -130,7 +187,8 @@ class Authenticated_Client(mpre.base.Base):
                      "target_service" : '',
                      "password_prompt" : "{}: Please provide the pass phrase or word: ",
                      "protocol_client" : "mpre.srp.SRP_Client",
-                     "host_info" : ("localhost", 40022),
+                     "ip" : "localhost", 
+                     "port" : 40022,
                      "auto_login" : True,
                      "logged_in" : False})
     
@@ -139,64 +197,105 @@ class Authenticated_Client(mpre.base.Base):
     verbosity = {"logging_in" : 'v',
                  "on_login" : 'v',
                  "registering" : 'v',
+                 "registration_success" : '',
                  "registration_failed" : 0,
                  "login_failed" : 0}
+        
+    def _get_host_info(self):
+        return (self.ip, self.port)
+    def _set_host_info(self, value):
+        self.ip, self.port = value
+    host_info = property(_get_host_info, _set_host_info)
     
+    def _get_password(self):
+        return (self._password or getpass.getpass(self.password_prompt))
+    def _set_password(self, value):
+        self._password = value
+    password = property(_get_password, _set_password)    
+        
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         if not self.target_service:
             raise mpre.errors.ArgumentError("target_service not supplied")
             
-        self.username = self.username or mpre.userinput.get_user_input("Please provide a username: ")
+        username_prompt = "{}: please provide a username: ".format(self.instance_name)
+        self.username = (self.username or 
+                         mpre.shell.get_user_input(username_prompt))
+        
         self.password_prompt = self.password_prompt.format(self.instance_name)
         if self.auto_login:
+            self.alert("Auto logging in", level='vv')
             self.login()
             
     def register(self): 
+        """ Attempt to register username with target_service operating 
+            on the machine specified by host_info. A password prompt
+            will be presented if password was not passed in as an 
+            attribute of the authenticated_client (recommended). """
         self.alert("Registering", level=self.verbosity["registering"])
         Instruction(self.target_service, "register", self.username, 
-                    self.password or getpass.getpass(self.password_prompt)).execute(host_info=self.host_info,
-                                                                                    callback=self.register_results)
+                    self.password).execute(host_info=self.host_info, 
+                                           callback=self.register_results, priority=1)
                
     def register_results(self, success):
+        """ The callback used by the register method. Proceeds to login
+            upon successful registration if auto_login is True or
+            an affirmative is provided by the user. """
         if success:
+            self.alert("Registered successfully", 
+                       level=self.verbosity["registration_success"])
             if (self.auto_login or 
-                mpre.userinput.get_selection("Registration success. Login now? ", bool)):
+                mpre.shell.get_selection("Registration success. Login now? ", bool)):
                 self.login()
         else:
-            self.alert("Failed to register with {};\n{}", [self.host_info, success], 
+            self.alert("Failed to register with {};\n{}", 
+                       [self.host_info, success], 
                        level=self.verbosity["registration_failed"])
     
     def login(self):
+        """ Attempt to log in to the target_service operating on the
+            machine specified by host_info. A password prompt will be
+            presented if password was not specified as an attribute of
+            the authenticated_client (recommended). """
         self.alert("Logging in...", level=self.verbosity["logging_in"])
         self.client = self.create(self.protocol_client, username=self.username, 
-                                  password=self.password or getpass.getpass(self.password_prompt))
+                                  password=self.password)
         Instruction(self.target_service, "login", 
                     *self.client.login()).execute(host_info=self.host_info,
                                                   callback=self.send_proof)    
                                                   
     def send_proof(self, response):
+        """ The second stage of the login process. This is the callback
+            used by login. """
         self.key, self.proof_of_key = self.client.login(response)
         Instruction(self.target_service, "login", self.username,
                     self.proof_of_key).execute(host_info=self.host_info,
                                                callback=self.login_result)
                                                          
     def login_result(self, response):
+        """ Calls on_login in the event of login success, provides
+            an alert upon login failure. """
         try:
             message, proof = response
         except ValueError:
-            self.alert("Unhandled exception during login {}", [response], level=0)
+            self.alert("Unhandled exception during login {}", [response], 
+                       level=0)
         else:
             if self.client.login((self.proof_of_key, proof, self.key)):
+                self.logged_in = True
                 self.on_login(message)
             else:
-                self.alert("Login failed", level=self.verbosity["login_failed"])           
+                self.alert("Login failed", 
+                           level=self.verbosity["login_failed"])           
         self.client.delete()
         del self.client
         
     def on_login(self, message):
-        self.logged_in = True
-        self.alert("Login success {}", [message], level=self.verbosity["on_login"])
+        """ Called automatically upon successful login. Should be
+            extended by subclasses. """        
+        self.alert("Login success {}", [message], 
+                   level=self.verbosity["on_login"])
+                   
 
 if __name__ == "__main__":        
     def test():

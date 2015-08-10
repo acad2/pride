@@ -6,122 +6,62 @@ import mpre.gui
 import mpre.base as base
 Instruction = mpre.Instruction
 
+class Attribute_Modifier_Button(gui.Button):
 
-class Scroll_Bar(gui.Container):    
-    
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"size_scalar" : 20,
-                     "max_size" : 100})
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"amount" : 0,
+                     "method" : "",
+                     "target" : None})
                      
-    def _get_orientation(self):
-        return 'x' if self.pack_mode == "horizontal" else 'y'
-    orientation = property(_get_orientation)
-    
-    def __init__(self, **kwargs):
-        super(Scroll_Bar, self).__init__(**kwargs)
-        orientation = self.orientation
-        self.create("mpre.gui.widgetlibrary.Decrement_Button", target=self.parent_name, attribute=orientation)
-        self.create("mpre.gui.widgetlibrary.Scroll_Button", target=self.parent_name, attribute=orientation)
-        self.create("mpre.gui.widgetlibrary.Increment_Button", target=self.parent_name, attribute=orientation)
-        
-    def pack(self, modifiers=None):
-        modify = 'h' if self.pack_mode == "horizontal" else 'w'
-        super(Scroll_Bar, self).pack(modifiers or 
-                                    {modify : min(self.max_size,
-                                                  int(getattr(self.parent, modify) / self.size_scalar))})
-        
-        
-class Decrement_Button(gui.Button):            
-     
-    def _get_amount(self):
-        return self.w if self.attribute == 'x' else self.h
-    amount = property(_get_amount)
-    
-    def left_click(self, mouse):
-        attribute = self.attribute
-        instance = mpre.objects[self.target]
-        if self.attribute == 'x':
-            instance.texture_window_x -= self.amount
-        else:
-            print "Scroll texture window up"
-            instance.texture_window_y -= self.amount    
-        
-
-class Scroll_Button(gui.Button):
-    pass        
-    """def _get_x(self):
-        return super(Scroll_Button, self)._get_x()
-    def _set_x(self, value):
-        super(Scroll_Button, self)._set_x(value)
-        mpre.objects[self.target].texture_window_x += valu
-        instance.srcrect = self.x, srcrect[1], srcrect[2], srcrect[3]
-    x = property(_get_x, _set_x)
-    
-    def _get_y(self):
-        return super(Scroll_Button, self)._get_y()
-    def _set_y(self, value):
-        super(Scroll_Button, self)._set_y(value)
-        instance = mpre.objects[self.target]
-        srcrect = instance.srcrect
-        instance.srcrect = srcrect[0], self.y, srcrect[2], srcrect[3]
-    y = property(_get_y, _set_y)
-    
-    def pack(self, modifiers=None):
-        super(Scroll_Button, self).pack(modifiers)
-        x, y, w, h  = mpre.objects[self.target].srcrect
-        if self.attribute == 'x':
-            self.x = x
-        else:
-            self.y = y     """   
-        
-    
-class Increment_Button(gui.Button):            
-     
-    def _get_amount(self):
-        return self.w if self.attribute == "horizontal" else self.h
-    amount = property(_get_amount)
-    
-    def left_click(self, mouse):
-        attribute = self.attribute
-        instance = mpre.objects[self.target]
-        if self.attribute == 'x':
-            instance.texture_window_x += self.amount
-        else:
-            instance.texture_window_y += self.amount       
-
-        
-class Indicator(gui.Button):  
+    def left_click(self, mouse):        
+        instance_name, attribute = self.target
+        instance = mpre.objects[instance_name]        
+        old_value = getattr(instance, attribute)
+        new_value = getattr(old_value, self.method)(self.amount)
+        setattr(instance, attribute, new_value)
+        self.alert("Modified {}.{}; {}.{}({}) = {}",
+                   (instance_name, attribute, old_value, 
+                    self.method, self.amount, getattr(instance, attribute)),
+                   level='vv')  
+                    
+ 
+class Instruction_Button(gui.Button):
     
     defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "h" : 16,
-                     "line_color" : (255, 235, 155)})    
-    
-    def __init__(self, **kwargs):
-        super(Indicator, self).__init__(**kwargs)        
-        text = self.text = self.parent_name
-        
-    def draw_texture(self):
-        super(Indicator, self).draw_texture()
-        x, y, w, h = self.parent.area
-        
-        # draw a line from the top left corner of self to the midpoint of parent
-        #self.draw("line", (self.x, self.y, x + (w / 2), y + (h / 2)), color=self.line_color)
-        self.draw("text", self.area, self.text, color=self.text_color, width=self.w)
-                               
-
-class Delete_Button(gui.Button):
-    
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "text" : 'delete'})
-    
-    def __init__(self, target, **kwargs):
-        super(Delete_Button, self).__init__(**kwargs)
-        self.target=target
-                
+    defaults.update({"args" : tuple(),
+                     "kwargs" : None,
+                     "method" : '',
+                     "instance_name" : '',
+                     "priority" : 0.0,
+                     "host_info" : tuple(),
+                     "callback" : None})
+                     
     def left_click(self, mouse):
-        mpre.objects[self.target].delete()
+        Instruction(self.instance_name, self.method, 
+                    *self.args, **self.kwargs or {}).execute(priority=self.priority, 
+                                                             host_info=self.host_info,
+                                                             callback=self.callback)
+                                             
+    
+class Method_Button(gui.Button):
+        
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"args" : tuple(),
+                     "kwargs" : None,
+                     "method" : '',
+                     "target" : ''})
+                     
+    def left_click(self, mouse):
+        instance = mpre.objects[self.target]   
+        getattr(instance, self.method)(*self.args, **self.kwargs or {})       
+                            
+
+class Delete_Button(Method_Button):
+    
+    defaults = Method_Button.defaults.copy()
+    defaults.update({"pack_mode" : "horizontal",
+                     "text" : "delete",
+                     "method" : "delete"})
         
         
 class Homescreen(gui.Window):
@@ -131,34 +71,46 @@ class Homescreen(gui.Window):
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
         self.create(Task_Bar)
-                
+        self.create(Scroll_Bar, target=(self.instance_name, "texture_window_x"),
+                    pack_mode="right")
+                    
 
 class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
-    defaults["pack_mode"] = "menu_bar"
+    defaults.update({"pack_mode" : "menu_bar",
+                     "h_range" : (0, 20)})
     
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
         parent_name = self.parent_name
-        self.create(Indicator)
-       # self.create(Date_Time_Button)
-        self.create(Delete_Button, parent_name)
-        self.create(Text_Field)
+        self.create(Indicator, text=parent_name)
+        self.create(Date_Time_Button)
+        self.create(Delete_Button, target=parent_name)
+   #     self.create(Text_Box)
         
 
-class Text_Field(gui.Button):
+class Text_Box(gui.Container):
     
-    defaults = gui.Button.defaults.copy()
+    defaults = gui.Container.defaults.copy()
     defaults.update({"allow_text_edit" : True,
                      "h" : 16,
                      "pack_mode" : "horizontal"})          
         
     def __init__(self, **kwargs):
-        super(Text_Field, self).__init__(**kwargs)
-        self.create(Scroll_Bar)
-        
-        
+        super(Text_Box, self).__init__(**kwargs)
+        text_box_name = self.create(Text_Field).instance_name
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
+                    pack_mode="bottom")         
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
+                    pack_mode="right")
+                    
+
+class Text_Field(gui.Button): pass
+            
+    #defaults = gui.Button.defaults.copy()
+    
+    
 class Date_Time_Button(gui.Button):
 
     defaults = gui.Button.defaults.copy()
@@ -175,3 +127,89 @@ class Date_Time_Button(gui.Button):
         
         self.texture_invalid = True
         self.update_instruction.execute(priority=1)   
+        
+
+class Color_Palette(gui.Window):
+            
+    def __init__(self, **kwargs):
+        super(Color_Palette, self).__init__(**kwargs)
+        color_button = self.create("mpre.gui.gui.Button", pack_mode="horizontal")
+        slider_container = self.create("mpre.gui.gui.Container", pack_mode="horizontal")
+        
+        button_name = color_button.instance_name
+        for color in ('r', 'g', 'b'):
+            slider_container.create("mpre.gui.widgetlibrary.Scroll_Bar", 
+                                    target=(button_name, color))
+                                    
+                                    
+class Scroll_Bar(gui.Container):
+                           
+    defaults = gui.Container.defaults.copy()
+    defaults.update({"pack_mode" : "right"})
+    
+    def __init__(self, **kwargs):
+        super(Scroll_Bar, self).__init__(**kwargs)
+        if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
+            self.w_range = (0, 20)
+            pack_mode = "vertical"
+        else:
+            self.h_range = (0, 20)
+            pack_mode = "horizontal"
+        options = {"target" : self.target, "pack_mode" : pack_mode}
+        self.create(Decrement_Button, **options)
+     #   self.create(Scroll_Indicator, **options)
+        self.create(Increment_Button, **options)
+        
+        
+class Decrement_Button(Attribute_Modifier_Button):
+      
+    defaults = Attribute_Modifier_Button.defaults.copy()
+    defaults.update({"amount" : 10,
+                     "method" : "__sub__"})                 
+        
+        
+class Increment_Button(Attribute_Modifier_Button):
+                
+    defaults = Attribute_Modifier_Button.defaults.copy()
+    defaults.update({"amount" : 10,
+                     "method" : "__add__"}) 
+                    
+                    
+class Scroll_Indicator(gui.Button):
+            
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"movable" : True,
+                     "text" : None})
+                
+    def pack(self, modifiers=None):
+        if self.pack_mode in ("right", "horizontal"):
+            width = int(self.parent.w * .8)
+            self.w_range = (width, width)
+        else:
+            height = int(self.parent.h * .8)
+            self.h_range = (height, height)
+        super(Scroll_Indicator, self).pack(modifiers)
+        
+    def draw_texture(self):
+        super(Scroll_Indicator, self).draw_texture()
+        self.draw("rect", (self.w / 4, self.h / 4,
+                           self.w * 3 / 4, self.h * 3 / 4), color=self.color)
+                           
+        
+class Indicator(gui.Button):  
+    
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"pack_mode" : "horizontal",
+                     "h" : 16,
+                     "line_color" : (255, 235, 155),
+                     "text" : ''})    
+    
+    def __init__(self, **kwargs):
+        super(Indicator, self).__init__(**kwargs)        
+        text = self.text = self.text or self.parent_name
+        
+    def draw_texture(self):
+        super(Indicator, self).draw_texture()
+        #x, y, w, h = self.parent.area
+        
+        self.draw("text", self.area, self.text, color=self.text_color, width=self.w)    

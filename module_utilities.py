@@ -15,8 +15,7 @@ def create_module(module_name, source, context=None):
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
     if context:
-        for key, value in context.items():
-            setattr(new_module, key, value)    
+        new_module.__dict__.update(context) 
     exec module_code in new_module.__dict__
     return new_module
   

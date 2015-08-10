@@ -70,7 +70,6 @@ import mpre.metaclass
 import mpre.persistence
 import mpre.utilities
 
-import mpre.module_utilities as module_utilities
 from mpre.errors import *
 objects = mpre.objects
 
@@ -89,8 +88,6 @@ def load(attributes='', _file=None):
     for instance_type, saved_instances in saved_objects.items(): 
         print '\t', repr(new_self), "Restoring: ", instance_type
         objects[instance_type] = [load(instance) for instance in saved_instances]
-        if "RPC" in instance_type:
-            print not objects[instance_type]
        # print '\t', repr(new_self), "Restored {} instances".format(len(objects[instance_type]))
     attribute_modifier = attributes.pop("_attribute_type")
     for key, value in attributes.items():
@@ -100,7 +97,7 @@ def load(attributes='', _file=None):
             attributes[key] = mpre.objects[value]
         elif modifier == "save":
             print "\tLoading attribute: ", key
-            attributes[key] = load(value) # may need to be pickle.dumps(value)
+            attributes[key] = load(value)
             
     new_self.on_load(attributes)
     return new_self
@@ -113,15 +110,32 @@ class Base(object):
     defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
-                "delete_verbosity" : 'vv'}    
+                "delete_verbosity" : 'vv'}   
+                
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
     # class defaults dictionary. Specific attributes can be modified
-    # or ignored by specifying them here.
+    # or ignored by specifying them in class.parser_modifiers and
+    # class.parser_ignore. 
+    
+    # parser modifiers are attribute : options pairs, where options
+    # is a dictionary. The keys may include any keyword arguments 
+    # that are used by argparse.ArgumentParser.add_argument. Most
+    # relevent are the "types" and "nargs" options. types may be used 
+    # to specify that the argument should be positional, -s short style,
+    # or --long long style flags. nargs indicates the number of expected
+    # arguments for the flag in question. Note that attributes default to 
+    # using --long style flags.
     parser_modifiers = {}    
-    parser_ignore = ("objects", "replace_reference_on_load", "_deleted", "parse_args", "dont_save")
+    
+    # names in parser_ignore will not be available as command line arguments
+    parser_ignore = ("objects", "replace_reference_on_load", "_deleted",
+                     "parse_args", "dont_save")
+    # exit_on_help determines whether or not to quit when the --help flag
+    # is specified as a command line argument
     exit_on_help = True
     
+    # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
         return mpre.environment.parents.get(self, mpre.environment.last_creator)
     parent_name = property(_get_parent_name)
@@ -133,12 +147,16 @@ class Base(object):
     def __init__(self, **kwargs):
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__   
-       # self.verbosity = {}
+        self.objects = {}
+       
         attributes = self.defaults.copy()
-        attributes["objects"] = {}
         attributes.update(kwargs)
         if attributes.get("parse_args"):
-            attributes.update(self.parser.get_options(attributes))       
+            additional_attributes = {}
+            command_line_args = self.parser.get_options()
+            defaults = self.defaults
+            attributes.update(dict((key, value) for key, value in 
+                                    command_line_args.items() if value != defaults[key]))     
         self.set_attributes(**attributes)        
         mpre.environment.add(self)      
         
@@ -156,16 +174,21 @@ class Base(object):
         """ usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance
 
-            Given a type or string reference to a type, and arguments,
+            Given a type or string reference to a type and any arguments,
             return an instance of the specified type. The creating
             object will call .add on the created object, which
-            performs reference tracking maintainence. 
+            performs reference tracking maintainence. The object
+            will be added to the environment if it is not yet in it.
             
             Use of the create method provides an instance_name
             reference to the instance. The instance does not need
             to be a Base object to receive an instance_name this way.
             Non Base objects can retrieve their instance name via
-            mpre.environment.instance_name."""
+            up to two ways. If the object can have arbitrary attributes
+            assigned, it will be provided with an instance_name attribute. 
+            If not (i.e. __slots__ is defined), the instance_name can be
+            obtained via the mpre.environment.instance_name dictionary, 
+            using the instance as the key."""
         self_name = self.instance_name
         mpre.environment.last_creator = self_name
         try:
@@ -216,6 +239,7 @@ class Base(object):
         instance_class = instance.__class__.__name__
         siblings = objects.get(instance_class, [])#set())
         if instance in siblings:
+            print self, instance, siblings
             raise AddError
         #siblings.add(instance)
         siblings.append(instance)
@@ -230,18 +254,21 @@ class Base(object):
     def alert(self, message="Unspecified alert message", format_args=tuple(), level=''):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
-        Display/log a message according to the level given. The alert may be printed
-        for immediate attention and/or logged quietly for later viewing.
+        Display/log a message according to the level given. The alert may 
+        be printed for immediate attention and/or logged, depending on
+        the current Alert_Handler print_level and log_level.
 
-        -message is a string that will be logged and/or displayed
-        -format_args are any string formatting args for message.format()
-        -level is an integer indicating the severity of the alert.
+        - message is a string that will be logged and/or displayed
+        - format_args are any string formatting args for message.format()
+        - level is an integer indicating the severity of the alert.
 
         alert severity is relative to Alert_Handler log_level and print_level;
-        a lower verbosity indicates a less verbose notification, while 0 indicates
-        a message that should not be suppressed. log_level and print_level
-        may passed in as command line arguments to globally control verbosity."""
-        #if self.verbosity >= level:            
+        a lower verbosity indicates a less verbose notification, while 0
+        indicates a message that should not be suppressed. log_level and
+        print_level may passed in as command line arguments to globally control verbosity.
+        
+        format_args can sometimes make alerts more readable, depending on the
+        length of the message and the length of the format arguments."""
         message = (self.instance_name + ": " + message.format(*format_args) if
                    format_args else self.instance_name + ": " + message)
         return objects["Alert_Handler"]._alert(message, level)            
@@ -250,7 +277,6 @@ class Base(object):
         return self.__dict__.copy()
         
     def __setstate__(self, state):
-        print repr(self), "set state -\\" * 10
         self.on_load(state)
               
     def __str__(self):
@@ -259,16 +285,19 @@ class Base(object):
     def save(self, attributes=None, _file=None):
         """ usage: base.save([attributes], [_file])
             
-            Saves the state of the calling objects __dict__. If _file is not specified,
-            a pickled stream is returned. If _file is specified, the stream is written
-            to the supplied file like object via pickle.dump.
+            Saves the state of the calling objects __dict__. If _file is not
+            specified, a pickled stream is returned. If _file is specified,
+            the stream is written to the supplied file like object via 
+            pickle.dump.
             
-            The attributes argument, if specified, should be a dictionary containing 
-            the attribute:value pairs to be pickled instead of the objects __dict__.
+            The attributes argument, if specified, should be a dictionary
+            containing the attribute:value pairs to be pickled instead of 
+            the objects __dict__.
             
-            If the calling object is one that has been created via the update method, the 
-            returned state will include any required source code to rebuild the object."""
-        self.alert("Saving", level=0)#'v')
+            If the calling object is one that has been created via the update
+            method, the returned state will include any required source code
+            to rebuild the object."""
+        self.alert("Saving")
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
@@ -296,9 +325,11 @@ class Base(object):
     def on_load(self, attributes):
         """ usage: base.on_load(attributes)
         
-            Implements the behavior of an object after it has been loaded. This method 
-            may be extended by subclasses to customize functionality for instances created
-            by the load method."""     
+            Implements the behavior of an object after it has been loaded.
+            This method may be extended by subclasses to customize 
+            functionality for instances created by the load method. Often
+            times this will implement similar functionality as the objects
+            __init__ method does (i.e. opening a file or database)."""     
         self.set_attributes(**attributes)
         mpre.environment.add(self)
         
@@ -311,11 +342,16 @@ class Base(object):
     def update(self):
         """usage: base_instance.update() => updated_base
         
-           Reloads the module that defines base and returns an updated instance. The
-           old component is replaced by the updated component in the environment.
-           Further references to the object via instance_name will be directed to the
-           new, updated object. Attributes of the original object will be assigned
-           to the updated object."""
+           Reloads the module that defines base and returns an updated
+           instance. The old component is replaced by the updated component
+           in the environment. Further references to the object via 
+           instance_name will be directed to the new, updated object. 
+           Attributes of the original object will be assigned to the
+           updated object.
+           
+           Note that modules are preserved when update is called. Any
+           modules used in the updated class will not necessarily be the
+           same as the modules in use in the current global scope."""
         self.alert("Updating", level='v') 
         
         class_base = mpre.utilities.updated_class(type(self))
@@ -339,7 +375,9 @@ class Wrapper(Base):
         The attributes on this wrapper will overload the attributes
         of the wrapped object. Any attributes not present on the wrapper object
         will be gotten from the underlying wrapped object. This class
-        acts primarily as a wrapper and secondly as the wrapped object."""
+        acts primarily as a wrapper and secondly as the wrapped object.
+        This allows easy preemption/overloading/extension of methods by
+        defining them."""
      
     defaults = Base.defaults.copy()
     defaults.update({"wrapped_object" : None})
@@ -356,6 +394,7 @@ class Wrapper(Base):
         return getattr(self.wrapped_object, attribute)        
                         
     def wraps(self, _object):
+        """ Sets the specified object as the object wrapped by this object. """
         self.wrapped_object = _object
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)
@@ -372,6 +411,8 @@ class Proxy(Base):
        assigned, the action is performed on the proxy instead. This
        prioritization is the opposite of the Wrapper class."""
 
+    defaults = Base.defaults.copy()
+    
     wrapped_object_name = ''
     
     def __init__(self, **kwargs):

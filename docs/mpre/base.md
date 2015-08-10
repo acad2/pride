@@ -1,9 +1,8 @@
 mpre.base
 ==============
 
- Contains The root inheritance objects that provides many of the features
-    of the runtime environment. An object that inherits from mpre.base.Base will 
-    possess these capabilities:
+ Contains The root inheritance objects that provides many features of the package. 
+    An object that inherits from mpre.base.Base will possess these capabilities:
         
         - When instantiating, arbitrary attributes may be assigned
           via keyword arguments
@@ -12,6 +11,9 @@ mpre.base
           of name:value pairs. These pairs will be assigned as attributes
           to new instances; Any attribute specified via keyword argument
           will override a default
+          
+        - An instance name, which provides a reference to the component from any context. 
+          Instance names are mapped to instance objects in mpre.objects.
           
         - The flag parse_args=True may be passed to the call to 
           instantiate a new object. If so, then the metaclass
@@ -36,12 +38,7 @@ mpre.base
         
         - The alert method, which makes logging and statements 
           of varying verbosity simple and straight forward.
-          
-        - parallel_method calls. This is the primary concurreny mechanism 
-          and is used in a similar capacity to Instruction objects.
-          The difference is that the call happens immediately and the return 
-          value from the specified method is available in the calling scope
-          
+                    
         - Decorator(s) and monkey patches may be specified via
           keyword argument to any method call. Note that this
           functionality does not apply to python objects
@@ -57,7 +54,7 @@ mpre.base
         
         - Augmented docstrings. Information about class defaults
           and method names + argument signatures + method docstrings (if any)
-          is included automatically. 
+          is included automatically when you print base.__doc__. 
           
     Note that some features are facilitated by the metaclass. These include
     the argument parser, runtime decoration, and documentation.
@@ -67,8 +64,8 @@ mpre.base
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
     This name associates the instance to the instance_name in the
-    mpre.environment.Component_Resolve. The instance_name can be used to reference
-    the object from any scope, as long as the component exists.
+    mpre.environment.objects. The instance_name can be used to reference
+    the object from any scope, as long as the component exists at runtime.
 
 AddError
 --------------
@@ -108,58 +105,56 @@ Base
 
 Instance defaults: 
 
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
 	(<class 'mpre.base.Base'>, <type 'object'>)
 
+- **load**(attributes, _file):
+
+		 Loads and instance from a bytestream or file produced by mpre.base.Base.save. 
+        This is a higher level method then mpre.persistence.load.
+
+
 - **update**(self):
 
 		usage: base_instance.update() => updated_base
         
-           Reloads the module that defines base and returns an updated instance. The
-           old component is replaced by the updated component in the environment.
-           Further references to the object via instance_name will be directed to the
-           new, updated object. Attributes of the original object will be assigned
-           to the updated object.
+           Reloads the module that defines base and returns an updated
+           instance. The old component is replaced by the updated component
+           in the environment. Further references to the object via 
+           instance_name will be directed to the new, updated object. 
+           Attributes of the original object will be assigned to the
+           updated object.
+           
+           Note that modules are preserved when update is called. Any
+           modules used in the updated class will not necessarily be the
+           same as the modules in use in the current global scope.
 
 
 - **alert**(self, message, format_args, level):
 
 		usage: base.alert(message, format_args=tuple(), level=0)
 
-        Display/log a message according to the level given. The alert may be printed
-        for immediate attention and/or logged quietly for later viewing.
+        Display/log a message according to the level given. The alert may 
+        be printed for immediate attention and/or logged, depending on
+        the current Alert_Handler print_level and log_level.
 
-        -message is a string that will be logged and/or displayed
-        -format_args are any string formatting args for message.format()
-        -level is an integer indicating the severity of the alert.
+        - message is a string that will be logged and/or displayed
+        - format_args are any string formatting args for message.format()
+        - level is an integer indicating the severity of the alert.
 
         alert severity is relative to Alert_Handler log_level and print_level;
-        a lower verbosity indicates a less verbose notification, while 0 indicates
-        a message that should not be suppressed. log_level and print_level
-        may passed in as command line arguments to globally control verbosity.
-
-
-- **parallel_method**(self, component_name, method_name, *args, **kwargs):
-
-		 usage: base.parallel_method(component_name, method_name, 
-                                       *args, **kwargs) 
-                                       => component.method(*args, **kwargs)
-                  
-            Used to call the method of an existing external component.
-           
-            -component_name is a string of the instance_name of the component
-            -method_name is a string of the method to be called
-            -arguments and keyword arguments for the method may optionally
-             be supplied after the component_name and method_name
-             
-            The method is called immediately and the return value of the
-            method is made available as the return value of parallel_method.
-            
-            parallel_method allows for the use of an object without the
-            need for a reference to that object in the current scope.
+        a lower verbosity indicates a less verbose notification, while 0
+        indicates a message that should not be suppressed. log_level and
+        print_level may passed in as command line arguments to globally control verbosity.
+        
+        format_args can sometimes make alerts more readable, depending on the
+        length of the message and the length of the format arguments.
 
 
 - **set_attributes**(self, **kwargs):
@@ -177,9 +172,11 @@ Method resolution order:
 
 		 usage: base.on_load(attributes)
         
-            Implements the behavior of an object after it has been loaded. This method 
-            may be extended by subclasses to customize functionality for instances created
-            by the load method.
+            Implements the behavior of an object after it has been loaded.
+            This method may be extended by subclasses to customize 
+            functionality for instances created by the load method. Often
+            times this will implement similar functionality as the objects
+            __init__ method does (i.e. opening a file or database).
 
 
 - **create**(self, instance_type, *args, **kwargs):
@@ -187,14 +184,21 @@ Method resolution order:
 		 usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance
 
-            Given a type or string reference to a type, and arguments,
+            Given a type or string reference to a type and any arguments,
             return an instance of the specified type. The creating
             object will call .add on the created object, which
-            performs reference tracking maintainence. 
+            performs reference tracking maintainence. The object
+            will be added to the environment if it is not yet in it.
             
-            Use of the create method over direct instantiation can allow even 
-            'regular' python objects to have a reference and be usable via parallel_methods 
-            and Instruction objects.
+            Use of the create method provides an instance_name
+            reference to the instance. The instance does not need
+            to be a Base object to receive an instance_name this way.
+            Non Base objects can retrieve their instance name via
+            up to two ways. If the object can have arbitrary attributes
+            assigned, it will be provided with an instance_name attribute. 
+            If not (i.e. __slots__ is defined), the instance_name can be
+            obtained via the mpre.environment.instance_name dictionary, 
+            using the instance as the key.
 
 
 - **remove**(self, instance):
@@ -202,7 +206,7 @@ Method resolution order:
 		 Usage: object.remove(instance)
         
             Removes an instance from self.objects. Modifies object.objects
-            and environment.References_To.
+            and environment.references_to.
 
 
 - **add**(self, instance):
@@ -217,15 +221,18 @@ Method resolution order:
 
 		 usage: base.save([attributes], [_file])
             
-            Saves the state of the calling objects __dict__. If _file is not specified,
-            a pickled stream is returned. If _file is specified, the stream is written
-            to the supplied file like object via pickle.dump.
+            Saves the state of the calling objects __dict__. If _file is not
+            specified, a pickled stream is returned. If _file is specified,
+            the stream is written to the supplied file like object via 
+            pickle.dump.
             
-            The attributes argument, if specified, should be a dictionary containing 
-            the attribute:value pairs to be pickled instead of the objects __dict__.
+            The attributes argument, if specified, should be a dictionary
+            containing the attribute:value pairs to be pickled instead of 
+            the objects __dict__.
             
-            If the calling object is one that has been created via the update method, the 
-            returned state will include any required source code to rebuild the object.
+            If the calling object is one that has been created via the update
+            method, the returned state will include any required source code
+            to rebuild the object.
 
 
 - **delete**(self):
@@ -273,7 +280,7 @@ Proxy
 	 usage: Proxy(wrapped_object=my_object) => proxied_object
     
        Produces an instance that will act as the object it wraps and as an
-       Reactor object simultaneously. The object will act primarily as
+       Base object simultaneously. The object will act primarily as
        the wrapped object and secondly as a proxy object. This means that       
        Proxy attributes are get/set on the underlying wrapped object first,
        and if that object does not have the attribute or it cannot be
@@ -283,16 +290,16 @@ Proxy
 
 Instance defaults: 
 
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
 
 Method resolution order: 
 
-	(<class 'mpre.base.Proxy'>,
-	 <class 'mpre.base.Reactor'>,
-	 <class 'mpre.base.Base'>,
-	 <type 'object'>)
+	(<class 'mpre.base.Proxy'>, <class 'mpre.base.Base'>, <type 'object'>)
 
-- **wraps**(self, obj, set_defaults):
+- **wraps**(self, _object, set_defaults):
 
 		 usage: wrapper.wraps(object)
             
@@ -300,68 +307,6 @@ Method resolution order:
             by the calling wrapper. If the optional set_defaults
             attribute is True, then the wrapped objects class
             defaults will be applied.
-
-
-Reactor
---------------
-
-	 usage: Reactor(attribute=value, ...) => reactor_instance
-    
-        Adds reaction framework on top of a Base object. 
-        Reactions are event triggered chains of method calls
-        
-        This class is a recent addition and is far from final in it's api and
-        implementation. 
-
-
-Instance defaults: 
-
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
-
-Method resolution order: 
-
-	(<class 'mpre.base.Reactor'>, <class 'mpre.base.Base'>, <type 'object'>)
-
-- **reaction**(self, component_name, message, _response_to, scope):
-
-		Usage: component.reaction(target_component, message, 
-                                    [scope='local'])
-        
-            calls a method on target_component. message is a string that
-            contains the method name followed by arguments separate by
-            spaces. 
-            
-            The scope keyword specifies the location of the expected
-            component, and the way the component will be reached.
-            
-            When scope is 'local', the component is the component that resides
-            under the specified name in environment.Component_Resolve. This
-            reaction happens immediately.
-            
-            The following is not implemented as of 3/1/2015:
-            When scope is 'global', the component is a parallel reactor
-            and the message will be written to memory. This reaction is
-            scheduled among worker processes.
-            
-            When scope is "network", the component is a remote reactor
-            on a remote machine and the message will be sent via a reaction 
-            with the service proxy, which sends the request via the network.
-            
-            If scope is 'network', then component_name is a tuple containing
-            the component name and a tuple containing the host address port
-
-
-- **respond_with**(self, method_name):
-
-		 usage: self.respond_with(method)
-        
-            Specifies what method should be called when the component
-            specified by a reaction returns its response.
-
-
-- **react**(self, sender, packet):
-
-		No documentation available
 
 
 UpdateError
@@ -379,24 +324,36 @@ Method resolution order:
 Wrapper
 --------------
 
-	 A wrapper to allow 'regular' python objects to function as a Reactor.
+	 A wrapper to allow 'regular' python objects to function as a Base.
         The attributes on this wrapper will overload the attributes
         of the wrapped object. Any attributes not present on the wrapper object
         will be gotten from the underlying wrapped object. This class
         acts primarily as a wrapper and secondly as the wrapped object.
+        This allows easy preemption/overloading/extension of methods by
+        defining them.
 
 
 Instance defaults: 
 
-	{'_deleted': False, 'replace_reference_on_load': True, 'verbosity': ''}
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True,
+	 'wrapped_object': None}
 
 Method resolution order: 
 
-	(<class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
-	 <class 'mpre.base.Base'>,
-	 <type 'object'>)
+	(<class 'mpre.base.Wrapper'>, <class 'mpre.base.Base'>, <type 'object'>)
 
 - **wraps**(self, _object):
 
-		No documentation available
+		 Sets the specified object as the object wrapped by this object. 
+
+
+load
+--------------
+
+**load**(attributes, _file):
+
+		 Loads and instance from a bytestream or file produced by mpre.base.Base.save. 
+        This is a higher level method then mpre.persistence.load.

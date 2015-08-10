@@ -3,31 +3,41 @@ mpre._compile
 
 
 
-- **ccompile**(file_list, mode):
+ccompile
+--------------
 
-		No documentation available
+**ccompile**(file_list, mode):
 
-
-- **convert_to_c**(file_names, mode):
-
-		No documentation available
+				No documentation available
 
 
-- **convert_to_pyx**(file_list):
+convert_to_c
+--------------
 
-		No documentation available
+**convert_to_c**(file_names, mode):
 
-
-- **ensure_file_exists**(filepath, data):
-
-		No documentation available
+				No documentation available
 
 
-- **py_to_compiled**(file_list, mode):
+convert_to_pyx
+--------------
 
-		No documentation available
+**convert_to_pyx**(file_list):
+
+				No documentation available
 
 
-- **pyx_to_compiled**(file_list, mode):
+py_to_compiled
+--------------
 
-		No documentation available
+**py_to_compiled**(file_list, mode):
+
+				No documentation available
+
+
+pyx_to_compiled
+--------------
+
+**pyx_to_compiled**(file_list, mode):
+
+				No documentation available

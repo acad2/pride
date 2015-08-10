@@ -1,38 +1,35 @@
 mpre._metapython
 ==============
 
+ Provides classes for the main and basic components of the environment. 
 
-
-Alert_Handler
+From_Disk
 --------------
 
-	 Provides the backend for the base.alert method. This component is automatically
-        created by the Metapython component. The print_level and log_level attributes act
-        as global filters for alerts; print_level and log_level may be specified as 
-        command line arguments upon program startup to globally control verbosity/logging.
+	No documentation available
 
-
-Instance defaults: 
-
-	{'_deleted': False,
-	 'log_level': 0,
-	 'log_name': 'Alerts.log',
-	 'print_level': 0,
-	 'replace_reference_on_load': True,
-	 'verbosity': ''}
 
 Method resolution order: 
 
-	(<class 'mpre._metapython.Alert_Handler'>,
-	 <class 'mpre.base.Reactor'>,
-	 <class 'mpre.base.Base'>,
-	 <type 'object'>)
+	(<class 'mpre.importers.From_Disk'>, <type 'object'>)
+
+- **find_module**(self, module_name, path):
+
+				No documentation available
+
+
+- **load_module**(self, module_name):
+
+				No documentation available
+
 
 Instruction
 --------------
 
 	 usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
+                           *args, **kwargs).execute(priority=priority,
+                                                    callback=callback,
+                                                    host_info=(ip, port))
                            
         Creates and executes an instruction object. 
             - component_name is the string instance_name of the component 
@@ -40,14 +37,37 @@ Instruction
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
+        host_info may supply an ip address string and port number integer
+        to execute the instruction on a remote machine. This requirements
+        for this to be a success are:
+            
+            - The machine must have an instance of metapython running
+            - The machine must be accessible via the network
+            - The local machine must be registered and logged in to
+              the remote machine
+            - The local machine may need to be registered and logged in to
+              have permission to the use the specific component and method
+              in question
+            - The local machine ip must not be blacklisted by the remote
+              machine.
+            - The remote machine may require that the local machine ip
+              be in a whitelist to access the method in question.
+              
+        Other then the security requirements, remote procedure calls require 
+        zero config on the part of either host. An object will be accessible
+        if it exists on the machine in question.
+              
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
+        will actually be performed if the instruction is being executed
+        locally. If the instruction is being executed remotely, this instead
+        acts as a flag. If set to a True value, the instruction will be
+        placed at the front of the local queue to be sent to the host.
         
         Instructions are useful for serial and explicitly timed tasks. 
         Instructions are only enqueued when the execute method is called. 
         At that point they will be marked for execution in 
-        instruction.priority seconds. 
+        instruction.priority seconds or sent to the machine in question. 
         
         Instructions may be saved as an attribute of a component instead
         of continuously being instantiated. This allows the reuse of
@@ -66,57 +86,75 @@ Method resolution order:
 
 - **execute**(self, priority, callback, host_info, transport_protocol):
 
-		 usage: instruction.execute(priority=0.0, callback=None)
+		 usage: instruction.execute(priority=0.0, callback=None,
+                                       host_info=tuple())
         
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed.
+            Submits an instruction to the processing queue. If being executed
+            locally, the instruction will be executed in priority seconds. 
+            An optional callback function can be provided if the return value 
+            of the instruction is needed.
+            
+            host_info may be specified to designate a remote machine that
+            the Instruction should be executed on. If being executed remotely, 
+            priority is a high_priority flag where 0 means the instruction will
+            be placed at the end of the rpc queue for the remote host in 
+            question. If set, the instruction will instead be placed at the 
+            beginning of the queue.
+            
+            Remotely executed instructions have a default callback, which is 
+            the appropriate RPC_Requester.alert.
+            
+            The transport protocol flag is currently unused. Support for
+            UDP and other protocols could be implemented and dispatched
+            via this flag.
 
 
-Interpreter_Service
+Interpreter
 --------------
 
-	 Provides the server side of the interactive interpreter. Receives keystrokes
-        and attempts to compile + exec them.
+	 Executes python source. Requires authentication. The source code and 
+        return value of all requests are logged.
+        
+        usage: Instruction("Interpreter", "exec_code",
+                           my_source).execute(host_info=target_host)
 
 
 Instance defaults: 
 
 	{'_deleted': False,
+	 'allow_registration': True,
 	 'copyright': 'Type "help", "copyright", "credits" or "license" for more information.',
-	 'database_filename': ':memory:',
-	 'hash_rounds': 100000,
-	 'login_message': 'login success',
+	 'database_filename': 'user_registry',
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'login_message': '',
+	 'protocol_component': 'Secure_Remote_Password',
 	 'replace_reference_on_load': True,
-	 'verbosity': ''}
+	 'requester_address': None}
 
 Method resolution order: 
 
-	(<class 'mpre._metapython.Interpreter_Service'>,
-	 <class 'mpre.network2.Authenticated_Service'>,
-	 <class 'mpre.base.Reactor'>,
+	(<class 'mpre._metapython.Interpreter'>,
+	 <class 'mpre.authentication.Authenticated_Service'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-- **call**(instance, sender, packet):
+- **call**(instance, *args, **kwargs):
 
-		No documentation available
+				No documentation available
 
 
-- **login**(self, sender, packet):
+- **login**(self, username, credentials):
 
-		No documentation available
+				No documentation available
 
 
 Metapython
 --------------
 
-	 Provides an entry point to the environment. Instantiating this component and
-        calling the start_machine method starts the execution of the Processor component.
-        It is encouraged to use the Metapython component when create-ing new top level
-        components in the environment. For example, the Network component is a child object
-        of the Metapython component. Doing so allows for simple portability of an environment
-        in regards to saving/loading the state of an entire application.
+	 The "main" class. Provides an entry point to the environment. 
+        Instantiating this component and calling the start_machine method 
+        starts the execution of the Processor component.
 
 
 Instance defaults: 
@@ -124,32 +162,29 @@ Instance defaults:
 	{'_deleted': False,
 	 'command': 'c:\\users\\_\\pythonbs\\mpre\\shell_launcher.py',
 	 'copyright': 'Type "help", "copyright", "credits" or "license" for more information.',
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'environment_setup': ['PYSDL2_DLL_PATH = C:\\Python27\\DLLs'],
-	 'implementation': 'python',
-	 'interface': '0.0.0.0',
 	 'interpreter_enabled': True,
-	 'port': 40022,
 	 'prompt': '>>> ',
 	 'replace_reference_on_load': True,
-	 'startup_components': ('mpre.fileio.File_System',
-	                        'vmlibrary.Processor',
-	                        'mpre._metapython.Alert_Handler',
-	                        'mpre.userinput.User_Input',
+	 'startup_components': ('mpre.vmlibrary.Processor',
+	                        'mpre.network.Socket_Error_Handler',
 	                        'mpre.network.Network',
-	                        'mpre.network2.RPC_Handler'),
-	 'startup_definitions': '',
-	 'verbosity': ''}
+	                        'mpre.shell.Command_Line',
+	                        'mpre.srp.Secure_Remote_Password',
+	                        'mpre.rpc.RPC_Handler'),
+	 'startup_definitions': ''}
 
 Method resolution order: 
 
 	(<class 'mpre._metapython.Metapython'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **main_as_name**(, *args, **kwds):
 
-		No documentation available
+				No documentation available
 
 
 - **start_machine**(self):
@@ -157,19 +192,19 @@ Method resolution order:
 		 Begins the processing of Instruction objects.
 
 
-- **exec_command**(self, source):
+- **enable_interpreter**(self):
 
-		 Executes the supplied source as the __main__ module
-
-
-- **start_service**(self):
-
-		No documentation available
+				No documentation available
 
 
 - **exit**(self, exit_code):
 
-		No documentation available
+				No documentation available
+
+
+- **exec_command**(self, source):
+
+		 Executes the supplied source as the __main__ module
 
 
 - **setup_os_environ**(self):
@@ -182,55 +217,111 @@ Method resolution order:
 Shell
 --------------
 
-	 Provides the client side of the interpreter session. Handles keystrokes and
-        sends them to the Interpreter_Service to be executed.
+	 Handles keystrokes and sends python source to the Interpreter to 
+        be executed. This requires authentication via username/password.
 
 
 Instance defaults: 
 
 	{'_deleted': False,
-	 'email': '',
-	 'password': 'password',
+	 'auto_login': True,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'ip': 'localhost',
+	 'logged_in': False,
+	 'password': '',
+	 'password_prompt': '{}: Please provide the pass phrase or word: ',
+	 'port': 40022,
 	 'prompt': '>>> ',
+	 'protocol_client': 'mpre.srp.SRP_Client',
 	 'replace_reference_on_load': True,
 	 'startup_definitions': '',
-	 'target': 'Interpreter_Service',
-	 'username': 'root',
-	 'verbosity': ''}
+	 'target_service': 'Interpreter',
+	 'username': ''}
 
 Method resolution order: 
 
 	(<class 'mpre._metapython.Shell'>,
-	 <class 'mpre.network2.Authenticated_Client'>,
-	 <class 'mpre.base.Reactor'>,
+	 <class 'mpre.authentication.Authenticated_Client'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **handle_startup_definitions**(self):
 
-		No documentation available
-
-
-- **login_result**(self, sender, packet):
-
-		No documentation available
-
-
-- **exec_code_request**(self, sender, source):
-
-		No documentation available
-
-
-- **result**(self, sender, packet):
-
-		No documentation available
+				No documentation available
 
 
 - **execute_source**(self, source):
 
-		No documentation available
+				No documentation available
 
 
-- **handle_keystrokes**(self, sender, keyboard_input):
+- **result**(self, packet):
 
-		No documentation available
+				No documentation available
+
+
+- **handle_input**(self, input):
+
+				No documentation available
+
+
+- **on_login**(self, message):
+
+				No documentation available
+
+
+create
+--------------
+
+**create**(instance_type, *args, **kwargs):
+
+				No documentation available
+
+
+delete
+--------------
+
+**delete**(instance_name):
+
+				No documentation available
+
+
+documentation
+--------------
+
+**documentation**(_object):
+
+				No documentation available
+
+
+from_disk_import
+--------------
+
+**load_module**(self, module_name):
+
+				No documentation available
+
+
+open_firefox
+--------------
+
+**open_firefox**():
+
+				No documentation available
+
+
+save
+--------------
+
+**save**(instance_name, _file):
+
+				No documentation available
+
+
+update
+--------------
+
+**update**(instance_name):
+
+				No documentation available

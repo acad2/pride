@@ -27,28 +27,13 @@ Method resolution order:
 
 - **full_add**(self, value):
 
-		No documentation available
+				No documentation available
 
 
 - **partial_add**(self, value):
 
-		No documentation available
+				No documentation available
 
-
-CorruptPickleError
---------------
-
-	No documentation available
-
-
-Method resolution order: 
-
-	(<class 'mpre.errors.CorruptPickleError'>,
-	 <class 'pickle.UnpicklingError'>,
-	 <class 'pickle.PickleError'>,
-	 <type 'exceptions.Exception'>,
-	 <type 'exceptions.BaseException'>,
-	 <type 'object'>)
 
 LRU_Cache
 --------------
@@ -67,7 +52,7 @@ Latency
 --------------
 
 	 usage: Latency([name="component_name"], 
-                       [average_size=20]) => latency_object
+                       [size=20]) => latency_object
                        
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()
@@ -77,22 +62,17 @@ Method resolution order:
 
 	(<class 'mpre.utilities.Latency'>, <type 'object'>)
 
-- **update**(self):
+- **finish_measuring**(self):
 
-		 usage: latency.update()
-        
-            notes the current time and adds it to the average time.
+				No documentation available
 
 
-- **display**(self, mode):
+- **start_measuring**(self):
 
-		 usage: latency.display([mode='sys.stdin'])
-        
-            Writes latency information via either sys.stdin.write or print.
-            Information includes the latency average, meta average, and max value
+				No documentation available
 
 
-Module_Listing
+Reversible_Mapping
 --------------
 
 	No documentation available
@@ -100,77 +80,59 @@ Module_Listing
 
 Method resolution order: 
 
-	(<class 'mpre.utilities.Module_Listing'>, <type 'object'>)
+	(<class 'mpre.utilities.Reversible_Mapping'>, <type 'object'>)
 
-- **trim**(self, text):
+- **reverse_lookup**(self, value):
 
-		No documentation available
-
-
-- **read_file**(self):
-
-		No documentation available
+				No documentation available
 
 
-- **get_modules**(self):
+convert
+--------------
 
-		No documentation available
+**convert**(old_value, old_base, new_base):
 
-
-- **make_file**(self, filename):
-
-		No documentation available
+				No documentation available
 
 
-- **from_help**(self):
+documentation
+--------------
 
-		No documentation available
+**documentation**(_object):
 
-
-- **authenticated_dump**(py_object, key, _file, hash_algorithm):
-
-		No documentation available
+				No documentation available
 
 
-- **authenticated_load**(bytestream, key, hash_algorithm):
+function_header
+--------------
 
-		No documentation available
-
-
-- **convert**(old_value, old_base, new_base):
-
-		No documentation available
-
-
-- **documentation**(_object):
-
-		No documentation available
-
-
-- **function_header**(function):
+**function_header**(function):
 
 		usage: function_header(function) => "(arg1, default_arg=True, keyword=True...)"
     
        Given a function, return a string of it's signature.
 
 
-- **load**(attributes, _file):
+function_names
+--------------
 
-		 usage: load([attributes], [_file]) => restored_instance
-    
-        Loads state preserved by the save method. Loads an instance from either
-        a bytestream or file, as returned by the save method..
-        
-        To customize the behavior of an object after it has been loaded, one should
-        extend the on_load method.
+**function_names**(function):
+
+				No documentation available
 
 
-- **resolve_string**(string):
+resolve_string
+--------------
 
-		Given an attribute string of ...x.y.z, import ...x.y and return z
+**resolve_string**(string):
+
+		Given an attribute string of a.b...z, return the object z
 
 
-- **shell**(command, shell):
+shell
+--------------
+
+**shell**(command, shell):
 
 		 usage: shell('command string --with args', 
                      [shell=False]) = > sys.stdout.output from executed command
@@ -185,6 +147,25 @@ Method resolution order:
             "Executing shell commands that incorporate unsanitized input from an untrusted source makes a program vulnerable to shell injection, a serious security flaw which can result in arbitrary command execution. For this reason, the use of shell=True is strongly discouraged in cases where the command string is constructed from external input" 
 
 
-- **usage**(_object):
+sys_argv_swapped
+--------------
 
-		No documentation available
+**sys_argv_swapped**(, *args, **kwds):
+
+				No documentation available
+
+
+updated_class
+--------------
+
+**updated_class**(_class, importer_type):
+
+				No documentation available
+
+
+usage
+--------------
+
+**usage**(_object):
+
+				No documentation available

@@ -12,10 +12,11 @@ Unzipper
 Instance defaults: 
 
 	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'filename': '',
 	 'replace_reference_on_load': True,
-	 'target_directory': '',
-	 'verbosity': ''}
+	 'target_directory': ''}
 
 Method resolution order: 
 
@@ -23,4 +24,4 @@ Method resolution order:
 
 - **unzip**(self):
 
-		No documentation available
+				No documentation available

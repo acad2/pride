@@ -126,16 +126,18 @@ class SDL_Window(SDL_Component):
                 renderer.copy(layers[layer_number - 1][0])
         
             for instance in layer_components:
-                dstrect = x, y, w, h = instance.area
-                x += instance.texture_window_x
-                y += instance.texture_window_y
+                srcrect = x, y, w, h = instance.area
+                user_input._update_coordinates(instance.instance_name, srcrect, instance.z)
+                
+      #          x += instance.texture_window_x
+      #          y += instance.texture_window_y
                 if x + w > screen_width:
                     w = screen_width - x
                 if y + h > screen_height:
-                    h = screen_height - y
-                area = x, y, w, h
-                user_input._update_coordinates(instance, area, instance.z)
-                                
+                    h = screen_height - y               
+                area = (x, y, w, h)
+               # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
+               #            w, h)
                 if instance.texture_invalid:
                  #   self.alert("Redrawing {} texture", [instance], level=0)
                     _texture = instance.texture.texture
@@ -150,8 +152,10 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-                self.alert("Copying {} texture to {}", [instance, area], level=0)
-                renderer.copy(instance.texture.texture, srcrect=area, dstrect=dstrect)
+               # self.alert("Copying {} texture to {}", [instance, area], level=0)
+                renderer.copy(instance.texture.texture, 
+                              srcrect=(x + instance.texture_window_x, 
+                                       y + instance.texture_window_y, w, h), dstrect=area)
                 
         self.invalid_layer = self.max_layer
         renderer.set_render_target(None)
@@ -259,6 +263,7 @@ class SDL_User_Input(vmlibrary.Process):
     
     def __init__(self, **kwargs):
         self.coordinate_tracker = {}
+        self._coordinate_tracker = collections.OrderedDict()
         self.popups = []
         self._stringio = StringIO.StringIO()
         super(SDL_User_Input, self).__init__(**kwargs)
@@ -318,14 +323,30 @@ class SDL_User_Input(vmlibrary.Process):
 
         #self.constant_names = dict((key, [value for value in sdl2.__dict__.values if value == key][0]) for key in self.instruction_mapping)
     def run(self):
-        events = sdl2.ext.get_events()
-        for event in events:
+        for event in sdl2.ext.get_events():
          #   self.alert("Processing: {} {}", [event.type, self.instruction_mapping[event.type].__name__], level=self.event_verbosity)
             self.instruction_mapping[event.type](event)        
 
     def _update_coordinates(self, item, area, z):
+        try:
+            _, old_z = self.coordinate_tracker[item]
+        except KeyError:
+            try:
+                self._coordinate_tracker[z].append(item)
+            except KeyError:
+                self._coordinate_tracker[z] = [item]
+        else:            
+            self._coordinate_tracker[old_z].remove(item)
+            self._coordinate_tracker[z].append(item)
         self.coordinate_tracker[item] = (area, z)
-
+        
+    def _remove_from_coordinates(self, item):
+        _, old_z = self.coordinate_tracker[item]
+        self._coordinate_tracker[old_z].remove(item)
+        del self.coordinate_tracker[item]
+        if self.active_item == item:
+            self.active_item = None
+            
     def handle_unhandled_event(self, event):        
         self.alert("{0} passed unhandled", [event.type], 'vv')
 
@@ -334,43 +355,53 @@ class SDL_User_Input(vmlibrary.Process):
         
     def handle_mousebuttondown(self, event):        
         mouse = event.button
-        mouse_x = mouse.x
-        mouse_y = mouse.y
-    #    self.alert("mouse button down {} {}", [mouse_x, mouse_y], level=0)        
+        mouse_position = (mouse.x, mouse.y)
+        self.alert("mouse button down at {}", [mouse_position], level='v')        
         active_item = None
         max_z = 0
-        for item, coords in self.coordinate_tracker.items():
-            area, z = coords
-            if z > max_z and mpre.gui.point_in_area(area, (mouse_x, mouse_y)):
-                max_z = z
-                active_item = item
-        #self.alert("Set active item to {}", [active_item], level=0)
+        coordinates = self.coordinate_tracker
+        for layer_number, layer in reversed(self._coordinate_tracker.items()):
+            for item in layer:
+                area, z = coordinates[item]
+                if mpre.gui.point_in_area(area, mouse_position):
+                    active_item = item
+                    break
+            if active_item:
+                break
+
         self.active_item = active_item
         if active_item:
             if self._ignore_click:
                 self._ignore_click = False
             else:
-                active_item.press(mouse)
+                mpre.objects[active_item].press(mouse)
             
     def handle_mousebuttonup(self, event):
-        mouse = event.button
         active_item = self.active_item
-        if active_item and active_item.held:
-            area, z = self.coordinate_tracker[active_item]
-            if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
-                active_item.release(mouse)
+        if active_item:            
+            instance = mpre.objects[active_item]
+            if instance.held:
+                area, z = self.coordinate_tracker[active_item]
+                mouse = event.button
+                if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
+                    instance.release(mouse)
        
     def handle_mousewheel(self, event):
-        wheel = event.wheel
         if self.active_item:
-            self.active_item.mousewheel(wheel.x, wheel.y)
+            wheel = event.wheel
+            mpre.objects[self.active_item].mousewheel(wheel.x, wheel.y)
 
     def handle_mousemotion(self, event):        
-        motion = event.motion
         if self.active_item:
-            self.active_item.mousemotion(motion.xrel, motion.yrel)
+            motion = event.motion
+            mpre.objects[self.active_item].mousemotion(motion.xrel, motion.yrel)
 
     def handle_keydown(self, event):
+        try:
+            instance = mpre.objects[self.active_item]
+        except KeyError:
+            self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
+            return
         try:
             key = chr(event.key.keysym.sym)
         except ValueError:
@@ -379,36 +410,23 @@ class SDL_User_Input(vmlibrary.Process):
             if key == "\r":
                 key = "\n"
             modifier = event.key.keysym.mod
-            hotkey = None
             if modifier in self.uppercase_modifiers:
                 try:
                     key = self.uppercase[key]
                 except KeyError:
                     pass            
             elif modifier:
-                hotkey = self.get_hotkey(self.active_item, (key, modifier))
-            
-            if hotkey:
-                hotkey.execute()
-            elif self.active_item and self.active_item.allow_text_edit:
-                """print "Editing text", ord(key)
-                file_like_object = self._stringio
-                file_like_object.truncate(0)
-                backup = sys.stdout
-                print "Reassigning stdout"
-                sys.stdout = file_like_object
-                print self.active_item.text + key
-                sys.stdout = backup
-                print "Restored stdout"
-                file_like_object.seek(0)
-                self.active_item.text = file_like_object.read()"""
+                hotkey = self.get_hotkey(instance, (key, modifier))
+                if hotkey:
+                    hotkey.execute()
                 
+            elif instance.allow_text_edit:                
                 if ord(key) == 8: # backspace
-                    self.active_item.text = self.active_item.text[:-1]
+                    instance.text = instance.text[:-1]
                 else:
-                    self.active_item.text += key
+                    instance.text += key
                                     
-                print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
+                #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
                 
     def get_hotkey(self, instance, key_press):
         try:
@@ -425,8 +443,10 @@ class SDL_User_Input(vmlibrary.Process):
 
 class Renderer(SDL_Component):
 
-    defaults = {"flags" : sdl2.SDL_RENDERER_ACCELERATED,
-                "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND}
+    defaults = SDL_Component.defaults.copy()
+    defaults.update({"flags" : sdl2.SDL_RENDERER_ACCELERATED,
+                     "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND})
+                
     def __init__(self, window, **kwargs):
         self.font_cache = {}        
       

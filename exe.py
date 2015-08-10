@@ -1,3 +1,5 @@
+""" Provides simple utilities for creating cython + gcc compiled 
+    executables from python modules. """
 import importlib
 import os
 import sys
@@ -13,7 +15,7 @@ import mpre.fileio
 import mpre.importers
 
 class Loader(mpre.base.Base):
-    
+    """ Used to customize the define bootstrap process. """
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib",
                                            "types", "hmac", "binascii"),
@@ -53,7 +55,7 @@ class Loader(mpre.base.Base):
     
     
 class Executable(mpre.base.Base):    
-    
+    """ Used to make a cython gcc compiled executable from a python module. """
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"filename" : "metapython.exe",
                      "package" : None,
@@ -70,6 +72,8 @@ class Executable(mpre.base.Base):
         self.loader = self.create(self.loader_type)
                 
     def build(self):
+        """ Builds the executable source in python and compiles it
+            via cython and gcc. """
         _file = self.file        
         if self.use_unicode_literals:
             _file.write("from __future__ import unicode_literals\n")

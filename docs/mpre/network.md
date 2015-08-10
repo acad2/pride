@@ -27,59 +27,21 @@ Method resolution order:
 
 - **full_add**(self, value):
 
-		No documentation available
+				No documentation available
 
 
 - **partial_add**(self, value):
 
-		No documentation available
-
-
-Error_Handler
---------------
-
-	No documentation available
-
-
-Method resolution order: 
-
-	(<class 'mpre.network.Error_Handler'>, <type 'object'>)
-
-- **connection_reset**(self, sock, error):
-
-		No documentation available
-
-
-- **unhandled**(self, sock, error):
-
-		No documentation available
-
-
-- **bad_target**(self, sock, error):
-
-		No documentation available
-
-
-- **connection_closed**(self, sock, error):
-
-		No documentation available
-
-
-- **connection_was_aborted**(self, sock, error):
-
-		No documentation available
-
-
-- **eagain**(self, sock, error):
-
-		No documentation available
+				No documentation available
 
 
 Instruction
 --------------
 
 	 usage: Instruction(component_name, method_name, 
-                           *args, **kwargs).execute(priority=priority)
+                           *args, **kwargs).execute(priority=priority,
+                                                    callback=callback,
+                                                    host_info=(ip, port))
                            
         Creates and executes an instruction object. 
             - component_name is the string instance_name of the component 
@@ -87,14 +49,37 @@ Instruction
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
+        host_info may supply an ip address string and port number integer
+        to execute the instruction on a remote machine. This requirements
+        for this to be a success are:
+            
+            - The machine must have an instance of metapython running
+            - The machine must be accessible via the network
+            - The local machine must be registered and logged in to
+              the remote machine
+            - The local machine may need to be registered and logged in to
+              have permission to the use the specific component and method
+              in question
+            - The local machine ip must not be blacklisted by the remote
+              machine.
+            - The remote machine may require that the local machine ip
+              be in a whitelist to access the method in question.
+              
+        Other then the security requirements, remote procedure calls require 
+        zero config on the part of either host. An object will be accessible
+        if it exists on the machine in question.
+              
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed.
+        will actually be performed if the instruction is being executed
+        locally. If the instruction is being executed remotely, this instead
+        acts as a flag. If set to a True value, the instruction will be
+        placed at the front of the local queue to be sent to the host.
         
         Instructions are useful for serial and explicitly timed tasks. 
         Instructions are only enqueued when the execute method is called. 
         At that point they will be marked for execution in 
-        instruction.priority seconds. 
+        instruction.priority seconds or sent to the machine in question. 
         
         Instructions may be saved as an attribute of a component instead
         of continuously being instantiated. This allows the reuse of
@@ -113,18 +98,34 @@ Method resolution order:
 
 - **execute**(self, priority, callback, host_info, transport_protocol):
 
-		 usage: instruction.execute(priority=0.0, callback=None)
+		 usage: instruction.execute(priority=0.0, callback=None,
+                                       host_info=tuple())
         
-            Submits an instruction to the processing queue. The instruction
-            will be executed in priority seconds. An optional callback function 
-            can be provided if the return value of the instruction is needed.
+            Submits an instruction to the processing queue. If being executed
+            locally, the instruction will be executed in priority seconds. 
+            An optional callback function can be provided if the return value 
+            of the instruction is needed.
+            
+            host_info may be specified to designate a remote machine that
+            the Instruction should be executed on. If being executed remotely, 
+            priority is a high_priority flag where 0 means the instruction will
+            be placed at the end of the rpc queue for the remote host in 
+            question. If set, the instruction will instead be placed at the 
+            beginning of the queue.
+            
+            Remotely executed instructions have a default callback, which is 
+            the appropriate RPC_Requester.alert.
+            
+            The transport protocol flag is currently unused. Support for
+            UDP and other protocols could be implemented and dispatched
+            via this flag.
 
 
 Latency
 --------------
 
 	 usage: Latency([name="component_name"], 
-                       [average_size=20]) => latency_object
+                       [size=20]) => latency_object
                        
         Latency objects possess a latency attribute that marks
         the average time between calls to latency.update()
@@ -134,19 +135,14 @@ Method resolution order:
 
 	(<class 'mpre.utilities.Latency'>, <type 'object'>)
 
-- **update**(self):
+- **finish_measuring**(self):
 
-		 usage: latency.update()
-        
-            notes the current time and adds it to the average time.
+				No documentation available
 
 
-- **display**(self, mode):
+- **start_measuring**(self):
 
-		 usage: latency.display([mode='sys.stdin'])
-        
-            Writes latency information via either sys.stdin.write or print.
-            Information includes the latency average, meta average, and max value
+				No documentation available
 
 
 Multicast_Beacon
@@ -157,26 +153,28 @@ Multicast_Beacon
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': True,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
 	 'multicast_group': '224.0.0.0',
 	 'multicast_port': 1929,
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'packet_ttl': '\x7f',
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -184,7 +182,6 @@ Method resolution order:
 	 <class 'mpre.network.Udp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -196,7 +193,8 @@ Multicast_Receiver
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
@@ -204,16 +202,17 @@ Instance defaults:
 	 'bind_on_init': True,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -221,7 +220,6 @@ Method resolution order:
 	 <class 'mpre.network.Udp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -239,66 +237,46 @@ Instance defaults:
 	{'_deleted': False,
 	 '_updating': False,
 	 'auto_start': False,
-	 'handle_resends': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'number_of_sockets': 0,
 	 'priority': 0.01,
 	 'replace_reference_on_load': True,
-	 'update_priority': 5,
-	 'verbosity': ''}
+	 'run_callback': None,
+	 'running': True,
+	 'update_priority': 5}
 
 Method resolution order: 
 
 	(<class 'mpre.network.Network'>,
 	 <class 'mpre.vmlibrary.Process'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **run**(self):
 
-		No documentation available
+				No documentation available
+
+
+- **on_load**(self, attributes):
+
+				No documentation available
 
 
 - **remove**(self, sock):
 
-		No documentation available
-
-
-- **is_writable**(self, sock):
-
-		No documentation available
+				No documentation available
 
 
 - **add**(self, sock):
 
-		No documentation available
-
-
-- **connect**(self, sock):
-
-		No documentation available
+				No documentation available
 
 
 - **delete**(self):
 
-		No documentation available
+				No documentation available
 
-
-NotWritableError
---------------
-
-	No documentation available
-
-
-Method resolution order: 
-
-	(<class 'mpre.network.NotWritableError'>,
-	 <type 'exceptions.IOError'>,
-	 <type 'exceptions.EnvironmentError'>,
-	 <type 'exceptions.StandardError'>,
-	 <type 'exceptions.Exception'>,
-	 <type 'exceptions.BaseException'>,
-	 <type 'object'>)
 
 Packet_Sniffer
 --------------
@@ -308,24 +286,27 @@ Packet_Sniffer
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'IP_HDRINCL': 1,
+	 '_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 3,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -333,9 +314,13 @@ Method resolution order:
 	 <class 'mpre.network.Raw_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
+
+- **close**(self):
+
+				No documentation available
+
 
 Raw_Socket
 --------------
@@ -345,31 +330,32 @@ Raw_Socket
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 3,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
 	(<class 'mpre.network.Raw_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -382,28 +368,29 @@ Server
 Instance defaults: 
 
 	{'Tcp_Socket_type': 'network.Tcp_Socket',
+	 '_byte_count': 0,
 	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
+	 'allow_port_zero': False,
 	 'backlog': 50,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'name': '',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 80,
 	 'protocol': 0,
 	 'replace_reference_on_load': True,
 	 'reuse_port': 0,
-	 'share_methods': ('on_connect', 'client_socket_recv', 'client_socket_send'),
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -411,13 +398,12 @@ Method resolution order:
 	 <class 'mpre.network.Tcp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-- **handle_bind_error**(self):
+- **on_load**(self, attributes):
 
-		No documentation available
+				No documentation available
 
 
 - **on_connect**(self, connection, address):
@@ -428,12 +414,12 @@ Method resolution order:
 
 - **accept**(self):
 
-		No documentation available
+				No documentation available
 
 
 - **on_select**(self):
 
-		No documentation available
+				No documentation available
 
 
 Socket
@@ -441,43 +427,44 @@ Socket
 
 	 Provides a mostly transparent asynchronous socket interface by applying a 
         Wrapper to a _socketobject. The default socket family is socket.AF_INET and
-        the default socket type is socket.SOCK_STREAM (a.k.a. a tcp socket).
+        the default socket type is socket.SOCK_STREAM (a tcp socket).
 
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
 	(<class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
-- **sendto**(self, data, host_info):
+- **on_connect**(self):
 
-		 Sends data via the underlying _socketobject to the specified address. The socket
-            is first checked to ensure writability before sending. If the socket is not
-            writable, NotWritableError is raised.
+		 Performs any logic required when a Tcp connection succeeds. This method should
+            be extended by subclasses. If on_connect is overloaded instead of extended,
+            ensure that the self.connected flag is set to True.
 
 
 - **connect**(self, address):
@@ -490,26 +477,27 @@ Method resolution order:
 
 - **close**(self):
 
-		No documentation available
+				No documentation available
 
 
 - **recv**(self, buffer_size):
 
 		 Receives data from a remote endpoint. This method is event triggered and called
-            when the socket becomes readable according to select.select. If . This
+            when the socket becomes readable according to select.select. This
             method is called for Tcp sockets and requires a connection.
+            
+            Note that this recv will return the entire contents of the buffer and 
+            does not need to be called in a loop.
 
 
-- **on_connect**(self):
+- **on_load**(self, attributes):
 
-		 Performs any logic required when a Tcp connection succeeds. This method should
-            be overloaded by subclasses.
+				No documentation available
 
 
 - **send**(self, data):
 
-		 Sends data via the underlying _socketobject. The socket is first checked to
-            ensure writability before sending. If the socket is not writable, NotWritableError is raised. Usage of this method requires a connected socket
+		 Sends data to the connected endpoint. All of the data will be sent. 
 
 
 - **recvfrom**(self, buffer_size):
@@ -522,13 +510,77 @@ Method resolution order:
 - **on_select**(self):
 
 		 Used to customize behavior when a socket is readable according to select.select.
-            It is not likely that one would overload this method; End users probably want
+            It is less likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead.
 
 
 - **delete**(self):
 
-		No documentation available
+				No documentation available
+
+
+Socket_Error_Handler
+--------------
+
+	No docstring found
+
+
+Instance defaults: 
+
+	{'_deleted': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
+	 'replace_reference_on_load': True}
+
+Method resolution order: 
+
+	(<class 'mpre.network.Socket_Error_Handler'>,
+	 <class 'mpre.base.Base'>,
+	 <type 'object'>)
+
+- **bind_error**(self, sock, error):
+
+				No documentation available
+
+
+- **call_would_block**(self, sock, error):
+
+				No documentation available
+
+
+- **bad_target**(self, sock, error):
+
+				No documentation available
+
+
+- **connection_was_aborted**(self, sock, error):
+
+				No documentation available
+
+
+- **dispatch**(self, sock, error, error_name):
+
+				No documentation available
+
+
+- **connection_reset**(self, sock, error):
+
+				No documentation available
+
+
+- **connection_closed**(self, sock, error):
+
+				No documentation available
+
+
+- **unhandled**(self, sock, error):
+
+				No documentation available
+
+
+- **eagain**(self, sock, error):
+
+				No documentation available
 
 
 Tcp_Client
@@ -539,29 +591,30 @@ Tcp_Client
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'as_port': 0,
 	 'auto_connect': True,
-	 'bad_target_verbosity': 0,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': True,
+	 'interface': '0.0.0.0',
 	 'ip': '',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 80,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'target': (),
 	 'timeout': 0,
-	 'timeout_notify': True,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
@@ -569,7 +622,6 @@ Method resolution order:
 	 <class 'mpre.network.Tcp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
@@ -581,37 +633,38 @@ Tcp_Socket
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': False,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
 	 'connection_attempts': 10,
+	 'delete_verbosity': 'vv',
+	 'dont_save': True,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
 	(<class 'mpre.network.Tcp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)
 
 - **on_select**(self):
 
-		No documentation available
+				No documentation available
 
 
 Udp_Socket
@@ -622,29 +675,30 @@ Udp_Socket
 
 Instance defaults: 
 
-	{'_connecting': False,
+	{'_byte_count': 0,
+	 '_connecting': False,
 	 '_deleted': False,
 	 'add_on_init': True,
 	 'added_to_network': False,
 	 'bind_on_init': True,
 	 'blocking': 0,
 	 'closed': False,
+	 'connected': False,
+	 'delete_verbosity': 'vv',
+	 'dont_save': False,
 	 'interface': '0.0.0.0',
-	 'network_buffer': '',
-	 'network_packet_size': 32768,
 	 'port': 0,
 	 'protocol': 0,
-	 'replace_reference_on_load': True,
+	 'replace_reference_on_load': False,
 	 'socket_family': 2,
 	 'socket_type': 1,
 	 'timeout': 0,
-	 'verbosity': ''}
+	 'wrapped_object': None}
 
 Method resolution order: 
 
 	(<class 'mpre.network.Udp_Socket'>,
 	 <class 'mpre.network.Socket'>,
 	 <class 'mpre.base.Wrapper'>,
-	 <class 'mpre.base.Reactor'>,
 	 <class 'mpre.base.Base'>,
 	 <type 'object'>)

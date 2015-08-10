@@ -1,39 +1,63 @@
 mpre.importers
 ==============
 
+ Contains import related functions and objects, including the compiler 
 
-
-Encrypted_String_Importer
+Compiler
 --------------
 
-	No documentation available
+	 Compiles python source to bytecode. Source may be preprocessed.
+        This object is automatically instantiated and inserted into
+        sys.meta_path as the first entry. 
 
 
 Method resolution order: 
 
-	(<class 'mpre.importers.Encrypted_String_Importer'>, <type 'object'>)
+	(<class 'mpre.importers.Compiler'>, <type 'object'>)
 
 - **load_module**(self, module_name):
 
-		No documentation available
+				No documentation available
 
 
 - **find_module**(self, module_name, path):
 
-		No documentation available
+				No documentation available
 
 
-- **remove_module**(cls, module_name):
+- **compile_source**(self, source, filename):
 
-		No documentation available
-
-
-- **add_module**(cls, module_name, attribute):
-
-		No documentation available
+				No documentation available
 
 
-From_Disk_Importer
+- **compile_module**(self, module_name, source, path):
+
+				No documentation available
+
+
+- **preprocess**(self, source):
+
+				No documentation available
+
+
+Dollar_Sign_Directive
+--------------
+
+	 Replaces '$' directive with mpre.objects lookup. This
+        facilitates the syntatic sugar $Component, which is
+        translated to mpre.objects['Component']. 
+
+
+Method resolution order: 
+
+	(<class 'mpre.importers.Dollar_Sign_Directive'>, <type 'object'>)
+
+- **handle_input**(self, source):
+
+				No documentation available
+
+
+From_Disk
 --------------
 
 	No documentation available
@@ -41,73 +65,29 @@ From_Disk_Importer
 
 Method resolution order: 
 
-	(<class 'mpre.importers.From_Disk_Importer'>, <type 'object'>)
+	(<class 'mpre.importers.From_Disk'>, <type 'object'>)
 
 - **find_module**(self, module_name, path):
 
-		No documentation available
+				No documentation available
 
 
 - **load_module**(self, module_name):
 
-		No documentation available
+				No documentation available
 
 
-Required_Modules
+imports_from_disk
 --------------
 
-	No documentation available
+**imports_from_disk**(, *args, **kwds):
+
+				No documentation available
 
 
-Method resolution order: 
-
-	(<class 'mpre.importers.Required_Modules'>, <type 'object'>)
-
-- **find_module**(self, module_path, path):
-
-		No documentation available
-
-
-- **get_modules**(self, _object):
-
-		No documentation available
-
-
-- **load_module**(self, module_path):
-
-		No documentation available
-
-
-String_Importer
+sys_meta_path_switched
 --------------
 
-	No documentation available
+**sys_meta_path_switched**(, *args, **kwds):
 
-
-Method resolution order: 
-
-	(<class 'mpre.importers.String_Importer'>, <type 'object'>)
-
-- **load_module**(self, module_name):
-
-		No documentation available
-
-
-- **find_module**(self, module_name, path):
-
-		No documentation available
-
-
-- **remove_module**(cls, module_name):
-
-		No documentation available
-
-
-- **add_module**(cls, module_name, source):
-
-		No documentation available
-
-
-- **sys_meta_path_switched**(, *args, **kwds):
-
-		No documentation available
+				No documentation available

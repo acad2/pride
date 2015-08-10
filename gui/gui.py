@@ -1,4 +1,4 @@
-from math import floor, sqrt
+from math import floor, sqrt, ceil
 
 import mpre
 import mpre.base as base
@@ -12,8 +12,6 @@ import sdl2.ext
 SDL_Rect = sdl2.SDL_Rect
 
 R, G, B, A = 0, 80, 255, 30
-dark_color_scalar = .5
-light_color_scalar = 1.5  
 
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
     _create_texture = objects["SpriteFactory"].create_texture_sprite
@@ -23,13 +21,37 @@ class Organizer(base.Base):
     
     pack_verbosity = 'v'
     
+    def __init__(self, **kwargs):
+        super(Organizer, self).__init__(**kwargs)
+        self.pack_modes, self._pack_modes, self._pack_index = {}, {}, {}        
+        
+    def get_pack_mode(self, instance):
+        return self.pack_modes[instance]
+     
+    def set_pack_mode(self, instance, value):
+        parent = instance.parent
+        old_pack_mode = self.pack_modes.get(instance, '')
+        if old_pack_mode:
+            self._pack_modes[parent][old_pack_mode].remove(instance)
+
+        self.pack_modes[instance] = value
+        try:
+            self._pack_modes[parent][value].append(instance)
+        except KeyError:
+            if parent not in self._pack_modes:
+                self._pack_modes[parent] = {value : [instance]}
+            else:
+                self._pack_modes[parent][value] = [instance]
+        self._pack_index[instance] = self._pack_modes[parent][value].index(instance)
+        
     def pack(self, item):
         self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode], level=self.pack_verbosity)
-        pack = getattr(self, "pack_{0}".format(item.pack_mode))
+        pack_mode = self.pack_modes[item]
+        pack = getattr(self, "pack_{0}".format(pack_mode))
         parent = item.parent
         old_size = item.size
 
-        pack(parent, item, parent.children.index(item), len(parent.children))
+        pack(parent, item, self._pack_index[item], len(self._pack_modes[parent][pack_mode]))
         self.alert("Finished packing {}: {}", [item, item.area], level=self.pack_verbosity)
         
     def pack_horizontal(self, parent, item, count, length):
@@ -61,12 +83,21 @@ class Organizer(base.Base):
         item.z = parent.z + 1
         item.x = parent.x
         item.y = parent.y
-        item.size = (parent.w, int(parent.h * .03))
+        item.size = (parent.w,
+                     parent.h / 5 if parent.h else 0)
 
     def pack_z(self, parent, item, count, length):
         item.z = parent.z + 1
 
-
+    def pack_bottom(self, parent, item, count, length):
+        self.pack_menu_bar(parent, item, count, length)
+        item.y = parent.y + parent.h - item.h
+               
+    def pack_right(self, parent, item, count, length):
+        self.pack_vertical(parent, item, count, length)
+        item.x = parent.x + parent.w - item.w
+                
+        
 class Window_Object(mpre.gui.shapes.Bounded_Shape):
 
     defaults = mpre.gui.shapes.Bounded_Shape.defaults.copy()
@@ -74,19 +105,19 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                      'y' : 0,
                      'z' : 0,
                      'size' : mpre.gui.SCREEN_SIZE,
+                     "texture_size" : mpre.gui.SCREEN_SIZE,
                      "background_color" : (25, 25, 45, 255),
                      "color" : (155, 155, 255, 255),
                      "text_color" : (145, 165, 235),
-                     "outline_width" : 5,
                      "pack_mode" : '',
                      "held" : False,
                      "texture" : None,
-                     "text" : '',
+                     "text" : None,
                      "button_verbosity" : 'v',
-                     "edit_text_mode" : False,
                      "allow_text_edit" : False,
                      "_ignore_click" : False,
-                     "sdl_window" : "SDL_Window"})
+                     "sdl_window" : "SDL_Window",
+                     "movable" : True})
     Hotkeys = {}
     
     def _on_set(self, coordinate, value):
@@ -123,13 +154,39 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         return sdl2.ext.Color(*super(Window_Object, self)._get_color())
     def _set_color(self, colors):
         super(Window_Object, self)._set_color(colors)
-    color = property(_get_color, _set_color)
+        self.texture_invalid = True
         
+    color = property(_get_color, _set_color)
+     
+    def _get_texture_window_x(self):
+        return self._texture_window_x
+    def _set_texture_window_x(self, value):
+        self._texture_window_x = max(self.x_range[0], min(value, self.w))
+        if not self.texture_invalid:
+            objects["SDL_Window"].invalidate_layer(self.z)
+            self.texture_invalid = True
+    texture_window_x = property(_get_texture_window_x, _set_texture_window_x)
+    
+    def _get_texture_window_y(self):
+        return self._texture_window_y
+    def _set_texture_window_y(self, value):
+        self._texture_window_y = max(self.y_range[0], min(value, self.h))
+        if not self.texture_invalid:
+            self.texture_invalid = True
+            objects["SDL_Window"].invalidate_layer(self.z)
+    texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
+    
+    def _get_pack_mode(self):      
+        return objects["Organizer"].get_pack_mode(self)
+    def _set_pack_mode(self, value):
+        objects["Organizer"].set_pack_mode(self, value)
+    pack_mode = property(_get_pack_mode, _set_pack_mode)
+    
     def __init__(self, **kwargs):
+        self.texture_invalid = True
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
-        self.texture_window_x = self.texture_window_y = self._layer_index = 0
-        self.texture_invalid = True
+        self._layer_index = 0        
         self._glow_modifier = 20
         max_w, max_h = mpre.gui.SCREEN_SIZE
         self.x_range = (0, max_w)
@@ -138,8 +195,9 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.h_range = (0, max_h)
         self.z_range = (0, mpre.gui.MAX_LAYER)   
         super(Window_Object, self).__init__(**kwargs)
-        
-        self.texture = create_texture(mpre.gui.SCREEN_SIZE)
+        self.texture_window_x = self.texture_window_y = 0
+        self.available_size = self.size
+        self.texture = create_texture(self.texture_size)
         
         self.glow_instruction = Instruction(self.instance_name, "glow")
     #    self.glow_instruction.execute(.16)
@@ -195,14 +253,13 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         pass
         
     def right_click(self, mouse):
-        self.create("mpre.gui.widgetlibrary.Right_Click_Menu", x=mouse.x, y=mouse.y)
-        self._texture_invalid = True
-    
+        pass
+
     def mousewheel(self, x_amount, y_amount):
         pass
 
     def mousemotion(self, x_change, y_change, top_level=True):
-        if self.held:
+        if self.movable and self.held:
             self._ignore_click = True
             #self.alert("Mousemotion {} {}", [x_change, y_change], level=0)
             _x, _y = self.position       
@@ -243,6 +300,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def draw_texture(self):
         self.draw("fill", self.area, color=self.background_color)
         self.draw("rect", self.area, color=self.color)
+        #self.draw("rect", (0, 0, 150, 150), color=(255, 255, 255))
         if self.text:
             self.draw("text", self.area, self.text, bg_color=self.background_color, color=self.text_color)
         
@@ -251,13 +309,16 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         if modifiers:
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
+        
+        size = self.available_size = self.size
         for item in self.children:
             item.pack()
-              
+            size = self.available_size = size[0] - item.x, size[1] - item.y
+            
     def delete(self):
         super(Window_Object, self).delete()
         objects["SDL_Window"].remove_from_layer(self, self.z)
-        del objects["SDL_User_Input"].coordinate_tracker[self]
+        objects["SDL_User_Input"]._remove_from_coordinates(self.instance_name)
         
         
 class Window(Window_Object):
@@ -280,4 +341,5 @@ class Button(Window_Object):
                      
     def __init__(self, **kwargs):
         super(Button, self).__init__(**kwargs)
-        self.text = self.text or self.instance_name
+        if self.text is not None:
+            self.text = self.text or self.instance_name

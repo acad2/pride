@@ -1,8 +1,9 @@
 """
   A python implementation of the secure remote password protocol for the
-  metapython runtime environment. Authenticated_Service and Authenticated_Client 
-  default to using SRP for authentication, and in most cases will
-  be used instead of the Secure_Remote_Password objects directly.
+  metapython runtime environment. Authenticated_Service and
+  Authenticated_Client objects default to using SRP for authentication, 
+  and in most cases those objects will be used instead of the
+  Secure_Remote_Password objects directly.
   
   N, g, and the hash function are customizable. Simply specify them
   as defaults or manually to the constructor. Note that for the protocol
@@ -43,9 +44,12 @@ class InsecureValueError(Warning): pass
 
 def _hash_function(*args, **kwargs):
     """ Joins each argument with ':' into one concatenated string. Applies
-        kwargs["hash_function"] or hashlib.256 if not specified to the arguments.
-        return the integer value of the resulting hash_object.hexdigest."""        
-    return int(kwargs.get("hash_function", hashlib.sha256)(':'.join(str(arg) for arg in args)).hexdigest(), 16)
+        kwargs["hash_function"] or hashlib.256 if not specified to the
+        arguments. return the integer value of the resulting
+        hash_object.hexdigest."""        
+    return int(kwargs.get("hash_function", 
+                          hashlib.sha256)(':'.join(str(arg) for 
+                                          arg in args)).hexdigest(), 16)
 
 def random_bits(n=1024):
     return random.SystemRandom().getrandbits(n) % N
@@ -64,7 +68,7 @@ g = 2
 k = _hash_function(N, g)
 
 class Secure_Remote_Password(mpre.base.Base):
-    
+    """ Provides the server side for the secure remote password protocol. """
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({'N' : N,
                      'g' : g,
@@ -77,12 +81,19 @@ class Secure_Remote_Password(mpre.base.Base):
         super(Secure_Remote_Password, self).__init__(**kwargs)        
         
     def new_verifier(self, username, password):
+        """ Creates a new password verifier for the specified username 
+            and password. Note that no database interactions take place,
+            and it is the callers responsibility to ensure that username
+            does not already exist. """
         salt = self.new_salt(64)
-        private_key = self.hash_function(salt, self.hash_function(username + ":" + password))
+        private_key = self.hash_function(salt, 
+                                         self.hash_function(username + ":" +
+                                                            password))
         password_verifier = pow(self.g, private_key, self.N)        
         return salt, password_verifier
         
     def login(self, username, response, salt=None, verifier=None):
+        """ Advances the login process """
         self.alert("{} attempting to log in", [username], level='vv')
         if username not in self.login_threads:
             A = response
@@ -99,6 +110,10 @@ class Secure_Remote_Password(mpre.base.Base):
         return result
         
     def _login(self, username, A, salt, verifier):
+        """ Performs the secure remote password protocol login. On
+            login failure, None and "Invalid username or password" is
+            returned. On success, the shared secret and proof of it
+            are returned. """
         N = self.N
         if A % N == 0:
             self.alert("Received an insecure A value from client {}", [username], level=0)
@@ -125,21 +140,15 @@ class Secure_Remote_Password(mpre.base.Base):
     def __getstate__(self):
         attributes = super(Secure_Remote_Password, self).__getstate__()
         del attributes["login_threads"]
-        del attributes["database"]
         return attributes
         
     def on_load(self, attributes):
         super(Secure_Remote_Password, self).on_load(attributes)
         self.login_threads = {}
-        database = self.database = sqlite3.connect(self.database_filename)
-        cursor = database.cursor()        
-        cursor.execute("CREATE TABLE IF NOT EXISTS Credentials(" + 
-                       "username TEXT PRIMARY KEY, salt TEXT, verifier BLOB)")      
-        database.commit()
         
         
 class SRP_Client(mpre.base.Base):
-    
+    """ Provides the client side of the secure remote password protocol. """
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({"username" : "",
                      "password" : '',
@@ -156,6 +165,7 @@ class SRP_Client(mpre.base.Base):
         self.A = pow(self.g, a, self.N)
 
     def login(self, response=None):
+        """ Advances the login process """
         if not self.thread: 
             self.thread = self._login()
             result = next(self.thread)
@@ -169,9 +179,11 @@ class SRP_Client(mpre.base.Base):
         yield self.verify_proof(_M)
         
     def initial_message(self):
+        """ Returns the username and A value required to initiate login. """
         return self.username, self.A
 
     def handle_challenge(self, response):
+        """ Calculates and returns the shared secret and proof of it. """
     #    print self, "Challenge: ", response
         H = self.hash_function
         N = self.N
@@ -192,6 +204,8 @@ class SRP_Client(mpre.base.Base):
         return K, M
  
     def verify_proof(self, response):
+        """ Verifies the servers proof of the shared secret against the
+            one calculated by the client. """
         client_proof, server_proof, K = response
         if server_proof != self.hash_function(self.A, client_proof, K):
             self.alert("Log in failed; Invalid proof of shared secret received server.", level='v')
