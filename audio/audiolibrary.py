@@ -14,10 +14,21 @@ objects = mpre.objects
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
    
 def record_wav_file(parse_args=False, **kwargs):
-    wav_file = Wav_File(parse_args=parse_args, mode='wb', **kwargs)
-    objects["Audio_Manager"].record("Microphone", file=wav_file)
-
-                     
+    audio_manager = objects["Audio_Manager"]
+    print "Creating wav file: ", kwargs
+    wav_file = audio_manager.create("mpre.audio.audiolibrary.Wav_File",
+                                    parse_args=parse_args, mode='wb', **kwargs)
+    audio_manager.record("Microphone", file=wav_file)
+    return wav_file
+    
+def wav_file_info(parse_args=True, **kwargs):
+    wav_file = Wav_File(parse_args=parse_args, **kwargs)
+    
+    print "{} information: ".format(wav_file.filename)
+    for attribute in ("rate", "channels", "format", 
+                      "sample_width", "number_of_frames"):
+        print "{}: {}".format(attribute, getattr(wav_file, attribute))
+        
 class Audio_Reactor(base.Base):
     
     defaults = base.Base.defaults.copy()
@@ -30,41 +41,36 @@ class Audio_Reactor(base.Base):
             objects[self.source_name].add_listener(self.instance_name)
             
     def set_input_device(self, target_instance_name):
-        self.alert("Setting input device to {}".format(target_instance_name), level=0)
-        self_name = self.instance_name
+        self.alert("Setting input device to {}".format(target_instance_name),
+                   level='v')
         if self.source_name:
-            objects[self.source_name].remove_listener(self_name)
+            objects[self.source_name].remove_listener(self.instance_name)
+            self.source_name = None
+        
+        if target_instance_name:
+            objects[target_instance_name].add_listener(self.instance_name)
             self.source_name = target_instance_name
-        
-        objects[target_instance_name].add_listener(self_name)
-        
+            
     def handle_audio_input(self, audio_data):
         self.handle_audio_output(audio_data)
         
     def handle_audio_output(self, audio_data):
         for client in self.listeners:
-            objects[client].handle_audio_input(self.instance_name, audio_data)
+            objects[client].handle_audio_input(audio_data)
     
     def handle_end_of_stream(self):
-        self.alert("end of stream", level=0)
-        raise NotImplementedError
-        
+        self.alert("end of stream")
+                
     def add_listener(self, instance_name):
         self.listeners.append(instance_name)
             
     def remove_listener(self, instance_name):
         self.listeners.remove(instance_name)    
-            
-            
-class Audio_File(fileio.File):
+                    
 
-    def handle_audio_input(self, audio_data):
-        self.write(audio_data)
-        
+class Wav_File(Audio_Reactor):
 
-class Wav_File(Audio_File):
-
-    defaults = Audio_File.defaults.copy()
+    defaults = Audio_Reactor.defaults.copy()
     defaults.update({"mode" : "rb",
                      "filename" : "",
                      "repeat" : False,
@@ -78,6 +84,7 @@ class Wav_File(Audio_File):
     
     def __init__(self, **kwargs):
         super(Wav_File, self).__init__(**kwargs)
+        print "inside wav file: ", self.filename
         self.name = os.path.split(self.filename)[-1].split('.', 1)[0]
         
         _file = self.file = wave.open(self.filename, self.mode)
@@ -115,6 +122,9 @@ class Wav_File(Audio_File):
     def close(self):
         self.file.close()
 
+    def handle_audio_input(self, audio_input):
+        self.write(audio_input)
+        
 
 class Config_Utility(vmlibrary.Process):
 
@@ -306,13 +316,6 @@ class Audio_Manager(base.Base):
         return [(instance.name, instance.instance_name) for 
                 instance in self.objects[devices]]
                         
-    def record(self, device_name, file, channels=2, rate=48000):  
+    def record(self, device_name, file):  
         device_name = self.device_names[device_name].instance_name
-               
-        reactor_file = self.create(Audio_File, file=file).instance_name
-        recording = self.create(self.Audio_Output, 
-                                source_name=device_name,
-                                name="{}_recording".format(device_name),
-                                listeners=[reactor_file], 
-                                channels=channels,
-                                rate=rate)
+        file.set_input_device(device_name)

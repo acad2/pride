@@ -100,7 +100,9 @@ import mpre.gui
 #game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
 #level = objects["Level"]
 
-#create("mpre.audio.audiolibrary.Audio_Manager")
+import mpre.audio
+mpre.audio.enable()
+
 """
 
 options["startup_definitions"] += definitions

@@ -136,7 +136,6 @@ class File(base.Wrapper):
             self.path = os.path.curdir
         
         self.mode = mode or self.mode
-
         if not self.file:
             if self.file_type == "file":      
                 self.file = open(path, self.mode)                

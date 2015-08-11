@@ -49,6 +49,7 @@ Temporary Items
 *.sav
 *.log
 *.yml
+*.wav
 *.db
 /site/
 /game/

@@ -194,7 +194,7 @@ class Audio_Input(Audio_Device):
             for _file in self.playing_files:
                 file_data = _file.read(byte_count)
                 for listener in self.playing_to[_file]:
-                    objects[listener].handle_audio_input(_file.name, file_data)
+                    objects[listener].handle_audio_input(file_data)
                     
         self.refresh_instruction.execute(self.priority)
         
@@ -215,10 +215,11 @@ class Audio_Output(Audio_Device):
         
         self.stream = self.open_stream()
         
-    def handle_audio_input(self, sender, audio_data):
+    def handle_audio_input(self, audio_data):
      #   self.latency.update()
     #    self.latency.display()
-        self.alert("Received {} bytes of data from {}", (len(audio_data), sender), level=0)
+        self.alert("Received {} bytes of data".format(len(audio_data)), 
+                   level='vvv')
         self.data_source += audio_data
         available = self.available = len(self.data_source)
                    

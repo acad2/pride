@@ -1,22 +1,8 @@
 can dynamic secrets be used over UDP instead of wifi?
 
-conways game of life!
-
-maybe create a return_type dictionary for each class, where a key is a class method and
-it's value is the expected return type when that method is called.
-
 create the periodic table of everything. write a function that writes other functions, 
 where each created function is a combination of primitive operations.
 
-recently done:
-    updated and improved arg parsers
-    command line and programs - keywords, userinput deprecated
-    compiler and $ preprocessor directive    
-    networkssl SSL_Server now hosts the ssl wrap mechanism instead of SSL_Socket
-    more scalable SDL user input handling
-    wigetlibrary updates, progress on scroll bars
-    database    
-    
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration.
     memory leak in Network/sockets - sockets have no referrers??
