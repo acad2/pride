@@ -51,14 +51,15 @@ class Shell(authentication.Authenticated_Client):
             self.handle_startup_definitions()                
              
     def handle_startup_definitions(self):
+        source = mpre.compiler.preprocess(self.startup_definitions)
         try:
-            compile(self.startup_definitions, "Shell", 'exec')
+            compile(source, "Shell", 'exec')
         except:
             self.alert("Startup defintions failed to compile:\n{}",
                     [traceback.format_exc()],
                     level=0)
         else:
-            self.execute_source(self.startup_definitions) 
+            self.execute_source(source)
                     
     def handle_input(self, input):
         if not self.logged_in:

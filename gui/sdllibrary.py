@@ -323,8 +323,6 @@ class SDL_User_Input(vmlibrary.Process):
             try:
                 handlers[event.type](event)
             except KeyError:
-                import traceback
-                print traceback.format_exc()
                 self.alert("Unhandled event: {}".format(event.type))
 
     def _update_coordinates(self, item, area, z):

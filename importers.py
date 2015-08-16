@@ -88,8 +88,11 @@ class Parser(object):
     
     @staticmethod    
     def find_symbol(symbol, source, quantity=0):
-        strings = [range(start, end) 
+        strings = [range(start, end + 1) 
                    for start, end in Parser.get_string_indices(source)]
+     #   print "Found strings: "
+     #   for _range in strings:
+     #       print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
         indices = []
         symbol_size = len(symbol)
         source_index = 0
@@ -167,16 +170,16 @@ class Compiler(object):
     def load_module(self, module_name):
         if module_name not in sys.modules:
             source, path = self.module_source[module_name]
-            sys.modules[module_name] = self.compile_module(module_name,
-                                                           source,
-                                                           path)
+            self.compile_module(module_name, source, path)
         return sys.modules[module_name]
                     
     def compile_module(self, module_name, source, path):
         new_module = types.ModuleType(module_name) 
      #   print '\n\ncompiling: ', module_name
-        module_code = self.compile_source(source, module_name)
+        sys.modules[module_name] = new_module
+        new_module.__name__ = module_name
         new_module.__file__ = path
+        module_code = self.compile_source(source, module_name)        
         exec module_code in new_module.__dict__           
         return new_module
     
@@ -202,7 +205,7 @@ class Dollar_Sign_Directive(object):
             if not slice_information: # last symbol in source was in a string
                 break
             symbol_start, _end = slice_information[0]
-          #  print "Found string replacement: ", source[symbol_start:symbol_start+16] + "..."
+           # print "\n\nFound string replacement: ", source[symbol_start-1:_end + 1] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start:]):
                 if character in delimiters:
                     delimiter = delimiters[delimiters.index(character)]
@@ -212,6 +215,7 @@ class Dollar_Sign_Directive(object):
             replaced = "mpre.objects['{}']".format(name)
             source = ''.join((source[:symbol_start], replaced,
                               source[symbol_start + 1 + len(name):]))
+      #  print "Created replacement source: ", source
         return source        
         
         
