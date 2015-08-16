@@ -221,7 +221,8 @@ class Metapython(base.Base):
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
-                     "startup_definitions" : ''})    
+                     "startup_definitions" : '',
+                     "interpreter_type" : "mpre._metapython.Interpreter"})    
                      
     parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt",
                                                "copyright", 
@@ -250,7 +251,7 @@ class Metapython(base.Base):
             self.exec_command(self.startup_definitions)           
                         
         if self.interpreter_enabled:
-            self.interpreter = self.enable_interpreter()
+            self.create(self.interpreter_type)    
                  
         with open(self.command, 'r') as module_file:
             source = module_file.read()
@@ -294,10 +295,7 @@ class Metapython(base.Base):
             
     def start_machine(self):
         """ Begins the processing of Instruction objects."""
-        self.processor.run()
-    
-    def enable_interpreter(self):      
-        return self.create(Interpreter)      
+        self.processor.run()   
         
     def exit(self, exit_code=0):
         objects["Processor"].set_attributes(running=False)

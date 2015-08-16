@@ -9,7 +9,17 @@ import mpre.authentication
 import mpre.persistence
 objects = mpre.objects
 
-
+def _attach_authentication_token(function):
+    def _send(self, data):
+        return super(type(self), self).send(data)#self.authentication_token + data)
+    return _send
+    
+def _verify_authentication_token(function):
+    def _recv(self, buffer_size=0):
+        #token, 
+        data = super(type(self), self).recv(buffer_size)#.split(' ', 1)
+        return data#token, data
+        
 class Environment_Access(mpre.authentication.Authenticated_Service):
     
     defaults = mpre.authentication.Authenticated_Service.defaults.copy()
@@ -64,16 +74,16 @@ class RPC_Handler(mpre.base.Base):
             options = {} if options is None else options
             self.create(self.environment_access_client_type, host_info=host_info, **options)
                                         
-    def make_request(self, callback, host_info, transport_protocol, priority_flag,
-                     component_name, method, args, kwargs):
+    def make_request(self, callback, host_info, transport_protocol,
+                     priority_flag, component_name, method, args, kwargs):
         arguments = pickle.dumps((args, kwargs), pickle.HIGHEST_PROTOCOL)
         request = ' '.join((component_name, method, arguments))        
         try:
             connection = self.current_connections[host_info]
         except KeyError:
             server = getattr(self, "{}_server".format(transport_protocol))
-            self.current_connections[host_info] = connection = server.create(RPC_Requester, 
-                                                                             target=host_info)      
+            connection = server.create(RPC_Requester, target=host_info)  
+            self.current_connections[host_info] = connection
         connection.make_request(callback, request, priority_flag)            
  
     def delete(self):
@@ -85,7 +95,33 @@ class RPC_Handler(mpre.base.Base):
         state = super(RPC_Handler, self).__getstate__()
         state["current_connections"] = {}
         return state
+                  
+        
+class Secure_Socket(mpre.networkssl.SSL_Socket):
+   
+    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
+    defaults.update({"authentication_token" : '0'})
+    
+    def send(self, data):
+        data = self.authentication_token + ' ' + data
+        return super(Secure_Socket, self).send(data)
+    
+    def recv(self, buffer_size=0):
+        return super(Secure_Socket, self).recv(buffer_size).split(' ', 1)
+        
+
+class Secure_Client(mpre.networkssl.SSL_Client):
             
+    defaults = mpre.networkssl.SSL_Client.defaults.copy()
+    defaults.update({"authentication_token" : '0'})
+    
+    def send(self, data):
+        data = self.authentication_token + ' ' + data    
+        return super(Secure_Client, self).send(data)
+        
+    def recv(self, buffer_size=0):
+        return super(Secure_Client, self).recv(buffer_size).split(' ', 1) 
+        
         
 class RPC_Server(mpre.networkssl.SSL_Server):
     
@@ -95,9 +131,9 @@ class RPC_Server(mpre.networkssl.SSL_Server):
                      "Tcp_Socket_type" : "mpre.rpc.RPC_Request"})
                      
     
-class RPC_Requester(mpre.networkssl.SSL_Client):
+class RPC_Requester(Secure_Client):
     
-    defaults = mpre.networkssl.SSL_Client.defaults.copy()
+    defaults = Secure_Client.defaults.copy()
     defaults.update({"dont_save" : True,
                      "authentication_client" : "mpre.rpc.Environment_Access_Client",
                      "callback" : None})
@@ -120,14 +156,13 @@ class RPC_Requester(mpre.networkssl.SSL_Client):
             self._requests.append((callback, request))
         
     def recv(self, buffer_size=0):
-        packet = super(RPC_Requester, self).recv(buffer_size)
+        auth_token, packet = super(RPC_Requester, self).recv(buffer_size)
         arguments = pickle.loads(packet)
         callback = self.callback
         self.callback = None
         if isinstance(arguments, BaseException):
             if type(arguments) in (KeyboardInterrupt, SystemExit):
-                raise arguments
-            
+                raise arguments            
             self.alert("{}: {} when performing last request", 
                        (type(arguments), arguments), level=0)
         else:
@@ -142,9 +177,9 @@ class RPC_Requester(mpre.networkssl.SSL_Client):
             self.send(request)                
                 
  
-class RPC_Request(mpre.networkssl.SSL_Socket):
+class RPC_Request(Secure_Socket):
     
-    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
+    defaults = Secure_Socket.defaults.copy()
     defaults.update({"dont_save" : True,
                      "rpc_verbosity" : 'vv'})
    
@@ -152,13 +187,22 @@ class RPC_Request(mpre.networkssl.SSL_Socket):
                  "exception" : 0}
                  
     def recv(self, buffer_size=0):
-        request = super(RPC_Request, self).recv(buffer_size)
+        auth_token, request = super(RPC_Request, self).recv(buffer_size)
+        print "Auth token: ", auth_token
+        print "Request: ", request
         component_name, method, argument_bytestream = request.split(" ", 2)
+         
+       # if authorization_token == '0': # only allow log in/registration
+       #     if method in ("login", "register"):
+       #         
+       #     
+       # else: # perform if access allowed
         instance = objects[component_name]
         host_info = instance.requester_address = self.getpeername()        
                 
         environment_access = objects["Environment_Access"]
         instance.requester_address = environment_access.requester_address = host_info
+        #instance.requester_
         if (host_info[0] in ("localhost", "127.0.0.1") or 
             environment_access.validate() or
             (instance is environment_access and 

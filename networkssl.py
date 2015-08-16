@@ -81,10 +81,11 @@ class SSL_Client(mpre.network.Tcp_Client):
                 assert context.check_hostname
                 assert self.server_hostname
         self.ssl_socket = wrap_socket(self.socket, 
-                                      **dict((attribute, getattr(self, attribute)) 
-                                              for attribute in WRAP_SOCKET_OPTIONS))
-        self.ssl_connect()
-        
+                                      **dict((attribute, 
+                                              getattr(self, attribute)) for
+                                              attribute in 
+                                              WRAP_SOCKET_OPTIONS))
+        self.ssl_connect()        
         
     def ssl_connect(self):
         try:

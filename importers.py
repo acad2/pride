@@ -218,7 +218,13 @@ class Dollar_Sign_Directive(object):
       #  print "Created replacement source: ", source
         return source        
         
-        
+  
+class New_Keyword(object):
+    
+    def handle_source(self, source):
+        pass
+            
+            
 class AntipatternError(BaseException):
     meaning = "Source code error indicating poor design"
     
