@@ -6,6 +6,8 @@ import mpre.gui
 import mpre.base as base
 Instruction = mpre.Instruction
 
+import sdl2
+
 class Attribute_Modifier_Button(gui.Button):
 
     defaults = gui.Button.defaults.copy()
@@ -71,9 +73,7 @@ class Homescreen(gui.Window):
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
         self.create(Task_Bar)
-        self.create(Scroll_Bar, target=(self.instance_name, "texture_window_x"),
-                    pack_mode="right")
-                    
+        
 
 class Task_Bar(gui.Container):
 
@@ -87,14 +87,13 @@ class Task_Bar(gui.Container):
         self.create(Indicator, text=parent_name)
         self.create(Date_Time_Button)
         self.create(Delete_Button, target=parent_name)
-   #     self.create(Text_Box)
+        self.create(Text_Box)
         
 
 class Text_Box(gui.Container):
     
     defaults = gui.Container.defaults.copy()
-    defaults.update({"allow_text_edit" : True,
-                     "h" : 16,
+    defaults.update({"h" : 16,
                      "pack_mode" : "horizontal"})          
         
     def __init__(self, **kwargs):
@@ -106,11 +105,29 @@ class Text_Box(gui.Container):
                     pack_mode="right")
                     
 
-class Text_Field(gui.Button): pass
+class Text_Field(gui.Button):
             
-    #defaults = gui.Button.defaults.copy()
+    defaults = gui.Button.defaults.copy()
+    defaults.update({"allow_text_edit" : True,
+                     "editing" : False})
     
+    def _get_editing(self):
+        return self._editing
+    def _set_editing(self, value):
+        self._editing = value
+        if value:
+            print "Turning text input on"
+            sdl2.SDL_StartTextInput()
+        else:
+            print "Disabling text input"
+            sdl2.SDL_StopTextInput()
+    editing = property(_get_editing, _set_editing)
     
+    def left_click(self, event):
+        self.alert("Left click: {}".format(self.editing))
+        self.editing = not self.editing
+        
+        
 class Date_Time_Button(gui.Button):
 
     defaults = gui.Button.defaults.copy()
@@ -179,7 +196,7 @@ class Scroll_Indicator(gui.Button):
             
     defaults = gui.Button.defaults.copy()
     defaults.update({"movable" : True,
-                     "text" : None})
+                     "text" : ''})
                 
     def pack(self, modifiers=None):
         if self.pack_mode in ("right", "horizontal"):

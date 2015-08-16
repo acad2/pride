@@ -145,6 +145,7 @@ class Base(object):
     parent = property(_get_parent)
             
     def __init__(self, **kwargs):
+        mpre.environment.add(self) # acquire instance_name
         # mutable datatypes (i.e. containers) should not be used inside the
         # defaults dictionary and should be set in the call to __init__   
         self.objects = {}
@@ -157,8 +158,7 @@ class Base(object):
             defaults = self.defaults
             attributes.update(dict((key, value) for key, value in 
                                     command_line_args.items() if value != defaults[key]))     
-        self.set_attributes(**attributes)        
-        mpre.environment.add(self)      
+        self.set_attributes(**attributes)                
         
     def set_attributes(self, **kwargs):
         """ usage: object.set_attributes(attr1=value1, attr2=value2).

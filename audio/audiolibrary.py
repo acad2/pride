@@ -319,3 +319,4 @@ class Audio_Manager(base.Base):
     def record(self, device_name, file):  
         device_name = self.device_names[device_name].instance_name
         file.set_input_device(device_name)
+        

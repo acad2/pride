@@ -1,8 +1,8 @@
-""" Stores global objects including instruction and the environment """
+""" Stores global objects including instructions and the environment """
 import sys
 import importers        
-compiler = importers.Compiler()#preprocessors=(Dollar_Sign_Directive(), )) 
-#sys.meta_path.insert(0, compiler)
+compiler = importers.Compiler(preprocessors=(importers.Dollar_Sign_Directive(),))#                                             importers.Name_Enforcer()))
+sys.meta_path.insert(0, compiler)
 
 import heapq
 import inspect
@@ -99,11 +99,12 @@ class Environment(object):
             method. """
         instance_class = instance.__class__.__name__
         try:
-            self.instance_count[instance_class] = count = self.instance_count[instance_class] + 1
+            count = self.instance_count[instance_class]
         except KeyError:
-            count = self.instance_count[instance_class] = 0
-       
+            count = 0       
         instance_name = instance_class + str(count) if count else instance_class
+        self.instance_count[instance_class] = count + 1
+        
         self.objects[instance_name] = instance
         try:
             self.instance_name[instance] = instance.instance_name = instance_name
@@ -254,13 +255,15 @@ class Alert_Handler(mpre.base.Base):
                      "log_is_persistent" : False,
                      "parse_args" : True})
     
-    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", "log_is_persistent", "verbosity")
+    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", 
+                                                    "log_is_persistent", 
+                                                    "verbosity")
     exit_on_help = False
     
     def __init__(self, **kwargs):
         super(Alert_Handler, self).__init__(**kwargs)
-        self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
-                
+        self.log = open(self.log_name, 'a+')
+                                               
     def _alert(self, message, level):
         if self.print_level is 0 or level <= self.print_level:
             sys.stdout.write(message + "\n")

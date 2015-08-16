@@ -93,16 +93,28 @@ def update(instance_name):
 #import mpre.base
 #l = mpre.base.load(s) 
 
-import mpre.gui
+#import mpre.gui
 #mpre.gui.enable()
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
 #game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
 #level = objects["Level"]
 
-import mpre.audio
-mpre.audio.enable()
+#import mpre.audio
+#mpre.audio.enable()
 
+import inspect
+source = inspect.getsource(mpre.base)
+def test():
+    import os
+    os.system("cls")
+    import importers
+    importers = reload(importers)
+   # print "Getting code"
+    for start, end in importers.Parser.extract_code(source):
+        print source[start:end]
+        print '...\n'
+test()
 """
 
 options["startup_definitions"] += definitions
