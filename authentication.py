@@ -174,11 +174,16 @@ class Authenticated_Service(mpre.base.Base):
         
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
-        del state["database"]        
+        del state["database"]
+        del state["logging_in"]
+        state["logged_in"] = dict((key, value) for key, value in 
+                                   state["logged_in"].items())
         return state
         
     def on_load(self, attributes):
         super(Authenticated_Service, self).on_load(attributes)
+        self.logging_in = set()
+        self.logged_in = mpre.utilities.Reversible_Mapping(self.logged_in)
         self.database = self.create("database.Database", database_name=name,
                                     text_factory=str)
         self.database.create_table("Credentials", 

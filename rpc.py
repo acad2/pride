@@ -73,7 +73,8 @@ class RPC_Handler(mpre.base.Base):
             self.create(Environment_Access)
             
         for server_protocol, server_type in self.servers.items():
-            setattr(self, "{}_server".format(server_protocol), self.create(server_type))
+            setattr(self, "{}_server".format(server_protocol), 
+                    self.create(server_type).instance_name)
             
         for host_info, options in self.remote_hosts:
             options = {} if options is None else options
@@ -86,7 +87,8 @@ class RPC_Handler(mpre.base.Base):
         try:
             connection = self.current_connections[host_info]
         except KeyError:
-            server = getattr(self, "{}_server".format(transport_protocol))
+            server = mpre.objects[getattr(self, 
+                                          "{}_server".format(transport_protocol))]
             connection = server.create(RPC_Requester, target=host_info)  
             self.current_connections[host_info] = connection
         connection.make_request(callback, request, priority_flag)            

@@ -407,7 +407,11 @@ class Reversible_Mapping(object):
         elif kwargs:        
             for key, value in kwargs.items():
                 self[key] = value
-            
+    
+    def items(self):
+        return [(key, self.values[index]) for index, key in
+                enumerate(self.keys)]
+                
     def __setitem__(self, key, value):
         try:
             index = self.key_index_tracker[key]

@@ -502,7 +502,7 @@ class Network(vmlibrary.Process):
                      "priority" : .01,
                      "update_priority" : 5,
                      "_updating" : False,
-                     "auto_start" : False})
+                     "running" : False})
    
     def __init__(self, **kwargs):
         # minor optimization; pre allocated slices and ranges for
@@ -515,8 +515,7 @@ class Network(vmlibrary.Process):
         self.connecting = set()
         self.sockets = []
         super(Network, self).__init__(**kwargs)       
-        self._is_running = self.running = False
-        
+                
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)
@@ -582,9 +581,8 @@ class Network(vmlibrary.Process):
                 
     def __getstate__(self):
         state = super(Network, self).__getstate__()
-        state["connecting"] = set()
-        state["sockets"] = []
-      #  state["objects"] = dict((key, []) for key in state["objects"].keys())
+        state["connecting"] = None
+        state["sockets"] = None
         state["_slice_mapping"] = None
         return state
         
@@ -592,6 +590,5 @@ class Network(vmlibrary.Process):
         super(Network, self).on_load(attributes)
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
                                     x in xrange(100))
-       # sockets = self.sockets
-       # for values in self.objects.values():
-       #     sockets.extend(values)
+        self.connecting = set()
+        self.sockets = []

@@ -131,7 +131,7 @@ class Config_Utility(vmlibrary.Process):
     defaults = vmlibrary.Process.defaults.copy()
     defaults.update({"config_file_name" : "audiocfg",
                      "mode" : ("input",),
-                     "auto_start" : False})
+                     "running" : False})
 
     def __init__(self, **kwargs):
         self.selected_devices = []

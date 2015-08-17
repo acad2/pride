@@ -177,3 +177,12 @@ class SSL_Server(mpre.network.Server):
                                                          for attribute in WRAP_SOCKET_OPTIONS))
         self.on_connect(connection, address)
         return connection, address
+        
+    def __getstate__(self):
+        attributes = super(SSL_Server, self).__getstate__()
+        del attributes["wrap_socket"]
+        return attributes
+        
+    def on_load(self, state):
+        super(SSL_Server, self).on_load(state)
+        self.wrap_socket = ssl.wrap_socket # hardcoded for now

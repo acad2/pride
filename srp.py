@@ -54,8 +54,7 @@ def _hash_function(*args, **kwargs):
 def random_bits(n=1024):
     return random.SystemRandom().getrandbits(n) % N
     
-def new_salt(size):
-    return os.urandom(64)
+
  
 # N, g, and H (the hash function) are configurable, to change them simply supply
 # new values to the Secure_Remote_Password objects when initializing them. 
@@ -72,13 +71,20 @@ class Secure_Remote_Password(mpre.base.Base):
     defaults = mpre.base.Base.defaults.copy()
     defaults.update({'N' : N,
                      'g' : g,
-                     "new_salt" : new_salt,
-                     "hash_function" : _hash_function,
-                     "database_filename" : "user_registry"})     
-        
+                     "hash_function" : None})     
+    
+    def _get_hash_function(self):
+        return self._hash_function or _hash_function
+    def _set_hash_function(self, value):
+        self._hash_function = value
+    hash_function = property(_get_hash_function, _set_hash_function)
+    
     def __init__(self, **kwargs):
         self.login_threads = {}
         super(Secure_Remote_Password, self).__init__(**kwargs)        
+     
+    def new_salt(self, size=64):
+        return os.urandom(size)
         
     def new_verifier(self, username, password):
         """ Creates a new password verifier for the specified username 
@@ -153,9 +159,15 @@ class SRP_Client(mpre.base.Base):
     defaults.update({"username" : "",
                      "password" : '',
                      "thread" : None,
-                     "hash_function" : _hash_function,
+                     "hash_function" : None,
                      'N' : N,
                      'g' : g})
+    
+    def _get_hash_function(self):
+        return self._hash_function or _hash_function
+    def _set_hash_function(self, value):
+        self._hash_function = value
+    hash_function = property(_get_hash_function, _set_hash_function)
     
     def __init__(self, **kwargs):
         super(SRP_Client, self).__init__(**kwargs)

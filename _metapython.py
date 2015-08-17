@@ -244,9 +244,9 @@ class Metapython(base.Base):
         super(Metapython, self).__init__(**kwargs)
         self.setup_os_environ()
         for component_type in self.startup_components:
-            component = self.create(component_type)
-            setattr(self, component.instance_name.lower(), component)
-            
+            component_name = self.create(component_type).instance_name
+            setattr(self, component_name.lower(), component_name) 
+                                
         if self.startup_definitions:
             self.exec_command(self.startup_definitions)           
                         
@@ -295,7 +295,9 @@ class Metapython(base.Base):
             
     def start_machine(self):
         """ Begins the processing of Instruction objects."""
-        self.processor.run()   
+        processor = mpre.objects[self.processor]
+        processor.running = True
+        processor.run()
         
     def exit(self, exit_code=0):
         objects["Processor"].set_attributes(running=False)
