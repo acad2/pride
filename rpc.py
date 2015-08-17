@@ -9,16 +9,19 @@ import mpre.authentication
 import mpre.persistence
 objects = mpre.objects
 
-def _attach_authentication_token(function):
-    def _send(self, data):
-        return super(type(self), self).send(data)#self.authentication_token + data)
-    return _send
+class Security_Context(mpre.base.Base):
     
-def _verify_authentication_token(function):
-    def _recv(self, buffer_size=0):
-        #token, 
-        data = super(type(self), self).recv(buffer_size)#.split(' ', 1)
-        return data#token, data
+    defaults = mpre.base.Base.defaults.copy()
+    defaults.update({"authorization_token" : '',
+                     "host_info" : tuple()})
+        
+    def set_context(self, authorization_token, host_info):
+        self.authorization_token = authorization_token
+        self.host_info = host_info
+       
+    def get_context(self):
+        return self.authorization_token, self.host_info
+        
         
 class Environment_Access(mpre.authentication.Authenticated_Service):
     
@@ -34,11 +37,12 @@ class Environment_Access(mpre.authentication.Authenticated_Service):
         
     @mpre.authentication.whitelisted
     def login(self, username, credentials):
+        auth_token, host_info = $Security_Context.get_context()
         if (username == "localhost" and 
-            self.requester_address[0] not in ("localhost", "127.0.0.1")):
+            host_info[0] not in ("localhost", "127.0.0.1")):
             
             self.alert("Detected login attempt by username 'localhost'" + 
-                       "from non local endpoint {}", (self.requester_address, ))
+                       "from non local endpoint {}", (host_info, ))
             raise UnauthorizedError()
         return super(Environment_Access, self).login(username, credentials)
         
@@ -62,6 +66,7 @@ class RPC_Handler(mpre.base.Base):
     
     def __init__(self, **kwargs):
         super(RPC_Handler, self).__init__(**kwargs)
+        self.create("mpre.rpc.Security_Context")
         self.current_connections = self.current_connections or {}
         require_environment_access = self.require_environment_access
         if require_environment_access:
@@ -188,21 +193,14 @@ class RPC_Request(Secure_Socket):
                  
     def recv(self, buffer_size=0):
         auth_token, request = super(RPC_Request, self).recv(buffer_size)
-        print "Auth token: ", auth_token
-        print "Request: ", request
+        host_info = self.getpeername()        
+        $Security_Context.set_context(auth_token, host_info)
+        
         component_name, method, argument_bytestream = request.split(" ", 2)
-         
-       # if authorization_token == '0': # only allow log in/registration
-       #     if method in ("login", "register"):
-       #         
-       #     
-       # else: # perform if access allowed
         instance = objects[component_name]
-        host_info = instance.requester_address = self.getpeername()        
+                        
+        environment_access = $Environment_Access        
                 
-        environment_access = objects["Environment_Access"]
-        instance.requester_address = environment_access.requester_address = host_info
-        #instance.requester_
         if (host_info[0] in ("localhost", "127.0.0.1") or 
             environment_access.validate() or
             (instance is environment_access and 
@@ -218,11 +216,11 @@ class RPC_Request(Secure_Socket):
                     self.alert("Exception when executing {}.{}\n{}", 
                                [component_name, method, error], 
                                level=self.verbosity["exception"])
-                response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)       
+                response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)      
         else:
             self.alert("Denying rpc {}.{} from host {}",
-                       (instance.instance_name, method, instance.requester_address))
-            response = pickle.dumps(mpre.authentication.UnauthorizedError())    
-        environment_access.requester_address = instance.requester_address = None
+                       (instance.instance_name, method, host_info))
+            response = pickle.dumps(mpre.authentication.UnauthorizedError())
+        $Security_Context.set_context(None, None)
         self.send(response)
         

@@ -58,8 +58,12 @@ class Parser(object):
         print_stuff = False
         for index, character in enumerate(source):
             if character == '#':
-                newline = source[index:].index('\n') + index
-                ignore_count = newline - index
+                try:
+                    newline = source[index:].index('\n') + index
+                except ValueError: # comment with no newline at end of file
+                    break
+                else:
+                    ignore_count = newline - index
                                 
             if ignore_count:
                 ignore_count -= 1

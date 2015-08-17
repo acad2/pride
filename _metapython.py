@@ -134,7 +134,7 @@ class Interpreter(authentication.Authenticated_Service):
     def login(self, username, credentials):
         response = super(Interpreter, self).login(username, credentials)
         if username in self.user_secret:
-            sender = self.requester_address
+            authorization_token, sender = $Security_Context.get_context()
            # self.user_namespaces[username] = {"__name__" : "__main__",
            #                                   "__doc__" : '',
            #                                   "Instruction" : Instruction}
@@ -147,11 +147,11 @@ class Interpreter(authentication.Authenticated_Service):
     @authentication.authenticated
     def exec_code(self, source):
         log = self.log        
-        sender = self.requester_address
-        
-        username = self.logged_in[sender]
-        log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
-                  source)                  
+        auth_token, sender = $Security_Context.get_context()
+                
+        username = self.logged_in[auth_token]
+        log.write("{} {} from {}:\n".format(time.asctime(), username, 
+                                            sender) + source)           
         result = ''         
         try:
             code = mpre.compiler.compile_source(source)

@@ -21,8 +21,11 @@ def blacklisted(function):
         owners blacklist attribute. If the requester ip is in the blacklist, 
         the call will not be performed. """
     def call(instance, *args, **kwargs):
-        if instance.requester_address[0] in instance.blacklist:
-            instance.alert("{} {}".format(UnauthorizedError("Denied blacklisted client"), instance.requester_address), level='v')
+        authorization_token, host_info = $Security_Context.get_context()
+        if host_info[0] in instance.blacklist:
+            instance.alert("{} {}",
+                            (UnauthorizedError("Denied blacklisted client"), host_info), 
+                            level='v')
         else:
             return function(instance, *args, **kwargs)    
     return call
@@ -33,8 +36,11 @@ def whitelisted(function):
         owners whitelist attribute. If the requesters ip is not in the
         whitelist, the call will not be performed. """
     def call(instance, *args, **kwargs):
-        if instance.requester_address[0] not in instance.whitelist:            
-            instance.alert("{} {}".format(UnauthorizedError("Denied non whitelisted client"), instance.requester_address), level='v')
+        authorization_token, host_info = $Security_Context.get_context()
+        if host_info[0] not in instance.whitelist:
+            instance.alert("{} {}",
+                           (UnauthorizedError("Denied non whitelisted client"), host_info), 
+                           level='v')
         else:
             return function(instance, *args, **kwargs)            
     return call
@@ -47,9 +53,10 @@ def authenticated(function):
         
         Note that the implementation may change to something non ip based. """
     def call(instance, *args, **kwargs):
-        if instance.requester_address not in instance.logged_in:
+        authorization_token, host_info = $Security_Context.get_context()
+        if authorization_token not in instance.logged_in:
             instance.alert("{} {}".format(UnauthorizedError("not logged in"),
-                                          instance.requester_address), 
+                                          host_info), 
                                           level='v')
         else:
             return function(instance, *args, **kwargs)        
@@ -69,13 +76,13 @@ class Authenticated_Service(mpre.base.Base):
     defaults.update({"allow_registration" : True,
                      "protocol_component" : "Secure_Remote_Password",
                      "database_name" : '',
-                     "login_message" : '',
-                     "requester_address" : None})
+                     "login_message" : ''})
     
     def __init__(self, **kwargs):
         self.user_secret = {} # maps username to shared secret
         self.logging_in = set()
-        self.logged_in = mpre.utilities.Reversible_Mapping() # maps host info to username
+        # maps authentication token to username
+        self.logged_in = mpre.utilities.Reversible_Mapping() 
         self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
@@ -131,11 +138,11 @@ class Authenticated_Service(mpre.base.Base):
 
             On login success, a login message and proof of the shared
             secret are returned."""
-            
+        authorization_token, host_info = $Security_Context.get_context()    
         if (username in self.user_secret or 
-            self.requester_address in self.logged_in):
+            authorization_token in self.logged_in):
             self.alert("Detected multiple login attempt on account {} {}", 
-                       [username, self.requester_address], level=0)#'v')
+                       [username, host_info], level='v')
             raise UnauthorizedError()
             
         if username in self.logging_in:
@@ -146,7 +153,7 @@ class Authenticated_Service(mpre.base.Base):
             if K:
                 self.alert("{} logged in".format(username), level=0)#'vv')
                 self.user_secret[username] = K
-                self.logged_in[self.requester_address] = username
+                self.logged_in['0'] = username
         else:
             database = self.database
             cursor = database.query("Credentials", 
