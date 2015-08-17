@@ -164,6 +164,7 @@ class RPC_Requester(Secure_Client):
         
     def recv(self, buffer_size=0):
         auth_token, packet = super(RPC_Requester, self).recv(buffer_size)
+      #  print auth_token
         arguments = pickle.loads(packet)
         callback = self.callback
         self.callback = None

@@ -4,9 +4,8 @@ import json
 class Base_Encoder(json.JSONEncoder):
     
     def default(self, _object):
-        print "encoding: ", _object
+  #      print "encoding: ", _object
         try:
-            print "Ojbect getstate: ", _object.__getstate__
             attributes = _object.__getstate__()
         except AttributeError:
             attributes = _object.__dict__.copy()
@@ -15,11 +14,15 @@ class Base_Encoder(json.JSONEncoder):
         saved_objects = {}
         for key, value in objects.items():
             saved_objects[key] = [self.default(item) for item in sorted(value,
-                                  key=operator.attrgetter("instance_name"))]
+                                  key=operator.attrgetter("instance_name"))
+                                  if not item.dont_save]
                                   
         builtins = dir(__builtins__)
         for name, value in attributes.items():
-            print "Testing if {}.{} ({} {}) is serializable".format(_object, name, type(value), value)
+            if getattr(value, "dont_save", None):
+                attributes[name] = None
+                continue
+   #         print "Testing if {}.{} ({} {}) is serializable".format(_object, name, type(value), value)
             try:
                 json.dumps(value)
             except TypeError:
@@ -27,6 +30,12 @@ class Base_Encoder(json.JSONEncoder):
                     attributes[value] = value.__getstate__()
                 else:
                     raise
+        attributes["objects"] = saved_objects
+   #     for key in attributes.keys():
+   #         print _object, key, type(key)
+   #         import pprint
+   #         pprint.pprint(attributes)
+   #         assert isinstance(key, str)
         return attributes
         
 if __name__ == "__main__":

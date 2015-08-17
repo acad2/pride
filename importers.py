@@ -202,7 +202,7 @@ class Dollar_Sign_Directive(object):
         translated to mpre.objects['Component']. """
         
     def handle_source(self, source):
-        delimiters = ['.', ' ', '\t', '(', ')', '\n']
+        delimiters = ['.', ' ', '\t', '(', ')', '\n', ',']
         length = len("mpre.objects['']")
         while '$' in source:
             slice_information = Parser.find_symbol('$', source, 1)

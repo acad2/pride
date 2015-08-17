@@ -129,7 +129,9 @@ class Interpreter(authentication.Authenticated_Service):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter, self).__init__(**kwargs)
-        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+', persistent=False)
+        self.log = self.create("fileio.File", 
+                               "{}.log".format(self.instance_name), 'a+',
+                               persistent=False).instance_name
                 
     def login(self, username, credentials):
         response = super(Interpreter, self).login(username, credentials)
@@ -146,7 +148,7 @@ class Interpreter(authentication.Authenticated_Service):
     @authentication.whitelisted
     @authentication.authenticated
     def exec_code(self, source):
-        log = self.log        
+        log = mpre.objects[self.log]
         auth_token, sender = $Security_Context.get_context()
                 
         username = self.logged_in[auth_token]

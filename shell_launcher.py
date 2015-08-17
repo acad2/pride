@@ -93,17 +93,20 @@ def update(instance_name):
 #import mpre.base
 #l = mpre.base.load(s) 
 
-import mpre.gui
-mpre.gui.enable()
+#import mpre.gui
+#mpre.gui.enable()
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
-game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
-$Game_World.test_duel()
+#game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
+#$Game_World.test_duel()
 #game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
 #level = objects["Level"]
 
 #import mpre.audio
 #mpre.audio.enable()
 
+import json
+from jsontest import *
+#s = json.dumps($Metapython, cls=Base_Encoder)
 """
 
 options["startup_definitions"] += definitions
