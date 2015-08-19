@@ -135,8 +135,8 @@ class Interpreter(authentication.Authenticated_Service):
                 
     def login(self, username, credentials):
         response = super(Interpreter, self).login(username, credentials)
-        if username in self.user_secret:
-            authorization_token, sender = $Security_Context.get_context()
+        if username in self.logged_in.values:
+            authorization_token, sender = $Session_Manager.current_session
            # self.user_namespaces[username] = {"__name__" : "__main__",
            #                                   "__doc__" : '',
            #                                   "Instruction" : Instruction}
@@ -149,7 +149,7 @@ class Interpreter(authentication.Authenticated_Service):
     @authentication.authenticated
     def exec_code(self, source):
         log = mpre.objects[self.log]
-        auth_token, sender = $Security_Context.get_context()
+        auth_token, sender = $Session_Manager.current_session
                 
         username = self.logged_in[auth_token]
         log.write("{} {} from {}:\n".format(time.asctime(), username, 
@@ -218,8 +218,7 @@ class Metapython(base.Base):
                                              "mpre.network.Socket_Error_Handler",
                                              "mpre.network.Network", 
                                              "mpre.shell.Command_Line",
-                                             "mpre.srp.Secure_Remote_Password",
-                                             "mpre.rpc.RPC_Handler"),
+                                             "mpre.srp.Secure_Remote_Password"),
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,

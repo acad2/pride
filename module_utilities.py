@@ -75,18 +75,23 @@ def get_required_modules(module):
         for attribute, value in module.__dict__.items():
             if isinstance(value, types.ModuleType):                
                 name = value.__name__
-                package = value.__package__
+                try:
+                    package = value.__package__
+                except AttributeError:
+                    print "module '{}' has no package attribute".format(name)
+                    continue
+                    
                 if name == package:
                     packages.add(name)
                               
                 if name not in required_modules:  
                  #   print "Adding {} to required_modules".format(name)                        
                     required_modules.add(name)
-                    module_modules, module_packages = _get_modules(value, 
-                                                                   required_modules, 
-                                                                   packages)
-                    required_modules.update(module_modules)
-                    packages.update(module_packages)
+                    _modules, _packages = _get_modules(value,   
+                                                       required_modules,
+                                                       packages)
+                    required_modules.update(_modules)
+                    packages.update(_packages)
         return required_modules, packages
         
     return _get_modules(module, set(), set())

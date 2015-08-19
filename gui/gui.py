@@ -128,7 +128,8 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                      "allow_text_edit" : False,
                      "_ignore_click" : False,
                      "sdl_window" : "SDL_Window",
-                     "movable" : True})
+                     "movable" : True,
+                     "hidden" : False})
     Hotkeys = {}
     
     def _on_set(self, coordinate, value):
@@ -297,7 +298,14 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                 instance.held = True
                 instance.mousemotion(x_difference, y_difference, top_level=False)
                 instance.held = False
-                
+     
+    def toggle_hidden(self):
+        if not self.hidden:
+            sdl_user_input = mpre.objects["SDL_User_Input"]
+            sdl_user_input._update_coordinates(self.instance_name,
+                                               self.area, -1)            
+        self.hidden = not self.hidden
+       
     def draw(self, figure, *args, **kwargs):
         # draw operations are enqueued and processed in batches by Renderer.draw
         self._draw_operations.append((figure, args, kwargs))

@@ -36,7 +36,10 @@ class Base_Encoder(json.JSONEncoder):
    #         import pprint
    #         pprint.pprint(attributes)
    #         assert isinstance(key, str)
-        return attributes
+        name = _object.__class__.__name__
+        module = _object.__module__
+        saved = [module + '.' + name, attributes]
+        return saved
         
 if __name__ == "__main__":
     import mpre._metapython

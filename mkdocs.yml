@@ -52,3 +52,5 @@ pages:
 - ['programs\stupidsend.md', 'programs', 'stupidsend']
 - ['programs\unzip.md', 'programs', 'unzip']- ['mpre\__main__.md', 'mpre', '__main__']
 - ['programs\unzip.md', 'programs', 'unzip']
+- ['mpre\jsontest.md', 'mpre', 'jsontest']
+- ['mpre\parser.md', 'mpre', 'parser']

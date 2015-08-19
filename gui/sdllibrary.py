@@ -119,6 +119,8 @@ class SDL_Window(SDL_Component):
                 renderer.copy(layers[layer_number - 1][0])
         
             for instance in layer_components:
+                if instance.hidden:
+                    continue
                 srcrect = x, y, w, h = instance.area
                 user_input._update_coordinates(instance.instance_name, srcrect, instance.z)
                 
@@ -329,13 +331,14 @@ class SDL_User_Input(vmlibrary.Process):
         try:
             _, old_z = self.coordinate_tracker[item]
         except KeyError:
-            try:
-                self._coordinate_tracker[z].append(item)
-            except KeyError:
-                self._coordinate_tracker[z] = [item]
+            pass
         else:            
-            self._coordinate_tracker[old_z].remove(item)
+            self._coordinate_tracker[old_z].remove(item)            
+        try:
             self._coordinate_tracker[z].append(item)
+        except KeyError:
+            self._coordinate_tracker[z] = [item]
+            
         self.coordinate_tracker[item] = (area, z)
         
     def _remove_from_coordinates(self, item):

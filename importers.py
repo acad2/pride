@@ -179,12 +179,19 @@ class Compiler(object):
                     
     def compile_module(self, module_name, source, path):
         new_module = types.ModuleType(module_name) 
-     #   print '\n\ncompiling: ', module_name
+        #print '\n\ncompiling: ', module_name
         sys.modules[module_name] = new_module
         new_module.__name__ = module_name
         new_module.__file__ = path
         module_code = self.compile_source(source, module_name)        
-        exec module_code in new_module.__dict__           
+        exec module_code in new_module.__dict__     
+        
+        if not hasattr(new_module, "__package__"):
+            split = module_name.split('.', 1)
+            if len(split) > 1:
+                new_module.__package__ = split[0]
+            else:
+                print "No package available for: ", module_name
         return new_module
     
     def preprocess(self, source):

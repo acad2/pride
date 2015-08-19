@@ -1,17 +1,19 @@
 can dynamic secrets be used over UDP instead of wifi?
 
-cloud compiler. upload source to server that compiles and handles version control,
+cloud compiler? upload source to server that compiles and handles version control,
 and sends the compiled program. integrity of source/program would need to be considered
 
 create the periodic table of everything. write a function that writes other functions, 
 where each created function is a combination of primitive operations.
 
 known bugs:
-    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration.
+    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     
 things that could be done:
-    "new" keyword to create objects
+    improve authentication token situation
+    improve json serialization
+    "new" keyword to create objects ?
     automatically compiling via cython.inline - stuck at libpython27_a
     preemptive multiprocessing development
     children descriptor?    

@@ -21,7 +21,7 @@ def blacklisted(function):
         owners blacklist attribute. If the requester ip is in the blacklist, 
         the call will not be performed. """
     def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Security_Context.get_context()
+        authorization_token, host_info = $Session_Manager.current_session
         if host_info[0] in instance.blacklist:
             instance.alert("{} {}",
                             (UnauthorizedError("Denied blacklisted client"), host_info), 
@@ -36,7 +36,7 @@ def whitelisted(function):
         owners whitelist attribute. If the requesters ip is not in the
         whitelist, the call will not be performed. """
     def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Security_Context.get_context()
+        authorization_token, host_info = $Session_Manager.current_session
         if host_info[0] not in instance.whitelist:
             instance.alert("{} {}",
                            (UnauthorizedError("Denied non whitelisted client"), host_info), 
@@ -53,7 +53,7 @@ def authenticated(function):
         
         Note that the implementation may change to something non ip based. """
     def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Security_Context.get_context()
+        authorization_token, host_info = $Session_Manager.current_session
         if authorization_token not in instance.logged_in:
             instance.alert("{} {}".format(UnauthorizedError("not logged in"),
                                           host_info), 
@@ -79,7 +79,6 @@ class Authenticated_Service(mpre.base.Base):
                      "login_message" : ''})
     
     def __init__(self, **kwargs):
-        self.user_secret = {} # maps username to shared secret
         self.logging_in = set()
         # maps authentication token to username
         self.logged_in = mpre.utilities.Reversible_Mapping() 
@@ -138,11 +137,10 @@ class Authenticated_Service(mpre.base.Base):
 
             On login success, a login message and proof of the shared
             secret are returned."""
-        authorization_token, host_info = $Security_Context.get_context()    
-        if (username in self.user_secret or 
-            authorization_token in self.logged_in):
+        authorization_token, host_info = $Session_Manager.current_session    
+        if authorization_token in self.logged_in.keys:
             self.alert("Detected multiple login attempt on account {} {}", 
-                       [username, host_info], level='v')
+                       [self.logged_in[authorization_token], host_info], level='v')
             raise UnauthorizedError()
             
         if username in self.logging_in:
@@ -152,8 +150,7 @@ class Authenticated_Service(mpre.base.Base):
             #print self, "Sending response: ", response
             if K:
                 self.alert("{} logged in".format(username), level=0)#'vv')
-                self.user_secret[username] = K
-                self.logged_in['0'] = username
+                self.logged_in[K] = username
         else:
             database = self.database
             cursor = database.query("Credentials", 
@@ -235,6 +232,8 @@ class Authenticated_Client(mpre.base.Base):
                          mpre.shell.get_user_input(username_prompt))
         
         self.password_prompt = self.password_prompt.format(self.instance_name)
+        self.session = self.create("mpre.rpc.Session", '0', self.host_info)
+        
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
             self.login()
@@ -245,9 +244,9 @@ class Authenticated_Client(mpre.base.Base):
             will be presented if password was not passed in as an 
             attribute of the authenticated_client (recommended). """
         self.alert("Registering", level=self.verbosity["registering"])
-        Instruction(self.target_service, "register", self.username, 
-                    self.password).execute(host_info=self.host_info, 
-                                           callback=self.register_results, priority=1)
+        self.session.execute(Instruction(self.target_service, "register", 
+                                         self.username, self.password), 
+                             self.register_results)
                
     def register_results(self, success):
         """ The callback used by the register method. Proceeds to login
@@ -270,19 +269,20 @@ class Authenticated_Client(mpre.base.Base):
             presented if password was not specified as an attribute of
             the authenticated_client (recommended). """
         self.alert("Logging in...", level=self.verbosity["logging_in"])
-        self.client = self.create(self.protocol_client, username=self.username, 
+        self.client = self.create(self.protocol_client, 
+                                  username=self.username,
                                   password=self.password)
-        Instruction(self.target_service, "login", 
-                    *self.client.login()).execute(host_info=self.host_info,
-                                                  callback=self.send_proof)    
+        self.session.execute(Instruction(self.target_service, "login", 
+                                         *self.client.login()),
+                             self.send_proof)
                                                   
     def send_proof(self, response):
         """ The second stage of the login process. This is the callback
             used by login. """
         self.key, self.proof_of_key = self.client.login(response)
-        Instruction(self.target_service, "login", self.username,
-                    self.proof_of_key).execute(host_info=self.host_info,
-                                               callback=self.login_result)
+        self.session.execute(Instruction(self.target_service, "login", 
+                                         self.username, self.proof_of_key),
+                             self.login_result)
                                                          
     def login_result(self, response):
         """ Calls on_login in the event of login success, provides
