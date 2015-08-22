@@ -26,7 +26,8 @@ OUTPUT_SIZES = {hashlib.sha1 : 20,
                 hashlib.sha512 : 64}
                     
 def extract(input_keying_material, salt, hash_function=DEFAULT_HASH):
-    psuedorandom_key = hash_function(salt + input_keying_material).digest()
+    psuedorandom_key = hash_function(salt + 
+                                     bytes(input_keying_material)).digest()
     return psuedorandom_key
     
 def expand(psuedorandom_key, length, hash_length,
@@ -67,6 +68,6 @@ class HKDF(object):
         return self.expand(self.extract(input_keying_material, salt), length, info)
         
 if __name__ == "__main__":
-    print hkdf("test input keying material", 32, info="application info", salt='salt')
+    print hkdf(129387124098172410928472039487102934871039847L, 32, info="application info", salt='salt')
     deriver = HKDF(hashlib.sha256)
     print deriver.hkdf("test input keying material", 32, info="application info", salt="salt")

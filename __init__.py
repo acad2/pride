@@ -15,8 +15,8 @@ import copy
 import types
 
 import mpre.utilities
-timer_function = mpre.utilities.timer_function  
-
+timer_function = mpre.utilities.timer_function          
+    
 class Environment(object):
     """ Stores global state for the process. This includes reference 
         reference information, most importantly the objects dictionary. """
@@ -269,8 +269,32 @@ class Alert_Handler(mpre.base.Base):
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
             severity = self.level_map.get(level, str(level))
-            # windows will complain about a file in + mode if this isn't done sometimes
+            # windows might complain about files in + mode if this isn't done
             self.log.seek(0, 1)
             self.log.write(severity + message + "\n")
             
 alert_handler = Alert_Handler()            
+
+host_configuration = {("localhost", 40022) : "localhost"}
+
+class Hosts_Dictionary(mpre.base.Wrapper):
+    
+    wrapped_object_name = "_hosts"
+    
+    def __init__(self, **kwargs):
+        kwargs.setdefault("wrapped_object", {})
+        super(Hosts_Dictionary, self).__init__(**kwargs)        
+        
+    def __getitem__(self, host_key):
+        if host_key not in self._hosts:
+            username = host_configuration[host_key]
+            #self._hosts[host_key] = None # prevents recursion
+            self._hosts[host_key] = self.create("mpre.rpc.Host", 
+                                                host_info=host_key,
+                                                username=username)
+        return self._hosts[host_key]
+        
+    def __setitem__(self, host_key, value):
+        self._hosts[host_key] = value
+        
+hosts = Hosts_Dictionary()        

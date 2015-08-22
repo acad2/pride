@@ -1,3 +1,4 @@
+import hkdf
 import sqlite3
 import getpass
 
@@ -62,7 +63,10 @@ def authenticated(function):
             return function(instance, *args, **kwargs)        
     return call    
           
-    
+def derive_session_id(key, purpose='', key_size=256):
+    return hkdf.hkdf(key, key_size, purpose)
+
+        
 class Authenticated_Service(mpre.base.Base):
     """ Provides functionality for user registration and login, and
         provides interface for use with blacklisted/whitelisted/authenticated
@@ -81,6 +85,7 @@ class Authenticated_Service(mpre.base.Base):
     def __init__(self, **kwargs):
         self.logging_in = set()
         # maps authentication token to username
+        self.session_id = {}
         self.logged_in = mpre.utilities.Reversible_Mapping() 
         self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
@@ -151,6 +156,10 @@ class Authenticated_Service(mpre.base.Base):
             if K:
                 self.alert("{} logged in".format(username), level=0)#'vv')
                 self.logged_in[K] = username
+                print "Deriving session id"
+                self.session_id[username] = derive_session_id(K, "session_id")
+                print "Derived session id"
+            print "Response: ", response
         else:
             database = self.database
             cursor = database.query("Credentials", 
@@ -199,7 +208,8 @@ class Authenticated_Client(mpre.base.Base):
                      "ip" : "localhost", 
                      "port" : 40022,
                      "auto_login" : True,
-                     "logged_in" : False})
+                     "logged_in" : False,
+                     "session_id" : '0'})
     
     parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
     
@@ -221,12 +231,11 @@ class Authenticated_Client(mpre.base.Base):
     def _set_password(self, value):
         self._password = value
     password = property(_get_password, _set_password)    
-        
+                
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         if not self.target_service:
-            raise mpre.errors.ArgumentError("target_service not supplied")
-            
+            raise mpre.errors.ArgumentError("target_service for {} not supplied".format(self))
         username_prompt = "{}: please provide a username: ".format(self.instance_name)
         self.username = (self.username or 
                          mpre.shell.get_user_input(username_prompt))
@@ -278,12 +287,13 @@ class Authenticated_Client(mpre.base.Base):
                                                   
     def send_proof(self, response):
         """ The second stage of the login process. This is the callback
-            used by login. """
+            used by login. Sends proof of key to server."""
+        self.alert("Sending proof of key")
         self.key, self.proof_of_key = self.client.login(response)
         self.session.execute(Instruction(self.target_service, "login", 
                                          self.username, self.proof_of_key),
-                             self.login_result)
-                                                         
+                             self.login_result)       
+        
     def login_result(self, response):
         """ Calls on_login in the event of login success, provides
             an alert upon login failure. """
@@ -295,6 +305,9 @@ class Authenticated_Client(mpre.base.Base):
         else:
             if self.client.login((self.proof_of_key, proof, self.key)):
                 self.logged_in = True
+                self.session_id = session_id = derive_session_id(self.key,
+                                                                 "session_id")
+                self.session.id = session_id
                 self.on_login(message)
             else:
                 self.alert("Login failed", 

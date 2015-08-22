@@ -196,7 +196,7 @@ class SRP_Client(mpre.base.Base):
 
     def handle_challenge(self, response):
         """ Calculates and returns the shared secret and proof of it. """
-    #    print self, "Challenge: ", response
+        print self, "Challenge: ", type(response), response
         H = self.hash_function
         N = self.N
         g = self.g

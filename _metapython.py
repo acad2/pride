@@ -222,6 +222,7 @@ class Metapython(base.Base):
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
+                     "rpc_enabled" : True,
                      "startup_definitions" : '',
                      "interpreter_type" : "mpre._metapython.Interpreter"})    
                      
@@ -253,7 +254,10 @@ class Metapython(base.Base):
                         
         if self.interpreter_enabled:
             self.create(self.interpreter_type)    
-                 
+        
+        if self.rpc_enabled:
+            self.create("mpre.rpc.Environment_Access")
+            
         with open(self.command, 'r') as module_file:
             source = module_file.read()
             

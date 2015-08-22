@@ -29,7 +29,7 @@ from utilities import Latency, Average
 Instruction = mpre.Instruction
 objects = mpre.objects
 
-ERROR_CODES = {}
+_local_connections, ERROR_CODES = {}, {}
 
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
@@ -245,7 +245,7 @@ class Socket(base.Wrapper):
             is called when the connection succeeds, or the appropriate error handler method
             is called if the connection fails. Subclasses should overload on_connect instead
             of this method."""
-        self.target = address
+        self.host_info = address
         try:
             self.wrapped_object.connect(address)
         except socket.error as error:
@@ -269,6 +269,7 @@ class Socket(base.Wrapper):
         self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
+        self.peername = self.getpeername()
         self.alert("Connected", level='v')
                 
     def delete(self):
@@ -368,8 +369,10 @@ class Tcp_Socket(Socket):
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
                                                           socket.SOCK_STREAM))
+        self._local_data = bytes()
         super(Tcp_Socket, self).__init__(**kwargs)
-
+        #self.peername = self.getpeername()
+        
     def on_select(self):
         self.recv()
         
@@ -412,8 +415,8 @@ class Server(Tcp_Socket):
         return connection, address
  
     def on_connect(self, connection, address):
-        """ Connection logic that the server should apply when a new client has connected.
-            This method should be overloaded by subclasses"""
+        """ Connection logic that the server should apply when a new 
+            client has connected. """
         self.alert("accepted connection {} from {}", 
                   (connection.instance_name, address),level="v")
         
@@ -428,25 +431,33 @@ class Tcp_Client(Tcp_Socket):
     defaults = Tcp_Socket.defaults.copy()
     defaults.update({"ip" : "",
                      "port" : 80,
-                     "target" : tuple(),
+                     "host_info" : tuple(),
                      "auto_connect" : True,
                      "as_port" : 0})
     
-    parser_ignore = Tcp_Socket.parser_ignore + ("target", "auto_connect", "as_port")
+    parser_ignore = Tcp_Socket.parser_ignore + ("host_info", "auto_connect", "as_port")
     
     def __init__(self, **kwargs):
         super(Tcp_Client, self).__init__(**kwargs)        
         if self.as_port:
             self.bind((self.interface, self.as_port))
             
-        if not self.target:
+        if not self.host_info:
             if not self.ip:
-                self.alert("Attempted to create Tcp_Client with no host ip or target", tuple(), 0)
-            self.target = (self.ip, self.port)
+                self.alert("Attempted to create Tcp_Client with no host ip or host_info", tuple(), 0)
+            self.host_info = (self.ip, self.port)
         if self.auto_connect:
-            self.connect(self.target)
-                
-        
+            self.connect(self.host_info)
+
+   # def send(self, data):
+   #     if self.peername[0] in ("localhost", "127.0.0.1"):
+   #         local_socket = mpre.objects[_local_connections[self.peername]]
+   #         local_socket._local_data += data
+   #         local_socket.recv()
+   #     else:
+   #         return super(Tcp_Client, self).send(data)
+
+            
 class Udp_Socket(Socket):
 
     defaults = Socket.defaults.copy()
@@ -572,7 +583,7 @@ class Network(vmlibrary.Process):
                     connection.connection_attempts -= 1
                     if not connection.connection_attempts:
                         try:
-                            connection.connect(connection.target)
+                            connection.connect(connection.host_info)
                         except socket.error as error:                            
                             error_handler.dispatch(connection, error, 
                                                    ERROR_CODES[error.errno].lower())           
