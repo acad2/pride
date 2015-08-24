@@ -15,54 +15,7 @@ REMOVE_USER = "DELETE FROM Credentials WHERE username = ?"
 SELECT_USER = "SELECT salt, verifier FROM Credentials WHERE username = ?"
 
 class UnauthorizedError(Warning): pass         
-       
-def blacklisted(function):
-    """ Decorates a method to support an ip based blacklist. The address
-        of the current rpc requester is checked for membership in the method
-        owners blacklist attribute. If the requester ip is in the blacklist, 
-        the call will not be performed. """
-    def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Session_Manager.current_session
-        if host_info[0] in instance.blacklist:
-            instance.alert("{} {}",
-                            (UnauthorizedError("Denied blacklisted client"), host_info), 
-                            level='v')
-        else:
-            return function(instance, *args, **kwargs)    
-    return call
-    
-def whitelisted(function):
-    """ Decorator to support an ip based whitelist. The address of the
-        current rpc requester is checked for membership in the method
-        owners whitelist attribute. If the requesters ip is not in the
-        whitelist, the call will not be performed. """
-    def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Session_Manager.current_session
-        if host_info[0] not in instance.whitelist:
-            instance.alert("{} {}",
-                           (UnauthorizedError("Denied non whitelisted client"), host_info), 
-                           level='v')
-        else:
-            return function(instance, *args, **kwargs)            
-    return call
-    
-def authenticated(function):
-    """ Decorator to support authentication requirements for method access.
-        The address of the current rpc requester is checked for membership
-        in the method owners logged_in attribute. If the requester ip is
-        not logged_in, the call will not be performed. 
-        
-        Note that the implementation may change to something non ip based. """
-    def call(instance, *args, **kwargs):
-        authorization_token, host_info = $Session_Manager.current_session
-        if authorization_token not in instance.logged_in:
-            instance.alert("{} {}".format(UnauthorizedError("not logged in"),
-                                          host_info), 
-                                          level='v')
-        else:
-            return function(instance, *args, **kwargs)        
-    return call    
-          
+                 
 def derive_session_id(key, purpose='', key_size=256):
     return hkdf.hkdf(key, key_size, purpose)
 
@@ -80,13 +33,14 @@ class Authenticated_Service(mpre.base.Base):
     defaults.update({"allow_registration" : True,
                      "protocol_component" : "Secure_Remote_Password",
                      "database_name" : '',
-                     "login_message" : ''})
+                     "login_message" : '',
+                     "current_session" : (None, None),
+                     "session_id_size" : 256})
     
     def __init__(self, **kwargs):
         self.logging_in = set()
         # maps authentication token to username
-        self.session_id = {}
-        self.logged_in = mpre.utilities.Reversible_Mapping() 
+        self.session_id = mpre.utilities.Reversible_Mapping() 
         self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
@@ -142,10 +96,11 @@ class Authenticated_Service(mpre.base.Base):
 
             On login success, a login message and proof of the shared
             secret are returned."""
-        authorization_token, host_info = $Session_Manager.current_session    
-        if authorization_token in self.logged_in.keys:
-            self.alert("Detected multiple login attempt on account {} {}", 
-                       [self.logged_in[authorization_token], host_info], level='v')
+        session_id, host_info = self.current_session
+        if session_id in self.session_id:
+            self.alert("Multiple login attempt by {} on account {} from {}", 
+                       [(session_id, self.session_id[session_id]), username, 
+                         host_info], level='v')
             raise UnauthorizedError()
             
         if username in self.logging_in:
@@ -155,11 +110,9 @@ class Authenticated_Service(mpre.base.Base):
             #print self, "Sending response: ", response
             if K:
                 self.alert("{} logged in".format(username), level=0)#'vv')
-                self.logged_in[K] = username
-                print "Deriving session id"
-                self.session_id[username] = derive_session_id(K, "session_id")
-                print "Derived session id"
-            print "Response: ", response
+                session_id = derive_session_id(K, "session_id", 
+                                               self.session_id_size)
+                self.session_id[session_id] = username
         else:
             database = self.database
             cursor = database.query("Credentials", 
@@ -177,6 +130,17 @@ class Authenticated_Service(mpre.base.Base):
             response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
             self.logging_in.add(username)
         return response
+    
+    def validate(self, session_id, peername, method_name):
+        ip = peername[0]
+        if ip in self.whitelist or ip not in self.blacklist:
+            if session_id in self.session_id or (session_id == '0' and 
+                                                ((method_name == "register" and 
+                                                 self.allow_registration) or
+                                                (method_name == "login" and
+                                                 self.allow_login))):
+                self.current_session = (session_id, peername)
+                return True        
         
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
@@ -209,7 +173,8 @@ class Authenticated_Client(mpre.base.Base):
                      "port" : 40022,
                      "auto_login" : True,
                      "logged_in" : False,
-                     "session_id" : '0'})
+                     "session_id" : '0',
+                     "session_id_size" : 256})
     
     parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
     
@@ -278,18 +243,18 @@ class Authenticated_Client(mpre.base.Base):
             presented if password was not specified as an attribute of
             the authenticated_client (recommended). """
         self.alert("Logging in...", level=self.verbosity["logging_in"])
-        self.client = self.create(self.protocol_client, 
+        self._client = self.create(self.protocol_client, 
                                   username=self.username,
                                   password=self.password)
         self.session.execute(Instruction(self.target_service, "login", 
-                                         *self.client.login()),
+                                         *self._client.login()),
                              self.send_proof)
                                                   
     def send_proof(self, response):
         """ The second stage of the login process. This is the callback
             used by login. Sends proof of key to server."""
         self.alert("Sending proof of key")
-        self.key, self.proof_of_key = self.client.login(response)
+        self.key, self.proof_of_key = self._client.login(response)
         self.session.execute(Instruction(self.target_service, "login", 
                                          self.username, self.proof_of_key),
                              self.login_result)       
@@ -303,17 +268,18 @@ class Authenticated_Client(mpre.base.Base):
             self.alert("Unhandled exception during login {}", [response], 
                        level=0)
         else:
-            if self.client.login((self.proof_of_key, proof, self.key)):
+            if self._client.login((self.proof_of_key, proof, self.key)):
                 self.logged_in = True
-                self.session_id = session_id = derive_session_id(self.key,
-                                                                 "session_id")
-                self.session.id = session_id
+                self.session_id = derive_session_id(self.key, "session_id",
+                                                    self.session_id_size)
+                self.session.id = self.session_id
+                print "Set client session id"
                 self.on_login(message)
             else:
                 self.alert("Login failed", 
                            level=self.verbosity["login_failed"])           
-        self.client.delete()
-        del self.client
+        self._client.delete()
+        del self._client
         
     def on_login(self, message):
         """ Called automatically upon successful login. Should be

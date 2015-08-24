@@ -158,17 +158,7 @@ class Base(object):
             defaults = self.defaults
             attributes.update(dict((key, value) for key, value in 
                                     command_line_args.items() if value != defaults[key]))     
-        self.set_attributes(**attributes)                
-        
-    def set_attributes(self, **kwargs):
-        """ usage: object.set_attributes(attr1=value1, attr2=value2).
-            
-            Each key:value pair specified as keyword arguments will be
-            assigned as attributes of the calling object. Keys are string
-            attribute names and the corresponding values can be anything.
-            
-            This is called implicitly in __init__ for Base objects."""
-        [setattr(self, attr, val) for attr, val in kwargs.items()]
+        [setattr(self, attr, val) for attr, val in attributes.items()]            
 
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
@@ -330,7 +320,7 @@ class Base(object):
             functionality for instances created by the load method. Often
             times this will implement similar functionality as the objects
             __init__ method does (i.e. opening a file or database)."""     
-        self.set_attributes(**attributes)
+        [setattr(self, key, value) for key, value in attributes.items()]
         mpre.environment.add(self)
         
         if (self.replace_reference_on_load and 
@@ -361,12 +351,12 @@ class Base(object):
         # a mini replacement __init__
         attributes = new_self.defaults.copy()
         attributes["_required_modules"] = class_base._required_modules
-        new_self.set_attributes(**attributes)
+        [setattr(new_self, key, value) for key, value in attributes.items()]
         mpre.environment.add(new_self)        
         
         attributes = self.__dict__
         mpre.environment.replace(self, new_self)
-        new_self.set_attributes(**attributes)
+        [setattr(new_self, key, value) for key, value in attributes.items()]
         return new_self
                 
         

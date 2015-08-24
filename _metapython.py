@@ -102,9 +102,8 @@ class Shell(authentication.Authenticated_Client):
         if not self.logged_in:
             self.login()
         else:
-            Instruction(self.target_service, "exec_code",
-                        source).execute(host_info=self.host_info,
-                                        callback=self.result)
+            self.session.execute(Instruction(self.target_service, "exec_code",
+                                             source), callback=self.result)
                         
     def result(self, packet):
         if not packet:
@@ -116,14 +115,12 @@ class Shell(authentication.Authenticated_Client):
         
 
 class Interpreter(authentication.Authenticated_Service):
-    """ Executes python source. Requires authentication. The source code and 
-        return value of all requests are logged.
-        
-        usage: Instruction("Interpreter", "exec_code",
-                           my_source).execute(host_info=target_host)"""
+    """ Executes python source. Requires authentication from remote hosts. 
+        The source code and return value of all requests are logged. """
     
     defaults = authentication.Authenticated_Service.defaults.copy()
-    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
+    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                     "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"})
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
@@ -135,23 +132,22 @@ class Interpreter(authentication.Authenticated_Service):
                 
     def login(self, username, credentials):
         response = super(Interpreter, self).login(username, credentials)
-        if username in self.logged_in.values:
-            authorization_token, sender = $Session_Manager.current_session
+        session_id, sender = self.current_session
+        if response[0] == self.login_message:
            # self.user_namespaces[username] = {"__name__" : "__main__",
            #                                   "__doc__" : '',
            #                                   "Instruction" : Instruction}
+            self.alert("Setting user session of {}".format(username), level=0)
             self.user_session[username] = ''
             string_info = (username, sender, sys.version, sys.platform, self.copyright)        
-            response = ("Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info), response[1])
+            response = (self.login_message.format(*string_info), response[1])
         return response
-    
-    @authentication.whitelisted
-    @authentication.authenticated
+
     def exec_code(self, source):
         log = mpre.objects[self.log]
-        auth_token, sender = $Session_Manager.current_session
+        session_id, sender = self.current_session
                 
-        username = self.logged_in[auth_token]
+        username = self.session_id[session_id]
         log.write("{} {} from {}:\n".format(time.asctime(), username, 
                                             sender) + source)           
         result = ''         
@@ -193,14 +189,6 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
-        
-    def __setstate__(self, state):     
-        super(Interpreter, self).__setstate__(state)
-        sender = dict((value, key) for key, value in self.logged_in.items())
-        for username in self.user_session.keys():
-            source = self.user_session[username]
-            self.user_session[username] = ''
-            result = self.exec_code(sender[username], source)
                    
             
 class Metapython(base.Base):
@@ -256,8 +244,8 @@ class Metapython(base.Base):
             self.create(self.interpreter_type)    
         
         if self.rpc_enabled:
-            self.create("mpre.rpc.Environment_Access")
-            
+            self.create("mpre.rpc.Rpc_Server")
+                        
         with open(self.command, 'r') as module_file:
             source = module_file.read()
             
@@ -305,7 +293,7 @@ class Metapython(base.Base):
         processor.run()
         
     def exit(self, exit_code=0):
-        objects["Processor"].set_attributes(running=False)
+        mpre.objects[self.processor].running = False
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)
