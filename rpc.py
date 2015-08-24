@@ -36,18 +36,7 @@ def packetize_recv(recv):
             data = data[packet_size:]   
         return packets    
     return _recv
- 
-_local_sockets = {} 
-def fast_local_send(send):
-    def _send(self, data):
-        if self._peername in _local_sockets:
-            instance_name = _local_sockets[self._peername]
-            mpre.objects[instance_name]._local_data += data
-            mpre.objects[instance_name].recv()
-        else:
-            return send(self, data)
-    return _send
-  
+   
         
 class Session(mpre.base.Base):
     
@@ -165,12 +154,12 @@ class Rpc_Socket(Packet_Socket):
     defaults = Packet_Socket.defaults.copy()
     defaults.update({"debug_mode" : True})
     
-    def __init__(self, **kwargs):
-        super(Rpc_Socket, self).__init__(**kwargs)
-        self._peername = self.getpeername()
+  #  def __init__(self, **kwargs):
+   #     super(Rpc_Socket, self).__init__(**kwargs)
+       # self._peername = self.getpeername()
                 
     def recv(self, packet_count=0):
-        peername = self._peername        
+        peername = self.peername        
         for packet in super(Rpc_Socket, self).recv():
             session_id_size = struct.unpack('l', packet[:4])[0]
             end_session_id = 4 + session_id_size

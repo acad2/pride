@@ -29,7 +29,7 @@ from utilities import Latency, Average
 Instruction = mpre.Instruction
 objects = mpre.objects
 
-_local_connections, ERROR_CODES = {}, {}
+_local_connections, _local_data, ERROR_CODES = {}, {}, {}
 
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
@@ -57,6 +57,26 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                
 HOST = socket.gethostbyname(socket.gethostname())
 
+def local_sends(socket_send):
+    def _send(self, data):
+        if self in _local_connections:
+            local_endpoint_instance_name = _local_connections[self]
+            _local_data[local_endpoint_instance_name] += data
+            mpre.objects[local_endpoint_instance_name].recv()
+        else:
+            return socket_send(self, data)
+    return _send
+    
+def local_recvs(socket_recv):
+    def _recv(self, buffer_size=0):
+        if _local_data[self]:
+            data = _local_data[self]
+            _local_data[self] = bytes()
+        else:
+            data = socket_recv(self, buffer_size)
+        return data
+    return _recv
+        
 class Socket_Error_Handler(mpre.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
@@ -172,6 +192,7 @@ class Socket(base.Wrapper):
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
+        _local_data[self] = ''
         super(Socket, self).__init__(**kwargs)
         
         self.setblocking(self.blocking)
@@ -191,6 +212,7 @@ class Socket(base.Wrapper):
             to overload recv/recvfrom instead."""
         return self.recvfrom()
  
+    #@local_recvs
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
             when the socket becomes readable according to select.select. This
@@ -230,6 +252,7 @@ class Socket(base.Wrapper):
                                                       buffer_size or self.recv_size)
         return bytes(self._buffer[:byte_count]), _from
     
+    #@local_sends
     def send(self, data):
         """ Sends data to the connected endpoint. All of the data will be sent. """
         _socket = self.socket
@@ -266,7 +289,7 @@ class Socket(base.Wrapper):
         """ Performs any logic required when a Tcp connection succeeds. This method should
             be extended by subclasses. If on_connect is overloaded instead of extended,
             ensure that the self.connected flag is set to True."""
-        self.latency.finish_measuring()
+        #self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
         self.peername = self.getpeername()
@@ -274,7 +297,8 @@ class Socket(base.Wrapper):
                 
     def delete(self):
         if not self.closed:
-            self.close()            
+            self.close()        
+        del _local_data[self]
         super(Socket, self).delete()
     
     def close(self):
@@ -371,8 +395,7 @@ class Tcp_Socket(Socket):
                                                           socket.SOCK_STREAM))
         self._local_data = bytes()
         super(Tcp_Socket, self).__init__(**kwargs)
-        #self.peername = self.getpeername()
-        
+                
     def on_select(self):
         self.recv()
         
@@ -409,16 +432,14 @@ class Server(Tcp_Socket):
         _socket, address = self.socket.accept()
         
         connection = self.create(self.Tcp_Socket_type,
-                                 wrapped_object=_socket)
+                                 wrapped_object=_socket,
+                                 peername=address)
         
-        self.on_connect(connection, address)
+        connection.on_connect()
         return connection, address
- 
+    
     def on_connect(self, connection, address):
-        """ Connection logic that the server should apply when a new 
-            client has connected. """
-        self.alert("accepted connection {} from {}", 
-                  (connection.instance_name, address),level="v")
+        pass
         
     def on_load(self, attributes):
         super(Server, self).on_load(attributes)
