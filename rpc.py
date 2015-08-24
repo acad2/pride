@@ -194,15 +194,13 @@ class Rpc_Socket(Packet_Socket):
             else:
                 if (permission or 
                     instance.validate(session_id, peername, method)):
+                    instance.current_session = (session_id, peername)
                     try:
                         args, kwargs = self.deserealize(serialized_arguments)
-                        self.alert("Calling: {}.{}({}{})".format(instance, 
-                                                                 method,
-                                                                 args, kwargs))
                         result = getattr(instance, method)(*args, **kwargs)
                     except BaseException as result:
                         self.alert("Exception processing request: \n{}",
-                                  [traceback.format_exc()], level=0)
+                                   [traceback.format_exc()])
                 else:
                     self.alert("Denying unauthorized request: {}",
                                (packet, ), level='v')

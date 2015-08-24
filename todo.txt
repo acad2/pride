@@ -11,6 +11,8 @@ a host
 
 recently done:
     removed set_attributes. not safe with rpc.
+    updated rpc to work with sessions
+    
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??

@@ -137,9 +137,9 @@ class Interpreter(authentication.Authenticated_Service):
            # self.user_namespaces[username] = {"__name__" : "__main__",
            #                                   "__doc__" : '',
            #                                   "Instruction" : Instruction}
-            self.alert("Setting user session of {}".format(username), level=0)
             self.user_session[username] = ''
-            string_info = (username, sender, sys.version, sys.platform, self.copyright)        
+            string_info = (username, sender, sys.version, sys.platform, 
+                           self.copyright)        
             response = (self.login_message.format(*string_info), response[1])
         return response
 

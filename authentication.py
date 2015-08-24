@@ -109,7 +109,7 @@ class Authenticated_Service(mpre.base.Base):
             response = (self.login_message, response)        
             #print self, "Sending response: ", response
             if K:
-                self.alert("{} logged in".format(username), level=0)#'vv')
+                self.alert("{} logged in".format(username), level='vv')
                 session_id = derive_session_id(K, "session_id", 
                                                self.session_id_size)
                 self.session_id[session_id] = username
@@ -133,15 +133,20 @@ class Authenticated_Service(mpre.base.Base):
     
     def validate(self, session_id, peername, method_name):
         ip = peername[0]
-        if ip in self.whitelist or ip not in self.blacklist:
+        permission = False
+        if ip in ("localhost", "127.0.0.1"):
+            permission = True                    
+        elif ip in self.whitelist or ip not in self.blacklist:
             if session_id in self.session_id or (session_id == '0' and 
-                                                ((method_name == "register" and 
-                                                 self.allow_registration) or
-                                                (method_name == "login" and
-                                                 self.allow_login))):
-                self.current_session = (session_id, peername)
-                return True        
-        
+                                                ((method_name == "login" and 
+                                                 self.allow_login) or
+                                                (method_name == "resgiter" and
+                                                 self.allow_registration))):
+                permission = True        
+        if permission:
+            self.current_session = (session_id, peername)
+            return True
+            
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
@@ -181,6 +186,7 @@ class Authenticated_Client(mpre.base.Base):
     verbosity = {"logging_in" : 'v',
                  "on_login" : 'v',
                  "registering" : 'v',
+                 "send_proof" : 'v',
                  "registration_success" : '',
                  "registration_failed" : 0,
                  "login_failed" : 0}
@@ -253,7 +259,7 @@ class Authenticated_Client(mpre.base.Base):
     def send_proof(self, response):
         """ The second stage of the login process. This is the callback
             used by login. Sends proof of key to server."""
-        self.alert("Sending proof of key")
+        self.alert("Sending proof of key", level=self.verbosity["send_proof"])
         self.key, self.proof_of_key = self._client.login(response)
         self.session.execute(Instruction(self.target_service, "login", 
                                          self.username, self.proof_of_key),
@@ -273,7 +279,6 @@ class Authenticated_Client(mpre.base.Base):
                 self.session_id = derive_session_id(self.key, "session_id",
                                                     self.session_id_size)
                 self.session.id = self.session_id
-                print "Set client session id"
                 self.on_login(message)
             else:
                 self.alert("Login failed", 
