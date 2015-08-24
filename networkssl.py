@@ -118,6 +118,7 @@ class SSL_Socket(mpre.network.Tcp_Socket):
     defaults.update({"ssl_authenticated" : False})
      
     def on_connect(self):
+        super(SSL_Socket, self).on_connect()
         parent = self.parent
         self.ssl_socket = parent.wrap_socket(self, **dict((attribute, 
                                                            getattr(parent, 

@@ -29,7 +29,7 @@ from utilities import Latency, Average
 Instruction = mpre.Instruction
 objects = mpre.objects
 
-_local_connections, _local_data, ERROR_CODES = {}, {}, {}
+_socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
@@ -59,24 +59,35 @@ HOST = socket.gethostbyname(socket.gethostname())
 
 def local_sends(socket_send):
     def _send(self, data):
-        if self in _local_connections:
-            local_endpoint_instance_name = _local_connections[self]
-            _local_data[local_endpoint_instance_name] += data
-            mpre.objects[local_endpoint_instance_name].recv()
+        sockname = self.sockname
+        peername = self.peername
+        if sockname in _local_connections: # client socket
+            instance_name = _local_connections[sockname]
+        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
+            instance_name = _socket_names[peername]
         else:
+            self.alert("Sending data over nic")        
             return socket_send(self, data)
+           
+        self.alert("Sending data locally, bypassing nic")
+        instance = mpre.objects[instance_name]
+        instance._local_data += data
+        instance.alert("recv called locally")
+        instance.recv()            
     return _send
     
 def local_recvs(socket_recv):
     def _recv(self, buffer_size=0):
-        if _local_data[self]:
-            data = _local_data[self]
-            _local_data[self] = bytes()
+        instance_name = self.instance_name
+        if self._local_data:
+            data = self._local_data
+            self._local_data = bytes()
         else:
             data = socket_recv(self, buffer_size)
         return data
     return _recv
-        
+     
+#def local_     
 class Socket_Error_Handler(mpre.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
@@ -191,10 +202,9 @@ class Socket(base.Wrapper):
     
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
-        _local_data[self] = ''
+        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))        
         super(Socket, self).__init__(**kwargs)
-        
+        self._local_data = ''
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         self.recv_size = self.os_recv_buffer_size
@@ -212,7 +222,7 @@ class Socket(base.Wrapper):
             to overload recv/recvfrom instead."""
         return self.recvfrom()
  
-    #@local_recvs
+ #   @local_recvs
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
             when the socket becomes readable according to select.select. This
@@ -220,6 +230,11 @@ class Socket(base.Wrapper):
             
             Note that this recv will return the entire contents of the buffer and 
             does not need to be called in a loop."""
+        if self._local_data:
+            data = self._local_data
+            self._local_data = bytes()
+            return data
+        
         buffer_size = buffer_size or self.recv_size 
         _memoryview = self._memoryview
         try:        
@@ -252,16 +267,31 @@ class Socket(base.Wrapper):
                                                       buffer_size or self.recv_size)
         return bytes(self._buffer[:byte_count]), _from
     
-    #@local_sends
+  #  @local_sends
     def send(self, data):
         """ Sends data to the connected endpoint. All of the data will be sent. """
-        _socket = self.socket
-        memory_view = memoryview(data)
+        sockname = self.sockname
+        peername = self.peername
         byte_count = len(data)
-        position = 0
-        while position < byte_count:
-            sent = _socket.send(memory_view[position:])
-            position += sent            
+        if sockname in _local_connections: # client socket
+            instance_name = _local_connections[sockname]
+        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
+            instance_name = _socket_names[peername]
+        else:
+            _socket = self.socket
+            memory_view = memoryview(data)
+            
+            position = 0
+            while position < byte_count:
+                sent = _socket.send(memory_view[position:])
+                position += sent  
+            return position
+            
+        self.alert("Sending data locally. Bypassing network stack", level='vv')
+        instance = mpre.objects[instance_name]
+        instance._local_data += data
+        instance.recv()          
+        return byte_count
         
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
@@ -293,6 +323,7 @@ class Socket(base.Wrapper):
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
         self.peername = self.getpeername()
+        self.sockname = self.getsockname()
         self.alert("Connected", level='v')
                 
     def delete(self):
@@ -433,9 +464,10 @@ class Server(Tcp_Socket):
         
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket,
-                                 peername=address)
-        
+                                 peername=address)            
         connection.on_connect()
+        if address[0] in ("127.0.0.1", "localhost"):
+            _local_connections[address] = connection.instance_name          
         return connection, address
     
     def on_connect(self, connection, address):
@@ -470,15 +502,11 @@ class Tcp_Client(Tcp_Socket):
         if self.auto_connect:
             self.connect(self.host_info)
 
-   # def send(self, data):
-   #     if self.peername[0] in ("localhost", "127.0.0.1"):
-   #         local_socket = mpre.objects[_local_connections[self.peername]]
-   #         local_socket._local_data += data
-   #         local_socket.recv()
-   #     else:
-   #         return super(Tcp_Client, self).send(data)
-
-            
+    def on_connect(self):
+        super(Tcp_Client, self).on_connect()
+        _socket_names[self.sockname] = self.instance_name
+        
+        
 class Udp_Socket(Socket):
 
     defaults = Socket.defaults.copy()

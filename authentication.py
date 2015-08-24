@@ -97,6 +97,8 @@ class Authenticated_Service(mpre.base.Base):
             On login success, a login message and proof of the shared
             secret are returned."""
         session_id, host_info = self.current_session
+        self.alert("{} attempting to login from {}. Session id: {}",
+                   (username, host_info, session_id), level='v')
         if session_id in self.session_id:
             self.alert("Multiple login attempt by {} on account {} from {}", 
                        [(session_id, self.session_id[session_id]), username, 

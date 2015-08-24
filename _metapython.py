@@ -111,7 +111,7 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write('\b' * 4 + packet + self.prompt)
+            sys.stdout.write('\b' * 4 + packet)
         
 
 class Interpreter(authentication.Authenticated_Service):

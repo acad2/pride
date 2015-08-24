@@ -119,16 +119,21 @@ class Rpc_Client(Packet_Client):
         super(Rpc_Client, self).__init__(**kwargs)
         
     def on_ssl_authentication(self):
+        count = 1
+        length = len(self._requests)
         for request, callback in self._requests:
+            self.alert("Making delayed request {}/{}: {}".format(count, length, request)[:128], level='vv')
+            self._callbacks.append(callback)  
             self.send(request)
-            self._callbacks.append(callback)       
-        
+            
     def make_request(self, request, callback):
         if not self.ssl_authenticated:
+            self.alert("Delaying request until authenticated: {}".format(request)[:128], level='vv')
             self._requests.append((request, callback))
         else:    
-            self.send(request)
+            self.alert("Making request: {}".format(request)[:128], level='v')
             self._callbacks.append(callback)
+            self.send(request)            
         
     def recv(self, packet_count=0):
         for response in super(Rpc_Client, self).recv():
