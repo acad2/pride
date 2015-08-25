@@ -141,9 +141,10 @@ class Processor(Process):
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:
                 if type(result) in reraise_exceptions:
-                    raise
+                    self.running = False
                 exception_alert((instruction.component_name,
                                  instruction.method,
-                                 format_traceback()))            
-            if callback:
-                callback(result)
+                                 format_traceback()))
+            else:
+                if callback:
+                    callback(result)

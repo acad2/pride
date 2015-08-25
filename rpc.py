@@ -145,10 +145,12 @@ class Rpc_Client(Packet_Client):
             
     def handle_exception(self, callback, response):
         self.alert("Exception {} from rpc with callback {}",
-                   (response, callback), level=0)
+                   (response.traceback, callback), level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
-            raise response        
+            print "Reraising exception", type(response)()
+            raise type(response)()
+            
             
     def deserealize(self, response):
         return default_serializer.loads(response)
@@ -193,12 +195,18 @@ class Rpc_Socket(Packet_Socket):
                         args, kwargs = self.deserealize(serialized_arguments)
                         result = getattr(instance, method)(*args, **kwargs)
                     except BaseException as result:
-                        self.alert("Exception processing request: \n{}",
-                                   [traceback.format_exc()])
+                        stack_trace = traceback.format_exc()
+                        self.alert("Exception processing request {}.{}: \n{}",
+                                   [component_name, method, stack_trace],
+                                   level='vv')
+                        if isinstance(result, SystemExit):
+                            raise                                   
+                        result.traceback = stack_trace
                 else:
                     self.alert("Denying unauthorized request: {}",
                                (packet, ), level='v')
-                    result = mpre.authentication.UnauthorizedError()         
+                    result = mpre.authentication.UnauthorizedError()
+            self.alert("Sending result of {}.{}: {}".format(instance, method, result), level='vv')
             self.send(self.serealize(result))
             
     def deserealize(self, serialized_arguments):

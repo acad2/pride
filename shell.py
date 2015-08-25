@@ -83,12 +83,17 @@ class Command_Line(mpre.vmlibrary.Process):
         self.set_default_program(("Shell", "handle_input"), True)
         super(Command_Line, self).__init__(**kwargs)       
         
-        self.thread = threading.Thread(target=self.read_input)        
+        self._new_thread()  
         self.programs = self.programs or {}
         
         for program in self.default_programs:
             self.create(program)
-      
+   
+    def _new_thread(self):
+        self.thread = threading.Thread(target=self.read_input) 
+        self.thread.daemon = True
+        self.thread_started = False
+        
     def add_program(self, program_name, callback_info):
         self.programs[program_name] = callback_info
         
@@ -111,6 +116,7 @@ class Command_Line(mpre.vmlibrary.Process):
         
     def run(self):
         if not self.thread_started and input_waiting():
+            self._new_thread()    
             self.thread.start()
             self.thread_started = True
 
@@ -124,14 +130,12 @@ class Command_Line(mpre.vmlibrary.Process):
     
     def on_load(self, attributes):
         super(Command_Line, self).on_load(attributes)
-        self.thread = threading.Thread(target=self.read_input)
-        self.thread_started = False
-                
+        self._new_thread()
+        
     def read_input(self):        
         input = sys.stdin.readline()
-        self.thread = threading.Thread(target=self.read_input)
-        self.thread_started = False      
-        
+        self.thread_started = False
+        self.alert("Got user input {}".format(input), level='vvv')       
         try:
             program_name, program_input = input.split(' ', 1)
         except ValueError:
@@ -154,9 +158,13 @@ class Command_Line(mpre.vmlibrary.Process):
                     component, method = self.programs[program_name]
                 except KeyError:
                     component, method = self.default_program
-                    program_input = input     
-        getattr(objects[component], method)(program_input)
-        
+                    program_input = input  
+        try:
+            getattr(objects[component], method)(program_input)
+        except SystemExit:
+            # SystemExit will only close this thread, not the main one
+            mpre.objects["Processor"].running = False
+            raise
         if self.write_prompt:
             sys.stdout.write(self.prompt)
                

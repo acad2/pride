@@ -104,7 +104,7 @@ class Shell(authentication.Authenticated_Client):
         else:
             self.session.execute(Instruction(self.target_service, "exec_code",
                                              source), callback=self.result)
-                        
+                                    
     def result(self, packet):
         if not packet:
             return
@@ -169,7 +169,7 @@ class Interpreter(authentication.Authenticated_Service):
             namespace["__builtins__"]["raw_input"] = mpre.shell.get_user_input
             try:
                 exec code in namespace
-            except BaseException as error:
+            except Exception as error:
                 if type(error) == SystemExit:
                     raise
                 else:
@@ -291,6 +291,7 @@ class Metapython(base.Base):
         processor = mpre.objects[self.processor]
         processor.running = True
         processor.run()
+        self.alert("Graceful shutdown initiated", level='v')
         
     def exit(self, exit_code=0):
         mpre.objects[self.processor].running = False

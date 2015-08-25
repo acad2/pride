@@ -603,9 +603,9 @@ class Network(vmlibrary.Process):
             # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
             for socket_list in (sockets[self._slice_mapping[chunk_number]] for 
                                 chunk_number in xrange((len(sockets) / 500) + 1)):   
-                readable_sockets, writable_sockets, _ = select.select(socket_list,
-                                                                      socket_list, 
-                                                                      empty_list, 0.0)
+                (readable_sockets, 
+                 writable_sockets, _) = select.select(socket_list, socket_list, 
+                                                      empty_list, 0.0)
                 if readable_sockets:
                     readable.extend(readable_sockets)                
                 if writable_sockets:
@@ -633,7 +633,7 @@ class Network(vmlibrary.Process):
                     if not connection.connection_attempts:
                         try:
                             connection.connect(connection.host_info)
-                        except socket.error as error:                            
+                        except socket.error as error:                           
                             error_handler.dispatch(connection, error, 
                                                    ERROR_CODES[error.errno].lower())           
                     else:
