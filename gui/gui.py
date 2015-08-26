@@ -28,8 +28,16 @@ class Organizer(base.Base):
     def get_pack_mode(self, instance):
         return self.pack_modes[instance]
      
-    def set_pack_mode(self, instance, value):
-        parent = instance.parent
+    def set_pack_mode(self, instance, value): 
+        if value is None:
+            try:
+                del self._pack_modes[instance]
+            except KeyError: 
+                pass
+            del self.pack_modes[instance]
+            del self._pack_index[instance]  
+            
+        parent = mpre.objects[instance].parent.instance_name
         old_pack_mode = self.pack_modes.get(instance, '')
         if old_pack_mode:
             self._pack_modes[parent][old_pack_mode].remove(instance)
@@ -45,13 +53,16 @@ class Organizer(base.Base):
         self._pack_index[instance] = self._pack_modes[parent][value].index(instance)
         
     def pack(self, item):
-        self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode], level=self.pack_verbosity)
-        pack_mode = self.pack_modes[item]
+        self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode],
+                   level=self.pack_verbosity)
+        instance_name = item.instance_name
+        pack_mode = self.pack_modes[instance_name]
         pack = getattr(self, "pack_{0}".format(pack_mode))
         parent = item.parent
         old_size = item.size
 
-        pack(parent, item, self._pack_index[item], len(self._pack_modes[parent][pack_mode]))
+        pack(parent, item, self._pack_index[instance_name], 
+             len(self._pack_modes[parent.instance_name][pack_mode]))
         self.alert("Finished packing {}: {}", [item, item.area], level=self.pack_verbosity)
         
     def pack_horizontal(self, parent, item, count, length):
@@ -112,12 +123,13 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                      "pack_mode" : '',
                      "held" : False,
                      "texture" : None,
-                     "text" : None,
+                     "text" : '',
                      "button_verbosity" : 'v',
                      "allow_text_edit" : False,
                      "_ignore_click" : False,
                      "sdl_window" : "SDL_Window",
-                     "movable" : True})
+                     "movable" : True,
+                     "hidden" : False})
     Hotkeys = {}
     
     def _on_set(self, coordinate, value):
@@ -177,9 +189,9 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
     
     def _get_pack_mode(self):      
-        return objects["Organizer"].get_pack_mode(self)
+        return objects["Organizer"].get_pack_mode(self.instance_name)
     def _set_pack_mode(self, value):
-        objects["Organizer"].set_pack_mode(self, value)
+        objects["Organizer"].set_pack_mode(self.instance_name, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def __init__(self, **kwargs):
@@ -247,7 +259,8 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         elif mouse.button == 3:
             self.right_click(mouse)
         else:
-            self.alert("Button {} not yet implemented", [mouse.button], level=0)        
+            self.alert("Button {} not yet implemented", 
+                       [mouse.button])        
                     
     def left_click(self, mouse):
         pass
@@ -285,7 +298,14 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                 instance.held = True
                 instance.mousemotion(x_difference, y_difference, top_level=False)
                 instance.held = False
-                
+     
+    def toggle_hidden(self):
+        if not self.hidden:
+            sdl_user_input = mpre.objects["SDL_User_Input"]
+            sdl_user_input._update_coordinates(self.instance_name,
+                                               self.area, -1)            
+        self.hidden = not self.hidden
+       
     def draw(self, figure, *args, **kwargs):
         # draw operations are enqueued and processed in batches by Renderer.draw
         self._draw_operations.append((figure, args, kwargs))
@@ -316,10 +336,11 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
             size = self.available_size = size[0] - item.x, size[1] - item.y
             
     def delete(self):
+        self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()
         objects["SDL_Window"].remove_from_layer(self, self.z)
-        objects["SDL_User_Input"]._remove_from_coordinates(self.instance_name)
-        
+        objects["SDL_User_Input"]._remove_from_coordinates(self.instance_name) 
+
         
 class Window(Window_Object):
 
@@ -338,8 +359,3 @@ class Button(Window_Object):
     defaults = Window_Object.defaults.copy()
     defaults.update({"shape" : "rect",
                      "pack_mode" : "vertical"})
-                     
-    def __init__(self, **kwargs):
-        super(Button, self).__init__(**kwargs)
-        if self.text is not None:
-            self.text = self.text or self.instance_name

@@ -1,8 +1,8 @@
-""" Stores global objects including instruction and the environment """
+""" Stores global objects including instructions and the environment """
 import sys
 import importers        
-compiler = importers.Compiler()#preprocessors=(Dollar_Sign_Directive(), )) 
-#sys.meta_path.insert(0, compiler)
+compiler = importers.Compiler(preprocessors=(importers.Dollar_Sign_Directive(),))#                                             importers.Name_Enforcer()))
+sys.meta_path.insert(0, compiler)
 
 import heapq
 import inspect
@@ -15,8 +15,8 @@ import copy
 import types
 
 import mpre.utilities
-timer_function = mpre.utilities.timer_function  
-
+timer_function = mpre.utilities.timer_function          
+    
 class Environment(object):
     """ Stores global state for the process. This includes reference 
         reference information, most importantly the objects dictionary. """
@@ -99,11 +99,12 @@ class Environment(object):
             method. """
         instance_class = instance.__class__.__name__
         try:
-            self.instance_count[instance_class] = count = self.instance_count[instance_class] + 1
+            count = self.instance_count[instance_class]
         except KeyError:
-            count = self.instance_count[instance_class] = 0
-       
+            count = 0       
         instance_name = instance_class + str(count) if count else instance_class
+        self.instance_count[instance_class] = count + 1
+        
         self.objects[instance_name] = instance
         try:
             self.instance_name[instance] = instance.instance_name = instance_name
@@ -133,51 +134,21 @@ class Environment(object):
 class Instruction(object):
     """ usage: Instruction(component_name, method_name, 
                            *args, **kwargs).execute(priority=priority,
-                                                    callback=callback,
-                                                    host_info=(ip, port))
-                           
-        Creates and executes an instruction object. 
+                                                    callback=callback)
+                            
             - component_name is the string instance_name of the component 
             - method_name is a string of the component method to be called
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
               
-        host_info may supply an ip address string and port number integer
-        to execute the instruction on a remote machine. This requirements
-        for this to be a success are:
-            
-            - The machine must have an instance of metapython running
-            - The machine must be accessible via the network
-            - The local machine must be registered and logged in to
-              the remote machine
-            - The local machine may need to be registered and logged in to
-              have permission to the use the specific component and method
-              in question
-            - The local machine ip must not be blacklisted by the remote
-              machine.
-            - The remote machine may require that the local machine ip
-              be in a whitelist to access the method in question.
-              
-        Other then the security requirements, remote procedure calls require 
-        zero config on the part of either host. An object will be accessible
-        if it exists on the machine in question.
               
         A priority attribute can be supplied when executing an instruction.
         It defaults to 0.0 and is the time in seconds until this instruction
-        will actually be performed if the instruction is being executed
-        locally. If the instruction is being executed remotely, this instead
-        acts as a flag. If set to a True value, the instruction will be
-        placed at the front of the local queue to be sent to the host.
+        will be performed. Instructions are useful for explicitly 
+        timed/recurring tasks. 
         
-        Instructions are useful for serial and explicitly timed tasks. 
-        Instructions are only enqueued when the execute method is called. 
-        At that point they will be marked for execution in 
-        instruction.priority seconds or sent to the machine in question. 
-        
-        Instructions may be saved as an attribute of a component instead
-        of continuously being instantiated. This allows the reuse of
-        instruction objects. The same instruction object can be executed 
-        any number of times.
+        Instructions may be reused. The same instruction object can be 
+        executed any number of times.
         
         Note that Instructions must be executed to have any effect, and
         that they do not happen inline even if the priority is 0.0. In
@@ -192,38 +163,15 @@ class Instruction(object):
         self.args = args
         self.kwargs = kwargs
         
-    def execute(self, priority=0.0, callback=None,
-                host_info=tuple(), transport_protocol="tcp"):
-        """ usage: instruction.execute(priority=0.0, callback=None,
-                                       host_info=tuple())
+    def execute(self, priority=0.0, callback=None):
+        """ usage: instruction.execute(priority=0.0, callback=None)
         
-            Submits an instruction to the processing queue. If being executed
-            locally, the instruction will be executed in priority seconds. 
+            Submits an instruction to the processing queue. 
+            The instruction will be executed in priority seconds. 
             An optional callback function can be provided if the return value 
-            of the instruction is needed.
-            
-            host_info may be specified to designate a remote machine that
-            the Instruction should be executed on. If being executed remotely, 
-            priority is a high_priority flag where 0 means the instruction will
-            be placed at the end of the rpc queue for the remote host in 
-            question. If set, the instruction will instead be placed at the 
-            beginning of the queue.
-            
-            Remotely executed instructions have a default callback, which is 
-            the appropriate RPC_Requester.alert.
-            
-            The transport protocol flag is currently unused. Support for
-            UDP and other protocols could be implemented and dispatched
-            via this flag."""
-        if host_info:
-            objects["RPC_Handler"].make_request(callback, host_info,
-                                                transport_protocol, priority,
-                                                self.component_name, 
-                                                self.method, self.args,
-                                                self.kwargs)
-        else:
-            heapq.heappush(environment.Instructions, 
-                          (timer_function() + priority, self, callback))
+            of the instruction is needed. """
+        heapq.heappush(environment.Instructions, 
+                      (timer_function() + priority, self, callback))
         
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
@@ -254,20 +202,23 @@ class Alert_Handler(mpre.base.Base):
                      "log_is_persistent" : False,
                      "parse_args" : True})
     
-    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", "log_is_persistent", "verbosity")
+    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", 
+                                                    "log_is_persistent", 
+                                                    "verbosity")
     exit_on_help = False
     
     def __init__(self, **kwargs):
         super(Alert_Handler, self).__init__(**kwargs)
-        self.log = self.create("mpre.fileio.File", self.log_name, 'a+', persistent=self.log_is_persistent)
-                
+        self.log = open(self.log_name, 'a+')
+                                               
     def _alert(self, message, level):
         if self.print_level is 0 or level <= self.print_level:
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
             severity = self.level_map.get(level, str(level))
-            # windows will complain about a file in + mode if this isn't done sometimes
+            # windows might complain about files in + mode if this isn't done
             self.log.seek(0, 1)
             self.log.write(severity + message + "\n")
             
-alert_handler = Alert_Handler()            
+alert_handler = Alert_Handler()    
+     

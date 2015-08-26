@@ -1,4 +1,7 @@
+import struct
+import functools
 import traceback
+import json
 import pickle
 
 import mpre
@@ -7,178 +10,205 @@ import mpre.network
 import mpre.networkssl
 import mpre.authentication
 import mpre.persistence
+import mpre.decorators
 objects = mpre.objects
 
+default_serializer = pickle
+_hosts = {}
 
-class Environment_Access(mpre.authentication.Authenticated_Service):
+def packetize_send(send):
+    def _send(self, data):
+        return send(self, str(len(data)) + ' ' + data)   
+    return _send
     
-    defaults = mpre.authentication.Authenticated_Service.defaults.copy()
-    defaults.update({"allow_registration" : True})
-    
-    @mpre.authentication.whitelisted
-    @mpre.authentication.authenticated
-    def validate(self):
-        # presuming the host info passed the checks done by the above decorators,
-        # the host will have permission to use the environment. 
-        return True
+def packetize_recv(recv):
+    def _recv(self, buffer_size=0):
+        data = recv(self, buffer_size)
+        packets = []
+        while data:
+            try:
+                packet_size, data = data.split(' ', 1)
+            except ValueError:
+                self._old_data = data
+                break
+            packet_size = int(packet_size)
+            packets.append(data[:packet_size])
+            data = data[packet_size:]   
+        return packets    
+    return _recv
+ 
+_local_sockets = {} 
+def fast_local_send(send):
+    def _send(self, data):
+        if self._peername in _local_sockets:
+            instance_name = _local_sockets[self._peername]
+            mpre.objects[instance_name]._local_data += data
+            mpre.objects[instance_name].recv()
+        else:
+            return send(self, data)
+    return _send
+  
         
-    @mpre.authentication.whitelisted
-    def login(self, username, credentials):
-        if (username == "localhost" and 
-            self.requester_address[0] not in ("localhost", "127.0.0.1")):
-            
-            self.alert("Detected login attempt by username 'localhost'" + 
-                       "from non local endpoint {}", (self.requester_address, ))
-            raise UnauthorizedError()
-        return super(Environment_Access, self).login(username, credentials)
-        
-        
-class Environment_Access_Client(mpre.authentication.Authenticated_Client):
-    
-    defaults = mpre.authentication.Authenticated_Client.defaults.copy()
-    defaults.update({"target_service" : "Environment_Access",
-                     "username" : "",
-                     "password" : ""})
-    
-    
-class RPC_Handler(mpre.base.Base):
+class Session(mpre.base.Base):
     
     defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"servers" : {"tcp" : "mpre.rpc.RPC_Server"},
-                     "current_connections" : None,
-                     "require_environment_access" : True,
-                     "environment_access_client_type" : "mpre.rpc.Environment_Access_Client",
-                     "remote_hosts" : tuple()}) # remote_hosts is (host_info, options_dict)
+    defaults.update({"id" : '0', 
+                     "host_info" : tuple(),
+                     "requester_type" : "mpre.rpc.Rpc_Client"})
     
-    def __init__(self, **kwargs):
-        super(RPC_Handler, self).__init__(**kwargs)
-        self.current_connections = self.current_connections or {}
-        require_environment_access = self.require_environment_access
-        if require_environment_access:
-            self.create(Environment_Access)
-            
-        for server_protocol, server_type in self.servers.items():
-            setattr(self, "{}_server".format(server_protocol), self.create(server_type))
-            
-        for host_info, options in self.remote_hosts:
-            options = {} if options is None else options
-            self.create(self.environment_access_client_type, host_info=host_info, **options)
-                                        
-    def make_request(self, callback, host_info, transport_protocol, priority_flag,
-                     component_name, method, args, kwargs):
-        arguments = pickle.dumps((args, kwargs), pickle.HIGHEST_PROTOCOL)
-        request = ' '.join((component_name, method, arguments))        
+    def _get_id(self):
+        return self._id
+    def _set_id(self, value):
+        self._id = value
+        self.id_size = struct.pack('l', len(value))
+    id = property(_get_id, _set_id)
+    
+    def _get_context(self):
+        return self.id, self.host_info
+    context = property(_get_context)
+    
+    def __init__(self, session_id, host_info, **kwargs):
+        super(Session, self).__init__(**kwargs)
+        self.id = session_id
+        self.host_info = host_info
+         
+    def execute(self, instruction, callback):
+        request = ' '.join((self.id_size + self.id, 
+                            instruction.component_name, instruction.method, 
+                            default_serializer.dumps((instruction.args, 
+                                                      instruction.kwargs))))
         try:
-            connection = self.current_connections[host_info]
+            host = _hosts[self.host_info]
         except KeyError:
-            server = getattr(self, "{}_server".format(transport_protocol))
-            self.current_connections[host_info] = connection = server.create(RPC_Requester, 
-                                                                             target=host_info)      
-        connection.make_request(callback, request, priority_flag)            
- 
-    def delete(self):
-        for connection in self.current_connections.values():
-            connection.delete()
-        super(RPC_Handler, self).delete()
+            host = _hosts[self.host_info] = self.create(self.requester_type,
+                                                        host_info=self.host_info)
+        host.make_request(request, callback)
         
-    def __getstate__(self):
-        state = super(RPC_Handler, self).__getstate__()
-        state["current_connections"] = {}
-        return state
             
+class Packet_Client(mpre.networkssl.SSL_Client):
+            
+    defaults = mpre.networkssl.SSL_Client.defaults.copy()
+    defaults.update({"_old_data" : bytes()})
+    
+    @packetize_send
+    def send(self, data):
+        return super(Packet_Client, self).send(data)
+    
+    @packetize_recv
+    def recv(self, buffer_size=0):
+        return super(Packet_Client, self).recv(buffer_size)      
         
-class RPC_Server(mpre.networkssl.SSL_Server):
+        
+class Packet_Socket(mpre.networkssl.SSL_Socket):
+            
+    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
+    defaults.update({"_old_data" : bytes()})
+    
+    @packetize_send
+    def send(self, data):
+        return super(Packet_Socket, self).send(data)
+    
+    @packetize_recv
+    def recv(self, buffer_size=0):        
+        return super(Packet_Socket, self).recv(buffer_size)
+                       
+                        
+class Rpc_Server(mpre.networkssl.SSL_Server):
     
     defaults = mpre.networkssl.SSL_Server.defaults.copy()
     defaults.update({"port" : 40022,
                      "interface" : "localhost",
-                     "Tcp_Socket_type" : "mpre.rpc.RPC_Request"})
-                     
+                     "Tcp_Socket_type" : "mpre.rpc.Rpc_Socket"})
     
-class RPC_Requester(mpre.networkssl.SSL_Client):
     
-    defaults = mpre.networkssl.SSL_Client.defaults.copy()
-    defaults.update({"dont_save" : True,
-                     "authentication_client" : "mpre.rpc.Environment_Access_Client",
-                     "callback" : None})
+class Rpc_Client(Packet_Client):
+            
+    defaults = Packet_Client.defaults.copy()
     
     def __init__(self, **kwargs):
         self._requests, self._callbacks = [], []
-        super(RPC_Requester, self).__init__(**kwargs)
-
-    def on_authentication(self):
-        self.callback, request = self._requests.pop(0)
-        self.send(request)
-    
-    def make_request(self, callback, request, high_priority=False):
-        if not self.callback and self.ssl_authenticated:
-            self.callback = callback
+        super(Rpc_Client, self).__init__(**kwargs)
+        
+    def on_ssl_authentication(self):
+        for request, callback in self._requests:
             self.send(request)
-        elif high_priority:
-            self._requests.insert(0, (callback, request))
-        else:
-            self._requests.append((callback, request))
+            self._callbacks.append(callback)       
         
-    def recv(self, buffer_size=0):
-        packet = super(RPC_Requester, self).recv(buffer_size)
-        arguments = pickle.loads(packet)
-        callback = self.callback
-        self.callback = None
-        if isinstance(arguments, BaseException):
-            if type(arguments) in (KeyboardInterrupt, SystemExit):
-                raise arguments
+    def make_request(self, request, callback):
+        if not self.ssl_authenticated:
+            self._requests.append((request, callback))
+        else:    
+            self.send(request)
+            self._callbacks.append(callback)
+        
+    def recv(self, packet_count=0):
+        for response in super(Rpc_Client, self).recv():
+            _response = self.deserealize(response)
+            callback = self._callbacks.pop(0)
+            if isinstance(_response, BaseException):
+                callback = functools.partial(self.handle_exception, callback)
+            callback(_response)
             
-            self.alert("{}: {} when performing last request", 
-                       (type(arguments), arguments), level=0)
-        else:
-            if not callback:
-                if arguments:
-                    self.alert("received reply: {}".format(arguments))
-            else:
-                callback(arguments)
+    def handle_exception(self, callback, response):
+        self.alert("Exception {} from rpc with callback {}",
+                   (response, callback), level=0)
+        if (isinstance(response, SystemExit) or 
+            isinstance(response, KeyboardInterrupt)):
+            raise response        
+            
+    def deserealize(self, response):
+        return default_serializer.loads(response)
         
-        if not self.callback and self._requests:       
-            self.callback, request = self._requests.pop(0)
-            self.send(request)                
-                
- 
-class RPC_Request(mpre.networkssl.SSL_Socket):
+        
+class Rpc_Socket(Packet_Socket):
+            
+    defaults = Packet_Socket.defaults.copy()
+    defaults.update({"debug_mode" : True})
     
-    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
-    defaults.update({"dont_save" : True,
-                     "rpc_verbosity" : 'vv'})
-   
-    verbosity = {"execution" : 'vv',
-                 "exception" : 0}
-                 
-    def recv(self, buffer_size=0):
-        request = super(RPC_Request, self).recv(buffer_size)
-        component_name, method, argument_bytestream = request.split(" ", 2)
-        instance = objects[component_name]
-        host_info = instance.requester_address = self.getpeername()        
+    def __init__(self, **kwargs):
+        super(Rpc_Socket, self).__init__(**kwargs)
+        self._peername = self.getpeername()
                 
-        environment_access = objects["Environment_Access"]
-        instance.requester_address = environment_access.requester_address = host_info
-        if (host_info[0] in ("localhost", "127.0.0.1") or 
-            environment_access.validate() or
-            (instance is environment_access and 
-             method in ("login", "register"))):
+    def recv(self, packet_count=0):
+        peername = self._peername        
+        for packet in super(Rpc_Socket, self).recv():
+            session_id_size = struct.unpack('l', packet[:4])[0]
+            end_session_id = 4 + session_id_size
+            session_id = packet[4:end_session_id]
+            (component_name, method, 
+             serialized_arguments) = packet[end_session_id + 1:].split(' ', 2)
+
+           # print "\nsession id: ", len(session_id), session_id
+           # print "\ninstance: ", component_name
+           # print "\nmethod: ", len(method), method
+           # print "\narguments: ", serialized_arguments[:128], ' ...'
+            
+            permission = False
+            if session_id == '0': 
+                if method in ("register", "login"):
+                    permission = True
             try:
-                args, kwargs = pickle.loads(argument_bytestream)
-                call = getattr(instance, method)
-                self.alert("\n\nExecuting {}.{}", [component_name, method], 
-                           level=self.verbosity["execution"])
-                response = pickle.dumps(call(*args, **kwargs))
-            except BaseException as error:
-                if not isinstance(error, SystemExit):
-                    self.alert("Exception when executing {}.{}\n{}", 
-                               [component_name, method, error], 
-                               level=self.verbosity["exception"])
-                response = pickle.dumps(error, pickle.HIGHEST_PROTOCOL)       
-        else:
-            self.alert("Denying rpc {}.{} from host {}",
-                       (instance.instance_name, method, instance.requester_address))
-            response = pickle.dumps(mpre.authentication.UnauthorizedError())    
-        environment_access.requester_address = instance.requester_address = None
-        self.send(response)
+                instance = mpre.objects[component_name]
+            except KeyError as result:
+                pass
+            else:
+                if (permission or 
+                    instance.validate(session_id, peername, method)):
+                    instance.current_session = (session_id, peername)
+                    try:
+                        args, kwargs = self.deserealize(serialized_arguments)
+                        result = getattr(instance, method)(*args, **kwargs)
+                    except BaseException as result:
+                        self.alert("Exception processing request: \n{}",
+                                   [traceback.format_exc()])
+                else:
+                    self.alert("Denying unauthorized request: {}",
+                               (packet, ), level='v')
+                    result = mpre.authentication.UnauthorizedError()         
+            self.send(self.serealize(result))
+            
+    def deserealize(self, serialized_arguments):
+        return default_serializer.loads(serialized_arguments)
         
+    def serealize(self, result):
+        return default_serializer.dumps(result)

@@ -68,10 +68,9 @@ def convert(old_value, old_base, new_base):
 
     return ''.join(reversed(new_value))
                 
-def resolve_string(string):
+def resolve_string(module_name):
     """Given an attribute string of a.b...z, return the object z"""
     result = None
-    module_name = string
     attributes = []
     while not result:
         try:
@@ -81,7 +80,7 @@ def resolve_string(string):
             module_name = module_name.split('.')
             attributes.append(module_name.pop())
             module_name = '.'.join(module_name)
-            
+               
     for attribute in reversed(attributes):
         result = getattr(result, attribute)
     return result    
@@ -408,7 +407,11 @@ class Reversible_Mapping(object):
         elif kwargs:        
             for key, value in kwargs.items():
                 self[key] = value
-            
+    
+    def items(self):
+        return [(key, self.values[index]) for index, key in
+                enumerate(self.keys)]
+                
     def __setitem__(self, key, value):
         try:
             index = self.key_index_tracker[key]

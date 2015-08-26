@@ -4,7 +4,6 @@ import os
 import threading
 
 import mpre
-import mpre.parser as parser
 import mpre.vmlibrary
 import mpre.utilities
 objects = mpre.objects

@@ -107,10 +107,18 @@ class Database(mpre.base.Wrapper):
         del state["cursor"]
         del state["wrapped_object"]
         del state["connection"]
+        state["text_factory"] = state["text_factory"].__name__
         return state
         
     def on_load(self, state):
         super(Database, self).on_load(state)
+        text_factory = self.text_factory
+        if text_factory == "str":
+            self.text_factory = str
+        elif text_factory == "unicode":
+            self.text_factory = unicode
+        else:
+            self.text_factory = None
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)

@@ -49,15 +49,16 @@ class SDL_Window(SDL_Component):
     size = property(_get_size, _set_size)
     
     def __init__(self, **kwargs):
-        self.max_layer = 1
-        self.invalid_layer = 0
+        self.max_layer, self.invalid_layer = 1, 0
         self.children = []
-        self.layers = collections.OrderedDict((x, (None, [])) for x in xrange(100))
+        self.layers = collections.OrderedDict((x, (None, [])) for 
+                                               x in xrange(100))
         self.latency = utilities.Latency(name="framerate")
         self.running = False
         
         super(SDL_Window, self).__init__(**kwargs)
-        window = sdl2.ext.Window(self.name, size=self.size, flags=self.window_flags)
+        window = sdl2.ext.Window(self.name, size=self.size, 
+                                 flags=self.window_flags)
         self.wraps(window)
         self.create(Window_Handler)
         
@@ -91,14 +92,6 @@ class SDL_Window(SDL_Component):
         if hasattr(instance, 'pack'):
             instance.pack()
         return instance
-    
-    def add(self, instance):
-        self.children.append(instance)
-        super(SDL_Window, self).add(instance)
-        
-    def remove(self, instance):
-        self.children.remove(instance)
-        super(SDL_Window, self).remove(instance)
         
     def run(self):
         renderer = self.renderer
@@ -126,6 +119,8 @@ class SDL_Window(SDL_Component):
                 renderer.copy(layers[layer_number - 1][0])
         
             for instance in layer_components:
+                if instance.hidden:
+                    continue
                 srcrect = x, y, w, h = instance.area
                 user_input._update_coordinates(instance.instance_name, srcrect, instance.z)
                 
@@ -177,9 +172,7 @@ class SDL_Window(SDL_Component):
         return self.get_mouse_state()[0]
 
     def pack(self, modifiers=None):
-        for child in self.children:
-            if hasattr(child, 'pack'):
-                child.pack()
+        pass
             
             
 class Window_Handler(mpre.base.Base):
@@ -261,6 +254,11 @@ class SDL_User_Input(vmlibrary.Process):
                      "_ignore_click" : False,
                      "active_item" : None})
     
+    def _get_active_item(self):
+        return self._active_item
+    def _set_active_item(self, value):
+        self._active_item = value
+        
     def __init__(self, **kwargs):
         self.coordinate_tracker = {}
         self._coordinate_tracker = collections.OrderedDict()
@@ -296,48 +294,51 @@ class SDL_User_Input(vmlibrary.Process):
         # for not yet implemented features
         unhandled = self.handle_unhandled_event
 
-        self.instruction_mapping = {sdl2.SDL_DOLLARGESTURE : unhandled,
-                              sdl2.SDL_DROPFILE : unhandled,
-                              sdl2.SDL_FINGERMOTION : unhandled,
-                              sdl2.SDL_FINGERDOWN : unhandled,
-                              sdl2.SDL_FINGERUP : unhandled,
-                              sdl2.SDL_FINGERMOTION :unhandled,
-                              sdl2.SDL_KEYDOWN : self.handle_keydown,
-                              sdl2.SDL_KEYUP : self.handle_keyup,
-                              sdl2.SDL_JOYAXISMOTION : unhandled,
-                              sdl2.SDL_JOYBALLMOTION : unhandled,
-                              sdl2.SDL_JOYHATMOTION : unhandled,
-                              sdl2.SDL_JOYBUTTONDOWN : unhandled,
-                              sdl2.SDL_JOYBUTTONUP : unhandled,
-                              sdl2.SDL_MOUSEMOTION : self.handle_mousemotion,
-                              sdl2.SDL_MOUSEBUTTONDOWN : self.handle_mousebuttondown,
-                              sdl2.SDL_MOUSEBUTTONUP : self.handle_mousebuttonup,
-                              sdl2.SDL_MOUSEWHEEL : self.handle_mousewheel,
-                              sdl2.SDL_MULTIGESTURE : unhandled,
-                              sdl2.SDL_QUIT : self.handle_quit,
-                              sdl2.SDL_SYSWMEVENT : unhandled,
-                              sdl2.SDL_TEXTEDITING : unhandled,
-                              sdl2.SDL_TEXTINPUT : unhandled,
-                              sdl2.SDL_USEREVENT : unhandled,
-                              sdl2.SDL_WINDOWEVENT : objects["Window_Handler"].handle_event}
+        self.handlers = {sdl2.SDL_DOLLARGESTURE : unhandled,
+                         sdl2.SDL_DROPFILE : unhandled,
+                         sdl2.SDL_FINGERMOTION : unhandled,
+                         sdl2.SDL_FINGERDOWN : unhandled,
+                         sdl2.SDL_FINGERUP : unhandled,
+                         sdl2.SDL_FINGERMOTION :unhandled,
+                         sdl2.SDL_KEYDOWN : self.handle_keydown,
+                         sdl2.SDL_KEYUP : self.handle_keyup,
+                         sdl2.SDL_JOYAXISMOTION : unhandled,
+                         sdl2.SDL_JOYBALLMOTION : unhandled,
+                         sdl2.SDL_JOYHATMOTION : unhandled,
+                         sdl2.SDL_JOYBUTTONDOWN : unhandled,
+                         sdl2.SDL_JOYBUTTONUP : unhandled,
+                         sdl2.SDL_MOUSEMOTION : self.handle_mousemotion,
+                         sdl2.SDL_MOUSEBUTTONDOWN : self.handle_mousebuttondown,
+                         sdl2.SDL_MOUSEBUTTONUP : self.handle_mousebuttonup,
+                         sdl2.SDL_MOUSEWHEEL : self.handle_mousewheel,
+                         sdl2.SDL_MULTIGESTURE : unhandled,
+                         sdl2.SDL_QUIT : self.handle_quit,
+                         sdl2.SDL_SYSWMEVENT : unhandled,
+                         sdl2.SDL_TEXTEDITING : unhandled,
+                         sdl2.SDL_TEXTINPUT : self.handle_textinput,
+                         sdl2.SDL_USEREVENT : unhandled,
+                         sdl2.SDL_WINDOWEVENT : objects["Window_Handler"].handle_event}
 
-        #self.constant_names = dict((key, [value for value in sdl2.__dict__.values if value == key][0]) for key in self.instruction_mapping)
     def run(self):
+        handlers = self.handlers
         for event in sdl2.ext.get_events():
-         #   self.alert("Processing: {} {}", [event.type, self.instruction_mapping[event.type].__name__], level=self.event_verbosity)
-            self.instruction_mapping[event.type](event)        
+            try:
+                handlers[event.type](event)
+            except KeyError:
+                self.alert("Unhandled event: {}".format(event.type))
 
     def _update_coordinates(self, item, area, z):
         try:
             _, old_z = self.coordinate_tracker[item]
         except KeyError:
-            try:
-                self._coordinate_tracker[z].append(item)
-            except KeyError:
-                self._coordinate_tracker[z] = [item]
+            pass
         else:            
-            self._coordinate_tracker[old_z].remove(item)
+            self._coordinate_tracker[old_z].remove(item)            
+        try:
             self._coordinate_tracker[z].append(item)
+        except KeyError:
+            self._coordinate_tracker[z] = [item]
+            
         self.coordinate_tracker[item] = (area, z)
         
     def _remove_from_coordinates(self, item):
@@ -346,7 +347,19 @@ class SDL_User_Input(vmlibrary.Process):
         del self.coordinate_tracker[item]
         if self.active_item == item:
             self.active_item = None
-            
+    
+    def handle_textinput(self, event):
+        text = event.edit.text
+        cursor = event.edit.start
+        selection_length = event.edit.length
+        self.alert("Handling textinput {} {} {}",
+                   (text, cursor, selection_length), level='vv')
+        if self.active_item:
+            instance = objects[self.active_item]
+            print "Instance allows text edit: ", instance.allow_text_edit
+            if instance.allow_text_edit:
+                instance.text += text
+        
     def handle_unhandled_event(self, event):        
         self.alert("{0} passed unhandled", [event.type], 'vv')
 
@@ -397,36 +410,37 @@ class SDL_User_Input(vmlibrary.Process):
             mpre.objects[self.active_item].mousemotion(motion.xrel, motion.yrel)
 
     def handle_keydown(self, event):
-        try:
-            instance = mpre.objects[self.active_item]
-        except KeyError:
-            self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
-            return
-        try:
-            key = chr(event.key.keysym.sym)
-        except ValueError:
-            return # key was a modifier key
-        else:
-            if key == "\r":
-                key = "\n"
-            modifier = event.key.keysym.mod
-            if modifier in self.uppercase_modifiers:
-                try:
-                    key = self.uppercase[key]
-                except KeyError:
-                    pass            
-            elif modifier:
-                hotkey = self.get_hotkey(instance, (key, modifier))
-                if hotkey:
-                    hotkey.execute()
-                
-            elif instance.allow_text_edit:                
-                if ord(key) == 8: # backspace
-                    instance.text = instance.text[:-1]
-                else:
-                    instance.text += key
-                                    
-                #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
+        pass
+    #    try:
+    #        instance = mpre.objects[self.active_item]
+    #    except KeyError:
+    #        self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
+    #        return
+    #    try:
+    #        key = chr(event.key.keysym.sym)
+    #    except ValueError:
+    #        return # key was a modifier key
+    #    else:
+    #        if key == "\r":
+    #            key = "\n"
+    #        modifier = event.key.keysym.mod
+    #        if modifier in self.uppercase_modifiers:
+    #            try:
+    #                key = self.uppercase[key]
+    #            except KeyError:
+    #                pass            
+    #        elif modifier:
+    #            hotkey = self.get_hotkey(instance, (key, modifier))
+    #            if hotkey:
+    #                hotkey.execute()
+    #            
+    #        elif instance.allow_text_edit:                
+    #            if ord(key) == 8: # backspace
+    #                instance.text = instance.text[:-1]
+    #            else:
+    #                instance.text += key
+    #                                
+    #            #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
                 
     def get_hotkey(self, instance, key_press):
         try:
@@ -447,9 +461,7 @@ class Renderer(SDL_Component):
     defaults.update({"flags" : sdl2.SDL_RENDERER_ACCELERATED,
                      "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND})
                 
-    def __init__(self, window, **kwargs):
-        self.font_cache = {}        
-      
+    def __init__(self, window, **kwargs):      
         super(Renderer, self).__init__(**kwargs)
         self.wraps(sdl2.ext.Renderer(window, flags=self.flags))
         self.blendmode = self.blendmode_flag
@@ -518,8 +530,9 @@ class Sprite_Factory(SDL_Component):
 class Font_Manager(SDL_Component):
 
     defaults = SDL_Component.defaults.copy()
-    defaults.update({"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION, "resources",
-                                                "fonts", "Aero.ttf"),
+    defaults.update({"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION,
+                                                "resources", "fonts", 
+                                                "Aero.ttf"),
                      "default_font_size" : 14,
                      "default_color" : (150, 150, 255),
                      "default_background" : (0, 0, 0)})

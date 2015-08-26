@@ -1,13 +1,25 @@
 can dynamic secrets be used over UDP instead of wifi?
 
+override socket send to deliver data via lookup for localhost connections
+
 create the periodic table of everything. write a function that writes other functions, 
 where each created function is a combination of primitive operations.
 
+host objects and session objects. hosts have a connection to a remote
+machine, and a session holds an auth token for communicating with
+a host
+
+recently done:
+    removed set_attributes. not safe with rpc.
+    updated rpc to work with sessions
+    
 known bugs:
-    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration.
+    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     
 things that could be done:
+    improve json serialization
+    "new" keyword to create objects ?
     automatically compiling via cython.inline - stuck at libpython27_a
     preemptive multiprocessing development
     children descriptor?    
@@ -16,7 +28,7 @@ things that could be done:
         or distribute mac'd pickle'd Instructions of publicly available operations            
     develop the gui
     improve executable    
-    improve authentication service - scrutiny for design pitfalls and errors, resistances
+    improve authentication service - scrutiny for design pitfalls and errors
     system restore   
     integrate ssl contexts into networkssl    
     pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    

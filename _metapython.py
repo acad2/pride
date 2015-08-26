@@ -51,14 +51,15 @@ class Shell(authentication.Authenticated_Client):
             self.handle_startup_definitions()                
              
     def handle_startup_definitions(self):
+        source = mpre.compiler.preprocess(self.startup_definitions)
         try:
-            compile(self.startup_definitions, "Shell", 'exec')
+            compile(source, "Shell", 'exec')
         except:
             self.alert("Startup defintions failed to compile:\n{}",
                     [traceback.format_exc()],
                     level=0)
         else:
-            self.execute_source(self.startup_definitions) 
+            self.execute_source(source)
                     
     def handle_input(self, input):
         if not self.logged_in:
@@ -101,9 +102,8 @@ class Shell(authentication.Authenticated_Client):
         if not self.logged_in:
             self.login()
         else:
-            Instruction(self.target_service, "exec_code",
-                        source).execute(host_info=self.host_info,
-                                        callback=self.result)
+            self.session.execute(Instruction(self.target_service, "exec_code",
+                                             source), callback=self.result)
                         
     def result(self, packet):
         if not packet:
@@ -115,42 +115,41 @@ class Shell(authentication.Authenticated_Client):
         
 
 class Interpreter(authentication.Authenticated_Service):
-    """ Executes python source. Requires authentication. The source code and 
-        return value of all requests are logged.
-        
-        usage: Instruction("Interpreter", "exec_code",
-                           my_source).execute(host_info=target_host)"""
+    """ Executes python source. Requires authentication from remote hosts. 
+        The source code and return value of all requests are logged. """
     
     defaults = authentication.Authenticated_Service.defaults.copy()
-    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.'})
+    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                     "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"})
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter, self).__init__(**kwargs)
-        self.log = self.create("fileio.File", "{}.log".format(self.instance_name), 'a+', persistent=False)
+        self.log = self.create("fileio.File", 
+                               "{}.log".format(self.instance_name), 'a+',
+                               persistent=False).instance_name
                 
     def login(self, username, credentials):
         response = super(Interpreter, self).login(username, credentials)
-        if username in self.user_secret:
-            sender = self.requester_address
+        session_id, sender = self.current_session
+        if response[0] == self.login_message:
            # self.user_namespaces[username] = {"__name__" : "__main__",
            #                                   "__doc__" : '',
            #                                   "Instruction" : Instruction}
             self.user_session[username] = ''
-            string_info = (username, sender, sys.version, sys.platform, self.copyright)        
-            response = ("Welcome {} from {}\nPython {} on {}\n{}\n".format(*string_info), response[1])
+            string_info = (username, sender, sys.version, sys.platform, 
+                           self.copyright)        
+            response = (self.login_message.format(*string_info), response[1])
         return response
-    
-    @authentication.whitelisted
-    @authentication.authenticated
+
     def exec_code(self, source):
-        log = self.log        
-        sender = self.requester_address
-        
-        username = self.logged_in[sender]
-        log.write("{} {} from {}:\n".format(time.asctime(), username, sender) + 
-                  source)                  
+        log = mpre.objects[self.log]
+        session_id, sender = self.current_session
+                
+        username = self.session_id[session_id]
+        log.write("{} {} from {}:\n".format(time.asctime(), username, 
+                                            sender) + source)           
         result = ''         
         try:
             code = mpre.compiler.compile_source(source)
@@ -190,14 +189,6 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
-        
-    def __setstate__(self, state):     
-        super(Interpreter, self).__setstate__(state)
-        sender = dict((value, key) for key, value in self.logged_in.items())
-        for username in self.user_session.keys():
-            source = self.user_session[username]
-            self.user_session[username] = ''
-            result = self.exec_code(sender[username], source)
                    
             
 class Metapython(base.Base):
@@ -215,12 +206,13 @@ class Metapython(base.Base):
                                              "mpre.network.Socket_Error_Handler",
                                              "mpre.network.Network", 
                                              "mpre.shell.Command_Line",
-                                             "mpre.srp.Secure_Remote_Password",
-                                             "mpre.rpc.RPC_Handler"),
+                                             "mpre.srp.Secure_Remote_Password"),
                      "prompt" : ">>> ",
                      "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
                      "interpreter_enabled" : True,
-                     "startup_definitions" : ''})    
+                     "rpc_enabled" : True,
+                     "startup_definitions" : '',
+                     "interpreter_type" : "mpre._metapython.Interpreter"})    
                      
     parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt",
                                                "copyright", 
@@ -242,15 +234,18 @@ class Metapython(base.Base):
         super(Metapython, self).__init__(**kwargs)
         self.setup_os_environ()
         for component_type in self.startup_components:
-            component = self.create(component_type)
-            setattr(self, component.instance_name.lower(), component)
-            
+            component_name = self.create(component_type).instance_name
+            setattr(self, component_name.lower(), component_name) 
+                                
         if self.startup_definitions:
             self.exec_command(self.startup_definitions)           
                         
         if self.interpreter_enabled:
-            self.interpreter = self.enable_interpreter()
-                 
+            self.create(self.interpreter_type)    
+        
+        if self.rpc_enabled:
+            self.create("mpre.rpc.Rpc_Server")
+                        
         with open(self.command, 'r') as module_file:
             source = module_file.read()
             
@@ -293,13 +288,12 @@ class Metapython(base.Base):
             
     def start_machine(self):
         """ Begins the processing of Instruction objects."""
-        self.processor.run()
-    
-    def enable_interpreter(self):      
-        return self.create(Interpreter)      
+        processor = mpre.objects[self.processor]
+        processor.running = True
+        processor.run()
         
     def exit(self, exit_code=0):
-        objects["Processor"].set_attributes(running=False)
+        mpre.objects[self.processor].running = False
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)

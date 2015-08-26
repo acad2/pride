@@ -56,7 +56,7 @@ def generate_rsa_keypair(name=''):
 class SSL_Client(mpre.network.Tcp_Client):
     
     """ An asynchronous client side Tcp socket wrapped in an ssl socket.
-        Users should extend on_authentication instead of on_connect to
+        Users should extend on_ssl_authentication instead of on_connect to
         initiate data transfer; on_connect is used to start the
         ssl handshake"""
     defaults = mpre.network.Tcp_Client.defaults.copy()
@@ -81,10 +81,11 @@ class SSL_Client(mpre.network.Tcp_Client):
                 assert context.check_hostname
                 assert self.server_hostname
         self.ssl_socket = wrap_socket(self.socket, 
-                                      **dict((attribute, getattr(self, attribute)) 
-                                              for attribute in WRAP_SOCKET_OPTIONS))
-        self.ssl_connect()
-        
+                                      **dict((attribute, 
+                                              getattr(self, attribute)) for
+                                              attribute in 
+                                              WRAP_SOCKET_OPTIONS))
+        self.ssl_connect()        
         
     def ssl_connect(self):
         try:
@@ -96,7 +97,7 @@ class SSL_Client(mpre.network.Tcp_Client):
                 raise
         else:
             self.ssl_authenticated = True
-            self.on_authentication()    
+            self.on_ssl_authentication()    
             
     def on_select(self):
         if self.connected and not self.ssl_authenticated:
@@ -104,14 +105,14 @@ class SSL_Client(mpre.network.Tcp_Client):
         else:
             super(SSL_Client, self).on_select()
                         
-    def on_authentication(self):
+    def on_ssl_authentication(self):
         self.alert("Authenticated", level=0)
             
         
 class SSL_Socket(mpre.network.Tcp_Socket):
     
     """ An asynchronous server side client socket wrapped in an ssl socket.
-        Users should override the on_authentication method instead of
+        Users should override the on_ssl_authentication method instead of
         on_connect"""
         
     defaults = mpre.network.Tcp_Socket.defaults.copy()
@@ -136,9 +137,9 @@ class SSL_Socket(mpre.network.Tcp_Socket):
                 raise
         else:
             self.ssl_authenticated = True
-            self.on_authentication()
+            self.on_ssl_authentication()
             
-    def on_authentication(self):
+    def on_ssl_authentication(self):
         self.alert("Authenticated", level='v')
                 
         
@@ -176,3 +177,12 @@ class SSL_Server(mpre.network.Server):
                                                          for attribute in WRAP_SOCKET_OPTIONS))
         self.on_connect(connection, address)
         return connection, address
+        
+    def __getstate__(self):
+        attributes = super(SSL_Server, self).__getstate__()
+        del attributes["wrap_socket"]
+        return attributes
+        
+    def on_load(self, state):
+        super(SSL_Server, self).on_load(state)
+        self.wrap_socket = ssl.wrap_socket # hardcoded for now

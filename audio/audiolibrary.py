@@ -131,7 +131,7 @@ class Config_Utility(vmlibrary.Process):
     defaults = vmlibrary.Process.defaults.copy()
     defaults.update({"config_file_name" : "audiocfg",
                      "mode" : ("input",),
-                     "auto_start" : False})
+                     "running" : False})
 
     def __init__(self, **kwargs):
         self.selected_devices = []
@@ -319,3 +319,4 @@ class Audio_Manager(base.Base):
     def record(self, device_name, file):  
         device_name = self.device_names[device_name].instance_name
         file.set_input_device(device_name)
+        
