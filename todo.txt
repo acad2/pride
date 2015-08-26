@@ -1,8 +1,6 @@
-override socket send to deliver data via lookup for localhost connections
 
 recently done:
-    removed set_attributes. not safe with rpc.
-    updated rpc to work with sessions
+    
     
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
@@ -11,11 +9,9 @@ known bugs:
 things that could be done:
     improve json serialization
     "new" keyword to create objects ?
-    automatically compiling via cython.inline - stuck at libpython27_a
+    compiling with cython and gcc broken - stuck at libpython27_a
     preemptive multiprocessing development
-    children descriptor?    
-    create/find secure pickle alternative - can't seriously use rpc or save/load otherwise
-        or distribute mac'd pickle'd Instructions of publicly available operations            
+    children descriptor?               
     develop the gui
     improve executable    
     improve authentication service - scrutiny for design pitfalls and errors

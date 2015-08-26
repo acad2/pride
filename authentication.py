@@ -40,7 +40,7 @@ class Authenticated_Service(mpre.base.Base):
     def __init__(self, **kwargs):
         self.logging_in = set()
         # maps authentication token to username
-        self.session_id = mpre.utilities.Reversible_Mapping() 
+        self.session_id = {}
         self.whitelist = ["127.0.0.1", "localhost"]
         self.blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
@@ -153,14 +153,11 @@ class Authenticated_Service(mpre.base.Base):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
         del state["logging_in"]
-        state["logged_in"] = dict((key, value) for key, value in 
-                                   state["logged_in"].items())
         return state
         
     def on_load(self, attributes):
         super(Authenticated_Service, self).on_load(attributes)
         self.logging_in = set()
-        self.logged_in = mpre.utilities.Reversible_Mapping(self.logged_in)
         self.database = self.create("database.Database", database_name=name,
                                     text_factory=str)
         self.database.create_table("Credentials", 
@@ -252,8 +249,8 @@ class Authenticated_Client(mpre.base.Base):
             the authenticated_client (recommended). """
         self.alert("Logging in...", level=self.verbosity["logging_in"])
         self._client = self.create(self.protocol_client, 
-                                  username=self.username,
-                                  password=self.password)
+                                   username=self.username,
+                                   password=self.password)
         self.session.execute(Instruction(self.target_service, "login", 
                                          *self._client.login()),
                              self.send_proof)
