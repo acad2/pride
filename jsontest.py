@@ -18,6 +18,7 @@ class Base_Encoder(json.JSONEncoder):
                                   if not item.dont_save]
                                   
         builtins = dir(__builtins__)
+        attributes_serialized = []
         for name, value in attributes.items():
             if getattr(value, "dont_save", None):
                 attributes[name] = None
@@ -27,7 +28,8 @@ class Base_Encoder(json.JSONEncoder):
                 json.dumps(value)
             except TypeError:
                 if hasattr(value, "instance_name"):
-                    attributes[value] = value.__getstate__()
+                    attributes[value] = self.default(value)
+                    attributes_serialized.append(name)
                 else:
                     raise
         attributes["objects"] = saved_objects
@@ -38,10 +40,30 @@ class Base_Encoder(json.JSONEncoder):
    #         assert isinstance(key, str)
         name = _object.__class__.__name__
         module = _object.__module__
-        saved = [module + '.' + name, attributes]
+        saved = (module + '.' + name, attributes_serialized, attributes)
         return saved
-        
+ 
+
+def base_decoder(loaded_json):
+  #  print "item length: ", len(loaded_json)
+   # print loaded_json
+    type_name, serialized_attributes, attributes = loaded_json
+ #   print "Loading: {}".format((type_name, serialized_attributes, attributes))
+    for key in serialized_attributes:
+        attributes[key] = base_decoder(attributes[key])
+    
+    loaded_objects = {}
+    for _instance_type, values in attributes["objects"].items():
+        loaded_objects[_instance_type] = [base_decoder(serialized_instance) for
+                                          serialized_instance in values]
+    attributes["objects"] = loaded_objects
+    instance_type = mpre.utilities.resolve_string(type_name)
+    instance = instance_type.__new__(instance_type)
+    instance.on_load(attributes)
+    return instance
+    
 if __name__ == "__main__":
     import mpre._metapython
     m = mpre._metapython.Metapython()
     s = json.dumps(m, cls=Base_Encoder)
+    base_decoder(json.loads(s))

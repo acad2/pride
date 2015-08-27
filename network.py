@@ -349,10 +349,10 @@ class Socket(base.Wrapper):
         
     def on_load(self, attributes):
         super(Socket, self).on_load(attributes)
-        self.wraps(socket.socket(self.socket_family, self.socket_type, self.protocol))
+        self.wraps(socket.socket(self.socket_family, self.socket_type, 
+                                 self.protocol))
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
-        
         if self.add_on_init:
             try:
                 objects["Network"].add(self)
@@ -475,7 +475,7 @@ class Server(Tcp_Socket):
         
     def on_load(self, attributes):
         super(Server, self).on_load(attributes)
-        self.bind((self.ip, self.port))
+        self.bind((self.interface, self.port))
         self.listen(self.backlog)
         
         
@@ -645,6 +645,9 @@ class Network(vmlibrary.Process):
         state["sockets"] = None
         state["_slice_mapping"] = None
         return state
+    
+    def __contains__(self, _socket):
+        return _socket in self.sockets
         
     def on_load(self, attributes):
         super(Network, self).on_load(attributes)
