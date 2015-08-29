@@ -1,5 +1,6 @@
 import mpre.base
 
+import sdl2.ext # for Color
 
 class Shape(mpre.base.Base):
     
@@ -89,7 +90,7 @@ class Shape(mpre.base.Base):
     a = property(_get_a, _set_a)
     
     def _get_color(self):
-        return (self.r, self.g, self.b, self.a)
+        return self._color
     def _set_color(self, colors):
         self.r = colors[0]
         self.g = colors[1]
@@ -98,6 +99,8 @@ class Shape(mpre.base.Base):
             self.a = colors[3]
         except IndexError:
             self.a = 0
+        self._color = sdl2.ext.Color(*colors)
+        
     color = property(_get_color, _set_color)  
     
     

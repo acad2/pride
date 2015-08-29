@@ -178,3 +178,4 @@ class SSL_Server(mpre.network.Server):
     def on_load(self, state):
         super(SSL_Server, self).on_load(state)
         self.wrap_socket = ssl.wrap_socket # hardcoded for now
+        

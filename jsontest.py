@@ -12,43 +12,45 @@ class Base_Encoder(json.JSONEncoder):
         #print "attributes: ", attributes
         objects = attributes.pop("objects", {})
         saved_objects = {}
-        for key, value in objects.items():
-            saved_objects[key] = [self.default(item) for item in sorted(value,
+        already_found = []
+        for key, values in objects.items():
+            saved_objects[key] = [self.default(item) for item in sorted(values,
                                   key=operator.attrgetter("instance_name"))
                                   if not item.dont_save]
-                                  
+            already_found.extend(values)
+        
         builtins = dir(__builtins__)
         attributes_serialized = []
+        references = {}
+        
         for name, value in attributes.items():
             if getattr(value, "dont_save", None):
                 attributes[name] = None
                 continue
-   #         print "Testing if {}.{} ({} {}) is serializable".format(_object, name, type(value), value)
-            try:
-                json.dumps(value)
-            except TypeError:
-                if hasattr(value, "instance_name"):
-                    attributes[value] = self.default(value)
-                    attributes_serialized.append(name)
-                else:
-                    raise
+            elif value in already_found:
+                _instance_name = value.instance_name
+                references[name] = _instance_name
+                attributes[value] = "reference_{}".format(_instance_name)
+            else:
+                try:
+                    json.dumps(value)
+                except TypeError:
+                    if hasattr(value, "instance_name"):
+                        attributes[value] = self.default(value)
+                        attributes_serialized.append(name)
+                    else:
+                        raise
         attributes["objects"] = saved_objects
-   #     for key in attributes.keys():
-   #         print _object, key, type(key)
-   #         import pprint
-   #         pprint.pprint(attributes)
-   #         assert isinstance(key, str)
-        name = _object.__class__.__name__
-        module = _object.__module__
-        saved = (module + '.' + name, attributes_serialized, attributes)
-        return saved
+        return (_object.__module__ + '.' + _object.__class__.__name__,
+                attributes_serialized, references, attributes)
+        
  
 
 def base_decoder(loaded_json):
   #  print "item length: ", len(loaded_json)
    # print loaded_json
-    type_name, serialized_attributes, attributes = loaded_json
- #   print "Loading: {}".format((type_name, serialized_attributes, attributes))
+    type_name, serialized_attributes, references, attributes = loaded_json
+    print "\nLoading: {}".format((type_name, serialized_attributes, references, attributes))
     for key in serialized_attributes:
         attributes[key] = base_decoder(attributes[key])
     
@@ -59,7 +61,9 @@ def base_decoder(loaded_json):
     attributes["objects"] = loaded_objects
     instance_type = mpre.utilities.resolve_string(type_name)
     instance = instance_type.__new__(instance_type)
+    
     instance.on_load(attributes)
+    print "Loaded: ", instance, '\n', '-' * 80
     return instance
     
 if __name__ == "__main__":

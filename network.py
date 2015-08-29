@@ -353,12 +353,12 @@ class Socket(base.Wrapper):
                                  self.protocol))
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
+                
         if self.add_on_init:
             try:
-                objects["Network"].add(self)
-            except KeyError:
-                self.alert("Network component does not exist", level=0)
-                self.added_to_network = False
+                $Network.add(self)
+            except KeyError: 
+                self.alert("Network unavailable")
             else:
                 self.added_to_network = True
                 
@@ -577,6 +577,7 @@ class Network(vmlibrary.Process):
         super(Network, self).__init__(**kwargs)       
                 
     def add(self, sock):
+    #    print "adding sock: ", hex(id(sock))
         super(Network, self).add(sock)
         self.sockets.append(sock)
         if not self.running:
@@ -584,6 +585,7 @@ class Network(vmlibrary.Process):
             self.start()
                 
     def remove(self, sock):   
+    #    print "\nremoving sock: ", hex(id(sock)), '\n'
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
             
@@ -637,12 +639,13 @@ class Network(vmlibrary.Process):
                             error_handler.dispatch(connection, error, 
                                                    ERROR_CODES[error.errno].lower())           
                     else:
-                        self.connecting.add(connection)                                  
+                        self.connecting.add(connection)                   
                 
     def __getstate__(self):
         state = super(Network, self).__getstate__()
         state["connecting"] = None
-        state["sockets"] = None
+     #   state["sockets"] = []
+     #   state["objects"] = {}
         state["_slice_mapping"] = None
         return state
     
@@ -654,4 +657,4 @@ class Network(vmlibrary.Process):
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
                                     x in xrange(100))
         self.connecting = set()
-        self.sockets = []
+        #self.sockets = []

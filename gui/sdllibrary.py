@@ -476,11 +476,12 @@ class Renderer(SDL_Component):
     def draw_text(self, area, text, **kwargs):
         x, y, w, h = area
         kwargs.setdefault("width", w)
-        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
+        texture = self.sprite_factory.from_text(text, 
+                                                fontmanager=self.font_manager, 
                                                 **kwargs)        
         _w, _h = texture.size
         self.copy(texture, dstrect=(x + 2, y + 2, 
-                                    (_w if _w < w else w) - 2,
+                                    _w - 2, #(_w if _w < w else w) - 2,
                                     _h))
         
     def draw_rect_width(self, area, **kwargs):

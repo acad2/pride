@@ -18,12 +18,22 @@ except:
 
 __raw_input = raw_input # so the Interpreter can switch the __builtin__ one to the below
         
-def get_user_input(prompt=''):
-    """ raw_input function that plays nicely when sys.stdout is swapped """
-    sys.__stdout__.write(prompt)
-    sys.__stdout__.flush()
-    return __raw_input('')
-
+def get_user_input(prompt='', must_reply=False):
+    """ raw_input function that plays nicely when sys.stdout is swapped.
+        If must_reply equals True, then the prompt will be redisplayed
+        until a non empty string is returned."""
+    if must_reply:
+        reply = ''
+        while not reply:
+            sys.__stdout__.write(prompt)
+            sys.__stdout__.flush()        
+            reply = __raw_input('')
+    else:
+        sys.__stdout__.write(prompt)
+        sys.__stdout__.flush()       
+        reply = __raw_input('')
+    return reply
+    
 def get_permission(prompt):
     """ Displays prompt to the user. Attempts to infer whether or not the supplied
         user input is affirmative or negative via shell.is_affirmative. """
@@ -247,3 +257,4 @@ class File_Explorer(Program):
             pprint.pprint(contents)
         else:
             return contents
+            

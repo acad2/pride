@@ -127,6 +127,14 @@ class Text_Field(gui.Button):
         self.alert("Left click: {}".format(self.editing))
         self.editing = not self.editing
         
+    def draw_texture(self):
+        area = self.texture.area
+        self.draw("fill", area, color=self.background_color)
+        self.draw("rect", area, color=self.color)
+        if self.text:
+            self.draw("text", self.area, self.text, 
+                      bg_color=self.background_color, color=self.text_color)
+        
         
 class Date_Time_Button(gui.Button):
 

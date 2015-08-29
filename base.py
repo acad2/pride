@@ -325,8 +325,9 @@ class Base(object):
         
         if (self.replace_reference_on_load and 
             self.instance_name != attributes["instance_name"]):
+            print "Replacing instance"
             mpre.environment.replace(attributes["instance_name"], self)
-            
+            print "Done"
         self.alert("Loaded", level='v')
         
     def update(self):
