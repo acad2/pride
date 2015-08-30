@@ -121,16 +121,21 @@ class SDL_Window(SDL_Component):
             for instance in layer_components:
                 if instance.hidden:
                     continue
-                srcrect = x, y, w, h = instance.area
-                user_input._update_coordinates(instance.instance_name, srcrect, instance.z)
-                
-      #          x += instance.texture_window_x
-      #          y += instance.texture_window_y
+                x, y, w, h = instance.area
+                user_input._update_coordinates(instance.instance_name, 
+                                               (x, y, w, h), instance.z)
+                source_rect = [x + instance.texture_window_x,
+                               y + instance.texture_window_y, w, h]       
                 if x + w > screen_width:
                     w = screen_width - x
                 if y + h > screen_height:
-                    h = screen_height - y               
+                    h = screen_height - y
+                if source_rect[0] + w > screen_width:
+                    source_rect[0] = x
+                if source_rect[1] + h > screen_height:
+                    source_rect[1] = y
                 area = (x, y, w, h)
+                
                # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
                #            w, h)
                 if instance.texture_invalid:
@@ -147,10 +152,9 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-                self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
+             #   self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
                 renderer.copy(instance.texture.texture, 
-                              srcrect=(x + instance.texture_window_x, 
-                                       y + instance.texture_window_y, w, h), dstrect=area)
+                              srcrect=source_rect, dstrect=area)
                 
         self.invalid_layer = self.max_layer
         renderer.set_render_target(None)

@@ -116,10 +116,10 @@ class Text_Field(gui.Button):
     def _set_editing(self, value):
         self._editing = value
         if value:
-            print "Turning text input on"
+            self.alert("Turning text input on", level='vv')
             sdl2.SDL_StartTextInput()
         else:
-            print "Disabling text input"
+            self.alert("Disabling text input", level='vv')
             sdl2.SDL_StopTextInput()
     editing = property(_get_editing, _set_editing)
     
@@ -147,10 +147,7 @@ class Date_Time_Button(gui.Button):
         self.update_time()        
   
     def update_time(self):
-        self.text = time.asctime()
-        instance_name = self.instance_name
-        
-        self.texture_invalid = True
+        self.text = time.asctime()     
         self.update_instruction.execute(priority=1)   
         
 
