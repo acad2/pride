@@ -110,7 +110,8 @@ class Base(object):
     defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
-                "delete_verbosity" : 'vv'}   
+                "delete_verbosity" : 'vv',
+                "startup_components" : tuple()}   
                 
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -160,6 +161,11 @@ class Base(object):
                                     command_line_args.items() if value != defaults[key]))     
         [setattr(self, attr, val) for attr, val in attributes.items()]            
 
+        if self.startup_components:
+            for component_type in self.startup_components:
+                component_name = self.create(component_type).instance_name
+                setattr(self, component_name.lower(), component_name) 
+                
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance

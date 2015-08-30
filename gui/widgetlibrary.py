@@ -79,16 +79,16 @@ class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
     defaults.update({"pack_mode" : "menu_bar",
-                     "h_range" : (0, 20)})
+                     "h_range" : (0, 20),
+                     "startup_components" : ("mpre.gui.widgetlibrary.Date_Time_Button",
+                                             "mpre.gui.widgetlibrary.Text_Box")})
     
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
         parent_name = self.parent_name
         self.create(Indicator, text=parent_name)
-        self.create(Date_Time_Button)
         self.create(Delete_Button, target=parent_name)
-        self.create(Text_Box)
-        
+             
 
 class Text_Box(gui.Container):
     
@@ -124,7 +124,7 @@ class Text_Field(gui.Button):
     editing = property(_get_editing, _set_editing)
     
     def left_click(self, event):
-        self.alert("Left click: {}".format(self.editing))
+        self.alert("Left click: {}".format(self.editing), level='vvv')
         self.editing = not self.editing
         
     def draw_texture(self):

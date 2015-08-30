@@ -233,12 +233,9 @@ class Metapython(base.Base):
     def __init__(self, **kwargs):
         super(Metapython, self).__init__(**kwargs)
         self.setup_os_environ()
-        for component_type in self.startup_components:
-            component_name = self.create(component_type).instance_name
-            setattr(self, component_name.lower(), component_name) 
-                                
+        
         if self.startup_definitions:
-            self.exec_command(self.startup_definitions)           
+            self._exec_command(self.startup_definitions)           
                         
         if self.interpreter_enabled:
             self.create(self.interpreter_type)    
@@ -247,11 +244,10 @@ class Metapython(base.Base):
             self.create("mpre.rpc.Rpc_Server")
                         
         with open(self.command, 'r') as module_file:
-            source = module_file.read()
-            
-        Instruction(self.instance_name, "exec_command", source).execute()
+            source = module_file.read()            
+        Instruction(self.instance_name, "_exec_command", source).execute()
                 
-    def exec_command(self, source):
+    def _exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')
         with self.main_as_name():
