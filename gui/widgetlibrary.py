@@ -175,7 +175,7 @@ class Scroll_Bar(gui.Container):
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
         if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
-            self.w_range = (0, 20)
+            self.w_range = (0, 10)
             pack_mode = "vertical"
         else:
             self.h_range = (0, 20)

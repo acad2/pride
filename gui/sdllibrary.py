@@ -147,7 +147,7 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-               # self.alert("Copying {} texture to {}", [instance, area], level=0)
+                self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
                 renderer.copy(instance.texture.texture, 
                               srcrect=(x + instance.texture_window_x, 
                                        y + instance.texture_window_y, w, h), dstrect=area)
