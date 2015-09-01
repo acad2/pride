@@ -51,6 +51,9 @@ class Organizer(base.Base):
             else:
                 self._pack_modes[parent][value] = [instance]
         self._pack_index[instance] = self._pack_modes[parent][value].index(instance)
+    
+    def add_pack_method(self, name, callback):
+        setattr(self, name, "pack_{}".format(name), callback)
         
     def pack(self, item):
         self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode],
@@ -63,7 +66,8 @@ class Organizer(base.Base):
 
         pack(parent, item, self._pack_index[instance_name], 
              len(self._pack_modes[parent.instance_name][pack_mode]))
-        self.alert("Finished packing {}: {}", [item, item.area], level=self.pack_verbosity)
+        self.alert("Finished packing {}: {}", [item, item.area], 
+                   level=self.pack_verbosity)
         
     def pack_horizontal(self, parent, item, count, length):
         item.z = parent.z + 1
@@ -103,11 +107,20 @@ class Organizer(base.Base):
     def pack_bottom(self, parent, item, count, length):
         self.pack_menu_bar(parent, item, count, length)
         item.y = parent.y + parent.h - item.h
-               
+     
+    def pack_top(self, parent, item, count, length):
+        self.pack_menu_bar(parent, item, count, length)
+        item.y = parent.y - item.h
+        print "Setting y to: {} - {} = {}".format(parent.y, item.h, item.y)
+        
     def pack_right(self, parent, item, count, length):
         self.pack_vertical(parent, item, count, length)
         item.x = parent.x + parent.w - item.w
                 
+    def pack_left(self, parent, item, count, length):
+        self.pack_vertical(parent, item, count, length)
+        item.x = parent.x
+        
         
 class Window_Object(mpre.gui.shapes.Bounded_Shape):
 
@@ -205,6 +218,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
         self._layer_index = 0        
+        self._texture_window_x = self._texture_window_y = 0
         self._glow_modifier = 20
         max_w, max_h = mpre.gui.SCREEN_SIZE
         self.x_range = (0, max_w)

@@ -72,16 +72,16 @@ class Homescreen(gui.Window):
     
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
-        self.create(Task_Bar)
+        self.create(Task_Bar, startup_components=\
+                                ("mpre.gui.widgetlibrary.Date_Time_Button",
+                                 "mpre.gui.widgetlibrary.Text_Box"))
         
 
 class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
     defaults.update({"pack_mode" : "menu_bar",
-                     "h_range" : (0, 20),
-                     "startup_components" : ("mpre.gui.widgetlibrary.Date_Time_Button",
-                                             "mpre.gui.widgetlibrary.Text_Box")})
+                     "h_range" : (0, 20)})
     
     def __init__(self, **kwargs):
         super(Task_Bar, self).__init__(**kwargs)
@@ -113,7 +113,7 @@ class Text_Field(gui.Button):
     
     def _get_editing(self):
         return self._editing
-    def _set_editing(self, value):
+    def _set_editing(self, value):            
         self._editing = value
         if value:
             self.alert("Turning text input on", level='vv')
@@ -235,3 +235,33 @@ class Indicator(gui.Button):
         #x, y, w, h = self.parent.area
         
         self.draw("text", self.area, self.text, color=self.text_color, width=self.w)    
+        
+        
+class Application(gui.Window):
+    
+    defaults = gui.Window.defaults.copy()
+    defaults.update({"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )})
+
+
+class Done_Button(gui.Button):
+        
+    def left_click(self, mouse):
+        getattr(mpre.objects[self.callback_owner], self.callback)()        
+        
+        
+class Prompt(Application):
+        
+    defaults = Application.defaults.copy()
+    defaults.update({"callback_owner" : '',
+                     "callback" : ''})
+                     
+    def __init__(self, **kwargs):
+        super(Application, self).__init__(**kwargs)
+        self.create("mpre.gui.widgetlibrary.Text_Field", text=self.text,
+                    allow_text_edit=False)
+        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Field")
+        self.create("mpre.gui.widgetlibrary.Done_Button")
+   
+    def handle_input(self, user_input):
+        getattr(mpre.objects[self.callback_owner], self.callback)(user_input)
+        
