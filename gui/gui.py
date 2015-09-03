@@ -114,13 +114,12 @@ class Organizer(base.Base):
         print "Setting y to: {} - {} = {}".format(parent.y, item.h, item.y)
         
     def pack_right(self, parent, item, count, length):
-        self.pack_vertical(parent, item, count, length)
+        self.pack_horizontal(parent, item, count, length)
         item.x = parent.x + parent.w - item.w
-                
+        print "Setting x to {}: {} + {} - {}".format(item.x, parent.x, parent.w, item.w)
     def pack_left(self, parent, item, count, length):
         self.pack_vertical(parent, item, count, length)
-        item.x = parent.x
-        
+                
         
 class Window_Object(mpre.gui.shapes.Bounded_Shape):
 

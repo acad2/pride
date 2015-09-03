@@ -34,10 +34,14 @@ class File_Menu(mpre.gui.gui.Container):
     defaults = mpre.gui.gui.Container.defaults.copy()
     defaults.update({"startup_components" : ("mpre.gui.text_editor.New_Button",
                                              "mpre.gui.text_editor.Open_Button",
-                                             "mpre.gui.text_editor.Save_Button",
-                                             "mpre.gui.text_editor.Exit_Button")})
+                                             "mpre.gui.text_editor.Save_Button")})
                                              
-                                             
+    def __init__(self, **kwargs):
+        super(File_Menu, self).__init__(**kwargs)
+        self.create("mpre.gui.widgetlibrary.Exit_Button", 
+                    target=self.editor_instance)
+                    
+                    
 class New_Button(mpre.gui.gui.Button):
                  
     defaults = mpre.gui.gui.Button.defaults.copy()
@@ -56,6 +60,12 @@ class Open_Button(mpre.gui.gui.Button):
         #self.create("mpre.gui.widgetlibrary.Text
         mpre.objects[self.editor_instance].create(self.text_file_type,
                                                   filename=filename)
+        
+ 
+class Save_Button(mpre.gui.gui.Button):
+    
+    def left_click(self, mouse):
+        pass
         
         
 class Text_File(mpre.gui.gui.Window):

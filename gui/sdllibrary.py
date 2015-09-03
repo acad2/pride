@@ -153,6 +153,8 @@ class SDL_Window(SDL_Component):
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
              #   self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
+           #     if instance.rotation:
+           #         renderer.copyex(instance.texture.texture, srcrect=
                 renderer.copy(instance.texture.texture, 
                               srcrect=source_rect, dstrect=area)
                 
@@ -487,7 +489,8 @@ class Renderer(SDL_Component):
         self.copy(texture, dstrect=(x + 2, y + 2, 
                                     _w - 2, #(_w if _w < w else w) - 2,
                                     _h))
-        
+    
+   # def rotation(self, degrees, 
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")
         x, y, w, h = area        
@@ -498,7 +501,7 @@ class Renderer(SDL_Component):
             new_w = w - rect_size
             new_h = h - rect_size
             self.draw_rect((new_x, new_y, new_w, new_h), **kwargs)
-
+    
     def merge_layers(self, textures):
         self.clear()
         for texture in textures:

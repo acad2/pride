@@ -1,3 +1,9 @@
+# access the attributes of parent objects, recursively, to obtain attributes.
+# an instance would take on the properties of it's parents as well as it's
+# base classes
+
+rotation descriptor on window objects. modify area based upon the given degrees
+of rotation about the center of the instance.
 
 recently done:
     

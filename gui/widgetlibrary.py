@@ -66,6 +66,12 @@ class Delete_Button(Method_Button):
                      "method" : "delete"})
         
         
+class Exit_Button(Delete_Button):
+        
+    defaults = Delete_Button.defaults.copy()
+    defaults.update({"text" : "exit"})
+    
+    
 class Homescreen(gui.Window):
 
     defaults = gui.Window.defaults.copy()
@@ -81,35 +87,41 @@ class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
     defaults.update({"pack_mode" : "menu_bar",
-                     "h_range" : (0, 20)})
+                     "bound" : (0, 20)})
     
-    def __init__(self, **kwargs):
+    def _set_pack_mode(self, value):
+        super(Task_Bar, self)._set_pack_mode(value)
+        if self.pack_mode in ("right", "left", "horizontal"):
+            self._backup_w_range = self.w_range
+            self.w_range = self.bound
+            self.h_range = self._backup_h_range
+        else:
+            self._backup_h_range = self.h_range
+            self.h_range = self.bound      
+            try:
+                self.w_range = self._backup_w_range
+            except AttributeError:
+                pass
+    pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
+    
+    def __init__(self, **kwargs):        
         super(Task_Bar, self).__init__(**kwargs)
         parent_name = self.parent_name
         self.create(Indicator, text=parent_name)
         self.create(Delete_Button, target=parent_name)
              
+ #   def pack(self, modifiers=None):
 
+  #      super(Task_Bar, self).pack(modifiers)
+        
+        
 class Text_Box(gui.Container):
     
     defaults = gui.Container.defaults.copy()
     defaults.update({"h" : 16,
-                     "pack_mode" : "horizontal"})          
-        
-    def __init__(self, **kwargs):
-        super(Text_Box, self).__init__(**kwargs)
-        text_box_name = self.create(Text_Field).instance_name
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-                    pack_mode="bottom")         
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-                    pack_mode="right")
-                    
-
-class Text_Field(gui.Button):
-            
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"allow_text_edit" : True,
-                     "editing" : False})
+                     "pack_mode" : "horizontal",
+                     "allow_text_edit" : True,
+                     "editing" : False})             
     
     def _get_editing(self):
         return self._editing
@@ -121,8 +133,16 @@ class Text_Field(gui.Button):
         else:
             self.alert("Disabling text input", level='vv')
             sdl2.SDL_StopTextInput()
-    editing = property(_get_editing, _set_editing)
+    editing = property(_get_editing, _set_editing) 
     
+    def __init__(self, **kwargs):
+        super(Text_Box, self).__init__(**kwargs)
+        text_box_name = self.instance_name
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
+                    pack_mode="bottom")         
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
+                    pack_mode="right")
+                        
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
         self.editing = not self.editing
@@ -257,9 +277,9 @@ class Prompt(Application):
                      
     def __init__(self, **kwargs):
         super(Application, self).__init__(**kwargs)
-        self.create("mpre.gui.widgetlibrary.Text_Field", text=self.text,
+        self.create("mpre.gui.widgetlibrary.Text_Box", text=self.text,
                     allow_text_edit=False)
-        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Field")
+        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Box")
         self.create("mpre.gui.widgetlibrary.Done_Button")
    
     def handle_input(self, user_input):
