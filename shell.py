@@ -169,12 +169,7 @@ class Command_Line(mpre.vmlibrary.Process):
                 except KeyError:
                     component, method = self.default_program
                     program_input = input  
-        try:
-            getattr(objects[component], method)(program_input)
-        except SystemExit:
-            # SystemExit will only close this thread, not the main one
-            mpre.objects["Processor"].running = False
-            raise
+        mpre.Instruction(component, method, program_input).execute()
         if self.write_prompt:
             sys.stdout.write(self.prompt)
                

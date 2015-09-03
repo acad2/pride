@@ -61,15 +61,15 @@ class Shell(authentication.Authenticated_Client):
         else:
             self.execute_source(source)
                     
-    def handle_input(self, input):
+    def handle_input(self, user_input):
         if not self.logged_in:
             return
-        if not input:
-            input = '\n'
+        if not user_input:
+            user_input = '\n'
         else:
-            input = mpre.compiler.preprocess(input)
+            user_input = mpre.compiler.preprocess(user_input)
             
-        self.lines += input
+        self.lines += user_input
         lines = self.lines
         write_prompt = True  
         if lines != "\n":     
