@@ -133,6 +133,14 @@ class Authenticated_Service(mpre.base.Base):
             self.logging_in.add(username)
         return response
     
+    def logout(self):
+        session_id, host_info = self.current_session
+        try:
+            del self.session_id[session_id]
+        except KeyError:
+            self.alert("Failed to logout session id {} @ {}; not logged in",
+                       (session_id, host_info), level='vv')
+        
     def validate(self, session_id, peername, method_name):
         ip = peername[0]
         permission = False
@@ -147,6 +155,8 @@ class Authenticated_Service(mpre.base.Base):
                 permission = True        
         if permission:
             self.current_session = (session_id, peername)
+            self.alert("Authorizing: {} for {}", 
+                       (self.current_session, method_name), level='vv')
             return True
             
     def __getstate__(self):
@@ -291,7 +301,16 @@ class Authenticated_Client(mpre.base.Base):
         self.alert("Login success {}", [message], 
                    level=self.verbosity["on_login"])
                    
-
+    def logout(self):
+        if self.logged_in:
+            self.session.execute(Instruction(self.target_service, "logout"), None)
+            self.logged_in = False
+            
+    def delete(self):
+        if self.logged_in:
+            self.logout()
+        super(Authenticated_Client, self).delete()
+        
 if __name__ == "__main__":        
     def test():
         service = Authenticated_Service()

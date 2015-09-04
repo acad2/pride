@@ -62,8 +62,8 @@ class Shell(authentication.Authenticated_Client):
             self.execute_source(source)
                     
     def handle_input(self, user_input):
-        if not self.logged_in:
-            return
+        if not self.logged_in and mpre.shell.get_permission("Attempt login?: "):
+            self.login()
         if not user_input:
             user_input = '\n'
         else:

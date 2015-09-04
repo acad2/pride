@@ -273,11 +273,12 @@ class Socket(base.Wrapper):
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
-        if sockname in _local_connections: # client socket
+        if False: #sockname in _local_connections: # client socket
             instance_name = _local_connections[sockname]
-        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
+        #elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
             instance_name = _socket_names[peername]
         else:
+            # send through the socket
             _socket = self.socket
             memory_view = memoryview(data)
             
@@ -286,10 +287,12 @@ class Socket(base.Wrapper):
                 sent = _socket.send(memory_view[position:])
                 position += sent  
             return position
-            
+        
+        # if endpoints are local, bypass the network stack completely    
         self.alert("Sending data locally. Bypassing network stack", level='vv')
         instance = mpre.objects[instance_name]
         instance._local_data += data
+        print "Added local data: ", instance._local_data
         instance.recv()          
         return byte_count
         

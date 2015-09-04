@@ -38,7 +38,7 @@ def get_permission(prompt):
     """ Displays prompt to the user. Attempts to infer whether or not the supplied
         user input is affirmative or negative via shell.is_affirmative. """
     return get_selection(prompt, bool)
-    
+              
 def get_selection(prompt, answers):
     """ Displays prompt to the user. Only input from the supplied answers iterable
         will be accepted. bool may be specified as answers in order to extract
@@ -90,7 +90,7 @@ class Command_Line(mpre.vmlibrary.Process):
                                            "mpre.programs.register.Registration")})
                      
     def __init__(self, **kwargs):
-        self.set_default_program(("Shell", "handle_input"), True)
+        self.set_default_program(("Shell", "handle_input"), set_backup=True)
         super(Command_Line, self).__init__(**kwargs)       
         
         self._new_thread()  

@@ -141,7 +141,8 @@ class Rpc_Client(Packet_Client):
             callback = self._callbacks.pop(0)
             if isinstance(_response, BaseException):
                 callback = functools.partial(self.handle_exception, callback)
-            callback(_response)
+            if callback is not None:
+                callback(_response)
             
     def handle_exception(self, callback, response):
         self.alert("Exception {} from rpc with callback {}",

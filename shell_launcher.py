@@ -94,7 +94,7 @@ def update(instance_name):
 #l = mpre.base.load(s) 
 
 import mpre.gui
-mpre.gui.enable()
+#mpre.gui.enable()
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
 #$SDL_Window.create("mpre.gui.terminal.Terminal")
