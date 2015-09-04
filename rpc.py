@@ -14,7 +14,7 @@ import mpre.decorators
 objects = mpre.objects
 
 default_serializer = pickle
-_hosts = {}
+_old_data, _hosts = {}, {}
 
 def packetize_send(send):
     def _send(self, data):
@@ -23,13 +23,17 @@ def packetize_send(send):
     
 def packetize_recv(recv):
     def _recv(self, buffer_size=0):
-        data = recv(self, buffer_size)
+        try:
+            data = _old_data[self] + recv(self, buffer_size)
+        except KeyError:
+            data = recv(self, buffer_size)            
+        _old_data[self] = ''
         packets = []
         while data:
             try:
                 packet_size, data = data.split(' ', 1)
             except ValueError:
-                self._old_data = data
+                _old_data[self] = data
                 break
             packet_size = int(packet_size)
             packets.append(data[:packet_size])
@@ -56,7 +60,12 @@ class Session(mpre.base.Base):
         return self.id, self.host_info
     context = property(_get_context)
     
+    def _get_callback(self):
+        return self._callbacks.pop(0)
+    callback = property(_get_callback)
+    
     def __init__(self, session_id, host_info, **kwargs):
+        self._callbacks = []
         super(Session, self).__init__(**kwargs)
         self.id = session_id
         self.host_info = host_info
@@ -71,7 +80,8 @@ class Session(mpre.base.Base):
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)
-        host.make_request(request, callback)
+        host.make_request(request, self.instance_name)
+        self._callbacks.append(callback)
         
             
 class Packet_Client(mpre.networkssl.SSL_Client):
@@ -126,27 +136,34 @@ class Rpc_Client(Packet_Client):
             self._callbacks.append(callback)  
             self.send(request)
             
-    def make_request(self, request, callback):
+    def make_request(self, request, callback_owner):
         if not self.ssl_authenticated:
             self.alert("Delaying request until authenticated: {}".format(request)[:128], level='vv')
-            self._requests.append((request, callback))
+            self._requests.append((request, callback_owner))
         else:    
             self.alert("Making request: {}".format(request)[:128], level='v')
-            self._callbacks.append(callback)
+            self._callbacks.append(callback_owner)
             self.send(request)            
         
     def recv(self, packet_count=0):
         for response in super(Rpc_Client, self).recv():
             _response = self.deserealize(response)
-            callback = self._callbacks.pop(0)
+            callback_owner = self._callbacks.pop(0)
             if isinstance(_response, BaseException):
-                callback = functools.partial(self.handle_exception, callback)
-            if callback is not None:
-                callback(_response)
-            
-    def handle_exception(self, callback, response):
-        self.alert("Exception {} from rpc with callback {}",
-                   (response.traceback, callback), level=0)
+                self.handle_exception(callback_owner, _response)
+            else:    
+                try:
+                    mpre.objects[callback_owner].callback(_response)
+                except KeyError:
+                    self.alert("Could not resolve callback_owner '{}' for {} {}",
+                               (callback_owner, "callback with arguments {}",
+                                _response), level=0)
+                except TypeError:
+                    pass
+                    
+    def handle_exception(self, callback_owner, response):
+        self.alert("Exception {} from rpc with callback owner {}",
+                   (response.traceback, callback_owner), level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
             print "Reraising exception", type(response)()

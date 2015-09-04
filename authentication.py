@@ -218,7 +218,8 @@ class Authenticated_Client(mpre.base.Base):
             raise mpre.errors.ArgumentError("target_service for {} not supplied".format(self))
         username_prompt = "{}: please provide a username: ".format(self.instance_name)
         self.username = (self.username or 
-                         mpre.shell.get_user_input(username_prompt))
+                         mpre.shell.get_user_input(username_prompt,
+                                                   must_reply=True))
         
         self.password_prompt = self.password_prompt.format(self.instance_name)
         self.session = self.create("mpre.rpc.Session", '0', self.host_info)
@@ -305,6 +306,7 @@ class Authenticated_Client(mpre.base.Base):
         if self.logged_in:
             self.session.execute(Instruction(self.target_service, "logout"), None)
             self.logged_in = False
+            self.session_id = '0'
             
     def delete(self):
         if self.logged_in:
