@@ -88,10 +88,13 @@ class Command_Line(mpre.vmlibrary.Process):
                      "default_programs" : ("mpre.shell.Shell_Program", 
                                            "mpre.shell.Switch_Program",
                                            "mpre.shell.File_Explorer",
-                                           "mpre.programs.register.Registration")})
+                                           "mpre.programs.register.Registration"),
+                     "idle_threshold" : 100})
                      
     def __init__(self, **kwargs):
         self.set_default_program(("Shell", "handle_input"), set_backup=True)
+        self._idle = True
+        self.screensaver = None
         super(Command_Line, self).__init__(**kwargs)       
         
         self._new_thread()  
@@ -99,7 +102,10 @@ class Command_Line(mpre.vmlibrary.Process):
         
         for program in self.default_programs:
             self.create(program)
-   
+        
+        priority = self.idle_threshold * self.priority
+        mpre.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
+        
     def _new_thread(self):
         self.thread = threading.Thread(target=self.read_input) 
         self.thread.daemon = True
@@ -126,11 +132,16 @@ class Command_Line(mpre.vmlibrary.Process):
         return result
         
     def run(self):
-        if not self.thread_started and input_waiting():
-            self._new_thread()    
-            self.thread.start()
-            self.thread_started = True
-
+        if input_waiting():
+            if self.screensaver is not None:
+                mpre.objects[self.screensaver].delete()
+                self.screensaver = None           
+            if not self.thread_started:
+                self._new_thread()    
+                self.thread.start()
+                self.thread_started = True
+                self._idle = False
+            
     def set_prompt(self, prompt):
         self.prompt = prompt
         
@@ -173,8 +184,15 @@ class Command_Line(mpre.vmlibrary.Process):
         mpre.Instruction(component, method, program_input).execute()
         if self.write_prompt:
             sys.stdout.write(self.prompt)
-               
-
+                
+    def handle_idle(self):
+        if self._idle and not self.screensaver and not self.thread_started:
+            self.screensaver = self.create("mpre.shell.Terminal_Screensaver").instance_name
+        self._idle = True        
+        priority = self.idle_threshold * self.priority
+        mpre.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
+        
+        
 class Program(mpre.base.Base):
             
     defaults = mpre.base.Base.defaults.copy()
@@ -254,3 +272,29 @@ class File_Explorer(Program):
         else:
             return contents
             
+            
+class Terminal_Screensaver(mpre.vmlibrary.Process):
+    
+    defaults = mpre.vmlibrary.Process.defaults.copy()
+    defaults.update({"rate" : 3,
+                     "priority" : .08,
+                     "newline_scalar" : 1.5,
+                     "file_text" : ''})
+    
+    def __init__(self, **kwargs):
+        super(Terminal_Screensaver, self).__init__(**kwargs)
+        self._priority = self.priority
+            
+    def run(self):
+        if not self.file_text:
+            name, instance = mpre.objects.popitem() # get a random instance
+            mpre.objects[name] = instance
+            self.file_text = '\n' + name + ':\n' + instance.__doc__
+            
+        sys.stdout.write(self.file_text[:self.rate])
+        if '\n' in self.file_text[:self.rate]:
+            self.priority *= self.newline_scalar
+        else:
+            self.priority = self._priority
+            
+        self.file_text = self.file_text[self.rate:]            
