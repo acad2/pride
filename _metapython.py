@@ -62,12 +62,12 @@ class Shell(authentication.Authenticated_Client):
             self.execute_source(source)
                     
     def handle_input(self, user_input):
-        if not self.logged_in :
-            if mpre.shell.get_permission("{}: Attempt login?: ".format(self)):
-                self.login()
-            else:
-                self.alert("Not logged in. Input ignored")
-                return
+     #   if not self.logged_in :
+     #       if mpre.shell.get_permission("{}: Attempt login?: ".format(self)):
+     #           self.login()
+     #       else:
+     #           self.alert("Not logged in. Input ignored")
+     #       return
                 
         if not user_input:
             user_input = '\n'
@@ -105,7 +105,8 @@ class Shell(authentication.Authenticated_Client):
         
     def execute_source(self, source):
         if not self.logged_in:
-            self.login()
+            self.alert("Not logged in. Unable to process {}".format(source))
+            self.login()            
         else:
             self.session.execute(Instruction(self.target_service, "exec_code",
                                              source), callback=self.result)
