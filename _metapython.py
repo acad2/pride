@@ -138,7 +138,7 @@ class Interpreter(authentication.Authenticated_Service):
            #                                   "Instruction" : Instruction}
             self.user_session[username] = ''
             string_info = (username, sender, sys.version, sys.platform, 
-                           self.copyright)        
+                           self.copyright)    
             response = (self.login_message.format(*string_info), response[1])
         return response
 

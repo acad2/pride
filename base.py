@@ -106,7 +106,9 @@ class Base(object):
 
     __metaclass__ = mpre.metaclass.Metaclass
                 
-    # the default attributes new instances will initialize with.
+    # the default attributes new instances will initialize with
+    # mutable datatypes (i.e. lists) should not be used inside the
+    # defaults dictionary and should be set inside the call to __init__   
     defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
@@ -146,9 +148,10 @@ class Base(object):
     parent = property(_get_parent)
             
     def __init__(self, **kwargs):
+        super(Base, self).__init__() # facilitates complicated inheritance
+        
         mpre.environment.add(self) # acquire instance_name
-        # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the call to __init__   
+        # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
         attributes = self.defaults.copy()
@@ -158,8 +161,11 @@ class Base(object):
             command_line_args = self.parser.get_options()
             defaults = self.defaults
             attributes.update(dict((key, value) for key, value in 
-                                    command_line_args.items() if value != defaults[key]))     
-        [setattr(self, attr, val) for attr, val in attributes.items()]            
+                                    command_line_args.items() if 
+                                    value != defaults[key]))  
+                                    
+        [setattr(self, attribute, value) for 
+         attribute, value in attributes.items()]            
 
         if self.startup_components:
             for component_type in self.startup_components:

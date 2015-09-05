@@ -142,7 +142,13 @@ class Secure_Remote_Password(mpre.base.Base):
             yield None, "Invalid username or password"
         else:
             yield K, H(A, M, K)
-          
+    
+    def abort_login(self, username):
+        try:
+            del self.login_threads[username]
+        except KeyError:
+            pass
+        
     def __getstate__(self):
         attributes = super(Secure_Remote_Password, self).__getstate__()
         del attributes["login_threads"]

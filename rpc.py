@@ -141,7 +141,7 @@ class Rpc_Client(Packet_Client):
             self.alert("Delaying request until authenticated: {}".format(request)[:128], level='vv')
             self._requests.append((request, callback_owner))
         else:    
-            self.alert("Making request: {}".format(request)[:128], level='v')
+            self.alert("Making request for {}".format(callback_owner), level='v')
             self._callbacks.append(callback_owner)
             self.send(request)            
         

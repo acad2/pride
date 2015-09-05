@@ -103,6 +103,7 @@ class Authenticated_Service(mpre.base.Base):
             self.alert("Multiple login attempt by {} on account {} from {}", 
                        [(session_id, self.session_id[session_id]), username, 
                          host_info], level='v')
+            self.logout()
             raise UnauthorizedError()
             
         if username in self.logging_in:
@@ -135,11 +136,15 @@ class Authenticated_Service(mpre.base.Base):
     
     def logout(self):
         session_id, host_info = self.current_session
+        username = self.session_id[session_id]
+        if username in self.logging_in:
+            self.logging_in.remove(username)
         try:
             del self.session_id[session_id]
         except KeyError:
             self.alert("Failed to logout session id {} @ {}; not logged in",
                        (session_id, host_info), level='vv')
+        $Secure_Remote_Password.abort_login(username)
         
     def validate(self, session_id, peername, method_name):
         ip = peername[0]
@@ -258,6 +263,8 @@ class Authenticated_Client(mpre.base.Base):
             machine specified by host_info. A password prompt will be
             presented if password was not specified as an attribute of
             the authenticated_client (recommended). """
+        if self.logged_in:
+            self.logout()
         self.alert("Logging in...", level=self.verbosity["logging_in"])
         self._client = self.create(self.protocol_client, 
                                    username=self.username,
