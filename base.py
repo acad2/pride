@@ -253,7 +253,7 @@ class Base(object):
         except KeyError:
             mpre.environment.references_to[instance_name] = set((self.instance_name, ))      
             
-    def alert(self, message="Unspecified alert message", format_args=tuple(), level=''):
+    def alert(self, message, format_args=tuple(), level=''):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 
@@ -271,9 +271,8 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        message = (self.instance_name + ": " + message.format(*format_args) if
-                   format_args else self.instance_name + ": " + message)
-        return objects["Alert_Handler"]._alert(message, level)            
+        return objects["Alert_Handler"]._alert(self.instance_name + ": " + message, 
+                                               level, format_args)            
                                                        
     def __getstate__(self):
         return self.__dict__.copy()

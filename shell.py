@@ -89,7 +89,7 @@ class Command_Line(mpre.vmlibrary.Process):
                                            "mpre.shell.Switch_Program",
                                            "mpre.shell.File_Explorer",
                                            "mpre.programs.register.Registration"),
-                     "idle_threshold" : 3000})
+                     "idle_threshold" : 10000})
                      
     def __init__(self, **kwargs):
         self.set_default_program(("Shell", "handle_input"), set_backup=True)

@@ -267,18 +267,17 @@ class Socket(base.Wrapper):
                                                       buffer_size or self.recv_size)
         return bytes(self._buffer[:byte_count]), _from
     
-  #  @local_sends
     def send(self, data):
         """ Sends data to the connected endpoint. All of the data will be sent. """
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
-        if False:#sockname in _local_connections: # client socket
+        if sockname in _local_connections: # client socket
             instance_name = _local_connections[sockname]
-        #elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
+        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
             instance_name = _socket_names[peername]
         else:
-            # send through the socket
+            # send through the socket using the network stack
             _socket = self.socket
             memory_view = memoryview(data)
             
@@ -289,12 +288,11 @@ class Socket(base.Wrapper):
             return position
         
         # if endpoints are local, bypass the network stack completely    
-        self.alert("Sending data locally. Bypassing network stack", level=0)#'vv')
+        self.alert("Sending data locally. Bypassing network stack", level='vvv')
         instance = mpre.objects[instance_name]
         instance._local_data += data
       #  print "\n\tAdded local data: ", data
         instance.recv()          
-        assert not instance._local_data
         return byte_count
         
     def connect(self, address):

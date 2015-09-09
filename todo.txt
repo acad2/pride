@@ -2,12 +2,14 @@
 # an instance would take on the properties of it's parents as well as it's
 # base classes
 
+# just because you can doesn't mean you should
+
 rotation descriptor on window objects. modify area based upon the given degrees
 of rotation about the center of the instance.
 
 recently done:
-    
-    
+    terminal art screensaver    
+
 known bugs:
     fix local send/recv
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff

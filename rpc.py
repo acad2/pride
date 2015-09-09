@@ -60,16 +60,16 @@ class Session(mpre.base.Base):
         return self.id, self.host_info
     context = property(_get_context)
     
-    def _get_callback(self):
-        return self._callbacks.pop(0)
-    callback = property(_get_callback)
-    
     def __init__(self, session_id, host_info, **kwargs):
         self._callbacks = []
         super(Session, self).__init__(**kwargs)
         self.id = session_id
         self.host_info = host_info
-         
+        if host_info[0] in ("localhost", "127.0.0.1"):
+            self.bypass_network_stack = True
+        else:
+            self.bypass_network_stack = False
+            
     def execute(self, instruction, callback):
         request = ' '.join((self.id_size + self.id, 
                             instruction.component_name, instruction.method, 
@@ -80,8 +80,18 @@ class Session(mpre.base.Base):
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)
+        if self.bypass_network_stack:
+            self._callbacks.insert(0, callback)
+        else:
+            self._callbacks.append(callback)
+      #  self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
         host.make_request(request, self.instance_name)
-        self._callbacks.append(callback)
+       
+    def __next__(self): # python 3
+        return self._callbacks.pop(0)
+      
+    def next(self): # python 2   
+        return self._callbacks.pop(0) # for remote, -1 for local
         
             
 class Packet_Client(mpre.networkssl.SSL_Client):
@@ -151,24 +161,24 @@ class Rpc_Client(Packet_Client):
             callback_owner = self._callbacks.pop(0)
             if isinstance(_response, BaseException):
                 self.handle_exception(callback_owner, _response)
-            else:    
+            else:
                 try:
-                    mpre.objects[callback_owner].callback(_response)
+                    callback = next(mpre.objects[callback_owner])
                 except KeyError:
                     self.alert("Could not resolve callback_owner '{}' for {} {}",
                                (callback_owner, "callback with arguments {}",
                                 _response), level=0)
-                except TypeError:
-                    pass
-                    
+                else:
+                    if callback is not None:
+                        callback(_response)                                
+                                                
     def handle_exception(self, callback_owner, response):
         self.alert("Exception {} from rpc with callback owner {}",
                    (response.traceback, callback_owner), level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
             print "Reraising exception", type(response)()
-            raise type(response)()
-            
+            raise type(response)()            
             
     def deserealize(self, response):
         return default_serializer.loads(response)
@@ -224,7 +234,8 @@ class Rpc_Socket(Packet_Socket):
                     self.alert("Denying unauthorized request: {}",
                                (packet, ), level='v')
                     result = mpre.authentication.UnauthorizedError()
-            self.alert("Sending result of {}.{}: {}".format(instance, method, result), level='vv')
+            self.alert("Sending result of {}.{}: {}",
+                       (instance, method, result), level='vv')
             self.send(self.serealize(result))
             
     def deserealize(self, serialized_arguments):

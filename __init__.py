@@ -211,10 +211,15 @@ class Alert_Handler(mpre.base.Base):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = open(self.log_name, 'a+')
                                                
-    def _alert(self, message, level):
+    def _alert(self, message, level, format_args=tuple()):
+        formatted = False
         if self.print_level is 0 or level <= self.print_level:
+            formatted = True
+            message = message.format(*format_args) if format_args else message
             sys.stdout.write(message + "\n")
         if level <= self.log_level:
+            if not formatted and format_args:
+                message = message.format(*format_args)
             severity = self.level_map.get(level, str(level))
             # windows might complain about files in + mode if this isn't done
             self.log.seek(0, 1)
