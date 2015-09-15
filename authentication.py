@@ -149,21 +149,25 @@ class Authenticated_Service(mpre.base.Base):
     def validate(self, session_id, peername, method_name):
         ip = peername[0]
         permission = False
-        if ip in ("localhost", "127.0.0.1"):
-            permission = True                    
-        elif ip in self.whitelist or ip not in self.blacklist:
+   #     if ip in ("localhost", "127.0.0.1"):
+   #         permission = True  
+   #         print "Giving permission because it's localhost"
+        if ip in self.whitelist or ip not in self.blacklist:
+            #print "Checking: " * 3, session_id, method_name
             if session_id in self.session_id or (session_id == '0' and 
                                                 ((method_name == "login" and 
                                                  self.allow_login) or
                                                 (method_name == "resgiter" and
                                                  self.allow_registration))):
-                permission = True        
-        if permission:
-            self.current_session = (session_id, peername)
-            self.alert("Authorizing: {} for {}", 
-                       (self.current_session, method_name), level='vv')
-            return True
-            
+            #    print "Permission granted"
+                #permission = True        
+       # if permission:
+                self.current_session = (session_id, peername)
+                self.alert("Authorizing: {} for {}", 
+                        (self.current_session, method_name), level='vv')
+                return True
+            #else:
+            #    print "Denied"
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
@@ -192,7 +196,6 @@ class Authenticated_Client(mpre.base.Base):
                      "port" : 40022,
                      "auto_login" : True,
                      "logged_in" : False,
-                     "session_id" : '0',
                      "session_id_size" : 256})
     
     parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
@@ -265,6 +268,7 @@ class Authenticated_Client(mpre.base.Base):
             the authenticated_client (recommended). """
         if self.logged_in:
             self.logout()
+            assert self.session.id == '0'
         self.alert("Logging in...", level=self.verbosity["logging_in"])
         self._client = self.create(self.protocol_client, 
                                    username=self.username,
@@ -293,9 +297,8 @@ class Authenticated_Client(mpre.base.Base):
         else:
             if self._client.login((self.proof_of_key, proof, self.key)):
                 self.logged_in = True
-                self.session_id = derive_session_id(self.key, "session_id",
+                self.session.id = derive_session_id(self.key, "session_id",
                                                     self.session_id_size)
-                self.session.id = self.session_id
                 self.on_login(message)
             else:
                 self.alert("Login failed", 
@@ -311,9 +314,9 @@ class Authenticated_Client(mpre.base.Base):
                    
     def logout(self):
         if self.logged_in:
-            self.session.execute(Instruction(self.target_service, "logout"), None)
             self.logged_in = False
-            self.session_id = '0'
+            self.session.execute(Instruction(self.target_service, "logout"), None)
+            self.session.id = '0'
             
     def delete(self):
         if self.logged_in:

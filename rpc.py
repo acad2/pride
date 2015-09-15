@@ -65,10 +65,6 @@ class Session(mpre.base.Base):
         super(Session, self).__init__(**kwargs)
         self.id = session_id
         self.host_info = host_info
-        if host_info[0] in ("localhost", "127.0.0.1"):
-            self.bypass_network_stack = True
-        else:
-            self.bypass_network_stack = False
             
     def execute(self, instruction, callback):
         request = ' '.join((self.id_size + self.id, 
@@ -80,7 +76,7 @@ class Session(mpre.base.Base):
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)
-        if self.bypass_network_stack:
+        if host.bypass_network_stack and host._endpoint_instance_name:
             self._callbacks.insert(0, callback)
         else:
             self._callbacks.append(callback)
@@ -91,7 +87,7 @@ class Session(mpre.base.Base):
         return self._callbacks.pop(0)
       
     def next(self): # python 2   
-        return self._callbacks.pop(0) # for remote, -1 for local
+        return self._callbacks.pop(0)
         
             
 class Packet_Client(mpre.networkssl.SSL_Client):
@@ -157,6 +153,7 @@ class Rpc_Client(Packet_Client):
         
     def recv(self, packet_count=0):
         for response in super(Rpc_Client, self).recv():
+         #   print "Deserealizing: ", len(response), response
             _response = self.deserealize(response)
             callback_owner = self._callbacks.pop(0)
             if isinstance(_response, BaseException):
@@ -174,7 +171,7 @@ class Rpc_Client(Packet_Client):
                                                 
     def handle_exception(self, callback_owner, response):
         self.alert("Exception {} from rpc with callback owner {}",
-                   (response.traceback, callback_owner), level=0)
+                   (getattr(response, "traceback", response), callback_owner), level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
             print "Reraising exception", type(response)()
@@ -194,7 +191,7 @@ class Rpc_Socket(Packet_Socket):
        # self._peername = self.getpeername()
                 
     def recv(self, packet_count=0):
-        peername = self.peername        
+        peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
             session_id_size = struct.unpack('l', packet[:4])[0]
             end_session_id = 4 + session_id_size

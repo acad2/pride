@@ -150,7 +150,7 @@ class Socket(base.Wrapper):
     defaults = base.Wrapper.defaults.copy()
     additional_defaults = {"blocking" : 0,
                            "timeout" : 0,
-                           "add_on_init" : True,                                        
+                           "add_on_init" : True,                                 
                            "socket_family" : socket.AF_INET,
                            "socket_type" : socket.SOCK_STREAM,
                            "protocol" : socket.IPPROTO_IP,
@@ -161,9 +161,11 @@ class Socket(base.Wrapper):
                            "bind_on_init" : False,
                            "closed" : False,
                            "_connecting" : False,
+                           "_endpoint_instance_name" : '',
                            "connected" : False,
                            "added_to_network" : False,
-                           "replace_reference_on_load" : False}
+                           "replace_reference_on_load" : False,
+                           "bypass_network_stack" : True}
     defaults.update(additional_defaults)
     
     additional_parser_ignores = additional_defaults.keys()
@@ -208,7 +210,7 @@ class Socket(base.Wrapper):
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         self.recv_size = self.os_recv_buffer_size
-        
+           
         if self.add_on_init:
             self.added_to_network = True
             try:
@@ -240,7 +242,7 @@ class Socket(base.Wrapper):
         try:        
             while True:
                 byte_count = self.socket.recv_into(_memoryview[self._byte_count:], 
-                                                   buffer_size)                       
+                                                   buffer_size)                     
                 if not byte_count:
                     break
                 self._byte_count += byte_count                
@@ -272,29 +274,29 @@ class Socket(base.Wrapper):
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
-        if sockname in _local_connections: # client socket
-            instance_name = _local_connections[sockname]
-        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
-            instance_name = _socket_names[peername]
+        
+        if self.bypass_network_stack:
+            if not self._endpoint_instance_name:
+                if self.sockname in _socket_names: # socket is the client
+                    self._endpoint_instance_name = _local_connections[self.sockname]
+                else:
+                    self._endpoint_instance_name = _socket_names[self.peername]
+            self.alert("Bypassing network stack. Sending to {}", 
+                       (self._endpoint_instance_name, ), level='vvv')
+            instance = mpre.objects[self._endpoint_instance_name]
+            instance._local_data += data
+            instance.recv()                 
         else:
             # send through the socket using the network stack
             _socket = self.socket
-            memory_view = memoryview(data)
+            _data = memoryview(data)
             
             position = 0
             while position < byte_count:
-                sent = _socket.send(memory_view[position:])
+                sent = _socket.send(_data[position:])
                 position += sent  
             return position
-        
-        # if endpoints are local, bypass the network stack completely    
-        self.alert("Sending data locally. Bypassing network stack", level='vvv')
-        instance = mpre.objects[instance_name]
-        instance._local_data += data
-      #  print "\n\tAdded local data: ", data
-        instance.recv()          
-        return byte_count
-        
+             
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
             is called when the connection succeeds, or the appropriate error handler method
@@ -318,14 +320,13 @@ class Socket(base.Wrapper):
             self.on_connect()
             
     def on_connect(self):
-        """ Performs any logic required when a Tcp connection succeeds. This method should
-            be extended by subclasses. If on_connect is overloaded instead of extended,
-            ensure that the self.connected flag is set to True."""
+        """ Performs any logic required when a Tcp connection succeeds. This 
+            method should be extended by subclasses."""
         #self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
-        self.peername = self.getpeername()
-        self.sockname = self.getsockname()
+        peername = self.peername = self.getpeername()
+        sockname = self.sockname = self.getsockname()
         self.alert("Connected", level='v')
                 
     def delete(self):
@@ -428,10 +429,18 @@ class Tcp_Socket(Socket):
                                                           socket.SOCK_STREAM))
         self._local_data = bytes()
         super(Tcp_Socket, self).__init__(**kwargs)
-                
+                 
     def on_select(self):
         self.recv()
         
+    def on_connect(self):
+        super(Tcp_Socket, self).on_connect()
+        _local_connections[self.peername] = self.instance_name
+        try:
+            self._endpoint_instance_name = _socket_names[self.peername]
+        except KeyError:
+            self._endpoint_instance_name = None
+            
         
 class Server(Tcp_Socket):
 
@@ -466,10 +475,11 @@ class Server(Tcp_Socket):
         
         connection = self.create(self.Tcp_Socket_type,
                                  wrapped_object=_socket,
-                                 peername=address)            
-        connection.on_connect()
+                                 peername=address)   
         if address[0] in ("127.0.0.1", "localhost"):
-            _local_connections[address] = connection.instance_name          
+            _local_connections[address] = connection.instance_name   
+            
+        connection.on_connect()         
         return connection, address
     
     def on_connect(self, connection, address):
@@ -495,19 +505,24 @@ class Tcp_Client(Tcp_Socket):
     def __init__(self, **kwargs):
         super(Tcp_Client, self).__init__(**kwargs)        
         if self.as_port:
-            self.bind((self.interface, self.as_port))
-            
+            self.bind((self.interface, self.as_port))            
         if not self.host_info:
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or host_info", tuple(), 0)
             self.host_info = (self.ip, self.port)
+            
         if self.auto_connect:
             self.connect(self.host_info)
 
     def on_connect(self):
-        super(Tcp_Client, self).on_connect()
-        _socket_names[self.sockname] = self.instance_name
-        
+        super(Tcp_Client, self).on_connect()      
+        if self.peername[0] in ("localhost", "127.0.0.1"):
+            _socket_names[self.sockname] = self.instance_name
+            try:
+                self._endpoint_instance_name = _local_connections[self.sockname]
+            except KeyError:
+                self._endpoint_instance_name = None
+                
         
 class Udp_Socket(Socket):
 

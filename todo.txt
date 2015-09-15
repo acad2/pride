@@ -9,9 +9,9 @@ of rotation about the center of the instance.
 
 recently done:
     terminal art screensaver    
-
+    fast local send/recv works with rpc
+    
 known bugs:
-    fix local send/recv
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     
