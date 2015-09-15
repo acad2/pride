@@ -51,6 +51,9 @@ class Organizer(base.Base):
             else:
                 self._pack_modes[parent][value] = [instance]
         self._pack_index[instance] = self._pack_modes[parent][value].index(instance)
+    
+    def add_pack_method(self, name, callback):
+        setattr(self, name, "pack_{}".format(name), callback)
         
     def pack(self, item):
         self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode],
@@ -63,7 +66,8 @@ class Organizer(base.Base):
 
         pack(parent, item, self._pack_index[instance_name], 
              len(self._pack_modes[parent.instance_name][pack_mode]))
-        self.alert("Finished packing {}: {}", [item, item.area], level=self.pack_verbosity)
+        self.alert("Finished packing {}: {}", [item, item.area], 
+                   level=self.pack_verbosity)
         
     def pack_horizontal(self, parent, item, count, length):
         item.z = parent.z + 1
@@ -103,10 +107,18 @@ class Organizer(base.Base):
     def pack_bottom(self, parent, item, count, length):
         self.pack_menu_bar(parent, item, count, length)
         item.y = parent.y + parent.h - item.h
-               
+     
+    def pack_top(self, parent, item, count, length):
+        self.pack_menu_bar(parent, item, count, length)
+        item.y = parent.y - item.h
+        print "Setting y to: {} - {} = {}".format(parent.y, item.h, item.y)
+        
     def pack_right(self, parent, item, count, length):
-        self.pack_vertical(parent, item, count, length)
+        self.pack_horizontal(parent, item, count, length)
         item.x = parent.x + parent.w - item.w
+        print "Setting x to {}: {} + {} - {}".format(item.x, parent.x, parent.w, item.w)
+    def pack_left(self, parent, item, count, length):
+        self.pack_vertical(parent, item, count, length)
                 
         
 class Window_Object(mpre.gui.shapes.Bounded_Shape):
@@ -117,8 +129,8 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                      'z' : 0,
                      'size' : mpre.gui.SCREEN_SIZE,
                      "texture_size" : mpre.gui.SCREEN_SIZE,
-                     "background_color" : (25, 25, 45, 255),
-                     "color" : (155, 155, 255, 255),
+                     "background_color" : (25, 125, 225, 125),
+                     "color" : (25, 235, 235, 255),
                      "text_color" : (145, 165, 235),
                      "pack_mode" : '',
                      "held" : False,
@@ -132,12 +144,19 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
                      "hidden" : False})
     Hotkeys = {}
     
+    def _get_texture_invalid(self):
+        return self._texture_invalid
+    def _set_texture_invalid(self, value):
+        if not self._texture_invalid and value:
+            objects["SDL_Window"].invalidate_layer(self.z)
+        self._texture_invalid = value
+    texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
+    
     def _on_set(self, coordinate, value):
       #  coordinates = (('w', 'h', 'r', 'g', 'b', 'a') if not self. else
        #                ('w', 'h', 'r', 'g', 'b', 'a', 'x', 'y'))
         if not self.texture_invalid and coordinate in ('x', 'y', 'w', 'h', 'r', 'g', 'b', 'a'):
-            self.texture_invalid = True   
-        objects["SDL_Window"].invalidate_layer(self.z)
+            self.texture_invalid = True           
         super(Window_Object, self)._on_set(coordinate, value)
                                                                  
     def _set_z(self, value):
@@ -149,9 +168,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         return self._text
     def _set_text(self, value):
         self._text = value
-        if not self.texture_invalid:
-            objects["SDL_Window"].invalidate_layer(self.z)
-            self.texture_invalid = True
+        self.texture_invalid = True
     text = property(_get_text, _set_text)
     
     def _get_bg_color(self):
@@ -159,33 +176,34 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def _set_bg_color(self, color):
         self.texture_invalid = True
         self._background_color = sdl2.ext.Color(*color)
-        objects["SDL_Window"].invalidate_layer(self.z)
     background_color = property(_get_bg_color, _set_bg_color)
     
     def _get_color(self):
-        return sdl2.ext.Color(*super(Window_Object, self)._get_color())
+        return super(Window_Object, self)._get_color()
     def _set_color(self, colors):
         super(Window_Object, self)._set_color(colors)
-        self.texture_invalid = True
-        
+        self.texture_invalid = True        
     color = property(_get_color, _set_color)
-     
+    
+    def _get_text_color(self):
+        return self._text_color
+    def _set_text_color(self, colors):
+        self._text_color = sdl2.ext.Color(*colors)
+        self.texture_invalid = True
+    text_color = property(_get_text_color, _set_text_color)
+    
     def _get_texture_window_x(self):
         return self._texture_window_x
     def _set_texture_window_x(self, value):
         self._texture_window_x = max(self.x_range[0], min(value, self.w))
-        if not self.texture_invalid:
-            objects["SDL_Window"].invalidate_layer(self.z)
-            self.texture_invalid = True
+        self.texture_invalid = True
     texture_window_x = property(_get_texture_window_x, _set_texture_window_x)
     
     def _get_texture_window_y(self):
         return self._texture_window_y
     def _set_texture_window_y(self, value):
         self._texture_window_y = max(self.y_range[0], min(value, self.h))
-        if not self.texture_invalid:
-            self.texture_invalid = True
-            objects["SDL_Window"].invalidate_layer(self.z)
+        self.texture_invalid = True
     texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
     
     def _get_pack_mode(self):      
@@ -195,10 +213,11 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def __init__(self, **kwargs):
-        self.texture_invalid = True
+        self._texture_invalid = False
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
         self._layer_index = 0        
+        self._texture_window_x = self._texture_window_y = 0
         self._glow_modifier = 20
         max_w, max_h = mpre.gui.SCREEN_SIZE
         self.x_range = (0, max_w)
@@ -210,26 +229,27 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self.texture_window_x = self.texture_window_y = 0
         self.available_size = self.size
         self.texture = create_texture(self.texture_size)
+        self.texture_invalid = True
         
-        self.glow_instruction = Instruction(self.instance_name, "glow")
+    #    self.glow_instruction = Instruction(self.instance_name, "glow")
     #    self.glow_instruction.execute(.16)
-        
-    def glow(self):
-        #color = self.color
-        #r, g, b = colors = (color.r, color.g, color.b)
-        #max_color = max(colors)
-        #glow = self._glow_modifier = (-20 if max_color == 255 else
-        #                              20 if max_color == 0 else self._glow_modifier)
-        #self.color = (r + glow, g + glow, b + glow, color.a)
-      #  print "set color to", glow, self.color
-        color = self.color
-        a = color.a
-        glow = self._glow_modifier = -20 if a == 255 else 20 if a == 0 else self._glow_modifier
-        self.color = (color.r, color.g, color.b, a + glow)
-        
-      #  bg_color = self.background_color
-      #  self.background_color = (bg_color.r, bg_color.g, bg_color.b, bg_color.a + glow)
-        self.glow_instruction.execute(.16)
+    #    
+    #def glow(self):
+    #    #color = self.color
+    #    #r, g, b = colors = (color.r, color.g, color.b)
+    #    #max_color = max(colors)
+    #    #glow = self._glow_modifier = (-20 if max_color == 255 else
+    #    #                              20 if max_color == 0 else self._glow_modifier)
+    #    #self.color = (r + glow, g + glow, b + glow, color.a)
+    #  #  print "set color to", glow, self.color
+    #    color = self.color
+    #    a = color.a
+    #    glow = self._glow_modifier = -20 if a == 255 else 20 if a == 0 else self._glow_modifier
+    #    self.color = (color.r, color.g, color.b, a + glow)
+    #    
+    #  #  bg_color = self.background_color
+    #  #  self.background_color = (bg_color.r, bg_color.g, bg_color.b, bg_color.a + glow)
+    #    self.glow_instruction.execute(.16)
         
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
@@ -320,9 +340,9 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def draw_texture(self):
         self.draw("fill", self.area, color=self.background_color)
         self.draw("rect", self.area, color=self.color)
-        #self.draw("rect", (0, 0, 150, 150), color=(255, 255, 255))
         if self.text:
-            self.draw("text", self.area, self.text, bg_color=self.background_color, color=self.text_color)
+            self.draw("text", self.area, self.text, 
+                      bg_color=self.background_color, color=self.text_color)
         
     def pack(self, modifiers=None):
         objects["Organizer"].pack(self)

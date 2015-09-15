@@ -71,6 +71,7 @@ def convert(old_value, old_base, new_base):
 def resolve_string(module_name):
     """Given an attribute string of a.b...z, return the object z"""
     result = None
+    _original = module_name
     attributes = []
     while not result:
         try:
@@ -80,9 +81,13 @@ def resolve_string(module_name):
             module_name = module_name.split('.')
             attributes.append(module_name.pop())
             module_name = '.'.join(module_name)
-               
-    for attribute in reversed(attributes):
-        result = getattr(result, attribute)
+    try:
+        for attribute in reversed(attributes):
+            result = getattr(result, attribute)
+    except AttributeError:
+        error_message = "Unable to load {} from {}"
+        error_message = error_message.format(attribute, _original)
+        raise AttributeError(error_message)
     return result    
     
 def shell(command, shell=False):

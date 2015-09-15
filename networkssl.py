@@ -109,17 +109,21 @@ class SSL_Client(mpre.network.Tcp_Client):
         self.alert("Authenticated", level=0)
             
         
-class SSL_Socket(mpre.network.Tcp_Socket):
-    
+class SSL_Socket(mpre.network.Tcp_Socket):    
     """ An asynchronous server side client socket wrapped in an ssl socket.
         Users should override the on_ssl_authentication method instead of
-        on_connect"""
+        on_connect. """
         
     defaults = mpre.network.Tcp_Socket.defaults.copy()
     defaults.update({"ssl_authenticated" : False})
-         
+     
     def on_connect(self):
-        self.ssl_connect()
+        super(SSL_Socket, self).on_connect()
+        parent = self.parent
+        self.ssl_socket = parent.wrap_socket(self, **dict((attribute, 
+                                                           getattr(parent, 
+                                                                   attribute)) 
+                                                           for attribute in WRAP_SOCKET_OPTIONS))
         
     def on_select(self):
         if not self.ssl_authenticated:
@@ -166,18 +170,6 @@ class SSL_Server(mpre.network.Server):
             wrap_socket = context.wrap_socket   
         self.wrap_socket = wrap_socket
         
-    def accept(self):
-        _socket, address = self.socket.accept()
-        
-        connection = self.create(self.Tcp_Socket_type,
-                                 wrapped_object=_socket)
-        
-        connection.ssl_socket = self.wrap_socket(connection,
-                                                 **dict((attribute, getattr(self, attribute)) 
-                                                         for attribute in WRAP_SOCKET_OPTIONS))
-        self.on_connect(connection, address)
-        return connection, address
-        
     def __getstate__(self):
         attributes = super(SSL_Server, self).__getstate__()
         del attributes["wrap_socket"]
@@ -186,3 +178,4 @@ class SSL_Server(mpre.network.Server):
     def on_load(self, state):
         super(SSL_Server, self).on_load(state)
         self.wrap_socket = ssl.wrap_socket # hardcoded for now
+        

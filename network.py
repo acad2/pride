@@ -29,7 +29,7 @@ from utilities import Latency, Average
 Instruction = mpre.Instruction
 objects = mpre.objects
 
-_local_connections, ERROR_CODES = {}, {}
+_socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
@@ -57,6 +57,37 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                
 HOST = socket.gethostbyname(socket.gethostname())
 
+def local_sends(socket_send):
+    def _send(self, data):
+        sockname = self.sockname
+        peername = self.peername
+        if sockname in _local_connections: # client socket
+            instance_name = _local_connections[sockname]
+        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
+            instance_name = _socket_names[peername]
+        else:
+            self.alert("Sending data over nic")        
+            return socket_send(self, data)
+           
+        self.alert("Sending data locally, bypassing nic")
+        instance = mpre.objects[instance_name]
+        instance._local_data += data
+        instance.alert("recv called locally")
+        instance.recv()            
+    return _send
+    
+def local_recvs(socket_recv):
+    def _recv(self, buffer_size=0):
+        instance_name = self.instance_name
+        if self._local_data:
+            data = self._local_data
+            self._local_data = bytes()
+        else:
+            data = socket_recv(self, buffer_size)
+        return data
+    return _recv
+     
+#def local_     
 class Socket_Error_Handler(mpre.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
@@ -119,7 +150,7 @@ class Socket(base.Wrapper):
     defaults = base.Wrapper.defaults.copy()
     additional_defaults = {"blocking" : 0,
                            "timeout" : 0,
-                           "add_on_init" : True,                                        
+                           "add_on_init" : True,                                 
                            "socket_family" : socket.AF_INET,
                            "socket_type" : socket.SOCK_STREAM,
                            "protocol" : socket.IPPROTO_IP,
@@ -130,9 +161,11 @@ class Socket(base.Wrapper):
                            "bind_on_init" : False,
                            "closed" : False,
                            "_connecting" : False,
+                           "_endpoint_instance_name" : '',
                            "connected" : False,
                            "added_to_network" : False,
-                           "replace_reference_on_load" : False}
+                           "replace_reference_on_load" : False,
+                           "bypass_network_stack" : True}
     defaults.update(additional_defaults)
     
     additional_parser_ignores = additional_defaults.keys()
@@ -171,13 +204,13 @@ class Socket(base.Wrapper):
     
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))
+        kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))        
         super(Socket, self).__init__(**kwargs)
-        
+        self._local_data = ''
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
         self.recv_size = self.os_recv_buffer_size
-        
+           
         if self.add_on_init:
             self.added_to_network = True
             try:
@@ -191,6 +224,7 @@ class Socket(base.Wrapper):
             to overload recv/recvfrom instead."""
         return self.recvfrom()
  
+ #   @local_recvs
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
             when the socket becomes readable according to select.select. This
@@ -198,12 +232,17 @@ class Socket(base.Wrapper):
             
             Note that this recv will return the entire contents of the buffer and 
             does not need to be called in a loop."""
+        if self._local_data:
+            data = self._local_data
+            self._local_data = bytes()
+            return data
+        
         buffer_size = buffer_size or self.recv_size 
         _memoryview = self._memoryview
         try:        
             while True:
                 byte_count = self.socket.recv_into(_memoryview[self._byte_count:], 
-                                                   buffer_size)                       
+                                                   buffer_size)                     
                 if not byte_count:
                     break
                 self._byte_count += byte_count                
@@ -232,14 +271,32 @@ class Socket(base.Wrapper):
     
     def send(self, data):
         """ Sends data to the connected endpoint. All of the data will be sent. """
-        _socket = self.socket
-        memory_view = memoryview(data)
+        sockname = self.sockname
+        peername = self.peername
         byte_count = len(data)
-        position = 0
-        while position < byte_count:
-            sent = _socket.send(memory_view[position:])
-            position += sent            
         
+        if self.bypass_network_stack:
+            if not self._endpoint_instance_name:
+                if self.sockname in _socket_names: # socket is the client
+                    self._endpoint_instance_name = _local_connections[self.sockname]
+                else:
+                    self._endpoint_instance_name = _socket_names[self.peername]
+            self.alert("Bypassing network stack. Sending to {}", 
+                       (self._endpoint_instance_name, ), level='vvv')
+            instance = mpre.objects[self._endpoint_instance_name]
+            instance._local_data += data
+            instance.recv()                 
+        else:
+            # send through the socket using the network stack
+            _socket = self.socket
+            _data = memoryview(data)
+            
+            position = 0
+            while position < byte_count:
+                sent = _socket.send(_data[position:])
+                position += sent  
+            return position
+             
     def connect(self, address):
         """ Perform a non blocking connect to the specified address. The on_connect method
             is called when the connection succeeds, or the appropriate error handler method
@@ -263,18 +320,19 @@ class Socket(base.Wrapper):
             self.on_connect()
             
     def on_connect(self):
-        """ Performs any logic required when a Tcp connection succeeds. This method should
-            be extended by subclasses. If on_connect is overloaded instead of extended,
-            ensure that the self.connected flag is set to True."""
-        self.latency.finish_measuring()
+        """ Performs any logic required when a Tcp connection succeeds. This 
+            method should be extended by subclasses."""
+        #self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
-        self.peername = self.getpeername()
+        peername = self.peername = self.getpeername()
+        sockname = self.sockname = self.getsockname()
         self.alert("Connected", level='v')
                 
     def delete(self):
         if not self.closed:
-            self.close()            
+            self.close()        
+        del _local_data[self]
         super(Socket, self).delete()
     
     def close(self):
@@ -294,16 +352,16 @@ class Socket(base.Wrapper):
         
     def on_load(self, attributes):
         super(Socket, self).on_load(attributes)
-        self.wraps(socket.socket(self.socket_family, self.socket_type, self.protocol))
+        self.wraps(socket.socket(self.socket_family, self.socket_type, 
+                                 self.protocol))
         self.setblocking(self.blocking)
         self.settimeout(self.timeout)
-        
+                
         if self.add_on_init:
             try:
-                objects["Network"].add(self)
-            except KeyError:
-                self.alert("Network component does not exist", level=0)
-                self.added_to_network = False
+                $Network.add(self)
+            except KeyError: 
+                self.alert("Network unavailable")
             else:
                 self.added_to_network = True
                 
@@ -371,11 +429,18 @@ class Tcp_Socket(Socket):
                                                           socket.SOCK_STREAM))
         self._local_data = bytes()
         super(Tcp_Socket, self).__init__(**kwargs)
-        #self.peername = self.getpeername()
-        
+                 
     def on_select(self):
         self.recv()
         
+    def on_connect(self):
+        super(Tcp_Socket, self).on_connect()
+        _local_connections[self.peername] = self.instance_name
+        try:
+            self._endpoint_instance_name = _socket_names[self.peername]
+        except KeyError:
+            self._endpoint_instance_name = None
+            
         
 class Server(Tcp_Socket):
 
@@ -409,20 +474,20 @@ class Server(Tcp_Socket):
         _socket, address = self.socket.accept()
         
         connection = self.create(self.Tcp_Socket_type,
-                                 wrapped_object=_socket)
-        
-        self.on_connect(connection, address)
+                                 wrapped_object=_socket,
+                                 peername=address)   
+        if address[0] in ("127.0.0.1", "localhost"):
+            _local_connections[address] = connection.instance_name   
+            
+        connection.on_connect()         
         return connection, address
- 
+    
     def on_connect(self, connection, address):
-        """ Connection logic that the server should apply when a new 
-            client has connected. """
-        self.alert("accepted connection {} from {}", 
-                  (connection.instance_name, address),level="v")
+        pass
         
     def on_load(self, attributes):
         super(Server, self).on_load(attributes)
-        self.bind((self.ip, self.port))
+        self.bind((self.interface, self.port))
         self.listen(self.backlog)
         
         
@@ -440,24 +505,25 @@ class Tcp_Client(Tcp_Socket):
     def __init__(self, **kwargs):
         super(Tcp_Client, self).__init__(**kwargs)        
         if self.as_port:
-            self.bind((self.interface, self.as_port))
-            
+            self.bind((self.interface, self.as_port))            
         if not self.host_info:
             if not self.ip:
                 self.alert("Attempted to create Tcp_Client with no host ip or host_info", tuple(), 0)
             self.host_info = (self.ip, self.port)
+            
         if self.auto_connect:
             self.connect(self.host_info)
 
-   # def send(self, data):
-   #     if self.peername[0] in ("localhost", "127.0.0.1"):
-   #         local_socket = mpre.objects[_local_connections[self.peername]]
-   #         local_socket._local_data += data
-   #         local_socket.recv()
-   #     else:
-   #         return super(Tcp_Client, self).send(data)
-
-            
+    def on_connect(self):
+        super(Tcp_Client, self).on_connect()      
+        if self.peername[0] in ("localhost", "127.0.0.1"):
+            _socket_names[self.sockname] = self.instance_name
+            try:
+                self._endpoint_instance_name = _local_connections[self.sockname]
+            except KeyError:
+                self._endpoint_instance_name = None
+                
+        
 class Udp_Socket(Socket):
 
     defaults = Socket.defaults.copy()
@@ -528,6 +594,7 @@ class Network(vmlibrary.Process):
         super(Network, self).__init__(**kwargs)       
                 
     def add(self, sock):
+    #    print "adding sock: ", hex(id(sock))
         super(Network, self).add(sock)
         self.sockets.append(sock)
         if not self.running:
@@ -535,6 +602,7 @@ class Network(vmlibrary.Process):
             self.start()
                 
     def remove(self, sock):   
+    #    print "\nremoving sock: ", hex(id(sock)), '\n'
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
             
@@ -554,9 +622,9 @@ class Network(vmlibrary.Process):
             # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
             for socket_list in (sockets[self._slice_mapping[chunk_number]] for 
                                 chunk_number in xrange((len(sockets) / 500) + 1)):   
-                readable_sockets, writable_sockets, _ = select.select(socket_list,
-                                                                      socket_list, 
-                                                                      empty_list, 0.0)
+                (readable_sockets, 
+                 writable_sockets, _) = select.select(socket_list, socket_list, 
+                                                      empty_list, 0.0)
                 if readable_sockets:
                     readable.extend(readable_sockets)                
                 if writable_sockets:
@@ -584,22 +652,26 @@ class Network(vmlibrary.Process):
                     if not connection.connection_attempts:
                         try:
                             connection.connect(connection.host_info)
-                        except socket.error as error:                            
+                        except socket.error as error:                           
                             error_handler.dispatch(connection, error, 
                                                    ERROR_CODES[error.errno].lower())           
                     else:
-                        self.connecting.add(connection)                                  
+                        self.connecting.add(connection)                   
                 
     def __getstate__(self):
         state = super(Network, self).__getstate__()
         state["connecting"] = None
-        state["sockets"] = None
+     #   state["sockets"] = []
+     #   state["objects"] = {}
         state["_slice_mapping"] = None
         return state
+    
+    def __contains__(self, _socket):
+        return _socket in self.sockets
         
     def on_load(self, attributes):
         super(Network, self).on_load(attributes)
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
                                     x in xrange(100))
         self.connecting = set()
-        self.sockets = []
+        #self.sockets = []

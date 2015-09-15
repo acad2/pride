@@ -66,66 +66,94 @@ class Delete_Button(Method_Button):
                      "method" : "delete"})
         
         
+class Exit_Button(Delete_Button):
+        
+    defaults = Delete_Button.defaults.copy()
+    defaults.update({"text" : "exit"})
+    
+    
 class Homescreen(gui.Window):
 
     defaults = gui.Window.defaults.copy()
     
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
-        self.create(Task_Bar)
+        self.create(Task_Bar, startup_components=\
+                                ("mpre.gui.widgetlibrary.Date_Time_Button",
+                                 "mpre.gui.widgetlibrary.Text_Box"))
         
 
 class Task_Bar(gui.Container):
 
     defaults = gui.Container.defaults.copy()
     defaults.update({"pack_mode" : "menu_bar",
-                     "h_range" : (0, 20)})
+                     "bound" : (0, 20)})
     
-    def __init__(self, **kwargs):
+    def _set_pack_mode(self, value):
+        super(Task_Bar, self)._set_pack_mode(value)
+        if self.pack_mode in ("right", "left", "horizontal"):
+            self._backup_w_range = self.w_range
+            self.w_range = self.bound
+            self.h_range = self._backup_h_range
+        else:
+            self._backup_h_range = self.h_range
+            self.h_range = self.bound      
+            try:
+                self.w_range = self._backup_w_range
+            except AttributeError:
+                pass
+    pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
+    
+    def __init__(self, **kwargs):        
         super(Task_Bar, self).__init__(**kwargs)
         parent_name = self.parent_name
         self.create(Indicator, text=parent_name)
-        self.create(Date_Time_Button)
         self.create(Delete_Button, target=parent_name)
-        self.create(Text_Box)
-        
+             
+ #   def pack(self, modifiers=None):
 
+  #      super(Task_Bar, self).pack(modifiers)
+        
+        
 class Text_Box(gui.Container):
     
     defaults = gui.Container.defaults.copy()
     defaults.update({"h" : 16,
-                     "pack_mode" : "horizontal"})          
-        
+                     "pack_mode" : "horizontal",
+                     "allow_text_edit" : True,
+                     "editing" : False})             
+    
+    def _get_editing(self):
+        return self._editing
+    def _set_editing(self, value):            
+        self._editing = value
+        if value:
+            self.alert("Turning text input on", level='vv')
+            sdl2.SDL_StartTextInput()
+        else:
+            self.alert("Disabling text input", level='vv')
+            sdl2.SDL_StopTextInput()
+    editing = property(_get_editing, _set_editing) 
+    
     def __init__(self, **kwargs):
         super(Text_Box, self).__init__(**kwargs)
-        text_box_name = self.create(Text_Field).instance_name
+        text_box_name = self.instance_name
         self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
                     pack_mode="bottom")         
         self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
                     pack_mode="right")
-                    
-
-class Text_Field(gui.Button):
-            
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"allow_text_edit" : True,
-                     "editing" : False})
-    
-    def _get_editing(self):
-        return self._editing
-    def _set_editing(self, value):
-        self._editing = value
-        if value:
-            print "Turning text input on"
-            sdl2.SDL_StartTextInput()
-        else:
-            print "Disabling text input"
-            sdl2.SDL_StopTextInput()
-    editing = property(_get_editing, _set_editing)
-    
+                        
     def left_click(self, event):
-        self.alert("Left click: {}".format(self.editing))
+        self.alert("Left click: {}".format(self.editing), level='vvv')
         self.editing = not self.editing
+        
+    def draw_texture(self):
+        area = self.texture.area
+        self.draw("fill", area, color=self.background_color)
+        self.draw("rect", area, color=self.color)
+        if self.text:
+            self.draw("text", self.area, self.text, 
+                      bg_color=self.background_color, color=self.text_color)
         
         
 class Date_Time_Button(gui.Button):
@@ -139,10 +167,7 @@ class Date_Time_Button(gui.Button):
         self.update_time()        
   
     def update_time(self):
-        self.text = time.asctime()
-        instance_name = self.instance_name
-        
-        self.texture_invalid = True
+        self.text = time.asctime()     
         self.update_instruction.execute(priority=1)   
         
 
@@ -167,7 +192,7 @@ class Scroll_Bar(gui.Container):
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
         if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
-            self.w_range = (0, 20)
+            self.w_range = (0, 10)
             pack_mode = "vertical"
         else:
             self.h_range = (0, 20)
@@ -230,3 +255,33 @@ class Indicator(gui.Button):
         #x, y, w, h = self.parent.area
         
         self.draw("text", self.area, self.text, color=self.text_color, width=self.w)    
+        
+        
+class Application(gui.Window):
+    
+    defaults = gui.Window.defaults.copy()
+    defaults.update({"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )})
+
+
+class Done_Button(gui.Button):
+        
+    def left_click(self, mouse):
+        getattr(mpre.objects[self.callback_owner], self.callback)()        
+        
+        
+class Prompt(Application):
+        
+    defaults = Application.defaults.copy()
+    defaults.update({"callback_owner" : '',
+                     "callback" : ''})
+                     
+    def __init__(self, **kwargs):
+        super(Application, self).__init__(**kwargs)
+        self.create("mpre.gui.widgetlibrary.Text_Box", text=self.text,
+                    allow_text_edit=False)
+        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Box")
+        self.create("mpre.gui.widgetlibrary.Done_Button")
+   
+    def handle_input(self, user_input):
+        getattr(mpre.objects[self.callback_owner], self.callback)(user_input)
+        

@@ -106,11 +106,14 @@ class Base(object):
 
     __metaclass__ = mpre.metaclass.Metaclass
                 
-    # the default attributes new instances will initialize with.
+    # the default attributes new instances will initialize with
+    # mutable datatypes (i.e. lists) should not be used inside the
+    # defaults dictionary and should be set inside the call to __init__   
     defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
-                "delete_verbosity" : 'vv'}   
+                "delete_verbosity" : 'vv',
+                "startup_components" : tuple()}   
                 
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -145,9 +148,10 @@ class Base(object):
     parent = property(_get_parent)
             
     def __init__(self, **kwargs):
+        super(Base, self).__init__() # facilitates complicated inheritance
+        
         mpre.environment.add(self) # acquire instance_name
-        # mutable datatypes (i.e. containers) should not be used inside the
-        # defaults dictionary and should be set in the call to __init__   
+        # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
         attributes = self.defaults.copy()
@@ -157,9 +161,17 @@ class Base(object):
             command_line_args = self.parser.get_options()
             defaults = self.defaults
             attributes.update(dict((key, value) for key, value in 
-                                    command_line_args.items() if value != defaults[key]))     
-        [setattr(self, attr, val) for attr, val in attributes.items()]            
+                                    command_line_args.items() if 
+                                    value != defaults[key]))  
+                                    
+        [setattr(self, attribute, value) for 
+         attribute, value in attributes.items()]            
 
+        if self.startup_components:
+            for component_type in self.startup_components:
+                component_name = self.create(component_type).instance_name
+                setattr(self, component_name.lower(), component_name) 
+                
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance
@@ -241,7 +253,7 @@ class Base(object):
         except KeyError:
             mpre.environment.references_to[instance_name] = set((self.instance_name, ))      
             
-    def alert(self, message="Unspecified alert message", format_args=tuple(), level=''):
+    def alert(self, message, format_args=tuple(), level=''):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 
@@ -259,9 +271,8 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        message = (self.instance_name + ": " + message.format(*format_args) if
-                   format_args else self.instance_name + ": " + message)
-        return objects["Alert_Handler"]._alert(message, level)            
+        return objects["Alert_Handler"]._alert(self.instance_name + ": " + message, 
+                                               level, format_args)            
                                                        
     def __getstate__(self):
         return self.__dict__.copy()
@@ -325,8 +336,9 @@ class Base(object):
         
         if (self.replace_reference_on_load and 
             self.instance_name != attributes["instance_name"]):
+            print "Replacing instance"
             mpre.environment.replace(attributes["instance_name"], self)
-            
+            print "Done"
         self.alert("Loaded", level='v')
         
     def update(self):

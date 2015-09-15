@@ -14,7 +14,7 @@ import mpre.decorators
 objects = mpre.objects
 
 default_serializer = pickle
-_hosts = {}
+_old_data, _hosts = {}, {}
 
 def packetize_send(send):
     def _send(self, data):
@@ -23,31 +23,24 @@ def packetize_send(send):
     
 def packetize_recv(recv):
     def _recv(self, buffer_size=0):
-        data = recv(self, buffer_size)
+        try:
+            data = _old_data[self] + recv(self, buffer_size)
+        except KeyError:
+            data = recv(self, buffer_size)            
+        _old_data[self] = ''
         packets = []
         while data:
             try:
                 packet_size, data = data.split(' ', 1)
             except ValueError:
-                self._old_data = data
+                _old_data[self] = data
                 break
             packet_size = int(packet_size)
             packets.append(data[:packet_size])
             data = data[packet_size:]   
         return packets    
     return _recv
- 
-_local_sockets = {} 
-def fast_local_send(send):
-    def _send(self, data):
-        if self._peername in _local_sockets:
-            instance_name = _local_sockets[self._peername]
-            mpre.objects[instance_name]._local_data += data
-            mpre.objects[instance_name].recv()
-        else:
-            return send(self, data)
-    return _send
-  
+   
         
 class Session(mpre.base.Base):
     
@@ -68,10 +61,11 @@ class Session(mpre.base.Base):
     context = property(_get_context)
     
     def __init__(self, session_id, host_info, **kwargs):
+        self._callbacks = []
         super(Session, self).__init__(**kwargs)
         self.id = session_id
         self.host_info = host_info
-         
+            
     def execute(self, instruction, callback):
         request = ' '.join((self.id_size + self.id, 
                             instruction.component_name, instruction.method, 
@@ -82,7 +76,18 @@ class Session(mpre.base.Base):
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)
-        host.make_request(request, callback)
+        if host.bypass_network_stack and host._endpoint_instance_name:
+            self._callbacks.insert(0, callback)
+        else:
+            self._callbacks.append(callback)
+      #  self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
+        host.make_request(request, self.instance_name)
+       
+    def __next__(self): # python 3
+        return self._callbacks.pop(0)
+      
+    def next(self): # python 2   
+        return self._callbacks.pop(0)
         
             
 class Packet_Client(mpre.networkssl.SSL_Client):
@@ -130,31 +135,47 @@ class Rpc_Client(Packet_Client):
         super(Rpc_Client, self).__init__(**kwargs)
         
     def on_ssl_authentication(self):
+        count = 1
+        length = len(self._requests)
         for request, callback in self._requests:
+            self.alert("Making delayed request {}/{}: {}".format(count, length, request)[:128], level='vv')
+            self._callbacks.append(callback)  
             self.send(request)
-            self._callbacks.append(callback)       
-        
-    def make_request(self, request, callback):
+            
+    def make_request(self, request, callback_owner):
         if not self.ssl_authenticated:
-            self._requests.append((request, callback))
+            self.alert("Delaying request until authenticated: {}".format(request)[:128], level='vv')
+            self._requests.append((request, callback_owner))
         else:    
-            self.send(request)
-            self._callbacks.append(callback)
+            self.alert("Making request for {}".format(callback_owner), level='v')
+            self._callbacks.append(callback_owner)
+            self.send(request)            
         
     def recv(self, packet_count=0):
         for response in super(Rpc_Client, self).recv():
+         #   print "Deserealizing: ", len(response), response
             _response = self.deserealize(response)
-            callback = self._callbacks.pop(0)
+            callback_owner = self._callbacks.pop(0)
             if isinstance(_response, BaseException):
-                callback = functools.partial(self.handle_exception, callback)
-            callback(_response)
-            
-    def handle_exception(self, callback, response):
-        self.alert("Exception {} from rpc with callback {}",
-                   (response, callback), level=0)
+                self.handle_exception(callback_owner, _response)
+            else:
+                try:
+                    callback = next(mpre.objects[callback_owner])
+                except KeyError:
+                    self.alert("Could not resolve callback_owner '{}' for {} {}",
+                               (callback_owner, "callback with arguments {}",
+                                _response), level=0)
+                else:
+                    if callback is not None:
+                        callback(_response)                                
+                                                
+    def handle_exception(self, callback_owner, response):
+        self.alert("Exception {} from rpc with callback owner {}",
+                   (getattr(response, "traceback", response), callback_owner), level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
-            raise response        
+            print "Reraising exception", type(response)()
+            raise type(response)()            
             
     def deserealize(self, response):
         return default_serializer.loads(response)
@@ -165,12 +186,12 @@ class Rpc_Socket(Packet_Socket):
     defaults = Packet_Socket.defaults.copy()
     defaults.update({"debug_mode" : True})
     
-    def __init__(self, **kwargs):
-        super(Rpc_Socket, self).__init__(**kwargs)
-        self._peername = self.getpeername()
+  #  def __init__(self, **kwargs):
+   #     super(Rpc_Socket, self).__init__(**kwargs)
+       # self._peername = self.getpeername()
                 
     def recv(self, packet_count=0):
-        peername = self._peername        
+        peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
             session_id_size = struct.unpack('l', packet[:4])[0]
             end_session_id = 4 + session_id_size
@@ -199,12 +220,19 @@ class Rpc_Socket(Packet_Socket):
                         args, kwargs = self.deserealize(serialized_arguments)
                         result = getattr(instance, method)(*args, **kwargs)
                     except BaseException as result:
-                        self.alert("Exception processing request: \n{}",
-                                   [traceback.format_exc()])
+                        stack_trace = traceback.format_exc()
+                        self.alert("Exception processing request {}.{}: \n{}",
+                                   [component_name, method, stack_trace],
+                                   level='vv')
+                        if isinstance(result, SystemExit):
+                            raise                                   
+                        result.traceback = stack_trace
                 else:
                     self.alert("Denying unauthorized request: {}",
                                (packet, ), level='v')
-                    result = mpre.authentication.UnauthorizedError()         
+                    result = mpre.authentication.UnauthorizedError()
+            self.alert("Sending result of {}.{}: {}",
+                       (instance, method, result), level='vv')
             self.send(self.serealize(result))
             
     def deserealize(self, serialized_arguments):

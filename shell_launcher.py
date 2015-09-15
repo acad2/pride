@@ -93,10 +93,13 @@ def update(instance_name):
 #import mpre.base
 #l = mpre.base.load(s) 
 
-#import mpre.gui
+import mpre.gui
 #mpre.gui.enable()
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+#objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
+#$SDL_Window.create("mpre.gui.terminal.Terminal")
 #game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
+#client = game_world.create("mpre.game.gamelibrary.Game_Client")
 #$Game_World.test_duel()
 #game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
 #level = objects["Level"]
@@ -107,6 +110,13 @@ def update(instance_name):
 #import json
 #from jsontest import *
 #s = json.dumps($Metapython, cls=Base_Encoder)
+
+#from rnltest import relative_name_lookup
+#server = relative_name_lookup("Metapython.Network.Rpc_Server")
+
+def _pack(mode):
+    $Task_Bar.pack_mode = mode
+    $Task_Bar.pack()
 """
 
 options["startup_definitions"] += definitions

@@ -121,16 +121,21 @@ class SDL_Window(SDL_Component):
             for instance in layer_components:
                 if instance.hidden:
                     continue
-                srcrect = x, y, w, h = instance.area
-                user_input._update_coordinates(instance.instance_name, srcrect, instance.z)
-                
-      #          x += instance.texture_window_x
-      #          y += instance.texture_window_y
+                x, y, w, h = instance.area
+                user_input._update_coordinates(instance.instance_name, 
+                                               (x, y, w, h), instance.z)
+                source_rect = [x + instance.texture_window_x,
+                               y + instance.texture_window_y, w, h]       
                 if x + w > screen_width:
                     w = screen_width - x
                 if y + h > screen_height:
-                    h = screen_height - y               
+                    h = screen_height - y
+                if source_rect[0] + w > screen_width:
+                    source_rect[0] = x
+                if source_rect[1] + h > screen_height:
+                    source_rect[1] = y
                 area = (x, y, w, h)
+                
                # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
                #            w, h)
                 if instance.texture_invalid:
@@ -147,10 +152,11 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-               # self.alert("Copying {} texture to {}", [instance, area], level=0)
+             #   self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
+           #     if instance.rotation:
+           #         renderer.copyex(instance.texture.texture, srcrect=
                 renderer.copy(instance.texture.texture, 
-                              srcrect=(x + instance.texture_window_x, 
-                                       y + instance.texture_window_y, w, h), dstrect=area)
+                              srcrect=source_rect, dstrect=area)
                 
         self.invalid_layer = self.max_layer
         renderer.set_render_target(None)
@@ -476,13 +482,15 @@ class Renderer(SDL_Component):
     def draw_text(self, area, text, **kwargs):
         x, y, w, h = area
         kwargs.setdefault("width", w)
-        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, 
+        texture = self.sprite_factory.from_text(text, 
+                                                fontmanager=self.font_manager, 
                                                 **kwargs)        
         _w, _h = texture.size
         self.copy(texture, dstrect=(x + 2, y + 2, 
-                                    (_w if _w < w else w) - 2,
+                                    _w - 2, #(_w if _w < w else w) - 2,
                                     _h))
-        
+    
+   # def rotation(self, degrees, 
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")
         x, y, w, h = area        
@@ -493,7 +501,7 @@ class Renderer(SDL_Component):
             new_w = w - rect_size
             new_h = h - rect_size
             self.draw_rect((new_x, new_y, new_w, new_h), **kwargs)
-
+    
     def merge_layers(self, textures):
         self.clear()
         for texture in textures:

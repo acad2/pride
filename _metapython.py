@@ -61,15 +61,13 @@ class Shell(authentication.Authenticated_Client):
         else:
             self.execute_source(source)
                     
-    def handle_input(self, input):
-        if not self.logged_in:
-            return
-        if not input:
-            input = '\n'
+    def handle_input(self, user_input):                
+        if not user_input:
+            user_input = '\n'
         else:
-            input = mpre.compiler.preprocess(input)
+            user_input = mpre.compiler.preprocess(user_input)
             
-        self.lines += input
+        self.lines += user_input
         lines = self.lines
         write_prompt = True  
         if lines != "\n":     
@@ -100,18 +98,19 @@ class Shell(authentication.Authenticated_Client):
         
     def execute_source(self, source):
         if not self.logged_in:
-            self.login()
+            self.alert("Not logged in. Unable to process {}".format(source))
+            self.login()            
         else:
             self.session.execute(Instruction(self.target_service, "exec_code",
                                              source), callback=self.result)
-                        
+                                    
     def result(self, packet):
         if not packet:
             return
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write('\b' * 4 + packet + self.prompt)
+            sys.stdout.write('\b' * 4 + packet)
         
 
 class Interpreter(authentication.Authenticated_Service):
@@ -139,7 +138,7 @@ class Interpreter(authentication.Authenticated_Service):
            #                                   "Instruction" : Instruction}
             self.user_session[username] = ''
             string_info = (username, sender, sys.version, sys.platform, 
-                           self.copyright)        
+                           self.copyright)    
             response = (self.login_message.format(*string_info), response[1])
         return response
 
@@ -169,7 +168,7 @@ class Interpreter(authentication.Authenticated_Service):
             namespace["__builtins__"]["raw_input"] = mpre.shell.get_user_input
             try:
                 exec code in namespace
-            except BaseException as error:
+            except Exception as error:
                 if type(error) == SystemExit:
                     raise
                 else:
@@ -233,12 +232,9 @@ class Metapython(base.Base):
     def __init__(self, **kwargs):
         super(Metapython, self).__init__(**kwargs)
         self.setup_os_environ()
-        for component_type in self.startup_components:
-            component_name = self.create(component_type).instance_name
-            setattr(self, component_name.lower(), component_name) 
-                                
+        
         if self.startup_definitions:
-            self.exec_command(self.startup_definitions)           
+            self._exec_command(self.startup_definitions)           
                         
         if self.interpreter_enabled:
             self.create(self.interpreter_type)    
@@ -247,11 +243,10 @@ class Metapython(base.Base):
             self.create("mpre.rpc.Rpc_Server")
                         
         with open(self.command, 'r') as module_file:
-            source = module_file.read()
-            
-        Instruction(self.instance_name, "exec_command", source).execute()
+            source = module_file.read()            
+        Instruction(self.instance_name, "_exec_command", source).execute()
                 
-    def exec_command(self, source):
+    def _exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
         code = compile(source, 'Metapython', 'exec')
         with self.main_as_name():
@@ -291,6 +286,7 @@ class Metapython(base.Base):
         processor = mpre.objects[self.processor]
         processor.running = True
         processor.run()
+        self.alert("Graceful shutdown initiated", level='v')
         
     def exit(self, exit_code=0):
         mpre.objects[self.processor].running = False
