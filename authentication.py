@@ -41,8 +41,9 @@ class Authenticated_Service(mpre.base.Base):
         self.logging_in = set()
         # maps authentication token to username
         self.session_id = {}
-        self.whitelist = ["127.0.0.1", "localhost"]
-        self.blacklist = []
+        self.ip_whitelist = ["127.0.0.1", "localhost"]
+        self.ip_blacklist = []
+        self.method_blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
         name = self.database_name = (self.database_name or 
                                      "{}_{}".format(self.instance_name, 
@@ -147,12 +148,15 @@ class Authenticated_Service(mpre.base.Base):
         $Secure_Remote_Password.abort_login(username)
         
     def validate(self, session_id, peername, method_name):
+        if method_name in self.method_blacklist:
+            return False
+            
         ip = peername[0]
         permission = False
    #     if ip in ("localhost", "127.0.0.1"):
    #         permission = True  
    #         print "Giving permission because it's localhost"
-        if ip in self.whitelist or ip not in self.blacklist:
+        if ip in self.ip_whitelist or ip not in self.ip_blacklist:
             #print "Checking: " * 3, session_id, method_name
             if session_id in self.session_id or (session_id == '0' and 
                                                 ((method_name == "login" and 

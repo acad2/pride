@@ -213,7 +213,9 @@ class Rpc_Socket(Packet_Socket):
             except KeyError as result:
                 pass
             else:
-                if (permission or 
+                if not hasattr(instance, "validate"):
+                    result = mpre.authentication.UnauthorizedError()
+                elif (permission or 
                     instance.validate(session_id, peername, method)):
                     instance.current_session = (session_id, peername)
                     try:

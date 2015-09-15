@@ -94,10 +94,10 @@ def update(instance_name):
 #l = mpre.base.load(s) 
 
 import mpre.gui
-#mpre.gui.enable()
+mpre.gui.enable()
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
-#$SDL_Window.create("mpre.gui.terminal.Terminal")
+$SDL_Window.create("mpre.gui.terminal.Terminal")
 #game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
 #client = game_world.create("mpre.game.gamelibrary.Game_Client")
 #$Game_World.test_duel()

@@ -7,22 +7,15 @@
 rotation descriptor on window objects. modify area based upon the given degrees
 of rotation about the center of the instance.
 
-recently done:
-    terminal art screensaver    
-    fast local send/recv works with rpc
-    
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     
 things that could be done:
     improve json serialization
-    "new" keyword to create objects ?
-    compiling with cython and gcc broken - stuck at libpython27_a
-    preemptive multiprocessing development
-    children descriptor?               
+    preemptive multiprocessing?
     develop the gui
-    improve executable    
+    improve executable; compiling broken - stuck at libpython27_a
     improve authentication service - scrutiny for design pitfalls and errors
     system restore   
     integrate ssl contexts into networkssl    
