@@ -275,7 +275,7 @@ class Socket(base.Wrapper):
         peername = self.peername
         byte_count = len(data)
         
-        if self.bypass_network_stack:
+        if False:#self.bypass_network_stack:
             if not self._endpoint_instance_name:
                 if self.sockname in _socket_names: # socket is the client
                     self._endpoint_instance_name = _local_connections[self.sockname]

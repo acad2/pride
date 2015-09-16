@@ -362,7 +362,6 @@ class SDL_User_Input(vmlibrary.Process):
                    (text, cursor, selection_length), level='vv')
         if self.active_item:
             instance = objects[self.active_item]
-            print "Instance allows text edit: ", instance.allow_text_edit
             if instance.allow_text_edit:
                 instance.text += text
         
@@ -416,37 +415,38 @@ class SDL_User_Input(vmlibrary.Process):
             mpre.objects[self.active_item].mousemotion(motion.xrel, motion.yrel)
 
     def handle_keydown(self, event):
-        pass
-    #    try:
-    #        instance = mpre.objects[self.active_item]
-    #    except KeyError:
-    #        self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
-    #        return
-    #    try:
-    #        key = chr(event.key.keysym.sym)
-    #    except ValueError:
-    #        return # key was a modifier key
-    #    else:
-    #        if key == "\r":
-    #            key = "\n"
-    #        modifier = event.key.keysym.mod
-    #        if modifier in self.uppercase_modifiers:
-    #            try:
-    #                key = self.uppercase[key]
-    #            except KeyError:
-    #                pass            
-    #        elif modifier:
-    #            hotkey = self.get_hotkey(instance, (key, modifier))
-    #            if hotkey:
-    #                hotkey.execute()
-    #            
-    #        elif instance.allow_text_edit:                
-    #            if ord(key) == 8: # backspace
-    #                instance.text = instance.text[:-1]
-    #            else:
-    #                instance.text += key
-    #                                
-    #            #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
+        try:
+            instance = mpre.objects[self.active_item]
+        except KeyError:
+            self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
+            return
+        try:
+            key = chr(event.key.keysym.sym)
+        except ValueError:
+            return # key was a modifier key
+        else:
+            if key == "\r":
+                key = "\n"
+            modifier = event.key.keysym.mod
+            if modifier in self.uppercase_modifiers:
+                try:
+                    key = self.uppercase[key]
+                except KeyError:
+                    pass            
+            elif modifier:
+                hotkey = self.get_hotkey(instance, (key, modifier))
+                if hotkey:
+                    hotkey.execute()
+                
+            elif instance.allow_text_edit:                
+                if ord(key) == 8: # backspace
+                    instance.text = instance.text[:-1]
+                elif key == '\n':
+                    instance.text += key
+            #    else:
+            #        instance.text += key
+                                    
+                #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
                 
     def get_hotkey(self, instance, key_press):
         try:

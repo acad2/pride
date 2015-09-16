@@ -8,10 +8,10 @@ class Prompt(mpre.gui.widgetlibrary.Text_Box):
  
     def _set_text(self, value):
         if value and value[-1] == '\n':
-            self.parent.handle_input(self.text + value)
+            self.parent.handle_input(self.text)
             value = ''
         super(Prompt, self)._set_text(value)        
-    text = property(mpre.gui.widgetlibrary.Text_Box._get_text, _set_text)        
+    text = property(mpre.gui.widgetlibrary.Text_Box._get_text, _set_text)      
     
 
 class Terminal(mpre.gui.widgetlibrary.Application):
@@ -21,7 +21,6 @@ class Terminal(mpre.gui.widgetlibrary.Application):
     def __init__(self, **kwargs):
         super(Terminal, self).__init__(**kwargs)
         self.create("mpre.gui.terminal.Prompt")
-        self.shell = self.create("mpre._metapython.Shell").instance_name
-        
+                
     def handle_input(self, source_code):
-        mpre.objects[self.shell].handle_input(source_code)
+        mpre.objects["Shell"].handle_input(source_code)
