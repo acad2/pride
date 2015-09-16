@@ -183,7 +183,7 @@ class Compiler(object):
         sys.modules[module_name] = new_module
         new_module.__name__ = module_name
         new_module.__file__ = path
-        module_code = self.compile_source(source, module_name)        
+        module_code = self.compile(source, module_name)        
         exec module_code in new_module.__dict__     
         
         if not hasattr(new_module, "__package__"):
@@ -199,7 +199,7 @@ class Compiler(object):
             source = preprocessor.handle_source(source)
         return source
         
-    def compile_source(self, source, filename=''):
+    def compile(self, source, filename=''):
         return compile(self.preprocess(source), filename, 'exec')         
         
         

@@ -156,22 +156,22 @@ class Rpc_Client(Packet_Client):
          #   print "Deserealizing: ", len(response), response
             _response = self.deserealize(response)
             callback_owner = self._callbacks.pop(0)
-            if isinstance(_response, BaseException):
-                self.handle_exception(callback_owner, _response)
+            try:
+                callback = next(mpre.objects[callback_owner])
+            except KeyError:
+                self.alert("Could not resolve callback_owner '{}' for {} {}",
+                           (callback_owner, "callback with arguments {}",
+                            _response), level=0)
             else:
-                try:
-                    callback = next(mpre.objects[callback_owner])
-                except KeyError:
-                    self.alert("Could not resolve callback_owner '{}' for {} {}",
-                               (callback_owner, "callback with arguments {}",
-                                _response), level=0)
-                else:
-                    if callback is not None:
-                        callback(_response)                                
+                if isinstance(_response, BaseException):
+                    self.handle_exception(callback, _response)
+                elif callback is not None:
+                    callback(_response)                                
                                                 
-    def handle_exception(self, callback_owner, response):
-        self.alert("Exception {} from rpc with callback owner {}",
-                   (getattr(response, "traceback", response), callback_owner), level=0)
+    def handle_exception(self, callback, response):
+        self.alert("Exception {} from rpc with callback {}",
+                   (getattr(response, "traceback", response), callback), 
+                   level=0)
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
             print "Reraising exception", type(response)()

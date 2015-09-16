@@ -30,7 +30,7 @@ class Compiler(object):
             
     def compile_module(self, module_name, source):        
         new_module = types.ModuleType(module_name) 
-        module_code = self.compile_source(source, module_name)
+        module_code = self.compile(source, module_name)
         exec module_code in new_module.__dict__        
         return new_module
     
@@ -39,7 +39,7 @@ class Compiler(object):
             source = preprocessor.handle_input(source)
         return source
         
-    def compile_source(self, source, filename=''):
+    def compile(self, source, filename=''):
         return compile(self.preprocess(source), filename, 'exec')       
           
 compiler = Compiler()

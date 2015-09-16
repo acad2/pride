@@ -151,7 +151,7 @@ class Interpreter(authentication.Authenticated_Service):
                                             sender) + source)           
         result = ''         
         try:
-            code = mpre.compiler.compile_source(source)
+            code = mpre.compiler.compile(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:                
@@ -248,7 +248,7 @@ class Metapython(base.Base):
                 
     def _exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
-        code = compile(source, 'Metapython', 'exec')
+        code = mpre.compiler.compile(source, "__main__")
         with self.main_as_name():
             exec code in globals(), globals()
             
