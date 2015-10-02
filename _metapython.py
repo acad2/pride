@@ -77,11 +77,6 @@ class Shell(authentication.Authenticated_Client):
                 sys.stdout.write(traceback.format_exc())
                 self.prompt = ">>> "
                 self.lines = ''
-            except Exception as error:
-                print "Well then"
-                print error
-                print traceback.format_exc()
-                raise SystemExit
             else:
                 if code:
                     if self.user_is_entering_definition:
