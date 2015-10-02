@@ -17,17 +17,16 @@
 import heapq
 import time
 import traceback
+import timeit
 from functools import partial
 
 import mpre
-import mpre.base as base
-
-import mpre.utilities as utilities
+import mpre.base
 
 Instruction = mpre.Instruction
-timer_function = utilities.timer_function
+timer_function = timeit.default_timer
 
-class Process(base.Base):
+class Process(mpre.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
         Create a logical process. Note that while Process objects
@@ -42,11 +41,11 @@ class Process(base.Base):
         object presumes the desire for some kind of explicitly timed
         or periodic event."""
 
-    defaults = base.Base.defaults.copy()
+    defaults = mpre.base.Base.defaults.copy()
     defaults.update({"priority" : .04,
                      "running" : True,
                      "run_callback" : None})
-    parser_ignore = base.Base.parser_ignore + ("priority", "run_callback", )
+    parser_ignore = mpre.base.Base.parser_ignore + ("priority", "run_callback", )
 
     def __init__(self, **kwargs):
         self.args = tuple()

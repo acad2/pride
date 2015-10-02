@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" Provides classes for the main and basic components of the environment. """
+""" Provides classes for the launcher class and parts for an interpreter. """
 import sys
 import codeop
 import os
@@ -77,6 +77,11 @@ class Shell(authentication.Authenticated_Client):
                 sys.stdout.write(traceback.format_exc())
                 self.prompt = ">>> "
                 self.lines = ''
+            except Exception as error:
+                print "Well then"
+                print error
+                print traceback.format_exc()
+                raise SystemExit
             else:
                 if code:
                     if self.user_is_entering_definition:
@@ -188,8 +193,7 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
-                   
-            
+                             
 class Metapython(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
@@ -199,24 +203,20 @@ class Metapython(base.Base):
                                                not in globals() else 
                                                os.path.split(__file__)[0]), 
                                               "shell_launcher.py"),
-                     "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
-                     "startup_components" : (#"mpre.fileio.File_System",
-                                             "mpre.vmlibrary.Processor",
-                                             "mpre.network.Socket_Error_Handler",
+                     "environment_setup" : ["PYSDL2_DLL_PATH = " + 
+                                            "C:\\Python27\\DLLs"],
+                     "startup_components" : ("mpre.vmlibrary.Processor",
                                              "mpre.network.Network", 
                                              "mpre.shell.Command_Line",
-                                             "mpre.srp.Secure_Remote_Password"),
-                     "prompt" : ">>> ",
-                     "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                                             "mpre.srp.Secure_Remote_Password",
+                                             "mpre._metapython.Interpreter",
+                                             "mpre.rpc.Rpc_Server"),
                      "interpreter_enabled" : True,
                      "rpc_enabled" : True,
                      "startup_definitions" : '',
                      "interpreter_type" : "mpre._metapython.Interpreter"})    
                      
-    parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt",
-                                               "copyright", 
-                                               "traceback", 
-                                               "interpreter_enabled",
+    parser_ignore = base.Base.parser_ignore + ("environment_setup", "traceback", 
                                                "startup_components", 
                                                "startup_definitions")
                      
@@ -235,12 +235,6 @@ class Metapython(base.Base):
         
         if self.startup_definitions:
             self._exec_command(self.startup_definitions)           
-                        
-        if self.interpreter_enabled:
-            self.create(self.interpreter_type)    
-        
-        if self.rpc_enabled:
-            self.create("mpre.rpc.Rpc_Server")
                         
         with open(self.command, 'r') as module_file:
             source = module_file.read()            

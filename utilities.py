@@ -8,11 +8,9 @@ import contextlib
 import importlib
 import types
 import pprint
+import timeit
 
-if "win" in sys.platform:
-    timer_function = time.clock
-else:
-    timer_function = time.time
+timer_function = timeit.default_timer
     
 @contextlib.contextmanager
 def sys_argv_swapped(new_argv):

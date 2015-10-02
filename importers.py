@@ -1,4 +1,5 @@
 """ Contains import related functions and objects, including the compiler """
+import os
 import inspect
 import sys
 import importlib
@@ -8,6 +9,7 @@ import imp
 import tokenize
 import shlex
 import string
+
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -49,15 +51,16 @@ class Parser(object):
     def get_string_indices(source):
         """ Return a list of indices of strings found in source. 
             Does not include strings located within other strings. """
-        quotes = ["'", '"', "'''", '"""']        
+        quote_symbols = ["'", '"', "'''", '"""']        
         triple_quote_start = triple_quote_end = ignore_count = 0
         source_length = len(source) - 1
         triple_quote_closing = closing_quote = ''
         indices, open_quotes = [], []
         start_index, end_index = {}, {}
-        print_stuff = False
         for index, character in enumerate(source):
-            if character == '#':
+            if character == '\\': # backslash
+                ignore_count += 2                
+            elif character == '#':
                 try:
                     newline = source[index:].index('\n') + index
                 except ValueError: # comment with no newline at end of file
@@ -69,8 +72,8 @@ class Parser(object):
                 ignore_count -= 1
                 continue
             _character = source[index:index + min(3, source_length - index)]
-            is_triple_quote = _character in quotes                             
-            if character in quotes or is_triple_quote:
+            is_triple_quote = _character in quote_symbols                    
+            if is_triple_quote or character in quote_symbols:
                 if is_triple_quote:
                     character = _character
                     ignore_count = 2
@@ -94,23 +97,24 @@ class Parser(object):
     def find_symbol(symbol, source, quantity=0):
         strings = [range(start, end + 1) 
                    for start, end in Parser.get_string_indices(source)]
-     #   print "Found strings: "
-     #   for _range in strings:
-     #       print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
+        #print "Found strings: "
+        #for _range in strings[:len(strings) / 2]:
+        #    print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
         indices = []
         symbol_size = len(symbol)
         source_index = 0
         while symbol in source:
             start = source_index + source.index(symbol)
-            for _range in strings:
-                if start in _range:
-                    end_of_quote = _range[-1]
+            for string_range in strings:
+                if start in string_range:
+                    end_of_quote = string_range[-1]
                     source = source[end_of_quote:]
                     source_index += end_of_quote
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
                 indices.append((start, end))
+         #       print "Found an unquoted {} at {}".format(symbol, indices[-1])
                 source = source[end:]
                 source_index += end
                 quantity -= 1
@@ -148,44 +152,44 @@ class Compiler(object):
         sys.meta_path as the first entry. """
     def __init__(self, preprocessors=tuple()):
         self.preprocessors = preprocessors
-        self.module_source = {}
-        
+        self.path_loader, self.module_source = {}, {}
+                            
     def find_module(self, module_name, path):
         modules = module_name.split('.')
         loader = None
         end_of_modules = len(modules) - 1
         for count, module in enumerate(modules):
             try:
-                _file, path, description = imp.find_module(module, path)
+                _file, _path, description = imp.find_module(module, path)
             except ImportError:
                 pass
             else:
-                if path.split('.')[-1] == "pyd":
+                if _path.split('.')[-1] == "pyd":
                     continue
                 if _file:
-                    if ".pyc" in path:
-                        print "Unable to import {} @ {}; No source, only bytecode available".format(module_name, path)
+                    if ".pyc" in _path:
+                        print "Unable to import {} @ {}; No source, only bytecode available".format(module_name, _path)
                         break
-                    self.module_source[module_name] = (_file.read(), path)
+                    self.module_source[module_name] = (_file.read(), _path)
                     if count == end_of_modules:
                         loader = self
-        return loader        
-  
+        return loader    
+    
     def load_module(self, module_name):
         if module_name not in sys.modules:
             source, path = self.module_source[module_name]
             self.compile_module(module_name, source, path)
+ #       print "Loading: ", module_name
         return sys.modules[module_name]
                     
     def compile_module(self, module_name, source, path):
         new_module = types.ModuleType(module_name) 
-        #print '\n\ncompiling: ', module_name
+    #    print '\n\ncompiling: ', module_name
         sys.modules[module_name] = new_module
         new_module.__name__ = module_name
         new_module.__file__ = path
         module_code = self.compile(source, module_name)        
-        exec module_code in new_module.__dict__     
-        
+        exec module_code in new_module.__dict__
         if not hasattr(new_module, "__package__"):
             split = module_name.split('.', 1)
             if len(split) > 1:
@@ -216,7 +220,7 @@ class Dollar_Sign_Directive(object):
             if not slice_information: # last symbol in source was in a string
                 break
             symbol_start, _end = slice_information[0]
-           # print "\n\nFound string replacement: ", source[symbol_start-1:_end + 1] + "...", "index: ", symbol_start, _end
+        #    print "\nFound string replacement: ", source[symbol_start-10:_end + 10] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start:]):
                 if character in delimiters:
                     delimiter = delimiters[delimiters.index(character)]

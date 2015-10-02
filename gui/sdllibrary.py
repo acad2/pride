@@ -420,14 +420,22 @@ class SDL_User_Input(vmlibrary.Process):
         except KeyError:
             self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
             return
+            
+        key_value = event.key.keysym.sym
+        modifier = event.key.keysym.mod
+        
+      #  if key_value < 256 or key_value > 0: # in ascii range
+            
         try:
-            key = chr(event.key.keysym.sym)
+            key = chr(key_value)
         except ValueError:
+      #      if print "Returning early. key: ", event.key.keysym.sym
             return # key was a modifier key
         else:
+            print "Handling keydown: ", key
             if key == "\r":
                 key = "\n"
-            modifier = event.key.keysym.mod
+            
             if modifier in self.uppercase_modifiers:
                 try:
                     key = self.uppercase[key]

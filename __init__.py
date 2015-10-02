@@ -13,9 +13,8 @@ import pickle
 import contextlib
 import copy
 import types
-
-import mpre.utilities
-timer_function = mpre.utilities.timer_function          
+import timeit
+timer_function = timeit.default_timer         
     
 class Environment(object):
     """ Stores global state for the process. This includes reference 

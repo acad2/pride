@@ -14,8 +14,8 @@ SDL_Rect = sdl2.SDL_Rect
 R, G, B, A = 0, 80, 255, 30
 
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
-    _create_texture = objects["SpriteFactory"].create_texture_sprite
-    return _create_texture(objects["Renderer"].wrapped_object, size, access=access)
+    return $SpriteFactory.create_texture_sprite($Renderer.wrapped_object,
+                                                size, access=access)
     
 class Organizer(base.Base):
     

@@ -581,14 +581,15 @@ class Network(vmlibrary.Process):
                      "_updating" : False,
                      "running" : False})
    
+    error_handler = Socket_Error_Handler()
+    
     def __init__(self, **kwargs):
         # minor optimization; pre allocated slices and ranges for
         # sliding through the socket list to sidestep the 500 
         # file descriptor limit that select has. Produces slice objects
         # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(100))
-                        
+                                    x in xrange(100))                        
         self.connecting = set()
         self.sockets = []
         super(Network, self).__init__(**kwargs)       
@@ -620,8 +621,8 @@ class Network(vmlibrary.Process):
             readable, writable, empty_list = [], [], []
             # select has a max # of file descriptors it can handle, which
             # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
-            for socket_list in (sockets[self._slice_mapping[chunk_number]] for 
-                                chunk_number in xrange((len(sockets) / 500) + 1)):   
+            for socket_list in (sockets[self._slice_mapping[chunk_number]] for
+                                chunk_number in xrange((len(sockets) / 500) + 1)): 
                 (readable_sockets, 
                  writable_sockets, _) = select.select(socket_list, socket_list, 
                                                       empty_list, 0.0)

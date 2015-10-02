@@ -114,9 +114,9 @@ $SDL_Window.create("mpre.gui.terminal.Terminal")
 #from rnltest import relative_name_lookup
 #server = relative_name_lookup("Metapython.Network.Rpc_Server")
 
-def _pack(mode):
-    $Task_Bar.pack_mode = mode
-    $Task_Bar.pack()
+import doctest
+import inspect    
+    
 """
 
 options["startup_definitions"] += definitions
