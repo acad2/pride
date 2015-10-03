@@ -1,12 +1,25 @@
 # access the attributes of parent objects, recursively, to obtain attributes.
 # an instance would take on the properties of it's parents as well as it's
-# base classes
+# base classes. It's like inheritance at an instance level
 
 # just because you can doesn't mean you should
 
-rotation descriptor on window objects. modify area based upon the given degrees
-of rotation about the center of the instance.
+#The style dictated by the modules design lends itself to a well pronounced
+#entry point when developing new components. 
+#
+#It helps to view all problems as the different variations of the same problem.
+#Some of the strategies from the understood problems may overlap with the
+#current ones 
+#be used 
 
+rotation descriptor on window objects. modify area based upon the given
+degrees of rotation about the center of the instance.
+
+recently done:    
+    Inherited_Attributes and inherited defaults and verbosity
+    compiler fixes
+    
+    
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??

@@ -10,10 +10,9 @@ import sdl2
 
 class Attribute_Modifier_Button(gui.Button):
 
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"amount" : 0,
-                     "method" : "",
-                     "target" : None})
+    defaults = {"amount" : 0,
+                "method" : "",
+                "target" : None}
                      
     def left_click(self, mouse):        
         instance_name, attribute = self.target
@@ -29,14 +28,13 @@ class Attribute_Modifier_Button(gui.Button):
  
 class Instruction_Button(gui.Button):
     
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"args" : tuple(),
-                     "kwargs" : None,
-                     "method" : '',
-                     "instance_name" : '',
-                     "priority" : 0.0,
-                     "host_info" : tuple(),
-                     "callback" : None})
+    defaults = {"args" : tuple(),
+                "kwargs" : None,
+                "method" : '',
+                "instance_name" : '',
+                "priority" : 0.0,
+                "host_info" : tuple(),
+                "callback" : None}
                      
     def left_click(self, mouse):
         Instruction(self.instance_name, self.method, 
@@ -47,34 +45,29 @@ class Instruction_Button(gui.Button):
     
 class Method_Button(gui.Button):
         
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"args" : tuple(),
-                     "kwargs" : None,
-                     "method" : '',
-                     "target" : ''})
+    defaults = {"args" : tuple(),
+                "kwargs" : None,
+                "method" : '',
+                "target" : ''}
                      
     def left_click(self, mouse):
         instance = mpre.objects[self.target]   
-        getattr(instance, self.method)(*self.args, **self.kwargs or {})       
+        getattr(instance, self.method)(*self.args, **self.kwargs or {})     
                             
 
 class Delete_Button(Method_Button):
     
-    defaults = Method_Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "text" : "delete",
-                     "method" : "delete"})
+    defaults = {"pack_mode" : "horizontal",
+                "text" : "delete",
+                "method" : "delete"}
         
         
 class Exit_Button(Delete_Button):
         
-    defaults = Delete_Button.defaults.copy()
-    defaults.update({"text" : "exit"})
+    defaults = {"text" : "exit"}
     
     
 class Homescreen(gui.Window):
-
-    defaults = gui.Window.defaults.copy()
     
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
@@ -85,9 +78,8 @@ class Homescreen(gui.Window):
 
 class Task_Bar(gui.Container):
 
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_mode" : "menu_bar",
-                     "bound" : (0, 20)})
+    defaults = {"pack_mode" : "menu_bar",
+                "bound" : (0, 20)}
     
     def _set_pack_mode(self, value):
         super(Task_Bar, self)._set_pack_mode(value)

@@ -280,8 +280,28 @@ class Parser(object):
         return options
 
        
-       
-class Metaclass(Documented, Parser_Metaclass, Method_Hook):
+class Inherited_Attributes(type):
+        
+    inherited_attributes = tuple()
+    
+    def __new__(cls, name, bases, attributes):
+        for attribute_name in cls.inherited_attributes:
+            _attribute = {}
+            for _class in bases:
+                _attribute.update(getattr(_class, attribute_name, {}))
+            _attribute.update(attributes.get(attribute_name, 
+                                             getattr(_class, attribute_name, {}).copy()))
+            attributes[attribute_name] = _attribute
+        return super(Inherited_Attributes, cls).__new__(cls, name, bases,
+                                                        attributes)
+        
+        
+class Defaults(Inherited_Attributes):
+
+    inherited_attributes = ("defaults", "verbosity")
+
+    
+class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 
         new single inheritance metaclass that utilizes each entry. 

@@ -95,9 +95,10 @@ def update(instance_name):
 
 import mpre.gui
 mpre.gui.enable()
+$SDL_Window.create("mpre.gui.cyvasse.Cyvasse")
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
-$SDL_Window.create("mpre.gui.terminal.Terminal")
+#$SDL_Window.create("mpre.gui.terminal.Terminal")
 #game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
 #client = game_world.create("mpre.game.gamelibrary.Game_Client")
 #$Game_World.test_duel()
@@ -112,11 +113,10 @@ $SDL_Window.create("mpre.gui.terminal.Terminal")
 #s = json.dumps($Metapython, cls=Base_Encoder)
 
 #from rnltest import relative_name_lookup
-#server = relative_name_lookup("Metapython.Network.Rpc_Server")
+#server = relative_name_lookup("Metapython.Network.Rpc_Server")  
+#import objgraph
+#objgraph.show_refs([$Metapython])
 
-import doctest
-import inspect    
-    
 """
 
 options["startup_definitions"] += definitions

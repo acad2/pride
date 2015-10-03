@@ -272,8 +272,7 @@ class Name_Enforcer(object):
                     break
             else:
                 self.cache[token] = True
-                return True
-        
+                return True        
 
     def handle_source(self, source): 
         strings = Parser.get_string_indices(source)

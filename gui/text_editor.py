@@ -12,7 +12,7 @@ class File_Button(mpre.gui.gui.Button):
         if not self._file_menu:
             self._file_menu = self.create(File_Menu)
         else:
-            mpre.objects[self._file_menu].delete()
+            self._file_menu.delete()
             
 
 class Edit_Button(mpre.gui.gui.Button):

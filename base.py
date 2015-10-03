@@ -112,7 +112,6 @@ class Base(object):
     defaults = {"_deleted" : False,
                 "replace_reference_on_load" : True,
                 "dont_save" : False,
-                "delete_verbosity" : 'vv',
                 "startup_components" : tuple()}   
                 
     # A command line argument parser is generated automatically for
@@ -147,6 +146,8 @@ class Base(object):
         return objects[self.parent_name]
     parent = property(_get_parent)
             
+    verbosity = {"delete" : "vv"}
+                 
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance
         
@@ -212,7 +213,7 @@ class Base(object):
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""
-        self.alert("Deleting", level=self.delete_verbosity)
+        self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
         mpre.environment.delete(self)
@@ -271,9 +272,9 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        return objects["Alert_Handler"]._alert(self.instance_name + ": " + message, 
-                                               level, format_args)            
-                                                       
+        return objects["Alert_Handler"]._alert(self.instance_name + 
+                                               ": " + message, 
+                                               level, format_args)     
     def __getstate__(self):
         return self.__dict__.copy()
         
@@ -381,8 +382,7 @@ class Wrapper(Base):
         This allows easy preemption/overloading/extension of methods by
         defining them."""
      
-    defaults = Base.defaults.copy()
-    defaults.update({"wrapped_object" : None})
+    defaults = {"wrapped_object" : None}
     wrapped_object_name = ''
     
     parser_ignore = Base.parser_ignore + ("wrapped_object", )
