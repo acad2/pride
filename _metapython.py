@@ -25,18 +25,16 @@ Instruction = mpre.Instruction
 class Shell(authentication.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
-    defaults = authentication.Authenticated_Client.defaults.copy()
-    defaults.update({"username" : "",
-                     "password" : "",
-                     "prompt" : ">>> ",
-                     "startup_definitions" : '',
-                     "target_service" : "Interpreter"})
+    defaults = {"username" : "",
+                "password" : "",
+                "prompt" : ">>> ",
+                "startup_definitions" : '',
+                "target_service" : "Interpreter"}
     
     parser_ignore = (authentication.Authenticated_Client.parser_ignore + 
                      ("prompt", "auto_login", "target_service"))
     
-    verbosity = authentication.Authenticated_Client.verbosity.copy()
-    verbosity["logging_in"] = ''
+    verbosity = {"logging_in" : ''}
     
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
@@ -117,9 +115,8 @@ class Interpreter(authentication.Authenticated_Service):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     
-    defaults = authentication.Authenticated_Service.defaults.copy()
-    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-                     "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"})
+    defaults = {"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"}
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
@@ -193,25 +190,25 @@ class Metapython(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
         starts the execution of the Processor component."""
-    defaults = base.Base.defaults.copy()
-    defaults.update({"command" : os.path.join((os.getcwd() if "__file__" 
-                                               not in globals() else 
-                                               os.path.split(__file__)[0]), 
-                                              "shell_launcher.py"),
-                     "environment_setup" : ["PYSDL2_DLL_PATH = " + 
-                                            "C:\\Python27\\DLLs"],
-                     "startup_components" : ("mpre.vmlibrary.Processor",
-                                             "mpre.network.Network", 
-                                             "mpre.shell.Command_Line",
-                                             "mpre.srp.Secure_Remote_Password",
-                                             "mpre._metapython.Interpreter",
-                                             "mpre.rpc.Rpc_Server"),
-                     "interpreter_enabled" : True,
-                     "rpc_enabled" : True,
-                     "startup_definitions" : '',
-                     "interpreter_type" : "mpre._metapython.Interpreter"})    
+    defaults = {"command" : os.path.join((os.getcwd() if "__file__" 
+                                          not in globals() else 
+                                          os.path.split(__file__)[0]), 
+                                          "shell_launcher.py"),
+                "environment_setup" : ["PYSDL2_DLL_PATH = " + 
+                                       "C:\\Python27\\DLLs"],
+                "startup_components" : ("mpre.vmlibrary.Processor",
+                                        "mpre.network.Network", 
+                                        "mpre.shell.Command_Line",
+                                        "mpre.srp.Secure_Remote_Password",
+                                        "mpre._metapython.Interpreter",
+                                        "mpre.rpc.Rpc_Server"),
+                "interpreter_enabled" : True,
+                "rpc_enabled" : True,
+                "startup_definitions" : '',
+                "interpreter_type" : "mpre._metapython.Interpreter"}
                      
-    parser_ignore = base.Base.parser_ignore + ("environment_setup", "traceback", 
+    parser_ignore = base.Base.parser_ignore + ("environment_setup",
+                                               "traceback", 
                                                "startup_components", 
                                                "startup_definitions")
                      

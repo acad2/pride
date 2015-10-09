@@ -19,7 +19,7 @@ def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
     
 class Organizer(base.Base):
     
-    pack_verbosity = 'v'
+    verbosity = {"packing" : 'v'}
     
     def __init__(self, **kwargs):
         super(Organizer, self).__init__(**kwargs)
@@ -57,7 +57,7 @@ class Organizer(base.Base):
         
     def pack(self, item):
         self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode],
-                   level=self.pack_verbosity)
+                   level=self.verbosity["packing"])
         instance_name = item.instance_name
         pack_mode = self.pack_modes[instance_name]
         pack = getattr(self, "pack_{0}".format(pack_mode))
@@ -67,7 +67,7 @@ class Organizer(base.Base):
         pack(parent, item, self._pack_index[instance_name], 
              len(self._pack_modes[parent.instance_name][pack_mode]))
         self.alert("Finished packing {}: {}", [item, item.area], 
-                   level=self.pack_verbosity)
+                   level=self.verbosity["packing"])
         
     def pack_horizontal(self, parent, item, count, length):
         item.z = parent.z + 1
@@ -111,37 +111,33 @@ class Organizer(base.Base):
     def pack_top(self, parent, item, count, length):
         self.pack_menu_bar(parent, item, count, length)
         item.y = parent.y - item.h
-        print "Setting y to: {} - {} = {}".format(parent.y, item.h, item.y)
-        
+                
     def pack_right(self, parent, item, count, length):
         self.pack_horizontal(parent, item, count, length)
         item.x = parent.x + parent.w - item.w
-        print "Setting x to {}: {} + {} - {}".format(item.x, parent.x, parent.w, item.w)
+
     def pack_left(self, parent, item, count, length):
         self.pack_vertical(parent, item, count, length)
                 
+    def pack_drop_down_menu(self, parent, item, count, length): 
+        SCREEN_SIZE = mpre.gui.SCREEN_SIZE
+        item.area = (parent.x, parent.y + parent.h,
+                     SCREEN_SIZE[0] / 5, min(120, SCREEN_SIZE[1] / length))
+        item.z = parent.z + 1
+        
+        
         
 class Window_Object(mpre.gui.shapes.Bounded_Shape):
 
-    defaults = mpre.gui.shapes.Bounded_Shape.defaults.copy()
-    defaults.update({'x' : 0,
-                     'y' : 0,
-                     'z' : 0,
-                     'size' : mpre.gui.SCREEN_SIZE,
-                     "texture_size" : mpre.gui.SCREEN_SIZE,
-                     "background_color" : (25, 125, 225, 125),
-                     "color" : (25, 235, 235, 255),
-                     "text_color" : (145, 165, 235),
-                     "pack_mode" : '',
-                     "held" : False,
-                     "texture" : None,
-                     "text" : '',
-                     "button_verbosity" : 'v',
-                     "allow_text_edit" : False,
-                     "_ignore_click" : False,
-                     "sdl_window" : "SDL_Window",
-                     "movable" : True,
-                     "hidden" : False})
+    defaults = {'x' : 0, 'y' : 0, 'z' : 0,
+                'size' : mpre.gui.SCREEN_SIZE,
+                "texture_size" : mpre.gui.SCREEN_SIZE,
+                "background_color" : (25, 125, 225, 125),
+                "color" : (25, 235, 235, 255), "text_color" : (145, 165, 235),
+                "held" : False, "allow_text_edit" : False,
+                "_ignore_click" : False, "hidden" : False, "movable" : True, 
+                "texture" : None, "text" : '', "pack_mode" : '' ,      
+                "sdl_window" : "SDL_Window"}
     Hotkeys = {}
     
     def _get_texture_invalid(self):
@@ -212,6 +208,22 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         objects["Organizer"].set_pack_mode(self.instance_name, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
+    def _get_parent_application(self):
+        result = None
+        instance = self
+        while not result:
+            if isinstance(instance, Application):
+                result = instance
+            else:
+                try:
+                    instance = instance.parent
+                except AttributeError:
+                    raise ValueError("Unable to find parent application of {}".format(self))
+        return result
+    parent_application = property(_get_parent_application)
+     
+    verbosity = {"press" : "vv", "release" : "vv"}
+    
     def __init__(self, **kwargs):
         self._texture_invalid = False
         self.children, self.draw_queue, self._draw_operations = [], [], []
@@ -220,10 +232,8 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self._texture_window_x = self._texture_window_y = 0
         self._glow_modifier = 20
         max_w, max_h = mpre.gui.SCREEN_SIZE
-        self.x_range = (0, max_w)
-        self.w_range = (0, max_w)
-        self.y_range = (0, max_h)
-        self.h_range = (0, max_h)
+        self.w_range = self.x_range = (0, max_w)
+        self.h_range = self.y_range = (0, max_h)
         self.z_range = (0, mpre.gui.MAX_LAYER)   
         super(Window_Object, self).__init__(**kwargs)
         self.texture_window_x = self.texture_window_y = 0
@@ -264,13 +274,13 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         super(Window_Object, self).remove(instance)
         
     def press(self, mouse):
-        self.alert("Pressing", level=self.button_verbosity)
+        self.alert("Pressing", level=self.verbosity["press"])
         self.held = True
         for instance in self.children:
             instance.held = True        
 
     def release(self, mouse):
-        self.alert("Releasing", level=self.button_verbosity)
+        self.alert("Releasing", level=self.verbosity["release"])
         self.held = False
         if self._ignore_click:
             self._ignore_click = False
@@ -360,22 +370,25 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         super(Window_Object, self).delete()
         objects["SDL_Window"].remove_from_layer(self, self.z)
         objects["SDL_User_Input"]._remove_from_coordinates(self.instance_name) 
-
+        self.texture_invalid = True
+        
         
 class Window(Window_Object):
 
-    defaults = Window_Object.defaults.copy()
-    defaults.update({"pack_mode" : "z"})
+    defaults = {"pack_mode" : "z"}
 
     
 class Container(Window_Object):
 
-    defaults = Window_Object.defaults.copy()
-    defaults.update({"pack_mode" : "vertical"})
+    defaults = {"pack_mode" : "vertical"}
 
 
 class Button(Window_Object):
 
-    defaults = Window_Object.defaults.copy()
-    defaults.update({"shape" : "rect",
-                     "pack_mode" : "vertical"})
+    defaults = {"shape" : "rect", "pack_mode" : "vertical"}
+
+
+class Application(Window):
+    
+    defaults = {"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )}
+    

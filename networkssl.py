@@ -59,8 +59,7 @@ class SSL_Client(mpre.network.Tcp_Client):
         Users should extend on_ssl_authentication instead of on_connect to
         initiate data transfer; on_connect is used to start the
         ssl handshake"""
-    defaults = mpre.network.Tcp_Client.defaults.copy()
-    defaults.update(SSL_DEFAULTS)    
+    defaults = SSL_DEFAULTS
     
     def __init__(self, **kwargs):        
         super(SSL_Client, self).__init__(**kwargs)
@@ -114,8 +113,7 @@ class SSL_Socket(mpre.network.Tcp_Socket):
         Users should override the on_ssl_authentication method instead of
         on_connect. """
         
-    defaults = mpre.network.Tcp_Socket.defaults.copy()
-    defaults.update({"ssl_authenticated" : False})
+    defaults = {"ssl_authenticated" : False}
      
     def on_connect(self):
         super(SSL_Socket, self).on_connect()
@@ -149,8 +147,7 @@ class SSL_Socket(mpre.network.Tcp_Socket):
         
 class SSL_Server(mpre.network.Server):
     
-    defaults = mpre.network.Server.defaults.copy()
-    defaults.update(SSL_DEFAULTS)
+    defaults = SSL_DEFAULTS
     defaults.update({"port" : 443,
                      "Tcp_Socket_type" : "mpre.networkssl.SSL_Socket",
                      "dont_save" : False,

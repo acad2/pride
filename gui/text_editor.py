@@ -53,8 +53,7 @@ class New_Button(mpre.gui.gui.Button):
         
 class Open_Button(mpre.gui.gui.Button):
             
-    defaults = mpre.gui.gui.Button.defaults.copy()
-    defaults.update({"text_file_type" : "mpre.gui.text_editor.Text_File"})
+    defaults = {"text_file_type" : "mpre.gui.text_editor.Text_File"}
     
     def left_click(self, mouse):
         #self.create("mpre.gui.widgetlibrary.Text
@@ -70,15 +69,13 @@ class Save_Button(mpre.gui.gui.Button):
         
 class Text_File(mpre.gui.gui.Window):
             
-    defaults = mpre.gui.gui.Window.defaults.copy()
-    defaults.update({"allow_text_edit" : True,
-                     "pack_mode" : "vertical"})
+    defaults = {"allow_text_edit" : True,
+                "pack_mode" : "vertical"}
     
     
-class Text_Editor(mpre.gui.widgetlibrary.Application):
+class Text_Editor(mpre.gui.gui.Application):
     
-    defaults = mpre.gui.widgetlibrary.Application.defaults.copy()
-    defaults.update({"startup_components" : tuple()})
+    defaults = {"startup_components" : tuple()}
     
     def __init__(self, **kwargs):
         super(Text_Editor, self).__init__(**kwargs)

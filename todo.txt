@@ -1,6 +1,6 @@
 # access the attributes of parent objects, recursively, to obtain attributes.
 # an instance would take on the properties of it's parents as well as it's
-# base classes. It's like inheritance at an instance level
+# base classes. It's like attribute inheritance at an instance level
 
 # just because you can doesn't mean you should
 
@@ -16,13 +16,12 @@ rotation descriptor on window objects. modify area based upon the given
 degrees of rotation about the center of the instance.
 
 recently done:    
-    Inherited_Attributes and inherited defaults and verbosity
-    compiler fixes
-    
+    updated class defaults to remove old style explicit copying
     
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
+    usage of startup_components and accessing parent_name in __init__ after super will return self as parent
     
 things that could be done:
     improve json serialization

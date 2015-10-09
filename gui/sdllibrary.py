@@ -20,27 +20,18 @@ sdl2.ext.init()
 sdl2.sdlttf.TTF_Init()
 font_module = sdl2.sdlttf
 
-class SDL_Component(base.Proxy):
-
-    defaults = base.Proxy.defaults.copy()
+class SDL_Component(base.Proxy): pass
     
 
 class SDL_Window(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"size" : mpre.gui.SCREEN_SIZE,
-                     "showing" : True,
-                     'position' : (0, 0),
-                     'x' : 0,
-                     'y' : 0,
-                     'z' : 0,
-                     'w' : mpre.gui.SCREEN_SIZE[0],
-                     'h' : mpre.gui.SCREEN_SIZE[1],
-                     "area" : (0, 0) + mpre.gui.SCREEN_SIZE,
-                     "name" : "Metapython",
-                     "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
-                     "window_flags" : None, #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE 
-                     "priority" : .04})
+    defaults = {"size" : mpre.gui.SCREEN_SIZE, "showing" : True,
+                'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
+                'w' : mpre.gui.SCREEN_SIZE[0], 'h' : mpre.gui.SCREEN_SIZE[1],
+                "area" : (0, 0) + mpre.gui.SCREEN_SIZE, "priority" : .04,
+                "name" : "Metapython",
+                "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
+                "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
     
     def _get_size(self):
         return (self.w, self.h)
@@ -255,10 +246,9 @@ class Window_Handler(mpre.base.Base):
         
 class SDL_User_Input(vmlibrary.Process):
 
-    defaults = vmlibrary.Process.defaults.copy()
-    defaults.update({"event_verbosity" : 0,
-                     "_ignore_click" : False,
-                     "active_item" : None})
+    defaults = {"event_verbosity" : 0,
+                "_ignore_click" : False,
+                "active_item" : None}
     
     def _get_active_item(self):
         return self._active_item
@@ -331,6 +321,8 @@ class SDL_User_Input(vmlibrary.Process):
             try:
                 handlers[event.type](event)
             except KeyError:
+                if event.type in handlers:
+                    raise
                 self.alert("Unhandled event: {}".format(event.type))
 
     def _update_coordinates(self, item, area, z):
@@ -471,9 +463,8 @@ class SDL_User_Input(vmlibrary.Process):
 
 class Renderer(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"flags" : sdl2.SDL_RENDERER_ACCELERATED,
-                     "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND})
+    defaults = {"flags" : sdl2.SDL_RENDERER_ACCELERATED,
+                "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND}
                 
     def __init__(self, window, **kwargs):      
         super(Renderer, self).__init__(**kwargs)
@@ -536,8 +527,6 @@ class Renderer(SDL_Component):
         
 class Sprite_Factory(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-
     def __init__(self, **kwargs):
         kwargs["wrapped_object"] = sdl2.ext.SpriteFactory(renderer=kwargs["renderer"])
         super(Sprite_Factory, self).__init__(**kwargs)
@@ -545,13 +534,10 @@ class Sprite_Factory(SDL_Component):
 
 class Font_Manager(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION,
-                                                "resources", "fonts", 
-                                                "Aero.ttf"),
-                     "default_font_size" : 14,
-                     "default_color" : (150, 150, 255),
-                     "default_background" : (0, 0, 0)})
+    defaults = {"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION,
+                                           "resources", "fonts", "Aero.ttf"),
+                "default_font_size" : 14, "default_color" : (150, 150, 255),
+                "default_background" : (0, 0, 0)}
 
     def __init__(self, **kwargs):
         _defaults = self.defaults

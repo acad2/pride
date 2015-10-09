@@ -8,6 +8,7 @@ import contextlib
 import importlib
 import types
 import pprint
+import traceback
 import timeit
 
 timer_function = timeit.default_timer
@@ -83,9 +84,11 @@ def resolve_string(module_name):
         for attribute in reversed(attributes):
             result = getattr(result, attribute)
     except AttributeError:
-        error_message = "Unable to load {} from {}"
-        error_message = error_message.format(attribute, _original)
-        raise AttributeError(error_message)
+        error_message = "resolve_string unable to load {} from {}"
+        print error_message.format(attribute, _original)
+        raise
+        #error_message = '\n'.join((error_message, traceback.format_exc()))
+        #raise AttributeError(error_message)
     return result    
     
 def shell(command, shell=False):

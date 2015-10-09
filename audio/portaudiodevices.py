@@ -75,21 +75,20 @@ format_lookup = _formats_to_indices()
            
 class Audio_Device(audiolibrary.Audio_Reactor):
 
-    defaults = audiolibrary.Audio_Reactor.defaults.copy()
-    defaults.update({"format" : 8,
-                     "frames_per_buffer" : 1024,
-                     "data" : "",
-                     "record_to_disk" : False,
-                     "frame_count" : 0,
-                     "source_name" : '',
-                     "data_source" : '',
-                     "mute" : False,
-                     "silence" : b"\x00" * 65535})
+    defaults = {"format" : 8,
+                "frames_per_buffer" : 1024,
+                "data" : "",
+                "record_to_disk" : False,
+                "frame_count" : 0,
+                "source_name" : '',
+                "data_source" : '',
+                "mute" : False,
+                "silence" : b"\x00" * 65535}
     possible_options = ("rate", "channels", "format", "input", "output",    
                         "input_device_index", "output_device_index", 
                         "frames_per_buffer", "start", "stream_callback",
                         "input_host_api_specific_stream_info",
-                        "output_host_api_specific_stream_info")                        
+                        "output_host_api_specific_stream_info")          
     def _get_options(self):
         options = {}
         for option in self.possible_options:
@@ -125,10 +124,9 @@ class Audio_Device(audiolibrary.Audio_Reactor):
             
 class Audio_Input(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"input" : True,
-                     "data" : '',
-                     "priority" : .01})
+    defaults = {"input" : True,
+                "data" : '',
+                "priority" : .01}
     
     def __init__(self, **kwargs):
         self.playing_files = []
@@ -201,8 +199,7 @@ class Audio_Input(Audio_Device):
 
 class Audio_Output(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"output" : True})
+    defaults = {"output" : True}
 
     def __init__(self, **kwargs):
         super(Audio_Output, self).__init__(**kwargs)

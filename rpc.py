@@ -44,10 +44,9 @@ def packetize_recv(recv):
         
 class Session(mpre.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"id" : '0', 
-                     "host_info" : tuple(),
-                     "requester_type" : "mpre.rpc.Rpc_Client"})
+    defaults = {"id" : '0', 
+                "host_info" : tuple(),
+                "requester_type" : "mpre.rpc.Rpc_Client"}
     
     def _get_id(self):
         return self._id
@@ -92,8 +91,7 @@ class Session(mpre.base.Base):
             
 class Packet_Client(mpre.networkssl.SSL_Client):
             
-    defaults = mpre.networkssl.SSL_Client.defaults.copy()
-    defaults.update({"_old_data" : bytes()})
+    defaults = {"_old_data" : bytes()}
     
     @packetize_send
     def send(self, data):
@@ -106,8 +104,7 @@ class Packet_Client(mpre.networkssl.SSL_Client):
         
 class Packet_Socket(mpre.networkssl.SSL_Socket):
             
-    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
-    defaults.update({"_old_data" : bytes()})
+    defaults = {"_old_data" : bytes()}
     
     @packetize_send
     def send(self, data):
@@ -120,16 +117,13 @@ class Packet_Socket(mpre.networkssl.SSL_Socket):
                         
 class Rpc_Server(mpre.networkssl.SSL_Server):
     
-    defaults = mpre.networkssl.SSL_Server.defaults.copy()
-    defaults.update({"port" : 40022,
-                     "interface" : "localhost",
-                     "Tcp_Socket_type" : "mpre.rpc.Rpc_Socket"})
+    defaults = {"port" : 40022,
+                "interface" : "localhost",
+                "Tcp_Socket_type" : "mpre.rpc.Rpc_Socket"}
     
     
 class Rpc_Client(Packet_Client):
-            
-    defaults = Packet_Client.defaults.copy()
-    
+               
     def __init__(self, **kwargs):
         self._requests, self._callbacks = [], []
         super(Rpc_Client, self).__init__(**kwargs)
@@ -183,13 +177,8 @@ class Rpc_Client(Packet_Client):
         
 class Rpc_Socket(Packet_Socket):
             
-    defaults = Packet_Socket.defaults.copy()
-    defaults.update({"debug_mode" : True})
-    
-  #  def __init__(self, **kwargs):
-   #     super(Rpc_Socket, self).__init__(**kwargs)
-       # self._peername = self.getpeername()
-                
+    defaults = {"debug_mode" : True}
+                    
     def recv(self, packet_count=0):
         peername = self.peername
         for packet in super(Rpc_Socket, self).recv():

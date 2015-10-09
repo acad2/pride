@@ -16,16 +16,16 @@ import mpre.importers
 
 class Loader(mpre.base.Base):
     """ Used to customize the define bootstrap process. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"required_imports" : ("sys", "hashlib", "pickle", "importlib",
-                                           "types", "hmac", "binascii"),
-                     "variables"        : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
-                     "definitions"      : ("mpre.persistence.authenticated_load", 
-                                           "mpre.persistence.load",
-                                           "mpre.base.load", 
-                                           "mpre.errors.CorruptPickleError",
-                                           "mpre.module_utilities.create_module"),
-                     "importer"         : ''})
+    defaults = {"required_imports" : ("sys", "hashlib", "pickle",
+                                      "importlib", "types", "hmac",
+                                      "binascii"),
+                "variables" : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
+                "definitions" : ("mpre.persistence.authenticated_load", 
+                                 "mpre.persistence.load",
+                                 "mpre.base.load", 
+                                 "mpre.errors.CorruptPickleError",
+                                 "mpre.module_utilities.create_module"),
+                "importer" : ''}
         
     def __init__(self, **kwargs):
         super(Loader, self).__init__(**kwargs)
@@ -56,13 +56,12 @@ class Loader(mpre.base.Base):
     
 class Executable(mpre.base.Base):    
     """ Used to make a cython gcc compiled executable from a python module. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"filename" : "metapython.exe",
-                     "package" : None,
-                     "file" : None,
-                     "loader_type" : "mpre.exe.Loader",
-                     "main_source" : '',
-                     "use_unicode_literals" : True})   
+    defaults = {"filename" : "metapython.exe",
+                "package" : None,
+                "file" : None,
+                "loader_type" : "mpre.exe.Loader",
+                "main_source" : '',
+                "use_unicode_literals" : True}
                            
     def __init__(self, module, **kwargs):
         super(Executable, self).__init__(**kwargs)

@@ -29,13 +29,12 @@ class Authenticated_Service(mpre.base.Base):
         Note that authentication is not automatically required for all
         method calls on an Authenticated_Service object. Each method must
         be decorated explicitly with the access controls desired."""
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"allow_registration" : True,
-                     "protocol_component" : "Secure_Remote_Password",
-                     "database_name" : '',
-                     "login_message" : '',
-                     "current_session" : (None, None),
-                     "session_id_size" : 256})
+    defaults = {"allow_registration" : True,
+                "protocol_component" : "Secure_Remote_Password",
+                "database_name" : '',
+                "login_message" : '',
+                "current_session" : (None, None),
+                "session_id_size" : 256}
     
     def __init__(self, **kwargs):
         self.logging_in = set()
@@ -190,17 +189,16 @@ class Authenticated_Service(mpre.base.Base):
         
 class Authenticated_Client(mpre.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"username" : '',
-                     "password" : '',
-                     "target_service" : '',
-                     "password_prompt" : "{}: Please provide the pass phrase or word: ",
-                     "protocol_client" : "mpre.srp.SRP_Client",
-                     "ip" : "localhost", 
-                     "port" : 40022,
-                     "auto_login" : True,
-                     "logged_in" : False,
-                     "session_id_size" : 256})
+    defaults = {"username" : '',
+                "password" : '',
+                "target_service" : '',
+                "password_prompt" : "{}: Please provide the pass phrase or word: ",
+                "protocol_client" : "mpre.srp.SRP_Client",
+                "ip" : "localhost", 
+                "port" : 40022,
+                "auto_login" : True,
+                "logged_in" : False,
+                "session_id_size" : 256}
     
     parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
     

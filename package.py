@@ -19,16 +19,15 @@ def build_documentation_site(module):
     
 class Package(mpre.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
-                     "package_name" : None,
-                     "include_source" : True,
-                     "replace_reference_on_load" : False,
-                     "include_documentation" : False,
-                     "top_level_package" : '',
-                     "required_packages" : tuple(),
-                     "required_modules" : tuple(),
-                     "ignore_modules" : tuple()}) 
+    defaults = {"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
+                "package_name" : None,
+                "include_source" : True,
+                "replace_reference_on_load" : False,
+                "include_documentation" : False,
+                "top_level_package" : '',
+                "required_packages" : tuple(),
+                "required_modules" : tuple(),
+                "ignore_modules" : tuple()}
      
     def _get_subpackages(self):
         return [package for package in self.objects.get("Package", [])]
@@ -187,8 +186,7 @@ class Package(mpre.base.Base):
         
 class Documentation(mpre.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"top_level_package" : ''})
+    defaults = {"top_level_package" : ''}
     
     def __init__(self, _object, **kwargs):
         super(Documentation, self).__init__(**kwargs)    

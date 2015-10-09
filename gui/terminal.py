@@ -2,9 +2,8 @@ import mpre.gui.widgetlibrary
 
 class Prompt(mpre.gui.widgetlibrary.Text_Box):
     
-    defaults = mpre.gui.widgetlibrary.Text_Box.defaults.copy()
-    defaults.update({"pack_mode" : "bottom",
-                     "prompt" : ">>> "})
+    defaults = {"pack_mode" : "bottom",
+                "prompt" : ">>> "}
  
     def _set_text(self, value):
         if value and value[-1] == '\n':
@@ -14,10 +13,8 @@ class Prompt(mpre.gui.widgetlibrary.Text_Box):
     text = property(mpre.gui.widgetlibrary.Text_Box._get_text, _set_text)      
     
 
-class Terminal(mpre.gui.widgetlibrary.Application):
-    
-    defaults = mpre.gui.widgetlibrary.Application.defaults.copy()
-    
+class Terminal(mpre.gui.gui.Application):
+       
     def __init__(self, **kwargs):
         super(Terminal, self).__init__(**kwargs)
         self.create("mpre.gui.terminal.Prompt")

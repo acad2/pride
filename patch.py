@@ -5,8 +5,7 @@ import mpre.base
 
 class Module_Wrapper(mpre.base.Wrapper):
     
-    defaults = mpre.base.Wrapper.defaults.copy()
-    defaults.update({"module_name" : ''})
+    defaults = {"module_name" : ''}
     
     def __init__(self, **kwargs):
         super(Module_Wrapper, self).__init__(**kwargs)
@@ -16,9 +15,8 @@ class Module_Wrapper(mpre.base.Wrapper):
  
 class File_Logger(mpre.base.Wrapper):
     
-    defaults = mpre.base.Wrapper.defaults.copy()
-    defaults.update({"file" : None,
-                     "log_type" : "StringIO.StringIO"})
+    defaults = {"file" : None,
+                "log_type" : "StringIO.StringIO"}
     
     def __init__(self, **kwargs):
         super(File_Logger, self).__init__(**kwargs)
@@ -32,8 +30,7 @@ class File_Logger(mpre.base.Wrapper):
         
 class sys_Wrapper(Module_Wrapper):
             
-    defaults = Module_Wrapper.defaults.copy()
-    defaults.update({"module_name" : "sys"})
+    defaults = {"module_name" : "sys"}
     
     def _get_stdout(self):
         return self.wrapped_object.stdout

@@ -80,16 +80,15 @@ class Command_Line(mpre.vmlibrary.Process):
     
         Available programs can be modified via the add_program, remove_program,
         set_default_program, and get_program methods."""
-    defaults = mpre.vmlibrary.Process.defaults.copy()
-    defaults.update({"thread_started" : False,
-                     "write_prompt" : True,
-                     "prompt" : ">>> ",
-                     "programs" : None,
-                     "default_programs" : ("mpre.shell.Shell_Program", 
-                                           "mpre.shell.Switch_Program",
-                                           "mpre.shell.File_Explorer",
-                                           "mpre.programs.register.Registration"),
-                     "idle_threshold" : 10000})
+    defaults = {"thread_started" : False,
+                "write_prompt" : True,
+                "prompt" : ">>> ",
+                "programs" : None,
+                "default_programs" : ("mpre.shell.Shell_Program", 
+                                      "mpre.shell.Switch_Program",
+                                      "mpre.shell.File_Explorer",
+                                      "mpre.programs.register.Registration"),
+                "idle_threshold" : 10000}
                      
     def __init__(self, **kwargs):
         self.set_default_program(("Shell", "handle_input"), set_backup=True)
@@ -195,9 +194,8 @@ class Command_Line(mpre.vmlibrary.Process):
         
 class Program(mpre.base.Base):
             
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"set_as_default" : False,
-                     "name" : ''})
+    defaults = {"set_as_default" : False,
+                "name" : ''}
 
     def _get_name(self):
         return self._name or self.instance_name
@@ -229,9 +227,8 @@ class Program(mpre.base.Base):
         
 class Shell_Program(Program):
             
-    defaults = Program.defaults.copy()
-    defaults.update({"use_shell" : True,
-                     "name" : "shell"})
+    defaults = {"use_shell" : True,
+                "name" : "shell"}
                      
     def handle_input(self, input):
         mpre.utilities.shell(input, shell=self.use_shell)
@@ -239,8 +236,7 @@ class Shell_Program(Program):
     
 class Switch_Program(Program):
             
-    defaults = Program.defaults.copy()
-    defaults.update({"name" : "switch"})
+    defaults = {"name" : "switch"}
             
     def handle_input(self, input):
         command_line = mpre.objects["Command_Line"]
@@ -251,8 +247,7 @@ class Switch_Program(Program):
         
 class File_Explorer(Program):
     
-    defaults = Program.defaults.copy()
-    defaults.update({"name" : "file_explorer"})
+    defaults = {"name" : "file_explorer"}
     
     def listdir(self, directory_name='', mode='print'):
         directory_name = directory_name or '.'
@@ -275,11 +270,10 @@ class File_Explorer(Program):
             
 class Terminal_Screensaver(mpre.vmlibrary.Process):
     
-    defaults = mpre.vmlibrary.Process.defaults.copy()
-    defaults.update({"rate" : 3,
-                     "priority" : .08,
-                     "newline_scalar" : 1.5,
-                     "file_text" : ''})
+    defaults = {"rate" : 3,
+                "priority" : .08,
+                "newline_scalar" : 1.5,
+                "file_text" : ''}
     
     def __init__(self, **kwargs):
         super(Terminal_Screensaver, self).__init__(**kwargs)

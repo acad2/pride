@@ -41,10 +41,9 @@ class Process(mpre.base.Base):
         object presumes the desire for some kind of explicitly timed
         or periodic event."""
 
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"priority" : .04,
-                     "running" : True,
-                     "run_callback" : None})
+    defaults = {"priority" : .04,
+                "running" : True,
+                "run_callback" : None}
     parser_ignore = mpre.base.Base.parser_ignore + ("priority", "run_callback", )
 
     def __init__(self, **kwargs):
@@ -94,10 +93,9 @@ class Processor(Process):
         and any exception that could be raised inside the method call
         itself."""
         
-    defaults = Process.defaults.copy()
-    defaults.update({"running" : False,
-                     "execution_verbosity" : 'vvvv',
-                     "parse_args" : True})
+    defaults = {"running" : False,
+                "execution_verbosity" : 'vvvv',
+                "parse_args" : True}
 
     parser_ignore = Process.parser_ignore + ("running", )
     exit_on_help = False

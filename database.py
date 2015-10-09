@@ -21,11 +21,10 @@ class Database(mpre.base.Wrapper):
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
         
-    defaults = mpre.base.Wrapper.defaults.copy()
-    defaults.update({"database_name" : '',
-                     "connection" : None,
-                     "cursor" : None,
-                     "text_factory" : str})
+    defaults = {"database_name" : '',
+                "connection" : None,
+                "cursor" : None,
+                "text_factory" : str}
         
     wrapped_object_name = "connection"
     

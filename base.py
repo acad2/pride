@@ -139,7 +139,8 @@ class Base(object):
     
     # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
-        return mpre.environment.parents.get(self, mpre.environment.last_creator)
+        return mpre.environment.parents.get(self, 
+                                            mpre.environment.last_creator)     
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
@@ -412,8 +413,6 @@ class Proxy(Base):
        and if that object does not have the attribute or it cannot be
        assigned, the action is performed on the proxy instead. This
        prioritization is the opposite of the Wrapper class."""
-
-    defaults = Base.defaults.copy()
     
     wrapped_object_name = ''
     
@@ -427,17 +426,12 @@ class Proxy(Base):
             wraps(wrapped_object)
         super(Proxy, self).__init__(**kwargs)
 
-    def wraps(self, _object, set_defaults=False):
+    def wraps(self, _object):
         """ usage: wrapper.wraps(object)
             
             Makes the supplied object the object that is wrapped
-            by the calling wrapper. If the optional set_defaults
-            attribute is True, then the wrapped objects class
-            defaults will be applied."""
+            by the Proxy. """
         set_attr = super(Proxy, self).__setattr__
-        if set_defaults:
-            for attribute, value in self.defaults.items():
-                set_attr(attribute, value)
         set_attr("wrapped_object", _object)
         if self.wrapped_object_name:
             set_attr(self.wrapped_object_name, _object)
@@ -457,3 +451,41 @@ class Proxy(Base):
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:
             super_object.__setattr__(attribute, value)
+            
+            
+class Adapter(Base):
+    """ Modifies the interface of the wrapped object. Effectively supplies
+        the keys in the adaptations dictionary as attributes. The value 
+        associated with that key in the dictionary is the corresponding
+        attribute on the wrapped object that has the appropriate value. """
+    adaptations = {}
+    
+    wrapped_object_name = ''
+    
+    def __init__(self, **kwargs):
+        if "wrapped_object" in kwargs:
+            self.wraps(kwargs.pop("wrapped_object"))
+        super(Adapter, self).__init__(**kwargs)
+            
+    def wraps(self, _object):
+        self.wrapped_object = _object
+        if self.wrapped_object_name:
+            setattr(self, self.wrapped_object_name, _object)
+        
+    def __getattribute__(self, attribute):
+        get_attribute = super(Adapter, self).__getattribute__
+        _attribute = get_attribute("adaptations").get(attribute, None)
+        if _attribute is not None:
+            result = getattr(get_attribute("wrapped_object"), _attribute)
+        else:
+            result = get_attribute(attribute)
+        return result
+        
+    def __setattr__(self, attribute, value):
+        get_attribute = super(Adapter, self).__getattribute__
+        _attribute = get_attribute("adaptations").get(attribute, None)
+        if _attribute is not None:
+            setattr(self.wrapped_object, _attribute, value)
+        else:
+            super(Adapter, self).__setattr__(attribute, value)
+        

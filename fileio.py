@@ -7,6 +7,7 @@ import pprint
 import binascii
 import contextlib
 import shutil
+import platform
 
 import mpre    
 import mpre.vmlibrary as vmlibrary
@@ -110,6 +111,36 @@ class Cached(object):
         #self.handles[function][key] = handles[key]
                                 
         
+class File_Attributes(mpre.base.Adapter):
+    
+    adaptations = {"protection_bits" : "st_mode", "inode_number" : "st_ino",
+                   "number_of_hard_links" : "st_nlink", 
+                   "owner_user_id" : "st_uid", "owner_group_id" : "gid",
+                   "file_size" : "st_size", "last_accessed" : "st_atime",
+                   "last_modified" : "st_mtime", 
+                   "metadata_last_modified" : "st_ctime", # Unix
+                   "date_created" : "st_ctime"} # Windows
+                               
+    defaults = {"filename" : '',
+                "attributes" : ("protection_bits", "inode_number", "device",
+                                "number_of_hard_links", "owner_user_id", 
+                                "owner_group_id", "file_size", 
+                                "last_accessed", "last_modified",
+                                "metadata_last_modified", "time_created")} 
+    
+    if platform.system() == "Linux":
+        linux_adaptations = {"blocks_allocated" : "st_blocks", 
+                             "filesystem_block_size" : "st_blksize",
+                             "device_type" : "st_rdev", 
+                             "user_flags" : "st_flags"}  
+        adaptations.update(linux_adaptations)
+        defaults["attributes"] += tuple(linux_adaptations.keys())
+        
+    def __init__(self, **kwargs):
+        super(File_Attributes, self).__init__(**kwargs)
+        self.wraps(os.stat(self.filename))
+
+        
 class File(base.Wrapper):
     """ usage: File(path='', mode='', 
                     file=None, file_type='file', **kwargs) => file
@@ -123,11 +154,10 @@ class File(base.Wrapper):
         attribute. The default is a regular file, which will require
         an appropriate path and mode to be specified when initializing. """
         
-    defaults = base.Wrapper.defaults.copy()
-    defaults.update({"file" : None,
-                     "file_type" : "file",
-                     "mode" : "",
-                     "persistent" : True})
+    defaults = {"file" : None,
+                "file_type" : "file",
+                "mode" : "",
+                "persistent" : True}
     
     def __init__(self, path='', mode='', **kwargs):  
         super(File, self).__init__(**kwargs)
@@ -142,7 +172,9 @@ class File(base.Wrapper):
             else:
                 self.file = utilities.resolve_string(self.file_type)()             
         self.wraps(self.file)        
-            
+        self.properties = self.create("mpre.fileio.File_Attributes",
+                                      filename=path)
+                                      
     def __enter__(self):
         return self
         

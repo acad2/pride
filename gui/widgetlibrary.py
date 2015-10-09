@@ -51,7 +51,10 @@ class Method_Button(gui.Button):
                 "target" : ''}
                      
     def left_click(self, mouse):
-        instance = mpre.objects[self.target]   
+        try:
+            instance = self.target()
+        except TypeError:
+            instance = mpre.objects[self.target]  
         getattr(instance, self.method)(*self.args, **self.kwargs or {})     
                             
 
@@ -96,9 +99,9 @@ class Task_Bar(gui.Container):
                 pass
     pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
     
-    def __init__(self, **kwargs):        
-        super(Task_Bar, self).__init__(**kwargs)
+    def __init__(self, **kwargs):  
         parent_name = self.parent_name
+        super(Task_Bar, self).__init__(**kwargs)        
         self.create(Indicator, text=parent_name)
         self.create(Delete_Button, target=parent_name)
              
@@ -109,11 +112,10 @@ class Task_Bar(gui.Container):
         
 class Text_Box(gui.Container):
     
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"h" : 16,
-                     "pack_mode" : "horizontal",
-                     "allow_text_edit" : True,
-                     "editing" : False})             
+    defaults = {"h" : 16,
+                "pack_mode" : "horizontal",
+                "allow_text_edit" : True,
+                "editing" : False}
     
     def _get_editing(self):
         return self._editing
@@ -150,8 +152,7 @@ class Text_Box(gui.Container):
         
 class Date_Time_Button(gui.Button):
 
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal"})
+    defaults = {"pack_mode" : "horizontal"}
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
@@ -178,8 +179,7 @@ class Color_Palette(gui.Window):
                                     
 class Scroll_Bar(gui.Container):
                            
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_mode" : "right"})
+    defaults = {"pack_mode" : "right"}
     
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
@@ -197,23 +197,20 @@ class Scroll_Bar(gui.Container):
         
 class Decrement_Button(Attribute_Modifier_Button):
       
-    defaults = Attribute_Modifier_Button.defaults.copy()
-    defaults.update({"amount" : 10,
-                     "method" : "__sub__"})                 
+    defaults = {"amount" : 10,
+                "method" : "__sub__"}
         
         
 class Increment_Button(Attribute_Modifier_Button):
                 
-    defaults = Attribute_Modifier_Button.defaults.copy()
-    defaults.update({"amount" : 10,
-                     "method" : "__add__"}) 
+    defaults = {"amount" : 10,
+                "method" : "__add__"}
                     
                     
 class Scroll_Indicator(gui.Button):
             
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"movable" : True,
-                     "text" : ''})
+    defaults = {"movable" : True,
+                "text" : ''}
                 
     def pack(self, modifiers=None):
         if self.pack_mode in ("right", "horizontal"):
@@ -232,11 +229,10 @@ class Scroll_Indicator(gui.Button):
         
 class Indicator(gui.Button):  
     
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "h" : 16,
-                     "line_color" : (255, 235, 155),
-                     "text" : ''})    
+    defaults = {"pack_mode" : "horizontal",
+                "h" : 16,
+                "line_color" : (255, 235, 155),
+                "text" : ''}
     
     def __init__(self, **kwargs):
         super(Indicator, self).__init__(**kwargs)        
@@ -248,12 +244,6 @@ class Indicator(gui.Button):
         
         self.draw("text", self.area, self.text, color=self.text_color, width=self.w)    
         
-        
-class Application(gui.Window):
-    
-    defaults = gui.Window.defaults.copy()
-    defaults.update({"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )})
-
 
 class Done_Button(gui.Button):
         
@@ -261,11 +251,10 @@ class Done_Button(gui.Button):
         getattr(mpre.objects[self.callback_owner], self.callback)()        
         
         
-class Prompt(Application):
+class Prompt(gui.Application):
         
-    defaults = Application.defaults.copy()
-    defaults.update({"callback_owner" : '',
-                     "callback" : ''})
+    defaults = {"callback_owner" : '',
+                "callback" : ''}
                      
     def __init__(self, **kwargs):
         super(Application, self).__init__(**kwargs)
@@ -276,4 +265,6 @@ class Prompt(Application):
    
     def handle_input(self, user_input):
         getattr(mpre.objects[self.callback_owner], self.callback)(user_input)
+        
+        
         

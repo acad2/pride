@@ -68,10 +68,9 @@ k = _hash_function(N, g)
 
 class Secure_Remote_Password(mpre.base.Base):
     """ Provides the server side for the secure remote password protocol. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({'N' : N,
-                     'g' : g,
-                     "hash_function" : None})     
+    defaults = {'N' : N,
+                'g' : g,
+                "hash_function" : None}
     
     def _get_hash_function(self):
         return self._hash_function or _hash_function
@@ -161,13 +160,12 @@ class Secure_Remote_Password(mpre.base.Base):
         
 class SRP_Client(mpre.base.Base):
     """ Provides the client side of the secure remote password protocol. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"username" : "",
-                     "password" : '',
-                     "thread" : None,
-                     "hash_function" : None,
-                     'N' : N,
-                     'g' : g})
+    defaults = {"username" : "",
+                "password" : '',
+                "thread" : None,
+                "hash_function" : None,
+                'N' : N,
+                'g' : g}
     
     def _get_hash_function(self):
         return self._hash_function or _hash_function
