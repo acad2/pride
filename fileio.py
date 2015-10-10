@@ -8,6 +8,7 @@ import binascii
 import contextlib
 import shutil
 import platform
+import time
 
 import mpre    
 import mpre.vmlibrary as vmlibrary
@@ -109,17 +110,17 @@ class Cached(object):
         else:
             print "references remaining for", key
         #self.handles[function][key] = handles[key]
-                                
-        
+                                                   
+                   
 class File_Attributes(mpre.base.Adapter):
     
     adaptations = {"protection_bits" : "st_mode", "inode_number" : "st_ino",
                    "number_of_hard_links" : "st_nlink", 
                    "owner_user_id" : "st_uid", "owner_group_id" : "gid",
-                   "file_size" : "st_size", "last_accessed" : "st_atime",
-                   "last_modified" : "st_mtime", 
-                   "metadata_last_modified" : "st_ctime", # Unix
-                   "date_created" : "st_ctime"} # Windows
+                   "file_size" : "st_size"}# "last_accessed" : "st_atime",
+                  # "last_modified" : "st_mtime", 
+                  # "metadata_last_modified" : "st_ctime", # Unix
+                  # "date_created" : "st_ctime"} # Windows
                                
     defaults = {"filename" : '',
                 "attributes" : ("protection_bits", "inode_number", "device",
@@ -136,6 +137,24 @@ class File_Attributes(mpre.base.Adapter):
         adaptations.update(linux_adaptations)
         defaults["attributes"] += tuple(linux_adaptations.keys())
         
+    def _get_last_accessed(self):
+        return time.asctime(time.localtime(self.wrapped_object.st_atime))
+    last_accessed = property(_get_last_accessed)
+    
+    def _get_last_modified(self):
+        return time.asctime(time.localtime(self.wrapped_object.st_mtime))
+    last_modified = property(_get_last_modified)
+    
+    def _get_metadata_last_modified(self):
+        assert platform.system() == "Linux"
+        return time.asctime(time.localtime(self.wrapped_object.st_ctime))
+    metadata_last_modified = property(_get_metadata_last_modified)
+    
+    def _get_date_created(self):
+        assert platform.system() == "Windows"
+        return time.asctime(time.localtime(self.wrapped_object.st_ctime))
+    date_created = property(_get_date_created)
+    
     def __init__(self, **kwargs):
         super(File_Attributes, self).__init__(**kwargs)
         self.wraps(os.stat(self.filename))
