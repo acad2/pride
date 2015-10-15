@@ -6,7 +6,7 @@ class File_Explorer(mpre.gui.gui.Application):
         super(File_Explorer, self).__init__(**kwargs)
         self.create(Navigation_Bar)
         self.create(Info_Bar, pack_mode="bottom")
-        self.create(Directory_Viewer)        
+      #  self.create(Directory_Viewer)        
         
 
 class Navigation_Bar(mpre.gui.gui.Container):

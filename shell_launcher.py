@@ -96,7 +96,7 @@ def update(instance_name):
 import mpre.gui
 mpre.gui.enable()
 #$SDL_Window.create("mpre.gui.cyvasse.Cyvasse")
-$SDL_Window.create("mpre.gui.fileexplorer.File_Explorer")
+#$SDL_Window.create("mpre.gui.fileexplorer.File_Explorer")
 #objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
 #objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
 #$SDL_Window.create("mpre.gui.terminal.Terminal")

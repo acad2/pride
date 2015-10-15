@@ -195,3 +195,12 @@ class Compiled(object):
             if key in argument_types and type(arg) != argument_types[key]:
                 # create a new compiled function with this altered signature
                                                 
+                                                
+                                                
+class Time_Adapter(mpre.base.Adapter):
+        
+    adaptations = {"year" : "tm_year", "month" : "tm_mon", 
+                   "day_of_month" : "tm_mday", "hour" : "tm_hour", 
+                   "minute" : "tm_min", "second" : "tm_sec", 
+                   "day_of_week" : "tm_wday", "day_of_year" : "tm_yday",
+                   "daylight_savings_time" : "tm_isdst"}                                                

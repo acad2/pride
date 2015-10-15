@@ -323,14 +323,14 @@ class Socket(base.Wrapper):
         #self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
-        peername = self.peername = self.getpeername()
-        sockname = self.sockname = self.getsockname()
+        self.peername = self.getpeername()
+        self.sockname = self.getsockname()
         self.alert("Connected", level='v')
                 
     def delete(self):
         if not self.closed:
             self.close()        
-        del _local_data[self]
+        #del _local_data[self]
         super(Socket, self).delete()
     
     def close(self):
