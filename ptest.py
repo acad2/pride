@@ -22,8 +22,14 @@ def printable_hash(object, output_size=20):
         result.extend((item for item in new_values if item in allowed_characters))
     return ''.join(result[:output_size])
     
+def get_arg_count(function):
+    try:
+        func_code = function.im_func.func_code
+    except AttributeError:
+        func_code = function.func_code
+    return len(inspect.getargs(func_code).args)    
     
-def run_functions(function_arguments):
+def run_functions(function_arguments): # just a test function
 
     # unpack arguments
     whatever_arg1, whatever_testing, whatever_kwargs = function_arguments.pop(0)
@@ -35,13 +41,9 @@ def run_functions(function_arguments):
         print "This is a test branch"
         if False:
             print "This won't happen"
-    
-def find_token_indices(token, string):
-    return [m.span() for m in re.finditer(r'\b' + token + r'\b', string)]
-    
+
 def indent_lines(string, amount=1, spacing="    "):
-    file_like_object = StringIO.StringIO(string)
-    return ''.join(spacing + line for line in file_like_object.readlines())      
+    return '\n'.join(spacing * amount + line for line in string.split('\n'))     
            
 def inline_function_source(method, method_name, component=''):
     full_name = ''.join((component, '_', method_name))
@@ -63,58 +65,108 @@ def inline_function_source(method, method_name, component=''):
         method_source = mpre.importers.Parser.replace_symbol(name, method_source, new_name)               
  
     method_source = mpre.importers.Parser.replace_symbol('return', method_source, 
-                          "$Processor._return['{}'] =".format(full_name)) 
-    return method_source
+                          "$Preemptive_Multiprocessor._return['{}'] =".format(full_name)) 
+    return method_source            
             
+            
+class Preemptive_Multiprocessor(mpre.base.Base):
     
-class Thread(object):
+    def __init__(self, **kwargs):
+        self.threads = []
+        self._combination_cache, self._return = {}, {}
+        super(Preemptive_Multiprocessor, self).__init__(**kwargs)
         
-    def __init__(self, *args):
-        callbacks = self.callbacks = {}
-        source = []
-        new_function_name = printable_hash(args)
-        header = "def function_{}(".format(new_function_name)
-        # create inlined function with function named prefixed to variable names
+    def run(self):
+        threads = tuple((item[0] for item in self.threads))
         arguments = []
-        last_index = len(args) - 1
-        for count, instruction in enumerate(args):
-            component = '' #instruction.component
-            method_name = instruction.__name__ #instruction.method
-            method = instruction #getattr(mpre.objects[component], method)
-         #   callbacks[(component, method_name)] = instruction.callback
-            source.append(inline_function_source(method, method_name, component))
-            _header = mpre.utilities.function_header(method)[1:-1] # remove the ( )
-            __header = []
-            prefix = component + '_' + method_name + '_'
-            for argument_name in _header.split():
-                if argument_name[0] == '*':
-                    if argument_name[1] == '*':
-                        argument_name = '**' + prefix + argument_name[2:]
+        for _, args in self.threads:
+            arguments.extend(args)
+        new_function_name = printable_hash(threads)
+        header = "def function_{}(".format(new_function_name)
+        source = []
+        if threads not in self._combination_cache:
+            last_index = len(threads) - 1
+            for count, _thread in enumerate(threads):
+                source.append(_thread.source)
+                _header = mpre.utilities.function_header(_thread.method)[1:-1] # remove the ( )
+                __header = []                
+                prefix = _thread.component_name + '_' + _thread.method_name + '_'
+                for argument_name in _header.split():
+                    if argument_name[0] == '*':
+                        if argument_name[1] == '*':
+                            argument_name = prefix + argument_name[2:]
+                        else:
+                            argument_name = prefix + argument_name[1:]
                     else:
-                        argument_name = '*' + prefix + argument_name[1:]
-                else:
-                    argument_name = prefix + argument_name
-                __header.append(argument_name)
-            header += ' '.join(__header)
-            if count != last_index:
-                header += ', '
+                        argument_name = prefix + argument_name
+                    __header.append(argument_name)
+                header += ' '.join(__header)
+                if count != last_index:
+                    header += ', '
             
-        header += '):'
-        source.insert(0, header)
-        source.append("\n    return locals()")
-        print '\n'.join(source)
-        code = mpre.compiler.compile('\n'.join(source), new_function_name)
-        context = {}
-        exec code in context, context
-        print context.keys()
-        self._function = context["function_" + new_function_name]
+            header += '):'        
+        #    print header
+            source.insert(0, header)
+            source.append("\n    return locals()")
+            context = globals().copy()
+            code = mpre.compiler.compile('\n'.join(source), "<string>")
+            exec code in context, context
+            function = self._combination_cache[threads] = context["function_" + new_function_name]
+        else:
+            function = self._combination_cache[threads]
+        print function, mpre.utilities.function_header(function)
+        print arguments
+        function(*arguments)
         
-    def _return(function_name, *args):
-        self.callbacks[function_name](*args)
+    
+class Thread(mpre.base.Base):
         
+    defaults = {"component_name" : '', "method_name" : '', "callback" : None,
+                "source" : ''}
+    
+  # def __new__(cls, *args, **kwargs):
+  #     try:
+  #         method = kwargs["method"]
+  #     except:
+  #         method_name = kwargs["method_name"]
+  #         component = mpre.objects[kwargs["component_name"]]
+  #         method = getattr(component, method_name)
+  #     header = mpre.utilities.function_header(method)
+  #     _source = "def " + method.__name__ + header + ':'
+        
+    def __init__(self, **kwargs):
+        super(Thread, self).__init__(**kwargs)
+        component_name, method_name = self.component_name, self.method_name
+        if not self.method:            
+            self.method = getattr(mpre.objects[component_name], method_name)
+        self.source = inline_function_source(self.method, method_name, component_name)
+        self.arg_count = get_arg_count(self.method)
+        
+    def __call__(self, *args, **kwargs):
+        _arguments, _args = args[:self.arg_count], args[self.arg_count:]
+        if _args:
+            if kwargs:
+                packed_args = _arguments + (_args, kwargs)
+            else:
+                packed_args = _arguments + (_args, )
+        elif _arguments:
+            if kwargs:
+                packed_args = _arguments + (kwargs, )
+            else:
+                packed_args = _arguments
+        elif kwargs:
+            packed_args = (kwargs, )
+        else:
+            packed_args = tuple()        
+        mpre.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))
         
 if __name__ == "__main__":
     def test(testing, idek=True, *args, **kwargs):
+        print "Inside test :)"
         return None
-    thread = Thread(run_functions, test)
-    print thread._function([(1, 2, 3)], 1, 1)
+    thread = Thread(method=test)
+    thread2 = Thread(method=run_functions)
+    p = Preemptive_Multiprocessor()
+    thread(1, False, 2, 3, 4, 5, woo="hooray")
+    thread2([(1, 2, 3)])
+    p.run()
