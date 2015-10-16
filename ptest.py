@@ -59,19 +59,21 @@ def inline_function_source(method, method_name, component=''):
     for name in argument_names:
         new_name = full_name + '_' + name
         declaration = "{} = {}_namespace.{}".format(new_name, full_name, name)
+        #print "Replacing {} with {}".format(name, new_name)
         method_source = mpre.importers.Parser.replace_symbol(name, method_source, new_name)               
  
     method_source = mpre.importers.Parser.replace_symbol('return', method_source, 
-                          "Processor._return['{}'] =".format(full_name)) 
+                          "$Processor._return['{}'] =".format(full_name)) 
     return method_source
             
     
-class Preemptive_Instruction(object):
+class Thread(object):
         
     def __init__(self, *args):
         callbacks = self.callbacks = {}
         source = []
-        header = "def function_{}(".format(printable_hash(args))
+        new_function_name = printable_hash(args)
+        header = "def function_{}(".format(new_function_name)
         # create inlined function with function named prefixed to variable names
         arguments = []
         last_index = len(args) - 1
@@ -81,7 +83,19 @@ class Preemptive_Instruction(object):
             method = instruction #getattr(mpre.objects[component], method)
          #   callbacks[(component, method_name)] = instruction.callback
             source.append(inline_function_source(method, method_name, component))
-            header += mpre.utilities.function_header(method)[1:-1] # remove ( )
+            _header = mpre.utilities.function_header(method)[1:-1] # remove the ( )
+            __header = []
+            prefix = component + '_' + method_name + '_'
+            for argument_name in _header.split():
+                if argument_name[0] == '*':
+                    if argument_name[1] == '*':
+                        argument_name = '**' + prefix + argument_name[2:]
+                    else:
+                        argument_name = '*' + prefix + argument_name[1:]
+                else:
+                    argument_name = prefix + argument_name
+                __header.append(argument_name)
+            header += ' '.join(__header)
             if count != last_index:
                 header += ', '
             
@@ -89,7 +103,11 @@ class Preemptive_Instruction(object):
         source.insert(0, header)
         source.append("\n    return locals()")
         print '\n'.join(source)
-        code = compile('\n'.join(source), 'auto_threader', "exec")
+        code = mpre.compiler.compile('\n'.join(source), new_function_name)
+        context = {}
+        exec code in context, context
+        print context.keys()
+        self._function = context["function_" + new_function_name]
         
     def _return(function_name, *args):
         self.callbacks[function_name](*args)
@@ -98,4 +116,5 @@ class Preemptive_Instruction(object):
 if __name__ == "__main__":
     def test(testing, idek=True, *args, **kwargs):
         return None
-    instruction = Preemptive_Instruction(run_functions, test)
+    thread = Thread(run_functions, test)
+    print thread._function([(1, 2, 3)], 1, 1)

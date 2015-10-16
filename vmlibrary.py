@@ -101,6 +101,7 @@ class Processor(Process):
     exit_on_help = False
             
     def run(self):
+        self._return = {}
         instructions = mpre.environment.Instructions
         objects = mpre.objects
                 

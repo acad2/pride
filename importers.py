@@ -124,6 +124,7 @@ class Parser(object):
         indices = []
         symbol_size = len(symbol)
         source_index = 0
+  #      print "Trying to find: {} in source".format(symbol)
         while symbol in source[source_index:]:          
             start = source.index(symbol, source_index)
             for string_range in strings:
@@ -134,24 +135,30 @@ class Parser(object):
                 end = start + symbol_size
              #   print start-1, end, end-start, len(source), symbol, source
                 if start - 1 > 0 and source[start-1] in delimiters:
+                    quantity -= 1
                     indices.append((start, end))
-         #       print "Found an unquoted {} at {}".format(symbol, indices[-1])
-                source_index += end
-                quantity -= 1
+                 #   print source[start-1], source[start-1] in delimiters, "Found an unquoted {} at {}".format(symbol, indices[-1])
+                else:
+                  #  print "Symbol is not the start of a word", source[start-1:end], source
+                    source_index
+                source_index += end                
                 if not quantity:
                     break
+        #    print "Incrementing index by {} to {}".format(end, source_index)
         return indices
         
     @staticmethod
     def replace_symbol(symbol, source, replacement):
         delimiters = ['.', ' ', '\t', '(', ')', '\n', ',', '[', ']', '{', '}', ':']
-        #print "Replacing {} with {}".format(symbol, replacement)
+    #    print "Replacing {} with {}".format(symbol, replacement)
+        _count = 0
         while symbol in source:
             slice_information = Parser.find_symbol(symbol, source, 1)
             if not slice_information: # last symbol in source was in a string
+                #print "last symbol in source was a string", slice_information
                 break
             symbol_start, _end = slice_information[0]
-     #       print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end
+      #      print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start:]):
                 if character in delimiters:
                     delimiter = delimiters[delimiters.index(character)]
@@ -162,8 +169,9 @@ class Parser(object):
       #      print symbol_start + 1, symbol_start + end_index, replaced
             source = ''.join((source[:symbol_start], replaced,
                               source[symbol_start + 1 + len(name):]))
-        #    if "Processor._return" in source:
-        #        break
+            _count += 1
+      #  assert symbol not in source, source
+    
       #  print "Created replacement source: ", source
         return source 
         
