@@ -239,7 +239,7 @@ class Audio_Manager(base.Base):
                     devices=self.devices)
         
         if exit_when_finished:
-            Instruction("Metapython", "exit").execute()
+            Instruction("Python", "exit").execute()
         
     def load_api(self):
         if "linux" in sys.platform:

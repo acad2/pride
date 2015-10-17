@@ -65,7 +65,7 @@ class Version_Manager(mpre.base.Base):
 options = {"name" : "mpre",
            "version" : "5.9.43",
            "description" : "A dynamic runtime environment with a simple concurrency model",
-           "url" : "https://github.com/erose1337/Metapython",
+           "url" : "https://github.com/erose1337/pride",
            "author" : "Ella Rose",
            "author_email" : "erose1337@hotmail.com",
            "packages" : ["mpre", "mpre.audio", "mpre.gui", "mpre.programs"]}

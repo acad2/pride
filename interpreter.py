@@ -186,7 +186,7 @@ class Interpreter(authentication.Authenticated_Service):
         log.flush()        
         return result
                              
-class Metapython(base.Base):
+class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
         starts the execution of the Processor component."""
@@ -200,12 +200,12 @@ class Metapython(base.Base):
                                         "mpre.network.Network", 
                                         "mpre.shell.Command_Line",
                                         "mpre.srp.Secure_Remote_Password",
-                                        "mpre._metapython.Interpreter",
+                                        "mpre.interpreter.Interpreter",
                                         "mpre.rpc.Rpc_Server"),
                 "interpreter_enabled" : True,
                 "rpc_enabled" : True,
                 "startup_definitions" : '',
-                "interpreter_type" : "mpre._metapython.Interpreter"}
+                "interpreter_type" : "mpre.interpreter.Interpreter"}
                      
     parser_ignore = base.Base.parser_ignore + ("environment_setup",
                                                "traceback", 
@@ -222,7 +222,7 @@ class Metapython(base.Base):
     exit_on_help = False
 
     def __init__(self, **kwargs):
-        super(Metapython, self).__init__(**kwargs)
+        super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
         
         if self.startup_definitions:
@@ -248,8 +248,8 @@ class Metapython(base.Base):
             globals()["__name__"] = backup
              
     def setup_os_environ(self):
-        """ This method is called automatically in Metapython.__init__; os.environ can
-            be customized on startup via modifying Metapython.defaults["environment_setup"].
+        """ This method is called automatically in Python.__init__; os.environ can
+            be customized on startup via modifying Python.defaults["environment_setup"].
             This can be useful for modifying system path only for the duration of the applications run time."""
         modes = {"=" : "equals",
                  "+=" : "__add__", # append strings or add ints

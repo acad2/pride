@@ -34,7 +34,7 @@ def save(instance_name, _file=None):
     return objects[instance_name].save(_file=None)
     
 def create(instance_type, *args, **kwargs):
-    return objects["Metapython"].create(instance_type, *args, **kwargs)
+    return objects["Python"].create(instance_type, *args, **kwargs)
 
 def delete(instance_name):
     objects[instance_name].delete()
@@ -59,9 +59,9 @@ def update(instance_name):
 #import mpre.package
 #p = mpre.package.Package(mpre)
 
-#update("Metapython")
-#update("Metapython")
-#x = objects["Metapython"].save()
+#update("Python")
+#update("Python")
+#x = objects["Python"].save()
 #y = mpre.base.Base.load(x) # calls .on_load automatically
 
 #z = s(constructor)
@@ -73,8 +73,8 @@ def update(instance_name):
 #ssl_server = create("mpre.networkssl.SSL_Server")
 #ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
 
-#objects["Metapython"].create("mpre.voip.Message_Server")
-#client = objects["Metapython"].create("mpre.voip.Message_Client", username="test", auto_login=False)
+#objects["Python"].create("mpre.voip.Message_Server")
+#client = objects["Python"].create("mpre.voip.Message_Client", username="test", auto_login=False)
 
 #import mpre.gui
 #mpre.gui.enable()
@@ -87,8 +87,8 @@ def update(instance_name):
 #    x = create("mpre.shell.Command_Line")
 #    x.delete()
     
-#import mpre._metapython
-#m = mpre._metapython.Metapython()
+#import mpre.interpreter
+#m = mpre.interpreter.Python()
 #s = m.save()
 #import mpre.base
 #l = mpre.base.load(s) 
@@ -111,16 +111,16 @@ mpre.gui.enable()
 
 #import json
 #from jsontest import *
-#s = json.dumps($Metapython, cls=Base_Encoder)
+#s = json.dumps($Python, cls=Base_Encoder)
 
 #from rnltest import relative_name_lookup
-#server = relative_name_lookup("Metapython.Network.Rpc_Server")  
+#server = relative_name_lookup("Python.Network.Rpc_Server")  
 #import objgraph
-#objgraph.show_refs([$Metapython])
+#objgraph.show_refs([$Python])
 
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    objects["Metapython"].create("mpre._metapython.Shell", **options)
+    objects["Python"].create("mpre.interpreter.Shell", **options)

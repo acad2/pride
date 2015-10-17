@@ -24,4 +24,4 @@ class Self_Signed_Certificate(mpre.base.Base):
         
 if __name__ == "__main__":
     certificate = Self_Signed_Certificate(parse_args=True)    
-    Instruction("Metapython", "exit").execute()
+    Instruction("Python", "exit").execute()

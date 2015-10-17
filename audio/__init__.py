@@ -7,7 +7,7 @@ def enable():
     """ Creates an instance of mpre.audio.audiolibrary.Audio_Manager if
         one does not already exist. """
     if "Audio_Manager" not in mpre.environment.objects:
-        mpre.Instruction("Metapython", "create", 
+        mpre.Instruction("Python", "create", 
                          "mpre.audio.audiolibrary.Audio_Manager").execute()
                     
 if "Linux" == platform.system():

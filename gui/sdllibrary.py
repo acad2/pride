@@ -29,7 +29,7 @@ class SDL_Window(SDL_Component):
                 'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
                 'w' : mpre.gui.SCREEN_SIZE[0], 'h' : mpre.gui.SCREEN_SIZE[1],
                 "area" : (0, 0) + mpre.gui.SCREEN_SIZE, "priority" : .04,
-                "name" : "Metapython",
+                "name" : "Python",
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
     

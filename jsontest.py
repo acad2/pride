@@ -67,7 +67,7 @@ def base_decoder(loaded_json):
     return instance
     
 if __name__ == "__main__":
-    import mpre._metapython
-    m = mpre._metapython.Metapython()
+    import mpre.interpreter
+    m = mpre.interpreter.Python()
     s = json.dumps(m, cls=Base_Encoder)
     base_decoder(json.loads(s))

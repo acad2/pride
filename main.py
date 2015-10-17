@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-""" Launcher script for the Metapython runtime environment. This script starts
+""" Launcher script for the Python runtime environment. This script starts
     a metapython session, and the first positional argument supplied is
     interpreted as the filepath of the python script to execute. ."""
 from __future__ import unicode_literals
 import traceback
-import mpre._metapython
-Shell = mpre._metapython.Shell
+import mpre.interpreter
+Shell = mpre.interpreter.Shell
 
 if __name__ == "__main__":
-    metapython = mpre._metapython.Metapython(parse_args=True)
+    metapython = mpre.interpreter.Python(parse_args=True)
     metapython.start_machine()
     #while True:
     #    try:

@@ -13,8 +13,8 @@ reference types - different ways of referencing
     instance and so forth. 
     
     An important point to consider is how instance numbers are calculated. 
-    For example, the string "Metapython.Network.Socket4" will go to the 
-    Metapython object, go to the Network key, and get the 0th object from 
+    For example, the string "Python.Network.Socket4" will go to the 
+    Python object, go to the Network key, and get the 0th object from 
     that container. Next it goes to Network.objects and the Socket key and
     gets the object at the 4th index in the container. This socket is not
     necessarily the owner of the instance name Socket4; It was just the 

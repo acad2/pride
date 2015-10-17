@@ -208,4 +208,4 @@ class Ca_Test3(mpre.vmlibrary.Process):
 
                 
 if __name__ == "__main__":
-    mpre.Instruction("Metapython", "create", Ca_Test2).execute()
+    mpre.Instruction("Python", "create", Ca_Test2).execute()

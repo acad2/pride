@@ -1,6 +1,6 @@
 import mpre
 
-# relative instance name lookup. i.e. "Metapython.Network.Rpc_Server"
+# relative instance name lookup. i.e. "Python.Network.Rpc_Server"
 def relative_name_lookup(relative_name):
     instances = relative_name.split('.')
     _instance = mpre.objects[instances.pop(0)]
