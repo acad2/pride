@@ -3,9 +3,9 @@ import pickle
 import importlib
 import hmac
 
-import mpre.module_utilities
-from mpre.errors import CorruptPickleError
-create_module = mpre.module_utilities.create_module
+import pride.module_utilities
+from pride.errors import CorruptPickleError
+create_module = pride.module_utilities.create_module
 
 ASCIIKEY = ''.join(chr(x) for x in xrange(256))#os.urandom(512)
 

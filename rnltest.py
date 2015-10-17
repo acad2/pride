@@ -1,9 +1,9 @@
-import mpre
+import pride
 
 # relative instance name lookup. i.e. "Python.Network.Rpc_Server"
 def relative_name_lookup(relative_name):
     instances = relative_name.split('.')
-    _instance = mpre.objects[instances.pop(0)]
+    _instance = pride.objects[instances.pop(0)]
     numbers = ''.join(str(x) for x in xrange(10))
     while instances:
         instance_type = instances.pop(0)

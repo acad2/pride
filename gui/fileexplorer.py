@@ -1,6 +1,6 @@
-import mpre.gui.gui
+import pride.gui.gui
 
-class File_Explorer(mpre.gui.gui.Application):
+class File_Explorer(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
         super(File_Explorer, self).__init__(**kwargs)
@@ -9,7 +9,7 @@ class File_Explorer(mpre.gui.gui.Application):
       #  self.create(Directory_Viewer)        
         
 
-class Navigation_Bar(mpre.gui.gui.Container):
+class Navigation_Bar(pride.gui.gui.Container):
             
     defaults = {"pack_mode" : "menu_bar"}
     
@@ -22,7 +22,7 @@ class Navigation_Bar(mpre.gui.gui.Container):
         #self.create(Search_Bar)
         
         
-class Places_Bar(mpre.gui.gui.Container):
+class Places_Bar(pride.gui.gui.Container):
             
     defaults = {"pack_mode" : "left"}
     
@@ -32,7 +32,7 @@ class Places_Bar(mpre.gui.gui.Container):
         #self.create(Remote_Host_Dropdown)
         
 
-class Info_Bar(mpre.gui.gui.Container):
+class Info_Bar(pride.gui.gui.Container):
             
     defaults = {"pack_mode" : "bottom"}
     
@@ -43,14 +43,14 @@ class Info_Bar(mpre.gui.gui.Container):
         #self.create(File_Size_Indicator)
         
         
-class Directory_Viewer(mpre.gui.gui.Window):
+class Directory_Viewer(pride.gui.gui.Window):
         
     def __init__(self, **kwargs):
         super(Directory_Viewer, self).__init__(**kwargs)
         self.create(Places_Bar)
         self.create(Column_Viewer)
         #for attribute in self.display_attributes:
-        #    container = self.create("mpre.gui.gui.Container", 
+        #    container = self.create("pride.gui.gui.Container", 
         #                            pack_mode="vertical")
         #    container.create(Sort_Button, text=attribute, pack_mode="top")
         #    container.create(Indicator, 
@@ -58,7 +58,7 @@ class Directory_Viewer(mpre.gui.gui.Window):
         #    self.create(Directory_Listing
     
     
-class Column_Viewer(mpre.gui.gui.Window):
+class Column_Viewer(pride.gui.gui.Window):
         
     defaults = {"default_columns" : ("Type", "Name", "Size", 
                                      "Date_Created", "Date_Modified"),
@@ -67,6 +67,6 @@ class Column_Viewer(mpre.gui.gui.Window):
     def __init__(self, **kwargs):
         super(Column_Viewer, self).__init__(**kwargs)
         for column_name in self.default_columns:
-            container = self.create("mpre.gui.gui.Container")
+            container = self.create("pride.gui.gui.Container")
           #  container.create(Sort_Button, value=column_name)
            # for 

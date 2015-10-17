@@ -1,9 +1,9 @@
 import sys
 import importlib
 
-import mpre.base
+import pride.base
 
-class Module_Wrapper(mpre.base.Wrapper):
+class Module_Wrapper(pride.base.Wrapper):
     
     defaults = {"module_name" : ''}
     
@@ -13,7 +13,7 @@ class Module_Wrapper(mpre.base.Wrapper):
         sys.modules[self.module_name] = self
         
  
-class File_Logger(mpre.base.Wrapper):
+class File_Logger(pride.base.Wrapper):
     
     defaults = {"file" : None,
                 "log_type" : "StringIO.StringIO"}

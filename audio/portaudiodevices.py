@@ -11,13 +11,13 @@ from ctypes import *
 
 import pyaudio
 
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.audio.audiolibrary as audiolibrary
-from mpre.utilities import Latency
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.audio.audiolibrary as audiolibrary
+from pride.utilities import Latency
+Instruction = pride.Instruction
+objects = pride.objects
 
 @contextmanager
 def _alsa_errors_suppressed():
@@ -112,8 +112,8 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         super(Audio_Device, self).__init__(**kwargs)
         
-     #   import mpre.utilities
-       # self.latency = mpre.utilities.Latency("audio input")
+     #   import pride.utilities
+       # self.latency = pride.utilities.Latency("audio input")
         
     def open_stream(self):
         return PORTAUDIO.open(**self.options)

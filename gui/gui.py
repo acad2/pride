@@ -1,11 +1,11 @@
 from math import floor, sqrt, ceil
 
-import mpre
-import mpre.base as base
-import mpre.gui
-import mpre.gui.shapes
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.gui
+import pride.gui.shapes
+Instruction = pride.Instruction
+objects = pride.objects
 
 import sdl2
 import sdl2.ext
@@ -37,7 +37,7 @@ class Organizer(base.Base):
             del self.pack_modes[instance]
             del self._pack_index[instance]  
             
-        parent = mpre.objects[instance].parent.instance_name
+        parent = pride.objects[instance].parent.instance_name
         old_pack_mode = self.pack_modes.get(instance, '')
         if old_pack_mode:
             self._pack_modes[parent][old_pack_mode].remove(instance)
@@ -120,18 +120,18 @@ class Organizer(base.Base):
         self.pack_vertical(parent, item, count, length)
                 
     def pack_drop_down_menu(self, parent, item, count, length): 
-        SCREEN_SIZE = mpre.gui.SCREEN_SIZE
+        SCREEN_SIZE = pride.gui.SCREEN_SIZE
         item.area = (parent.x, parent.y + parent.h,
                      SCREEN_SIZE[0] / 5, min(120, SCREEN_SIZE[1] / length))
         item.z = parent.z + 1
         
         
         
-class Window_Object(mpre.gui.shapes.Bounded_Shape):
+class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0,
-                'size' : mpre.gui.SCREEN_SIZE,
-                "texture_size" : mpre.gui.SCREEN_SIZE,
+                'size' : pride.gui.SCREEN_SIZE,
+                "texture_size" : pride.gui.SCREEN_SIZE,
                 "background_color" : (25, 125, 225, 125),
                 "color" : (25, 235, 235, 255), "text_color" : (145, 165, 235),
                 "held" : False, "allow_text_edit" : False,
@@ -158,7 +158,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
     def _set_z(self, value):
         objects["SDL_Window"].set_layer(self, value)
         super(Window_Object, self)._set_z(value)
-    z = property(mpre.gui.shapes.Bounded_Shape._get_z, _set_z)
+    z = property(pride.gui.shapes.Bounded_Shape._get_z, _set_z)
     
     def _get_text(self):
         return self._text
@@ -231,10 +231,10 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
         self._layer_index = 0        
         self._texture_window_x = self._texture_window_y = 0
         self._glow_modifier = 20
-        max_w, max_h = mpre.gui.SCREEN_SIZE
+        max_w, max_h = pride.gui.SCREEN_SIZE
         self.w_range = self.x_range = (0, max_w)
         self.h_range = self.y_range = (0, max_h)
-        self.z_range = (0, mpre.gui.MAX_LAYER)   
+        self.z_range = (0, pride.gui.MAX_LAYER)   
         super(Window_Object, self).__init__(**kwargs)
         self.texture_window_x = self.texture_window_y = 0
         self.available_size = self.size
@@ -311,7 +311,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
             
             if top_level:
                 mouse_position = objects["SDL_Window"].get_mouse_position()            
-                if not mpre.gui.point_in_area(self.parent.area, mouse_position):
+                if not pride.gui.point_in_area(self.parent.area, mouse_position):
                     if self in self.parent.children:
                     #    self.parent.alert("Removing {}; {} not in {}", [self, objects["SDL_Window"].get_mouse_position(), self.parent.area], level=0)
                         self.parent.remove(self)                    
@@ -331,7 +331,7 @@ class Window_Object(mpre.gui.shapes.Bounded_Shape):
      
     def toggle_hidden(self):
         if not self.hidden:
-            sdl_user_input = mpre.objects["SDL_User_Input"]
+            sdl_user_input = pride.objects["SDL_User_Input"]
             sdl_user_input._update_coordinates(self.instance_name,
                                                self.area, -1)            
         self.hidden = not self.hidden
@@ -390,5 +390,5 @@ class Button(Window_Object):
 
 class Application(Window):
     
-    defaults = {"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )}
+    defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", )}
     

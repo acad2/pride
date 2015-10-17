@@ -1,5 +1,5 @@
 import zipfile
-import mpre.base as base
+import pride.base as base
 
 class Unzipper(base.Base):
     

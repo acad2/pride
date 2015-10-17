@@ -6,25 +6,25 @@ import sys
 import inspect
 import binascii
 
-import mpre.base
+import pride.base
 
-import mpre.utilities as utilities
-import mpre.module_utilities as module_utilities
-import mpre._compile
-import mpre.fileio
-import mpre.importers
+import pride.utilities as utilities
+import pride.module_utilities as module_utilities
+import pride._compile
+import pride.fileio
+import pride.importers
 
-class Loader(mpre.base.Base):
+class Loader(pride.base.Base):
     """ Used to customize the define bootstrap process. """
     defaults = {"required_imports" : ("sys", "hashlib", "pickle",
                                       "importlib", "types", "hmac",
                                       "binascii"),
-                "variables" : {"ASCIIKEY" : "mpre.persistence.ASCIIKEY"},
-                "definitions" : ("mpre.persistence.authenticated_load", 
-                                 "mpre.persistence.load",
-                                 "mpre.base.load", 
-                                 "mpre.errors.CorruptPickleError",
-                                 "mpre.module_utilities.create_module"),
+                "variables" : {"ASCIIKEY" : "pride.persistence.ASCIIKEY"},
+                "definitions" : ("pride.persistence.authenticated_load", 
+                                 "pride.persistence.load",
+                                 "pride.base.load", 
+                                 "pride.errors.CorruptPickleError",
+                                 "pride.module_utilities.create_module"),
                 "importer" : ''}
         
     def __init__(self, **kwargs):
@@ -54,18 +54,18 @@ class Loader(mpre.base.Base):
         return source 
     
     
-class Executable(mpre.base.Base):    
+class Executable(pride.base.Base):    
     """ Used to make a cython gcc compiled executable from a python module. """
     defaults = {"filename" : "metapython.exe",
                 "package" : None,
                 "file" : None,
-                "loader_type" : "mpre.exe.Loader",
+                "loader_type" : "pride.exe.Loader",
                 "main_source" : '',
                 "use_unicode_literals" : True}
                            
     def __init__(self, module, **kwargs):
         super(Executable, self).__init__(**kwargs)
-        self.file = mpre.fileio.File(self.filename, 'w+b')
+        self.file = pride.fileio.File(self.filename, 'w+b')
         source = inspect.getsource(module) if not self.main_source else self.main_source
         self.main_source = source.replace("from __future__ import unicode_literals", "#from __future__ import unicode_literals")
         self.loader = self.create(self.loader_type)
@@ -90,16 +90,16 @@ class Executable(mpre.base.Base):
         _file.write(self.main_source)
         _file.flush()
         print "Compiling..."
-        mpre._compile.py_to_compiled([self.filename], 'exe')        
+        pride._compile.py_to_compiled([self.filename], 'exe')        
         _file.close()
         
 if __name__ == "__main__":
-    import mpre
-    import mpre.metapython
-    import mpre.package   
-    #import mpre.fileio
-    packages=[mpre.package.Package(mpre, include_source=True)]       
-    exe = Executable(mpre.metapython, packages=[mpre.base.Base(package_name="Test")])#packages)
+    import pride
+    import pride.metapython
+    import pride.package   
+    #import pride.fileio
+    packages=[pride.package.Package(pride, include_source=True)]       
+    exe = Executable(pride.metapython, packages=[pride.base.Base(package_name="Test")])#packages)
     exe.build()
     print "Complete"
     #exe.alert("Complete", level=0)

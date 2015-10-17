@@ -1,5 +1,5 @@
 """ Contains The root inheritance objects that provides many features of the package. 
-    An object that inherits from mpre.base.Base will possess these capabilities:
+    An object that inherits from pride.base.Base will possess these capabilities:
         
         - When instantiating, arbitrary attributes may be assigned
           via keyword arguments
@@ -10,7 +10,7 @@
           will override a default
           
         - An instance name, which provides a reference to the component from any context. 
-          Instance names are mapped to instance objects in mpre.objects.
+          Instance names are mapped to instance objects in pride.objects.
           
         - The flag parse_args=True may be passed to the call to 
           instantiate a new object. If so, then the metaclass
@@ -61,26 +61,26 @@
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
     This name associates the instance to the instance_name in the
-    mpre.environment.objects. The instance_name can be used to reference
+    pride.environment.objects. The instance_name can be used to reference
     the object from any scope, as long as the component exists at runtime."""
 import operator
        
-import mpre
-import mpre.metaclass
-import mpre.persistence
-import mpre.utilities
+import pride
+import pride.metaclass
+import pride.persistence
+import pride.utilities
 
-from mpre.errors import *
-objects = mpre.objects
+from pride.errors import *
+objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
 
 def load(attributes='', _file=None):
-    """ Loads and instance from a bytestream or file produced by mpre.base.Base.save. 
-        This is a higher level method then mpre.persistence.load."""
+    """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
+        This is a higher level method then pride.persistence.load."""
     assert attributes or _file
         
-    new_self, attributes = mpre.persistence.load(attributes, _file)
+    new_self, attributes = pride.persistence.load(attributes, _file)
     print "Loading: ", repr(new_self)
     saved_objects = attributes["objects"]
     objects = attributes["objects"] = {}
@@ -94,7 +94,7 @@ def load(attributes='', _file=None):
         modifier = attribute_modifier.get(key, '')
         if modifier == "reference":
             print "\tRestored reference: ", value
-            attributes[key] = mpre.objects[value]
+            attributes[key] = pride.objects[value]
         elif modifier == "save":
             print "\tLoading attribute: ", key
             attributes[key] = load(value)
@@ -104,7 +104,7 @@ def load(attributes='', _file=None):
         
 class Base(object):
 
-    __metaclass__ = mpre.metaclass.Metaclass
+    __metaclass__ = pride.metaclass.Metaclass
                 
     # the default attributes new instances will initialize with
     # mutable datatypes (i.e. lists) should not be used inside the
@@ -139,8 +139,8 @@ class Base(object):
     
     # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
-        return mpre.environment.parents.get(self, 
-                                            mpre.environment.last_creator)     
+        return pride.environment.parents.get(self, 
+                                            pride.environment.last_creator)     
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
@@ -152,7 +152,7 @@ class Base(object):
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance
         
-        mpre.environment.add(self) # acquire instance_name
+        pride.environment.add(self) # acquire instance_name
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
@@ -191,21 +191,21 @@ class Base(object):
             up to two ways. If the object can have arbitrary attributes
             assigned, it will be provided with an instance_name attribute. 
             If not (i.e. __slots__ is defined), the instance_name can be
-            obtained via the mpre.environment.instance_name dictionary, 
+            obtained via the pride.environment.instance_name dictionary, 
             using the instance as the key."""
         self_name = self.instance_name
-        mpre.environment.last_creator = self_name
+        pride.environment.last_creator = self_name
         try:
             instance = instance_type(*args, **kwargs)
         except TypeError:
             if isinstance(instance_type, type):
                 raise
-            instance = mpre.utilities.resolve_string(instance_type)(*args, **kwargs)        
+            instance = pride.utilities.resolve_string(instance_type)(*args, **kwargs)        
 
-        if instance not in mpre.environment.instance_name:
-            mpre.environment.add(instance)
+        if instance not in pride.environment.instance_name:
+            pride.environment.add(instance)
         self.add(instance)
-        mpre.environment.parents[instance] = self_name
+        pride.environment.parents[instance] = self_name
         return instance
 
     def delete(self):
@@ -217,7 +217,7 @@ class Base(object):
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        mpre.environment.delete(self)
+        pride.environment.delete(self)
         self._deleted = True
         
     def remove(self, instance):
@@ -231,7 +231,7 @@ class Base(object):
         except:
             print self, "Failed to remove: ", instance
             raise
-        mpre.environment.references_to[instance.instance_name].remove(self.instance_name)
+        pride.environment.references_to[instance.instance_name].remove(self.instance_name)
         
     def add(self, instance):
         """ usage: object.add(instance)
@@ -249,11 +249,11 @@ class Base(object):
         siblings.append(instance)
         objects[instance_class] = siblings      
                     
-        instance_name = mpre.environment.instance_name[instance]
+        instance_name = pride.environment.instance_name[instance]
         try:
-            mpre.environment.references_to[instance_name].add(self.instance_name)
+            pride.environment.references_to[instance_name].add(self.instance_name)
         except KeyError:
-            mpre.environment.references_to[instance_name] = set((self.instance_name, ))      
+            pride.environment.references_to[instance_name] = set((self.instance_name, ))      
             
     def alert(self, message, format_args=tuple(), level=''):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -321,7 +321,7 @@ class Base(object):
             elif hasattr(value, "save") and not getattr(value, "dont_save"):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"      
-        return mpre.persistence.save(self, attributes, _file)    
+        return pride.persistence.save(self, attributes, _file)    
             
     load = staticmethod(load) # see base.load at beginning of file
         
@@ -334,12 +334,12 @@ class Base(object):
             times this will implement similar functionality as the objects
             __init__ method does (i.e. opening a file or database)."""     
         [setattr(self, key, value) for key, value in attributes.items()]
-        mpre.environment.add(self)
+        pride.environment.add(self)
         
         if (self.replace_reference_on_load and 
             self.instance_name != attributes["instance_name"]):
             print "Replacing instance"
-            mpre.environment.replace(attributes["instance_name"], self)
+            pride.environment.replace(attributes["instance_name"], self)
             print "Done"
         self.alert("Loaded", level='v')
         
@@ -358,7 +358,7 @@ class Base(object):
            same as the modules in use in the current global scope."""
         self.alert("Updating", level='v') 
         
-        class_base = mpre.utilities.updated_class(type(self))
+        class_base = pride.utilities.updated_class(type(self))
         class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
                 
@@ -366,10 +366,10 @@ class Base(object):
         attributes = new_self.defaults.copy()
         attributes["_required_modules"] = class_base._required_modules
         [setattr(new_self, key, value) for key, value in attributes.items()]
-        mpre.environment.add(new_self)        
+        pride.environment.add(new_self)        
         
         attributes = self.__dict__
-        mpre.environment.replace(self, new_self)
+        pride.environment.replace(self, new_self)
         [setattr(new_self, key, value) for key, value in attributes.items()]
         return new_self
                 

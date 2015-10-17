@@ -10,12 +10,12 @@ import shutil
 import platform
 import time
 
-import mpre    
-import mpre.vmlibrary as vmlibrary
-import mpre.base as base
-import mpre.utilities as utilities
-import mpre.shell
-objects = mpre.objects
+import pride    
+import pride.vmlibrary as vmlibrary
+import pride.base as base
+import pride.utilities as utilities
+import pride.shell
+objects = pride.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -112,7 +112,7 @@ class Cached(object):
         #self.handles[function][key] = handles[key]
                                                    
                    
-class File_Attributes(mpre.base.Adapter):
+class File_Attributes(pride.base.Adapter):
     
     adaptations = {"protection_bits" : "st_mode", "inode_number" : "st_ino",
                    "number_of_hard_links" : "st_nlink", 
@@ -191,7 +191,7 @@ class File(base.Wrapper):
             else:
                 self.file = utilities.resolve_string(self.file_type)()             
         self.wraps(self.file)        
-        self.properties = self.create("mpre.fileio.File_Attributes",
+        self.properties = self.create("pride.fileio.File_Attributes",
                                       filename=path)
                                       
     def __enter__(self):
@@ -324,8 +324,8 @@ if __name__ == "__main__":
         for x in xrange(iterations):
             f = File(filename, 'rb')
     
-    import mpre.misc.decoratorlibrary
-    Timed = mpre.misc.decoratorlibrary
+    import pride.misc.decoratorlibrary
+    Timed = pride.misc.decoratorlibrary
     
     time = Timed(test_case1)("demofile.exe")
     time2 = Timed(test_case2)("demofile.exe")

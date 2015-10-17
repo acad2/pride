@@ -2,12 +2,12 @@ import time
 import wave
 import contextlib
 
-import mpre
-import mpre.base as base
-import mpre.audio.audiolibrary as audiolibrary
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.audio.audiolibrary as audiolibrary
+objects = pride.objects
 
-# to install alsaaudio, use mpre.audio.utilities.install_pyalsaaudio
+# to install alsaaudio, use pride.audio.utilities.install_pyalsaaudio
 import alsaaudio
 
 class Audio_Device(audiolibrary.Audio_Reactor):

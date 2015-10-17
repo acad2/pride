@@ -7,13 +7,13 @@ import sqlite3
 import pickle
 import traceback
 
-import mpre
-import mpre.base as base
-import mpre.network as network
-import mpre.fileio as fileio
-from mpre.utilities import Latency, timer_function
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.network as network
+import pride.fileio as fileio
+from pride.utilities import Latency, timer_function
+Instruction = pride.Instruction
+objects = pride.objects
            
 class Network_Service(network.Udp_Socket):
     
@@ -164,7 +164,7 @@ class Network_Service(network.Udp_Socket):
         
                       
 if __name__ == "__main__":
-    from mpre.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
+    from pride.tests.network2 import test_file_service, test_authentication, test_proxy, test_reliability
    # test_reliability()
    # test_authentication()
    # test_file_service()

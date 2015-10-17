@@ -22,14 +22,14 @@ def sys_argv_swapped(new_argv):
     finally:
         sys.argv[:] = backup
                               
-def updated_class(_class, importer_type="mpre.importers.From_Disk"):
+def updated_class(_class, importer_type="pride.importers.From_Disk"):
     # modules are garbage collected if not kept alive        
     required_modules = []        
     module_loader = resolve_string(importer_type)()
     class_mro = _class.__mro__[:-1] # don't update object
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
-    import mpre.module_utilities
-    with mpre.module_utilities.modules_preserved(info[1] for 
+    import pride.module_utilities
+    with pride.module_utilities.modules_preserved(info[1] for 
                                                  info in class_info):
         for cls, module_name in class_info:
             module = module_loader.load_module(module_name)
@@ -40,8 +40,8 @@ def updated_class(_class, importer_type="mpre.importers.From_Disk"):
                     source = module._source
                 except AttributeError:
                     error_string = "Could not locate source for {}".format(module.__name__)
-                    import mpre.errors
-                    raise mpre.errors.UpdateError(error_string)              
+                    import pride.errors
+                    raise pride.errors.UpdateError(error_string)              
             required_modules.append((module_name, source, module))
     
     class_base = getattr(module, _class.__name__)
@@ -137,7 +137,7 @@ def usage(_object):
     if hasattr(_object, "func_name"):
         name = _object.func_name
         arguments = function_header(_object)
-        return_type = ''#mpre.misc.bytecodedis.get_return_type(_object)
+        return_type = ''#pride.misc.bytecodedis.get_return_type(_object)
     elif hasattr(_object, "func_code"):
         name = _object.__name__
         arguments = function_header(_object)

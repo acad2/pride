@@ -4,8 +4,8 @@ import ast
 import cPickle as pickle
 from itertools import izip
 
-import mpre.base as base
-import mpre.fileio as fileio
+import pride.base as base
+import pride.fileio as fileio
 
 
 class Struct(object):
@@ -216,10 +216,10 @@ class Persistent_Reactor(base.Base):
                 
 if __name__ == "__main__":
     import unittest
-    import mpre.misc.decoratorlibrary
-    import mpre.base
-    Base = mpre.base.Base
-    Timed = mpre.misc.decoratorlibrary.Timed
+    import pride.misc.decoratorlibrary
+    import pride.base
+    Base = pride.base.Base
+    Timed = pride.misc.decoratorlibrary.Timed
     
     b = Base(none=None)
     struc_attributes = {"integer" : 123, 

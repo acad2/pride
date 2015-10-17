@@ -262,12 +262,12 @@ class Compiler(object):
         
         
 class Dollar_Sign_Directive(object):
-    """ Replaces '$' directive with mpre.objects lookup. This
+    """ Replaces '$' directive with pride.objects lookup. This
         facilitates the syntatic sugar $Component, which is
-        translated to mpre.objects['Component']. """
+        translated to pride.objects['Component']. """
         
     def handle_source(self, source):
-        return Parser.replace_symbol('$', source, "mpre.objects['{}']")     
+        return Parser.replace_symbol('$', source, "pride.objects['{}']")     
         
   
 class New_Keyword(object):

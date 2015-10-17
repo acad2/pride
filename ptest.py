@@ -9,7 +9,7 @@ try:
 except ImportError:
     import StringIO
     
-import mpre.utilities
+import pride.utilities
 
 def printable_hash(object, output_size=20):
     """ Returns a hash of an object where the output characters are members
@@ -62,14 +62,14 @@ def inline_function_source(method, method_name, component=''):
         new_name = full_name + '_' + name
         declaration = "{} = {}_namespace.{}".format(new_name, full_name, name)
         #print "Replacing {} with {}".format(name, new_name)
-        method_source = mpre.importers.Parser.replace_symbol(name, method_source, new_name)               
+        method_source = pride.importers.Parser.replace_symbol(name, method_source, new_name)               
  
-    method_source = mpre.importers.Parser.replace_symbol('return', method_source, 
+    method_source = pride.importers.Parser.replace_symbol('return', method_source, 
                           "$Preemptive_Multiprocessor._return['{}'] =".format(full_name)) 
     return method_source            
             
             
-class Preemptive_Multiprocessor(mpre.base.Base):
+class Preemptive_Multiprocessor(pride.base.Base):
     
     def __init__(self, **kwargs):
         self.threads = []
@@ -88,7 +88,7 @@ class Preemptive_Multiprocessor(mpre.base.Base):
             last_index = len(threads) - 1
             for count, _thread in enumerate(threads):
                 source.append(_thread.source)
-                _header = mpre.utilities.function_header(_thread.method)[1:-1] # remove the ( )
+                _header = pride.utilities.function_header(_thread.method)[1:-1] # remove the ( )
             #    print "Got header for: {}; {}".format(_thread, _header)
                 __header = []                
                 prefix = _thread.component_name + '_' + _thread.method_name + '_'
@@ -111,18 +111,18 @@ class Preemptive_Multiprocessor(mpre.base.Base):
             source.append("\n    return locals()")
             print "Compiling: ", '\n'.join(source)
             context = globals().copy()
-            code = mpre.compiler.compile('\n'.join(source), "<string>")
+            code = pride.compiler.compile('\n'.join(source), "<string>")
             exec code in context, context
             function = self._combination_cache[threads] = context["function_" + new_function_name]
         else:
             function = self._combination_cache[threads]
-    #    print function, mpre.utilities.function_header(function)
+    #    print function, pride.utilities.function_header(function)
     #    print arguments
         self.threads = []
         return function(*arguments)        
         
     
-class Thread(mpre.base.Base):
+class Thread(pride.base.Base):
         
     defaults = {"component_name" : '', "method_name" : '', "callback" : None,
                 "source" : ''}
@@ -132,16 +132,16 @@ class Thread(mpre.base.Base):
   #         method = kwargs["method"]
   #     except:
   #         method_name = kwargs["method_name"]
-  #         component = mpre.objects[kwargs["component_name"]]
+  #         component = pride.objects[kwargs["component_name"]]
   #         method = getattr(component, method_name)
-  #     header = mpre.utilities.function_header(method)
+  #     header = pride.utilities.function_header(method)
   #     _source = "def " + method.__name__ + header + ':'
         
     def __init__(self, **kwargs):
         super(Thread, self).__init__(**kwargs)
         component_name, method_name = self.component_name, self.method_name
         if not self.method:            
-            self.method = getattr(mpre.objects[component_name], method_name)
+            self.method = getattr(pride.objects[component_name], method_name)
         else:
             if not method_name:
                 method_name = self.method_name = self.method.__name__
@@ -165,7 +165,7 @@ class Thread(mpre.base.Base):
             packed_args = (kwargs, )
         else:
             packed_args = tuple()        
-        mpre.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))
+        pride.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))
         
 if __name__ == "__main__":
     def test(testing, idek=True, *args, **test_kwargs):

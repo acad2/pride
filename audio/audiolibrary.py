@@ -3,20 +3,20 @@ import wave
 import sys
 import os
 
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.fileio as fileio
-from mpre.utilities import Latency
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.fileio as fileio
+from pride.utilities import Latency
+Instruction = pride.Instruction
+objects = pride.objects
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
    
 def record_wav_file(parse_args=False, **kwargs):
     audio_manager = objects["Audio_Manager"]
     print "Creating wav file: ", kwargs
-    wav_file = audio_manager.create("mpre.audio.audiolibrary.Wav_File",
+    wav_file = audio_manager.create("pride.audio.audiolibrary.Wav_File",
                                     parse_args=parse_args, mode='wb', **kwargs)
     audio_manager.record("Microphone", file=wav_file)
     return wav_file

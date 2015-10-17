@@ -1,10 +1,10 @@
 import time
 
-import mpre
-import mpre.gui.gui as gui
-import mpre.gui
-import mpre.base as base
-Instruction = mpre.Instruction
+import pride
+import pride.gui.gui as gui
+import pride.gui
+import pride.base as base
+Instruction = pride.Instruction
 
 import sdl2
 
@@ -16,7 +16,7 @@ class Attribute_Modifier_Button(gui.Button):
                      
     def left_click(self, mouse):        
         instance_name, attribute = self.target
-        instance = mpre.objects[instance_name]        
+        instance = pride.objects[instance_name]        
         old_value = getattr(instance, attribute)
         new_value = getattr(old_value, self.method)(self.amount)
         setattr(instance, attribute, new_value)
@@ -54,7 +54,7 @@ class Method_Button(gui.Button):
         try:
             instance = self.target()
         except TypeError:
-            instance = mpre.objects[self.target]  
+            instance = pride.objects[self.target]  
         getattr(instance, self.method)(*self.args, **self.kwargs or {})     
                             
 
@@ -75,8 +75,8 @@ class Homescreen(gui.Window):
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
         self.create(Task_Bar, startup_components=\
-                                ("mpre.gui.widgetlibrary.Date_Time_Button",
-                                 "mpre.gui.widgetlibrary.Text_Box"))
+                                ("pride.gui.widgetlibrary.Date_Time_Button",
+                                 "pride.gui.widgetlibrary.Text_Box"))
         
 
 class Task_Bar(gui.Container):
@@ -168,12 +168,12 @@ class Color_Palette(gui.Window):
             
     def __init__(self, **kwargs):
         super(Color_Palette, self).__init__(**kwargs)
-        color_button = self.create("mpre.gui.gui.Button", pack_mode="horizontal")
-        slider_container = self.create("mpre.gui.gui.Container", pack_mode="horizontal")
+        color_button = self.create("pride.gui.gui.Button", pack_mode="horizontal")
+        slider_container = self.create("pride.gui.gui.Container", pack_mode="horizontal")
         
         button_name = color_button.instance_name
         for color in ('r', 'g', 'b'):
-            slider_container.create("mpre.gui.widgetlibrary.Scroll_Bar", 
+            slider_container.create("pride.gui.widgetlibrary.Scroll_Bar", 
                                     target=(button_name, color))
                                     
                                     
@@ -248,7 +248,7 @@ class Indicator(gui.Button):
 class Done_Button(gui.Button):
         
     def left_click(self, mouse):
-        getattr(mpre.objects[self.callback_owner], self.callback)()        
+        getattr(pride.objects[self.callback_owner], self.callback)()        
         
         
 class Prompt(gui.Application):
@@ -258,13 +258,13 @@ class Prompt(gui.Application):
                      
     def __init__(self, **kwargs):
         super(Application, self).__init__(**kwargs)
-        self.create("mpre.gui.widgetlibrary.Text_Box", text=self.text,
+        self.create("pride.gui.widgetlibrary.Text_Box", text=self.text,
                     allow_text_edit=False)
-        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Box")
-        self.create("mpre.gui.widgetlibrary.Done_Button")
+        self.user_text = self.create("pride.gui.widgetlibrary.Text_Box")
+        self.create("pride.gui.widgetlibrary.Done_Button")
    
     def handle_input(self, user_input):
-        getattr(mpre.objects[self.callback_owner], self.callback)(user_input)
+        getattr(pride.objects[self.callback_owner], self.callback)(user_input)
         
         
         

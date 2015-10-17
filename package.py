@@ -6,18 +6,18 @@ import inspect
 import contextlib
 import traceback
 
-import mpre.utilities as utilities
-import mpre.module_utilities as module_utilities
+import pride.utilities as utilities
+import pride.module_utilities as module_utilities
 
-import mpre.base
-import mpre.fileio
+import pride.base
+import pride.fileio
 create_module = module_utilities.create_module 
     
 def build_documentation_site(module):
     package = Package(module, include_documentation=True)
     utilities.shell("mkdocs build")
     
-class Package(mpre.base.Base):
+class Package(pride.base.Base):
     
     defaults = {"python_extensions" : (".py", ".pyx", ".pyd", ".pso", ".so"),
                 "package_name" : None,
@@ -91,7 +91,7 @@ class Package(mpre.base.Base):
                     required_modules.update(_modules)
                     required_packages.update(_packages)
                     if include_documentation:
-                        documentation[module_name] = self.create("mpre.package.Documentation", 
+                        documentation[module_name] = self.create("pride.package.Documentation", 
                                                                  _module, path=path,
                                                                  top_level_package=top_level_package) 
                         
@@ -146,7 +146,7 @@ class Package(mpre.base.Base):
                         sources[module_name] = None
         
         if top_level_package == package_name and include_documentation:
-            self.documentation[package_name] = self.create("mpre.package.Documentation", module)  
+            self.documentation[package_name] = self.create("pride.package.Documentation", module)  
         
     def find_module(self, module_name, path=None):
         self.alert("{} Looking for module: {}", [self.package_name, module_name], level=0)
@@ -184,7 +184,7 @@ class Package(mpre.base.Base):
         return self.instance_name + ": " + self.package_name
         
         
-class Documentation(mpre.base.Base):
+class Documentation(pride.base.Base):
     
     defaults = {"top_level_package" : ''}
     
@@ -229,9 +229,9 @@ class Documentation(mpre.base.Base):
                 _file.flush()                                                            
         
     def write_markdown_file(self, markdown_text, filename):
-        mpre.fileio.ensure_file_exists(filename, markdown_text)
+        pride.fileio.ensure_file_exists(filename, markdown_text)
             
             
 if __name__ == "__main__":
-    import mpre
-    package = Package(mpre)
+    import pride
+    package = Package(pride)

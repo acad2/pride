@@ -11,15 +11,15 @@ try:
 except ImportError:
     import StringIO
 
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.authentication as authentication
-import mpre.utilities as utilities
-import mpre.fileio as fileio
-import mpre.shell
-objects = mpre.objects
-Instruction = mpre.Instruction            
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.authentication as authentication
+import pride.utilities as utilities
+import pride.fileio as fileio
+import pride.shell
+objects = pride.objects
+Instruction = pride.Instruction            
 
     
 class Shell(authentication.Authenticated_Client):
@@ -49,7 +49,7 @@ class Shell(authentication.Authenticated_Client):
             self.handle_startup_definitions()                
              
     def handle_startup_definitions(self):
-        source = mpre.compiler.preprocess(self.startup_definitions)
+        source = pride.compiler.preprocess(self.startup_definitions)
         try:
             compile(source, "Shell", 'exec')
         except:
@@ -63,7 +63,7 @@ class Shell(authentication.Authenticated_Client):
         if not user_input:
             user_input = '\n'
         else:
-            user_input = mpre.compiler.preprocess(user_input)
+            user_input = pride.compiler.preprocess(user_input)
             
         self.lines += user_input
         lines = self.lines
@@ -140,7 +140,7 @@ class Interpreter(authentication.Authenticated_Service):
         return response
 
     def exec_code(self, source):
-        log = mpre.objects[self.log]
+        log = pride.objects[self.log]
         session_id, sender = self.current_session
                 
         username = self.session_id[session_id]
@@ -148,7 +148,7 @@ class Interpreter(authentication.Authenticated_Service):
                                             sender) + source)           
         result = ''         
         try:
-            code = mpre.compiler.compile(source)
+            code = pride.compiler.compile(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:                
@@ -162,7 +162,7 @@ class Interpreter(authentication.Authenticated_Service):
                 namespace["__builtins__"] = __builtins__
             
             backup_raw_input = namespace["__builtins__"]["raw_input"]
-            namespace["__builtins__"]["raw_input"] = mpre.shell.get_user_input
+            namespace["__builtins__"]["raw_input"] = pride.shell.get_user_input
             try:
                 exec code in namespace
             except Exception as error:
@@ -195,17 +195,18 @@ class Python(base.Base):
                                           os.path.split(__file__)[0]), 
                                           "shell_launcher.py"),
                 "environment_setup" : ["PYSDL2_DLL_PATH = " + 
-                                       "C:\\Python27\\DLLs"],
-                "startup_components" : ("mpre.vmlibrary.Processor",
-                                        "mpre.network.Network", 
-                                        "mpre.shell.Command_Line",
-                                        "mpre.srp.Secure_Remote_Password",
-                                        "mpre.interpreter.Interpreter",
-                                        "mpre.rpc.Rpc_Server"),
+                                       os.path.dirname(os.path.realpath(__file__)) +
+                                       os.path.sep + "gui" + os.path.sep],
+                "startup_components" : ("pride.vmlibrary.Processor",
+                                        "pride.network.Network", 
+                                        "pride.shell.Command_Line",
+                                        "pride.srp.Secure_Remote_Password",
+                                        "pride.interpreter.Interpreter",
+                                        "pride.rpc.Rpc_Server"),
                 "interpreter_enabled" : True,
                 "rpc_enabled" : True,
                 "startup_definitions" : '',
-                "interpreter_type" : "mpre.interpreter.Interpreter"}
+                "interpreter_type" : "pride.interpreter.Interpreter"}
                      
     parser_ignore = base.Base.parser_ignore + ("environment_setup",
                                                "traceback", 
@@ -234,7 +235,7 @@ class Python(base.Base):
                 
     def _exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
-        code = mpre.compiler.compile(source, "__main__")
+        code = pride.compiler.compile(source, "__main__")
         with self.main_as_name():
             exec code in globals(), globals()
             
@@ -269,13 +270,13 @@ class Python(base.Base):
             
     def start_machine(self):
         """ Begins the processing of Instruction objects."""
-        processor = mpre.objects[self.processor]
+        processor = pride.objects[self.processor]
         processor.running = True
         processor.run()
         self.alert("Graceful shutdown initiated", level='v')
         
     def exit(self, exit_code=0):
-        mpre.objects[self.processor].running = False
+        pride.objects[self.processor].running = False
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)

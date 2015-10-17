@@ -1,12 +1,12 @@
 import getpass
 
-import mpre.base
-import mpre.shell
-Instruction = mpre.Instruction
+import pride.base
+import pride.shell
+Instruction = pride.Instruction
 
-class Authenticated_Service(mpre.base.Base):
+class Authenticated_Service(pride.base.Base):
 
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     defaults.update({"allow_registration" : True})
     
     def __init__(self, **kwargs):
@@ -30,9 +30,9 @@ class Authenticated_Service(mpre.base.Base):
         return response
         
     
-class Authenticated_Client(mpre.base.Base):
+class Authenticated_Client(pride.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     defaults.update({"username" : '',
                      "target_service" : '',
                      "password_prompt" : "Please provide the pass phrase or word: ",
@@ -43,7 +43,7 @@ class Authenticated_Client(mpre.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         if not self.username or not self.target_service:
-            raise mpre.errors.ArgumentError("username or target_service not supplied")
+            raise pride.errors.ArgumentError("username or target_service not supplied")
             
     def register(self): 
         self.alert("Registering", level=0)
@@ -54,14 +54,14 @@ class Authenticated_Client(mpre.base.Base):
     def register_results(self, success):
         if success:
             if (self.login_after_registration or 
-                mpre.shell.get_selection("Registration success. Login now? ", bool)):
+                pride.shell.get_selection("Registration success. Login now? ", bool)):
                 self.login()
         else:
             self.alert("Failed to register with {};\n{}", [self.host_info, success])
     
     def login(self):
         self.alert("Logging in...", level=0)
-        self.client = self.create("mpre.misc.srp.SRP_Client", username=self.username)  
+        self.client = self.create("pride.misc.srp.SRP_Client", username=self.username)  
         Instruction(self.target_service, "login", 
                     *self.client.login()).execute(host_info=self.host_info,
                                                   callback=self.send_proof)    

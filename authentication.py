@@ -2,13 +2,13 @@ import hkdf
 import sqlite3
 import getpass
 
-import mpre
-import mpre.base
-import mpre.database
-import mpre.utilities
-import mpre.shell
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base
+import pride.database
+import pride.utilities
+import pride.shell
+Instruction = pride.Instruction
+objects = pride.objects
 
 ADD_USER = "INSERT INTO Credentials VALUES(?, ?, ?)"
 REMOVE_USER = "DELETE FROM Credentials WHERE username = ?"
@@ -20,7 +20,7 @@ def derive_session_id(key, purpose='', key_size=256):
     return hkdf.hkdf(key, key_size, purpose)
 
         
-class Authenticated_Service(mpre.base.Base):
+class Authenticated_Service(pride.base.Base):
     """ Provides functionality for user registration and login, and
         provides interface for use with blacklisted/whitelisted/authenticated
         decorators. Currently uses the secure remote password protocol
@@ -187,20 +187,20 @@ class Authenticated_Service(mpre.base.Base):
         self.database.commit()
         
         
-class Authenticated_Client(mpre.base.Base):
+class Authenticated_Client(pride.base.Base):
     
     defaults = {"username" : '',
                 "password" : '',
                 "target_service" : '',
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
-                "protocol_client" : "mpre.srp.SRP_Client",
+                "protocol_client" : "pride.srp.SRP_Client",
                 "ip" : "localhost", 
                 "port" : 40022,
                 "auto_login" : True,
                 "logged_in" : False,
                 "session_id_size" : 256}
     
-    parser_ignore = mpre.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
+    parser_ignore = pride.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
     
     verbosity = {"logging_in" : 'v',
                  "on_login" : 'v',
@@ -225,14 +225,14 @@ class Authenticated_Client(mpre.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         if not self.target_service:
-            raise mpre.errors.ArgumentError("target_service for {} not supplied".format(self))
+            raise pride.errors.ArgumentError("target_service for {} not supplied".format(self))
         username_prompt = "{}: please provide a username: ".format(self.instance_name)
         self.username = (self.username or 
-                         mpre.shell.get_user_input(username_prompt,
+                         pride.shell.get_user_input(username_prompt,
                                                    must_reply=True))
         
         self.password_prompt = self.password_prompt.format(self.instance_name)
-        self.session = self.create("mpre.rpc.Session", '0', self.host_info)
+        self.session = self.create("pride.rpc.Session", '0', self.host_info)
         
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
@@ -256,7 +256,7 @@ class Authenticated_Client(mpre.base.Base):
             self.alert("Registered successfully", 
                        level=self.verbosity["registration_success"])
             if (self.auto_login or 
-                mpre.shell.get_selection("Registration success. Login now? ", bool)):
+                pride.shell.get_selection("Registration success. Login now? ", bool)):
                 self.login()
         else:
             self.alert("Failed to register with {};\n{}", 

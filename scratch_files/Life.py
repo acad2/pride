@@ -1,8 +1,8 @@
-import mpre.gui.gui
+import pride.gui.gui
 
-class Cell(mpre.gui.gui.Window_Object):
+class Cell(pride.gui.gui.Window_Object):
     
-    defaults = mpre.gui.gui.Window_Object.defaults.copy()
+    defaults = pride.gui.gui.Window_Object.defaults.copy()
     defaults.update({"dead_color" : (0, 0, 0),
                      "alive_color" : (255, 255, 255),
                      "texture_size" : (4, 4)})
@@ -28,9 +28,9 @@ class Cell(mpre.gui.gui.Window_Object):
         self.size = self.texture_size
         
             
-class Game_Of_Life(mpre.vmlibrary.Process):
+class Game_Of_Life(pride.vmlibrary.Process):
              
-    defaults = mpre.vmlibrary.Process.defaults.copy()
+    defaults = pride.vmlibrary.Process.defaults.copy()
     defaults.update({"cell_count_width" : 10,
                      "cell_count_height" : 10,
                      "priority" : 1})

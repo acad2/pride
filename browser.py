@@ -1,9 +1,9 @@
 import selenium.webdriver
 
-import mpre.base
+import pride.base
 
-class Browser(mpre.base.Wrapper):
-    defaults = mpre.base.Wrapper.defaults.copy()
+class Browser(pride.base.Wrapper):
+    defaults = pride.base.Wrapper.defaults.copy()
     defaults.update({"browser_type" : "Firefox",
                      "scroll_amount" : 200})
                

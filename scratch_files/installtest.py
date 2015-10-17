@@ -21,5 +21,5 @@ class Installer(object):
         package.update_structure()
         
 if __name__ == "__main__":
-    installer = Installer("mpre.pyp", '')
+    installer = Installer("pride.pyp", '')
     installer.install()

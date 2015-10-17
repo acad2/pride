@@ -3,10 +3,10 @@ import sys
 import os
 import threading
 
-import mpre
-import mpre.vmlibrary
-import mpre.utilities
-objects = mpre.objects
+import pride
+import pride.vmlibrary
+import pride.utilities
+objects = pride.objects
 
 try:
     from msvcrt import getwch, kbhit
@@ -75,7 +75,7 @@ def is_affirmative(input, affirmative_words=("affirmative", "true")):
             is_positive = None
     return is_positive
 
-class Command_Line(mpre.vmlibrary.Process):
+class Command_Line(pride.vmlibrary.Process):
     """ Captures user input and provides the input to the specified or default program.
     
         Available programs can be modified via the add_program, remove_program,
@@ -84,10 +84,10 @@ class Command_Line(mpre.vmlibrary.Process):
                 "write_prompt" : True,
                 "prompt" : ">>> ",
                 "programs" : None,
-                "default_programs" : ("mpre.shell.Shell_Program", 
-                                      "mpre.shell.Switch_Program",
-                                      "mpre.shell.File_Explorer",
-                                      "mpre.programs.register.Registration"),
+                "default_programs" : ("pride.shell.Shell_Program", 
+                                      "pride.shell.Switch_Program",
+                                      "pride.shell.File_Explorer",
+                                      "pride.programs.register.Registration"),
                 "idle_threshold" : 10000}
                      
     def __init__(self, **kwargs):
@@ -103,7 +103,7 @@ class Command_Line(mpre.vmlibrary.Process):
             self.create(program)
         
         priority = self.idle_threshold * self.priority
-        mpre.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
+        pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
         
     def _new_thread(self):
         self.thread = threading.Thread(target=self.read_input) 
@@ -133,7 +133,7 @@ class Command_Line(mpre.vmlibrary.Process):
     def run(self):
         if input_waiting():
             if self.screensaver is not None:
-                mpre.objects[self.screensaver].delete()
+                pride.objects[self.screensaver].delete()
                 self.screensaver = None           
             if not self.thread_started:
                 self._new_thread()    
@@ -180,19 +180,19 @@ class Command_Line(mpre.vmlibrary.Process):
                 except KeyError:
                     component, method = self.default_program
                     program_input = input  
-        mpre.Instruction(component, method, program_input).execute()
+        pride.Instruction(component, method, program_input).execute()
         if self.write_prompt:
             sys.stdout.write(self.prompt)
                 
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
-            self.screensaver = self.create("mpre.shell.Terminal_Screensaver").instance_name
+            self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name
         self._idle = True        
         priority = self.idle_threshold * self.priority
-        mpre.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
+        pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
         
         
-class Program(mpre.base.Base):
+class Program(pride.base.Base):
             
     defaults = {"set_as_default" : False,
                 "name" : ''}
@@ -231,7 +231,7 @@ class Shell_Program(Program):
                 "name" : "shell"}
                      
     def handle_input(self, input):
-        mpre.utilities.shell(input, shell=self.use_shell)
+        pride.utilities.shell(input, shell=self.use_shell)
         
     
 class Switch_Program(Program):
@@ -239,7 +239,7 @@ class Switch_Program(Program):
     defaults = {"name" : "switch"}
             
     def handle_input(self, input):
-        command_line = mpre.objects["Command_Line"]
+        command_line = pride.objects["Command_Line"]
         if not input:
             input = "__default"
         command_line.set_default_program(command_line.get_program(input.strip()))
@@ -268,7 +268,7 @@ class File_Explorer(Program):
             return contents
             
             
-class Terminal_Screensaver(mpre.vmlibrary.Process):
+class Terminal_Screensaver(pride.vmlibrary.Process):
     
     defaults = {"rate" : 3,
                 "priority" : .08,
@@ -281,8 +281,8 @@ class Terminal_Screensaver(mpre.vmlibrary.Process):
             
     def run(self):
         if not self.file_text:
-            name, instance = mpre.objects.popitem() # get a random instance
-            mpre.objects[name] = instance
+            name, instance = pride.objects.popitem() # get a random instance
+            pride.objects[name] = instance
             self.file_text = '\n' + name + ':\n' + instance.__doc__
             
         sys.stdout.write(self.file_text[:self.rate])

@@ -1,39 +1,39 @@
-import mpre.gui.gui
-import mpre.gui.widgetlibrary            
+import pride.gui.gui
+import pride.gui.widgetlibrary            
     
-class New_Button(mpre.gui.gui.Button):
+class New_Button(pride.gui.gui.Button):
     
     defaults = {"text" : "New"}
     
     def left_click(self, mouse): 
-        self.parent_application.create("mpre.gui.cyvasse.Cyvasse_Gameboard")
+        self.parent_application.create("pride.gui.cyvasse.Cyvasse_Gameboard")
         self.parent.delete()
         
         
-class Open_Button(mpre.gui.gui.Button):
+class Open_Button(pride.gui.gui.Button):
     
-    defaults = mpre.gui.gui.Button.defaults.copy()
+    defaults = pride.gui.gui.Button.defaults.copy()
     defaults.update({"text" : "Open..."})
     
     def left_click(self, mouse):
-        self.parent_application.create("mpre.gui.widgetlibrary.File_Explorer",
+        self.parent_application.create("pride.gui.widgetlibrary.File_Explorer",
                                        callback=self._open)
         self.parent.delete()
         
     def _open(self, filename):
         with open(filename, 'rb') as _file:
-            saved_game = mpre.base.load(_file=_file)
+            saved_game = pride.base.load(_file=_file)
         self.parent_application.add(saved_game)
         
         
-class Save_Button(mpre.gui.widgetlibrary.Method_Button):
+class Save_Button(pride.gui.widgetlibrary.Method_Button):
         
     defaults = {"text" : "Save",
                 "method" : "save"}
                      
     def left_click(self, mouse):
         if not self.parent_application._current_save_file:
-            self.create("mpre.gui.widgetlibrary.File_Explorer", 
+            self.create("pride.gui.widgetlibrary.File_Explorer", 
                         callback=self._open)
         else:
             super(Save_Button, self).left_click(mouse)
@@ -45,13 +45,13 @@ class Save_Button(mpre.gui.widgetlibrary.Method_Button):
         super(Save_Button, self).left_click(None)
             
         
-class Save_As_Button(mpre.gui.widgetlibrary.Method_Button):
+class Save_As_Button(pride.gui.widgetlibrary.Method_Button):
             
     defaults = {"text" : "Save As...",
                 "method" : "save"}
     
     def left_click(self, mouse):
-        self.create("mpre.gui.widgetlibrary.File_Explorer", 
+        self.create("pride.gui.widgetlibrary.File_Explorer", 
                     callback=self._open)
         self.parent.delete()
         
@@ -61,7 +61,7 @@ class Save_As_Button(mpre.gui.widgetlibrary.Method_Button):
         super(Save_As_Button, self).left_click(None)    
         
         
-class Close_Button(mpre.gui.gui.Button):
+class Close_Button(pride.gui.gui.Button):
             
     defaults = {"text" : "close"}
     
@@ -72,7 +72,7 @@ class Close_Button(mpre.gui.gui.Button):
         self.parent.delete()
         
         
-class File_Menu(mpre.gui.gui.Container):
+class File_Menu(pride.gui.gui.Container):
     
     defaults = {"startup_components" : (New_Button, Open_Button,
                                         Close_Button),
@@ -91,7 +91,7 @@ class File_Menu(mpre.gui.gui.Container):
         super(File_Menu, self).delete()
         
         
-class File_Button(mpre.gui.gui.Button):
+class File_Button(pride.gui.gui.Button):
     
     defaults = {"text" : "File", "pack_mode" : "horizontal", 
                 "_file_menu" : None}
@@ -109,12 +109,12 @@ class File_Button(mpre.gui.gui.Button):
             self._file_menu = None
             
             
-class Cyvasse_Gameboard(mpre.gui.gui.Window):
+class Cyvasse_Gameboard(pride.gui.gui.Window):
     
-    defaults = mpre.gui.gui.Window.defaults.copy()
+    defaults = pride.gui.gui.Window.defaults.copy()
     
     
-class Cyvasse(mpre.gui.gui.Application):
+class Cyvasse(pride.gui.gui.Application):
     
     defaults = {"startup_components" : tuple()}
     
@@ -130,6 +130,6 @@ class Cyvasse(mpre.gui.gui.Application):
         self._current_save_file = self._current_game = None
         super(Cyvasse, self).__init__(**kwargs)
         self.objects.setdefault("Cyvasse_Gameboard", [])
-        self.create("mpre.gui.widgetlibrary.Task_Bar", startup_components=(
+        self.create("pride.gui.widgetlibrary.Task_Bar", startup_components=(
                     File_Button, ))
         

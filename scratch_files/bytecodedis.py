@@ -143,7 +143,7 @@ def get_variable_types(method):
 if __name__ == "__main__":
 
     
-    import mpre.base as base
+    import pride.base as base
     method = base.Base.create
     
  #   dis.dis(method)  

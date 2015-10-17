@@ -1,8 +1,8 @@
 import struct
 
-import mpre.network
+import pride.network
 
-class Clamd_Connection(mpre.network.Tcp_Client):
+class Clamd_Connection(pride.network.Tcp_Client):
     
     defaults = {"ip" : "127.0.0.1", "port" : 3310, "max_chunk_size" : 1024}
     

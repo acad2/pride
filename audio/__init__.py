@@ -1,14 +1,14 @@
 import platform
 import os
 
-import mpre
+import pride
 
 def enable():
-    """ Creates an instance of mpre.audio.audiolibrary.Audio_Manager if
+    """ Creates an instance of pride.audio.audiolibrary.Audio_Manager if
         one does not already exist. """
-    if "Audio_Manager" not in mpre.environment.objects:
-        mpre.Instruction("Python", "create", 
-                         "mpre.audio.audiolibrary.Audio_Manager").execute()
+    if "Audio_Manager" not in pride.environment.objects:
+        pride.Instruction("Python", "create", 
+                         "pride.audio.audiolibrary.Audio_Manager").execute()
                     
 if "Linux" == platform.system():
     def install_pyalsaaudio():
@@ -16,7 +16,7 @@ if "Linux" == platform.system():
                             "sudo apt-get install libasound2",
                             "sudo apt-get install libasound2-dev",
                             "sudo pip install pyalsaaudio"))
-        if mpre.shell.get_permission("{}\n\n".format(source) +
+        if pride.shell.get_permission("{}\n\n".format(source) +
                                      "allow the above commands? "):
             [os.system(command) for command in source.split("\n")]
                 
@@ -25,6 +25,6 @@ if "Linux" == platform.system():
         for dependency in ("libportaudio0", "libportaudio2", "libportaudiocpp0",
                            "portaudio19-dev"):
             source.append("sudo apt-get install {}".format(dependency))
-        if mpre.shell.get_permission('\n'.join(source) + "\n\n" +
+        if pride.shell.get_permission('\n'.join(source) + "\n\n" +
                                      "allow the above commands? "):        
             [os.system(command) for command in source]

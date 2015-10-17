@@ -1,4 +1,4 @@
-# mpre.decorators
+# pride.decorators
 import sys
 import trace
 import time

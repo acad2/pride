@@ -5,7 +5,7 @@ import functools
 import ast
 from copy import copy
 
-import mpre.utilities as utilities
+import pride.utilities as utilities
 
 class Docstring(object):
     """ A descriptor object used by the Documented metaclass. Augments
@@ -343,7 +343,7 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):
         
 if __name__ == "__main__":
     import unittest
-    import mpre.base as base
+    import pride.base as base
           
     
     class Test_Metaclass(unittest.TestCase):
@@ -369,7 +369,7 @@ if __name__ == "__main__":
                 
             sock = test_base.create("socket.socket", decorator=test_decorator1)
             
-            other_base = test_base.create("mpre.base.Base", decorators=(test_decorator1, test_decorator2))
+            other_base = test_base.create("pride.base.Base", decorators=(test_decorator1, test_decorator2))
             
             def monkey_patch(*args, **kwargs):
                 print "inside monkey patch"
@@ -389,7 +389,7 @@ if __name__ == "__main__":
             print len(sys.argv)
 
             class TestBase(base.Base):
-                defaults = mpre.defaults.Base.copy()
+                defaults = pride.defaults.Base.copy()
                 
                 arg_index = 1
                 for item in arguments[::2]:

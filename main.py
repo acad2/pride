@@ -4,11 +4,11 @@
     interpreted as the filepath of the python script to execute. ."""
 from __future__ import unicode_literals
 import traceback
-import mpre.interpreter
-Shell = mpre.interpreter.Shell
+import pride.interpreter
+Shell = pride.interpreter.Shell
 
 if __name__ == "__main__":
-    metapython = mpre.interpreter.Python(parse_args=True)
+    metapython = pride.interpreter.Python(parse_args=True)
     metapython.start_machine()
     #while True:
     #    try:

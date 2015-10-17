@@ -20,13 +20,13 @@ import traceback
 import timeit
 from functools import partial
 
-import mpre
-import mpre.base
+import pride
+import pride.base
 
-Instruction = mpre.Instruction
+Instruction = pride.Instruction
 timer_function = timeit.default_timer
 
-class Process(mpre.base.Base):
+class Process(pride.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
         Create a logical process. Note that while Process objects
@@ -44,7 +44,7 @@ class Process(mpre.base.Base):
     defaults = {"priority" : .04,
                 "running" : True,
                 "run_callback" : None}
-    parser_ignore = mpre.base.Base.parser_ignore + ("priority", "run_callback", )
+    parser_ignore = pride.base.Base.parser_ignore + ("priority", "run_callback", )
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -102,8 +102,8 @@ class Processor(Process):
             
     def run(self):
         self._return = {}
-        instructions = mpre.environment.Instructions
-        objects = mpre.objects
+        instructions = pride.environment.Instructions
+        objects = pride.objects
                 
         sleep = time.sleep
         heappop = heapq.heappop

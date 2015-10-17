@@ -43,23 +43,23 @@ def binary_to_char(binary):
 def char_to_binary(characters):
     return ''.join(bin(ord(character))[2:] for character in characters)
  
-def compress(data, data_key=None, shared_key=ASCIIKEY, block_size=4096):        
+def copridess(data, data_key=None, shared_key=ASCIIKEY, block_size=4096):        
     result = bytes()
     data_key = data_key or list(set(data))
     old_result = 0
     while data:
-        print "+{} bytes compressed...".format(len(result) - old_result)
+        print "+{} bytes copridessed...".format(len(result) - old_result)
         old_result = len(result)        
         result += convert(data[:block_size], data_key, shared_key)
         
         data = data[block_size:]
     return result, data_key
     
-def decompress(data, data_key, shared_key=ASCIIKEY, block_size=4096):
+def decopridess(data, data_key, shared_key=ASCIIKEY, block_size=4096):
     result = bytes()
     old_result = 0
     while data:
-        print "+{} bytes decompressed".format(len(result) - old_result)
+        print "+{} bytes decopridessed".format(len(result) - old_result)
         old_result = len(result)
         result += convert(data[:block_size], ASCIIKEY, data_key)
         data = data[block_size:]
@@ -70,13 +70,13 @@ def decompress(data, data_key, shared_key=ASCIIKEY, block_size=4096):
 #print len(data_base256), len(data)
 #
 #bdata = '1' * (len(data_base256) + 1)
-#compressed = binary_to_char(bdata)       
+#copridessed = binary_to_char(bdata)       
 #
 #difference = ''.join(chr(255 - ord(character)) for character in data_base256)
 #
-#print len(compressed), len(difference)
+#print len(copridessed), len(difference)
 #
-#_bdata = char_to_binary(compressed)
+#_bdata = char_to_binary(copridessed)
 #print len(_bdata), len(bdata)
 #assert _bdata == bdata
 #

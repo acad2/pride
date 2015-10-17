@@ -22,12 +22,12 @@ import traceback
 import sys
 import binascii
 
-import mpre
-import mpre.vmlibrary as vmlibrary
-import mpre.base as base
+import pride
+import pride.vmlibrary as vmlibrary
+import pride.base as base
 from utilities import Latency, Average
-Instruction = mpre.Instruction
-objects = mpre.objects
+Instruction = pride.Instruction
+objects = pride.objects
 
 _socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 
@@ -70,7 +70,7 @@ def local_sends(socket_send):
             return socket_send(self, data)
            
         self.alert("Sending data locally, bypassing nic")
-        instance = mpre.objects[instance_name]
+        instance = pride.objects[instance_name]
         instance._local_data += data
         instance.alert("recv called locally")
         instance.recv()            
@@ -88,7 +88,7 @@ def local_recvs(socket_recv):
     return _recv
      
 #def local_     
-class Socket_Error_Handler(mpre.base.Base):
+class Socket_Error_Handler(pride.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
                  "connection_in_progress" : 0,
@@ -281,7 +281,7 @@ class Socket(base.Wrapper):
                     self._endpoint_instance_name = _socket_names[self.peername]
             self.alert("Bypassing network stack. Sending to {}", 
                        (self._endpoint_instance_name, ), level='vvv')
-            instance = mpre.objects[self._endpoint_instance_name]
+            instance = pride.objects[self._endpoint_instance_name]
             instance._local_data += data
             instance.recv()                 
         else:
@@ -308,7 +308,7 @@ class Socket(base.Wrapper):
                 self.on_connect()
             elif not self._connecting:
                 self._connection_attempts = self.connection_attempts
-                latency = self.latency = mpre.utilities.Latency(size=10)
+                latency = self.latency = pride.utilities.Latency(size=10)
                 latency.start_measuring()
                 self._connecting = True
                 objects["Network"].connecting.add(self)
