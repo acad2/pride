@@ -89,6 +89,7 @@ class Preemptive_Multiprocessor(mpre.base.Base):
             for count, _thread in enumerate(threads):
                 source.append(_thread.source)
                 _header = mpre.utilities.function_header(_thread.method)[1:-1] # remove the ( )
+            #    print "Got header for: {}; {}".format(_thread, _header)
                 __header = []                
                 prefix = _thread.component_name + '_' + _thread.method_name + '_'
                 for argument_name in _header.split():
@@ -108,15 +109,17 @@ class Preemptive_Multiprocessor(mpre.base.Base):
         #    print header
             source.insert(0, header)
             source.append("\n    return locals()")
+            print "Compiling: ", '\n'.join(source)
             context = globals().copy()
             code = mpre.compiler.compile('\n'.join(source), "<string>")
             exec code in context, context
             function = self._combination_cache[threads] = context["function_" + new_function_name]
         else:
             function = self._combination_cache[threads]
-        print function, mpre.utilities.function_header(function)
-        print arguments
-        function(*arguments)
+    #    print function, mpre.utilities.function_header(function)
+    #    print arguments
+        self.threads = []
+        return function(*arguments)        
         
     
 class Thread(mpre.base.Base):
@@ -139,6 +142,10 @@ class Thread(mpre.base.Base):
         component_name, method_name = self.component_name, self.method_name
         if not self.method:            
             self.method = getattr(mpre.objects[component_name], method_name)
+        else:
+            if not method_name:
+                method_name = self.method_name = self.method.__name__
+            
         self.source = inline_function_source(self.method, method_name, component_name)
         self.arg_count = get_arg_count(self.method)
         
@@ -161,12 +168,23 @@ class Thread(mpre.base.Base):
         mpre.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))
         
 if __name__ == "__main__":
-    def test(testing, idek=True, *args, **kwargs):
-        print "Inside test :)"
+    def test(testing, idek=True, *args, **test_kwargs):
+        print "Inside test :)", testing, idek, args, test_kwargs
+        print test
         return None
+    def _spawn_thread(**_test_kwargs):
+        return Thread(**_test_kwargs)
+    def _test_function(*args, **kwargs):
+        print "Inside _test function!", args, kwargs
     thread = Thread(method=test)
     thread2 = Thread(method=run_functions)
+    thread3 = Thread(method=_spawn_thread)
     p = Preemptive_Multiprocessor()
     thread(1, False, 2, 3, 4, 5, woo="hooray")
     thread2([(1, 2, 3)])
-    p.run()
+    thread3(method=_test_function)
+    print "Locals: ", p.run()
+    print "Return values: ", p._return
+    #thread(11, True, 2, 3, 4, 5, woo="yeaaaahhhhhhhhhhh!")
+    #thread2([(1, 2, 3)])   
+    #p.run()

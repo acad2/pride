@@ -124,11 +124,13 @@ def function_header(function):
                 raise ValueError("could not locate code object of {}".format(function))
         
     arguments = inspect.getargs(code)
-    _arguments = ', '.join(arguments.args )
+    _arguments = ', '.join(arguments.args)
     if arguments.varargs:
-        _arguments += ", *" + arguments.varargs
+        prefix = ", *" if _arguments else ''
+        _arguments += prefix + arguments.varargs
     if arguments.keywords:
-        _arguments += ", **" + arguments.keywords
+        prefix = ", **"  if _arguments else ''
+        _arguments += prefix + arguments.keywords
     return "(" + _arguments + ")"    
       
 def usage(_object):

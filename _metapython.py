@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" Provides classes for the launcher class and parts for an interpreter. """
+""" Provides classes for the launcher class and parts for an interpreter."""
 import sys
 import codeop
 import os
@@ -10,7 +10,7 @@ try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
-    
+
 import mpre
 import mpre.base as base
 import mpre.vmlibrary as vmlibrary
@@ -279,3 +279,4 @@ class Metapython(base.Base):
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)
+        

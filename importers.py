@@ -149,8 +149,8 @@ class Parser(object):
         
     @staticmethod
     def replace_symbol(symbol, source, replacement):
-        delimiters = ['.', ' ', '\t', '(', ')', '\n', ',', '[', ']', '{', '}', ':']
-    #    print "Replacing {} with {}".format(symbol, replacement)
+        delimiters = DELIMITERS + OPERATORS
+   #     print "Replacing {} with {}".format(symbol, replacement)
         _count = 0
         while symbol in source:
             slice_information = Parser.find_symbol(symbol, source, 1)
@@ -158,12 +158,14 @@ class Parser(object):
                 #print "last symbol in source was a string", slice_information
                 break
             symbol_start, _end = slice_information[0]
-      #      print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end
+     #       print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end, source
             for index, character in enumerate(source[symbol_start:]):
                 if character in delimiters:
                     delimiter = delimiters[delimiters.index(character)]
                     end_index = index
                     break
+            else:
+                end_index = index
             name = source[symbol_start + 1:symbol_start + end_index]
             replaced = replacement.format(name)
       #      print symbol_start + 1, symbol_start + end_index, replaced
