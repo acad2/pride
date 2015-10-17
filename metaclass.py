@@ -5,7 +5,7 @@ import functools
 import ast
 from copy import copy
 
-import mpre.utilities as utilities
+import pride.utilities as utilities
 
 class Docstring(object):
     """ A descriptor object used by the Documented metaclass. Augments
@@ -280,8 +280,28 @@ class Parser(object):
         return options
 
        
-       
-class Metaclass(Documented, Parser_Metaclass, Method_Hook):
+class Inherited_Attributes(type):
+        
+    inherited_attributes = tuple()
+    
+    def __new__(cls, name, bases, attributes):
+        for attribute_name in cls.inherited_attributes:
+            _attribute = {}
+            for _class in bases:
+                _attribute.update(getattr(_class, attribute_name, {}))
+            _attribute.update(attributes.get(attribute_name, 
+                                             getattr(_class, attribute_name, {}).copy()))
+            attributes[attribute_name] = _attribute
+        return super(Inherited_Attributes, cls).__new__(cls, name, bases,
+                                                        attributes)
+        
+        
+class Defaults(Inherited_Attributes):
+
+    inherited_attributes = ("defaults", "verbosity")
+
+    
+class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 
         new single inheritance metaclass that utilizes each entry. 
@@ -323,7 +343,7 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook):
         
 if __name__ == "__main__":
     import unittest
-    import mpre.base as base
+    import pride.base as base
           
     
     class Test_Metaclass(unittest.TestCase):
@@ -349,7 +369,7 @@ if __name__ == "__main__":
                 
             sock = test_base.create("socket.socket", decorator=test_decorator1)
             
-            other_base = test_base.create("mpre.base.Base", decorators=(test_decorator1, test_decorator2))
+            other_base = test_base.create("pride.base.Base", decorators=(test_decorator1, test_decorator2))
             
             def monkey_patch(*args, **kwargs):
                 print "inside monkey patch"
@@ -369,7 +389,7 @@ if __name__ == "__main__":
             print len(sys.argv)
 
             class TestBase(base.Base):
-                defaults = mpre.defaults.Base.copy()
+                defaults = pride.defaults.Base.copy()
                 
                 arg_index = 1
                 for item in arguments[::2]:

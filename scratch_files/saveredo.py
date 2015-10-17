@@ -1,9 +1,9 @@
-class Save(mpre.base.Base):
+class Save(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(Save, self).__init__(**kwargs)
         if not self.component:
-            raise mpre.base.ArgumentError("No component specified for saving")
+            raise pride.base.ArgumentError("No component specified for saving")
             
         component = self.component
         try:

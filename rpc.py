@@ -4,14 +4,14 @@ import traceback
 import json
 import pickle
 
-import mpre
-import mpre.base
-import mpre.network
-import mpre.networkssl
-import mpre.authentication
-import mpre.persistence
-import mpre.decorators
-objects = mpre.objects
+import pride
+import pride.base
+import pride.network
+import pride.networkssl
+import pride.authentication
+import pride.persistence
+import pride.decorators
+objects = pride.objects
 
 default_serializer = pickle
 _old_data, _hosts = {}, {}
@@ -42,12 +42,11 @@ def packetize_recv(recv):
     return _recv
    
         
-class Session(mpre.base.Base):
+class Session(pride.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"id" : '0', 
-                     "host_info" : tuple(),
-                     "requester_type" : "mpre.rpc.Rpc_Client"})
+    defaults = {"id" : '0', 
+                "host_info" : tuple(),
+                "requester_type" : "pride.rpc.Rpc_Client"}
     
     def _get_id(self):
         return self._id
@@ -90,10 +89,9 @@ class Session(mpre.base.Base):
         return self._callbacks.pop(0)
         
             
-class Packet_Client(mpre.networkssl.SSL_Client):
+class Packet_Client(pride.networkssl.SSL_Client):
             
-    defaults = mpre.networkssl.SSL_Client.defaults.copy()
-    defaults.update({"_old_data" : bytes()})
+    defaults = {"_old_data" : bytes()}
     
     @packetize_send
     def send(self, data):
@@ -104,10 +102,9 @@ class Packet_Client(mpre.networkssl.SSL_Client):
         return super(Packet_Client, self).recv(buffer_size)      
         
         
-class Packet_Socket(mpre.networkssl.SSL_Socket):
+class Packet_Socket(pride.networkssl.SSL_Socket):
             
-    defaults = mpre.networkssl.SSL_Socket.defaults.copy()
-    defaults.update({"_old_data" : bytes()})
+    defaults = {"_old_data" : bytes()}
     
     @packetize_send
     def send(self, data):
@@ -118,18 +115,15 @@ class Packet_Socket(mpre.networkssl.SSL_Socket):
         return super(Packet_Socket, self).recv(buffer_size)
                        
                         
-class Rpc_Server(mpre.networkssl.SSL_Server):
+class Rpc_Server(pride.networkssl.SSL_Server):
     
-    defaults = mpre.networkssl.SSL_Server.defaults.copy()
-    defaults.update({"port" : 40022,
-                     "interface" : "localhost",
-                     "Tcp_Socket_type" : "mpre.rpc.Rpc_Socket"})
+    defaults = {"port" : 40022,
+                "interface" : "localhost",
+                "Tcp_Socket_type" : "pride.rpc.Rpc_Socket"}
     
     
 class Rpc_Client(Packet_Client):
-            
-    defaults = Packet_Client.defaults.copy()
-    
+               
     def __init__(self, **kwargs):
         self._requests, self._callbacks = [], []
         super(Rpc_Client, self).__init__(**kwargs)
@@ -157,7 +151,7 @@ class Rpc_Client(Packet_Client):
             _response = self.deserealize(response)
             callback_owner = self._callbacks.pop(0)
             try:
-                callback = next(mpre.objects[callback_owner])
+                callback = next(pride.objects[callback_owner])
             except KeyError:
                 self.alert("Could not resolve callback_owner '{}' for {} {}",
                            (callback_owner, "callback with arguments {}",
@@ -183,13 +177,8 @@ class Rpc_Client(Packet_Client):
         
 class Rpc_Socket(Packet_Socket):
             
-    defaults = Packet_Socket.defaults.copy()
-    defaults.update({"debug_mode" : True})
-    
-  #  def __init__(self, **kwargs):
-   #     super(Rpc_Socket, self).__init__(**kwargs)
-       # self._peername = self.getpeername()
-                
+    defaults = {"debug_mode" : True}
+                    
     def recv(self, packet_count=0):
         peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
@@ -209,12 +198,12 @@ class Rpc_Socket(Packet_Socket):
                 if method in ("register", "login"):
                     permission = True
             try:
-                instance = mpre.objects[component_name]
+                instance = pride.objects[component_name]
             except KeyError as result:
                 pass
             else:
                 if not hasattr(instance, "validate"):
-                    result = mpre.authentication.UnauthorizedError()
+                    result = pride.authentication.UnauthorizedError()
                 elif (permission or 
                     instance.validate(session_id, peername, method)):
                     instance.current_session = (session_id, peername)
@@ -232,7 +221,7 @@ class Rpc_Socket(Packet_Socket):
                 else:
                     self.alert("Denying unauthorized request: {}",
                                (packet, ), level='v')
-                    result = mpre.authentication.UnauthorizedError()
+                    result = pride.authentication.UnauthorizedError()
             self.alert("Sending result of {}.{}: {}",
                        (instance, method, result), level='vv')
             self.send(self.serealize(result))

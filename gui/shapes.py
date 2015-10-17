@@ -1,13 +1,13 @@
-import mpre.base
+import pride.base
 
 import sdl2.ext # for Color
 
-class Shape(mpre.base.Base):
+class Shape(pride.base.Base):
     
     coordinates = ('x', 'y', 'w', 'h', 'z')  
     colors = ('r', 'g', 'b', 'a')
       
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
        
     def __init__(self, **kwargs):
         self._color = sdl2.ext.Color(0, 0, 0, 0)
@@ -117,7 +117,7 @@ class Bounded_Shape(Shape):
     defaults = Shape.defaults.copy()
     
     def __init__(self, **kwargs):       
-        max_width, max_height = mpre.gui.SCREEN_SIZE
+        max_width, max_height = pride.gui.SCREEN_SIZE
         self.w_range = (0, max_width)
         self.h_range = (0, max_height)
         for color in self.colors:

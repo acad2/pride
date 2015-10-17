@@ -5,13 +5,13 @@ import ctypes
 import collections
 import StringIO
 
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.utilities as utilities
-import mpre.gui
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.utilities as utilities
+import pride.gui
+Instruction = pride.Instruction
+objects = pride.objects
 
 import sdl2
 import sdl2.ext
@@ -20,27 +20,18 @@ sdl2.ext.init()
 sdl2.sdlttf.TTF_Init()
 font_module = sdl2.sdlttf
 
-class SDL_Component(base.Proxy):
-
-    defaults = base.Proxy.defaults.copy()
+class SDL_Component(base.Proxy): pass
     
 
 class SDL_Window(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"size" : mpre.gui.SCREEN_SIZE,
-                     "showing" : True,
-                     'position' : (0, 0),
-                     'x' : 0,
-                     'y' : 0,
-                     'z' : 0,
-                     'w' : mpre.gui.SCREEN_SIZE[0],
-                     'h' : mpre.gui.SCREEN_SIZE[1],
-                     "area" : (0, 0) + mpre.gui.SCREEN_SIZE,
-                     "name" : "Metapython",
-                     "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
-                     "window_flags" : None, #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE 
-                     "priority" : .04})
+    defaults = {"size" : pride.gui.SCREEN_SIZE, "showing" : True,
+                'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
+                'w' : pride.gui.SCREEN_SIZE[0], 'h' : pride.gui.SCREEN_SIZE[1],
+                "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
+                "name" : "Python",
+                "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
+                "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
     
     def _get_size(self):
         return (self.w, self.h)
@@ -109,7 +100,7 @@ class SDL_Window(SDL_Component):
             
             layer_texture, layer_components = layer_info
             if layer_texture is None:
-                layer_texture = mpre.gui.gui.create_texture(self.size)
+                layer_texture = pride.gui.gui.create_texture(self.size)
                 layers[layer_number] = (layer_texture, layer_components)
             renderer.set_render_target(layer_texture.texture)
             renderer.clear()
@@ -181,7 +172,7 @@ class SDL_Window(SDL_Component):
         pass
             
             
-class Window_Handler(mpre.base.Base):
+class Window_Handler(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(Window_Handler, self).__init__(**kwargs)
@@ -255,10 +246,9 @@ class Window_Handler(mpre.base.Base):
         
 class SDL_User_Input(vmlibrary.Process):
 
-    defaults = vmlibrary.Process.defaults.copy()
-    defaults.update({"event_verbosity" : 0,
-                     "_ignore_click" : False,
-                     "active_item" : None})
+    defaults = {"event_verbosity" : 0,
+                "_ignore_click" : False,
+                "active_item" : None}
     
     def _get_active_item(self):
         return self._active_item
@@ -331,6 +321,8 @@ class SDL_User_Input(vmlibrary.Process):
             try:
                 handlers[event.type](event)
             except KeyError:
+                if event.type in handlers:
+                    raise
                 self.alert("Unhandled event: {}".format(event.type))
 
     def _update_coordinates(self, item, area, z):
@@ -381,7 +373,7 @@ class SDL_User_Input(vmlibrary.Process):
         for layer_number, layer in reversed(self._coordinate_tracker.items()):
             for item in layer:
                 area, z = coordinates[item]
-                if mpre.gui.point_in_area(area, mouse_position):
+                if pride.gui.point_in_area(area, mouse_position):
                     active_item = item
                     break
             if active_item:
@@ -392,42 +384,50 @@ class SDL_User_Input(vmlibrary.Process):
             if self._ignore_click:
                 self._ignore_click = False
             else:
-                mpre.objects[active_item].press(mouse)
+                pride.objects[active_item].press(mouse)
             
     def handle_mousebuttonup(self, event):
         active_item = self.active_item
         if active_item:            
-            instance = mpre.objects[active_item]
+            instance = pride.objects[active_item]
             if instance.held:
                 area, z = self.coordinate_tracker[active_item]
                 mouse = event.button
-                if mpre.gui.point_in_area(area, (mouse.x, mouse.y)):
+                if pride.gui.point_in_area(area, (mouse.x, mouse.y)):
                     instance.release(mouse)
        
     def handle_mousewheel(self, event):
         if self.active_item:
             wheel = event.wheel
-            mpre.objects[self.active_item].mousewheel(wheel.x, wheel.y)
+            pride.objects[self.active_item].mousewheel(wheel.x, wheel.y)
 
     def handle_mousemotion(self, event):        
         if self.active_item:
             motion = event.motion
-            mpre.objects[self.active_item].mousemotion(motion.xrel, motion.yrel)
+            pride.objects[self.active_item].mousemotion(motion.xrel, motion.yrel)
 
     def handle_keydown(self, event):
         try:
-            instance = mpre.objects[self.active_item]
+            instance = pride.objects[self.active_item]
         except KeyError:
             self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
             return
+            
+        key_value = event.key.keysym.sym
+        modifier = event.key.keysym.mod
+        
+      #  if key_value < 256 or key_value > 0: # in ascii range
+            
         try:
-            key = chr(event.key.keysym.sym)
+            key = chr(key_value)
         except ValueError:
+      #      if print "Returning early. key: ", event.key.keysym.sym
             return # key was a modifier key
         else:
+            print "Handling keydown: ", key
             if key == "\r":
                 key = "\n"
-            modifier = event.key.keysym.mod
+            
             if modifier in self.uppercase_modifiers:
                 try:
                     key = self.uppercase[key]
@@ -463,9 +463,8 @@ class SDL_User_Input(vmlibrary.Process):
 
 class Renderer(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"flags" : sdl2.SDL_RENDERER_ACCELERATED,
-                     "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND})
+    defaults = {"flags" : sdl2.SDL_RENDERER_ACCELERATED,
+                "blendmode_flag" : sdl2.SDL_BLENDMODE_BLEND}
                 
     def __init__(self, window, **kwargs):      
         super(Renderer, self).__init__(**kwargs)
@@ -528,8 +527,6 @@ class Renderer(SDL_Component):
         
 class Sprite_Factory(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-
     def __init__(self, **kwargs):
         kwargs["wrapped_object"] = sdl2.ext.SpriteFactory(renderer=kwargs["renderer"])
         super(Sprite_Factory, self).__init__(**kwargs)
@@ -537,13 +534,10 @@ class Sprite_Factory(SDL_Component):
 
 class Font_Manager(SDL_Component):
 
-    defaults = SDL_Component.defaults.copy()
-    defaults.update({"font_path" : os.path.join(mpre.gui.PACKAGE_LOCATION,
-                                                "resources", "fonts", 
-                                                "Aero.ttf"),
-                     "default_font_size" : 14,
-                     "default_color" : (150, 150, 255),
-                     "default_background" : (0, 0, 0)})
+    defaults = {"font_path" : os.path.join(pride.gui.PACKAGE_LOCATION,
+                                           "resources", "fonts", "Aero.ttf"),
+                "default_font_size" : 14, "default_color" : (150, 150, 255),
+                "default_background" : (0, 0, 0)}
 
     def __init__(self, **kwargs):
         _defaults = self.defaults

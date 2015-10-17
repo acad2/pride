@@ -1,13 +1,13 @@
 import os
 import platform
 
-import mpre.base
-import mpre.utilities
+import pride.base
+import pride.utilities
 
 os_type = platform.system()
 
 COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}" if "Windows" == os_type else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}"
-class Cython(mpre.base.Base):
+class Cython(pride.base.Base):
 
     def handle_source(self, source, module_name, 
                       mode="pyd"):
@@ -19,18 +19,18 @@ class Cython(mpre.base.Base):
         
         input_string = ("cython {} --embed" if mode is 'exe' else
                         "cython {}").format(pyx_filename)
-        mpre.utilities.shell(input_string)
+        pride.utilities.shell(input_string)
         os.remove(pyx_filename)
         
         c_filename = module_name + ".c"
         out_filename = module_name + '.' + mode
-        mpre.utilities.shell(COMPILE_COMMAND.format(c_filename, out_filename))
+        pride.utilities.shell(COMPILE_COMMAND.format(c_filename, out_filename))
         
         os.remove(c_filename)
         
 if __name__ == "__main__":
     import inspect
-    import mpre.base
-    source = inspect.getsource(mpre.base)
+    import pride.base
+    source = inspect.getsource(pride.base)
     cython = Cython()
-    cython.handle_source(source, "mpre.base")
+    cython.handle_source(source, "pride.base")

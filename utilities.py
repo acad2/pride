@@ -8,11 +8,10 @@ import contextlib
 import importlib
 import types
 import pprint
+import traceback
+import timeit
 
-if "win" in sys.platform:
-    timer_function = time.clock
-else:
-    timer_function = time.time
+timer_function = timeit.default_timer
     
 @contextlib.contextmanager
 def sys_argv_swapped(new_argv):
@@ -23,14 +22,14 @@ def sys_argv_swapped(new_argv):
     finally:
         sys.argv[:] = backup
                               
-def updated_class(_class, importer_type="mpre.importers.From_Disk"):
+def updated_class(_class, importer_type="pride.importers.From_Disk"):
     # modules are garbage collected if not kept alive        
     required_modules = []        
     module_loader = resolve_string(importer_type)()
     class_mro = _class.__mro__[:-1] # don't update object
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
-    import mpre.module_utilities
-    with mpre.module_utilities.modules_preserved(info[1] for 
+    import pride.module_utilities
+    with pride.module_utilities.modules_preserved(info[1] for 
                                                  info in class_info):
         for cls, module_name in class_info:
             module = module_loader.load_module(module_name)
@@ -41,8 +40,8 @@ def updated_class(_class, importer_type="mpre.importers.From_Disk"):
                     source = module._source
                 except AttributeError:
                     error_string = "Could not locate source for {}".format(module.__name__)
-                    import mpre.errors
-                    raise mpre.errors.UpdateError(error_string)              
+                    import pride.errors
+                    raise pride.errors.UpdateError(error_string)              
             required_modules.append((module_name, source, module))
     
     class_base = getattr(module, _class.__name__)
@@ -85,9 +84,11 @@ def resolve_string(module_name):
         for attribute in reversed(attributes):
             result = getattr(result, attribute)
     except AttributeError:
-        error_message = "Unable to load {} from {}"
-        error_message = error_message.format(attribute, _original)
-        raise AttributeError(error_message)
+        error_message = "resolve_string unable to load {} from {}"
+        print error_message.format(attribute, _original)
+        raise
+        #error_message = '\n'.join((error_message, traceback.format_exc()))
+        #raise AttributeError(error_message)
     return result    
     
 def shell(command, shell=False):
@@ -123,18 +124,20 @@ def function_header(function):
                 raise ValueError("could not locate code object of {}".format(function))
         
     arguments = inspect.getargs(code)
-    _arguments = ', '.join(arguments.args )
+    _arguments = ', '.join(arguments.args)
     if arguments.varargs:
-        _arguments += ", *" + arguments.varargs
+        prefix = ", *" if _arguments else ''
+        _arguments += prefix + arguments.varargs
     if arguments.keywords:
-        _arguments += ", **" + arguments.keywords
+        prefix = ", **"  if _arguments else ''
+        _arguments += prefix + arguments.keywords
     return "(" + _arguments + ")"    
       
 def usage(_object):
     if hasattr(_object, "func_name"):
         name = _object.func_name
         arguments = function_header(_object)
-        return_type = ''#mpre.misc.bytecodedis.get_return_type(_object)
+        return_type = ''#pride.misc.bytecodedis.get_return_type(_object)
     elif hasattr(_object, "func_code"):
         name = _object.__name__
         arguments = function_header(_object)
@@ -441,3 +444,4 @@ class Reversible_Mapping(object):
         
     def __str__(self):
         return str(dict((zip(self.keys, self.values))))
+             

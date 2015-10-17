@@ -85,10 +85,11 @@ def get_opcode_info(function):
  
     stores_in = {"hasconst" : "co_consts",
                  "hasname" : "co_names",
-                 "haslocal" : "co_varnames"}
+                 "haslocal" : "co_varnames",
+                 "hascompare" : "co_names"}
     
     address = 0
-    address_range = len(opcodes)    
+    address_range = len(opcodes)  
     while address < address_range:
         operator = ord(opcodes[address])
         operator_name = reverse_opmap[operator]
@@ -109,8 +110,13 @@ def get_opcode_info(function):
                         freevars = code_object.co_cellvars + code_object.co_freevars
                         argument = freevars[argument_address]
                     else:
-                        code_attribute = getattr(code_object, stores_in[container])
-                        argument = code_attribute[argument_address]
+                        if container == "hascompare":
+                            print container, address, argument_address, operator#, dis.cmp_op[operator]
+                            print code_object.co_names + code_object.co_varnames
+                            argument = (code_object.co_names + code_object.co_varnames)[argument_address]
+                        else:
+                            code_attribute = getattr(code_object, stores_in[container])
+                            argument = code_attribute[argument_address]
           
             result = (address, operator_name, argument_address, argument)
             address += 2
@@ -137,10 +143,10 @@ def get_variable_types(method):
 if __name__ == "__main__":
 
     
-    import mpre.base as base
-    method = base.Base.__init__
+    import pride.base as base
+    method = base.Base.create
     
-    dis.dis(method)  
+ #   dis.dis(method)  
     for address, opcode, arg_addr, arg_value in get_opcode_info(method):
         print "{: >5} {: >15} {} {}".format(address, opcode, arg_addr, arg_value)
     print "variable assignments: ", get_assignments(method)

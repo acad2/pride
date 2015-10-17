@@ -13,9 +13,8 @@ import pickle
 import contextlib
 import copy
 import types
-
-import mpre.utilities
-timer_function = mpre.utilities.timer_function          
+import timeit
+timer_function = timeit.default_timer         
     
 class Environment(object):
     """ Stores global state for the process. This includes reference 
@@ -181,9 +180,9 @@ environment = Environment()
 objects = environment.objects
 
 # Things must be done in this order for Alert_Handler to exist inside this file
-import mpre.base
+import pride.base
 
-class Alert_Handler(mpre.base.Base):
+class Alert_Handler(pride.base.Base):
     """ Provides the backend for the base.alert method. The print_level 
         and log_level attributes act as global levels for alerts; 
         print_level and log_level may be specified as command line arguments 
@@ -195,14 +194,14 @@ class Alert_Handler(mpre.base.Base):
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
                 
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     defaults.update({"log_level" : '',
                      "print_level" : '',
                      "log_name" : "Alerts.log",
                      "log_is_persistent" : False,
                      "parse_args" : True})
     
-    parser_ignore = mpre.base.Base.parser_ignore + ("parse_args", 
+    parser_ignore = pride.base.Base.parser_ignore + ("parse_args", 
                                                     "log_is_persistent", 
                                                     "verbosity")
     exit_on_help = False

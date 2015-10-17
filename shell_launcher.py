@@ -1,4 +1,4 @@
-import mpre
+import pride
 
 options = {"parse_args" : True,
            "startup_definitions" : '',
@@ -7,13 +7,13 @@ options = {"parse_args" : True,
 
 # feel free to customize
 definitions = \
-r"""import mpre.base
-import mpre
+r"""import pride.base
+import pride
 
-environment = mpre.environment
-objects = mpre.objects
-from mpre.importers import From_Disk
-from mpre.utilities import documentation
+environment = pride.environment
+objects = pride.objects
+from pride.importers import From_Disk
+from pride.utilities import documentation
 
 __from_disk_importer = From_Disk()
 from_disk_import = __from_disk_importer.load_module
@@ -34,7 +34,7 @@ def save(instance_name, _file=None):
     return objects[instance_name].save(_file=None)
     
 def create(instance_type, *args, **kwargs):
-    return objects["Metapython"].create(instance_type, *args, **kwargs)
+    return objects["Python"].create(instance_type, *args, **kwargs)
 
 def delete(instance_name):
     objects[instance_name].delete()
@@ -42,84 +42,85 @@ def delete(instance_name):
 def update(instance_name):
     return objects[instance_name].update()
     
-#_package = create("mpre.package.Package", mpre, include_documentation=True)
+#_package = create("pride.package.Package", pride, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
 #    _package.save(_file=package_file)
-#print _package.documentation["mpre"].markdown
+#print _package.documentation["pride"].markdown
 
 #_sqlite3 = _package.get_module("sqlite3")
  
-#import mpre.gui
-#mpre.gui.enable()
-#h = objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
+#import pride.gui
+#pride.gui.enable()
+#h = objects["SDL_Window"].create("pride.gui.widgetlibrary.Homescreen")
 #t = objects["Task_Bar"]
 #i = objects["Indicator"]
 ##d = objects["Date_Time_Button"]
 
-#import mpre.package
-#p = mpre.package.Package(mpre)
+#import pride.package
+#p = pride.package.Package(pride)
 
-#update("Metapython")
-#update("Metapython")
-#x = objects["Metapython"].save()
-#y = mpre.base.Base.load(x) # calls .on_load automatically
+#update("Python")
+#update("Python")
+#x = objects["Python"].save()
+#y = pride.base.Base.load(x) # calls .on_load automatically
 
 #z = s(constructor)
 #newz = l(z) # does not call .on_load
 
-#sniffer = create("mpre.network.Packet_Sniffer")
+#sniffer = create("pride.network.Packet_Sniffer")
 #import socket
 
-#ssl_server = create("mpre.networkssl.SSL_Server")
-#ssl_client = create("mpre.networkssl.SSL_Client", target=("127.0.0.1", 443))
+#ssl_server = create("pride.networkssl.SSL_Server")
+#ssl_client = create("pride.networkssl.SSL_Client", target=("127.0.0.1", 443))
 
-#objects["Metapython"].create("mpre.voip.Message_Server")
-#client = objects["Metapython"].create("mpre.voip.Message_Client", username="test", auto_login=False)
+#objects["Python"].create("pride.voip.Message_Server")
+#client = objects["Python"].create("pride.voip.Message_Client", username="test", auto_login=False)
 
-#import mpre.gui
-#mpre.gui.enable()
-#life = create("mpre.Life.Game_Of_Life")
+#import pride.gui
+#pride.gui.enable()
+#life = create("pride.Life.Game_Of_Life")
 
 #for x in xrange(1000): 
-#    rtt = create("mpre.networkutilities.RTT_Test", target=("192.168.1.254", 80))   
+#    rtt = create("pride.networkutilities.RTT_Test", target=("192.168.1.254", 80))   
 
 #for x in xrange(10000): 
-#    x = create("mpre.shell.Command_Line")
+#    x = create("pride.shell.Command_Line")
 #    x.delete()
     
-#import mpre._metapython
-#m = mpre._metapython.Metapython()
+#import pride.interpreter
+#m = pride.interpreter.Python()
 #s = m.save()
-#import mpre.base
-#l = mpre.base.load(s) 
+#import pride.base
+#l = pride.base.load(s) 
 
-import mpre.gui
-mpre.gui.enable()
-#objects["SDL_Window"].create("mpre.gui.widgetlibrary.Homescreen")
-#objects["SDL_Window"].create("mpre.gui.text_editor.Text_Editor")
-$SDL_Window.create("mpre.gui.terminal.Terminal")
-#game_world = objects["SDL_Window"].create("mpre.game.gamelibrary.Game_World")
-#client = game_world.create("mpre.game.gamelibrary.Game_Client")
+import pride.gui
+pride.gui.enable()
+#$SDL_Window.create("pride.gui.cyvasse.Cyvasse")
+#$SDL_Window.create("pride.gui.fileexplorer.File_Explorer")
+#objects["SDL_Window"].create("pride.gui.widgetlibrary.Homescreen")
+#objects["SDL_Window"].create("pride.gui.text_editor.Text_Editor")
+#$SDL_Window.create("pride.gui.terminal.Terminal")
+#game_world = objects["SDL_Window"].create("pride.game.gamelibrary.Game_World")
+#client = game_world.create("pride.game.gamelibrary.Game_Client")
 #$Game_World.test_duel()
-#game_world.create("mpre.game.levels.Level", room_count=(4, 4), theme="earth")
+#game_world.create("pride.game.levels.Level", room_count=(4, 4), theme="earth")
 #level = objects["Level"]
 
-#import mpre.audio
-#mpre.audio.enable()
+#import pride.audio
+#pride.audio.enable()
 
 #import json
 #from jsontest import *
-#s = json.dumps($Metapython, cls=Base_Encoder)
+#s = json.dumps($Python, cls=Base_Encoder)
 
 #from rnltest import relative_name_lookup
-#server = relative_name_lookup("Metapython.Network.Rpc_Server")
+#server = relative_name_lookup("Python.Network.Rpc_Server")  
+#import objgraph
+#objgraph.show_refs([$Python])
 
-def _pack(mode):
-    $Task_Bar.pack_mode = mode
-    $Task_Bar.pack()
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    objects["Metapython"].create("mpre._metapython.Shell", **options)
+    objects["Python"].create("pride.interpreter.Shell", **options)

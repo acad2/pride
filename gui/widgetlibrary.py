@@ -1,23 +1,22 @@
 import time
 
-import mpre
-import mpre.gui.gui as gui
-import mpre.gui
-import mpre.base as base
-Instruction = mpre.Instruction
+import pride
+import pride.gui.gui as gui
+import pride.gui
+import pride.base as base
+Instruction = pride.Instruction
 
 import sdl2
 
 class Attribute_Modifier_Button(gui.Button):
 
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"amount" : 0,
-                     "method" : "",
-                     "target" : None})
+    defaults = {"amount" : 0,
+                "method" : "",
+                "target" : None}
                      
     def left_click(self, mouse):        
         instance_name, attribute = self.target
-        instance = mpre.objects[instance_name]        
+        instance = pride.objects[instance_name]        
         old_value = getattr(instance, attribute)
         new_value = getattr(old_value, self.method)(self.amount)
         setattr(instance, attribute, new_value)
@@ -29,14 +28,13 @@ class Attribute_Modifier_Button(gui.Button):
  
 class Instruction_Button(gui.Button):
     
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"args" : tuple(),
-                     "kwargs" : None,
-                     "method" : '',
-                     "instance_name" : '',
-                     "priority" : 0.0,
-                     "host_info" : tuple(),
-                     "callback" : None})
+    defaults = {"args" : tuple(),
+                "kwargs" : None,
+                "method" : '',
+                "instance_name" : '',
+                "priority" : 0.0,
+                "host_info" : tuple(),
+                "callback" : None}
                      
     def left_click(self, mouse):
         Instruction(self.instance_name, self.method, 
@@ -47,47 +45,44 @@ class Instruction_Button(gui.Button):
     
 class Method_Button(gui.Button):
         
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"args" : tuple(),
-                     "kwargs" : None,
-                     "method" : '',
-                     "target" : ''})
+    defaults = {"args" : tuple(),
+                "kwargs" : None,
+                "method" : '',
+                "target" : ''}
                      
     def left_click(self, mouse):
-        instance = mpre.objects[self.target]   
-        getattr(instance, self.method)(*self.args, **self.kwargs or {})       
+        try:
+            instance = self.target()
+        except TypeError:
+            instance = pride.objects[self.target]  
+        getattr(instance, self.method)(*self.args, **self.kwargs or {})     
                             
 
 class Delete_Button(Method_Button):
     
-    defaults = Method_Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "text" : "delete",
-                     "method" : "delete"})
+    defaults = {"pack_mode" : "horizontal",
+                "text" : "delete",
+                "method" : "delete"}
         
         
 class Exit_Button(Delete_Button):
         
-    defaults = Delete_Button.defaults.copy()
-    defaults.update({"text" : "exit"})
+    defaults = {"text" : "exit"}
     
     
 class Homescreen(gui.Window):
-
-    defaults = gui.Window.defaults.copy()
     
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
         self.create(Task_Bar, startup_components=\
-                                ("mpre.gui.widgetlibrary.Date_Time_Button",
-                                 "mpre.gui.widgetlibrary.Text_Box"))
+                                ("pride.gui.widgetlibrary.Date_Time_Button",
+                                 "pride.gui.widgetlibrary.Text_Box"))
         
 
 class Task_Bar(gui.Container):
 
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_mode" : "menu_bar",
-                     "bound" : (0, 20)})
+    defaults = {"pack_mode" : "menu_bar",
+                "bound" : (0, 20)}
     
     def _set_pack_mode(self, value):
         super(Task_Bar, self)._set_pack_mode(value)
@@ -104,9 +99,9 @@ class Task_Bar(gui.Container):
                 pass
     pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
     
-    def __init__(self, **kwargs):        
-        super(Task_Bar, self).__init__(**kwargs)
+    def __init__(self, **kwargs):  
         parent_name = self.parent_name
+        super(Task_Bar, self).__init__(**kwargs)        
         self.create(Indicator, text=parent_name)
         self.create(Delete_Button, target=parent_name)
              
@@ -117,11 +112,10 @@ class Task_Bar(gui.Container):
         
 class Text_Box(gui.Container):
     
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"h" : 16,
-                     "pack_mode" : "horizontal",
-                     "allow_text_edit" : True,
-                     "editing" : False})             
+    defaults = {"h" : 16,
+                "pack_mode" : "horizontal",
+                "allow_text_edit" : True,
+                "editing" : False}
     
     def _get_editing(self):
         return self._editing
@@ -158,8 +152,7 @@ class Text_Box(gui.Container):
         
 class Date_Time_Button(gui.Button):
 
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal"})
+    defaults = {"pack_mode" : "horizontal"}
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
@@ -175,19 +168,18 @@ class Color_Palette(gui.Window):
             
     def __init__(self, **kwargs):
         super(Color_Palette, self).__init__(**kwargs)
-        color_button = self.create("mpre.gui.gui.Button", pack_mode="horizontal")
-        slider_container = self.create("mpre.gui.gui.Container", pack_mode="horizontal")
+        color_button = self.create("pride.gui.gui.Button", pack_mode="horizontal")
+        slider_container = self.create("pride.gui.gui.Container", pack_mode="horizontal")
         
         button_name = color_button.instance_name
         for color in ('r', 'g', 'b'):
-            slider_container.create("mpre.gui.widgetlibrary.Scroll_Bar", 
+            slider_container.create("pride.gui.widgetlibrary.Scroll_Bar", 
                                     target=(button_name, color))
                                     
                                     
 class Scroll_Bar(gui.Container):
                            
-    defaults = gui.Container.defaults.copy()
-    defaults.update({"pack_mode" : "right"})
+    defaults = {"pack_mode" : "right"}
     
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
@@ -205,23 +197,20 @@ class Scroll_Bar(gui.Container):
         
 class Decrement_Button(Attribute_Modifier_Button):
       
-    defaults = Attribute_Modifier_Button.defaults.copy()
-    defaults.update({"amount" : 10,
-                     "method" : "__sub__"})                 
+    defaults = {"amount" : 10,
+                "method" : "__sub__"}
         
         
 class Increment_Button(Attribute_Modifier_Button):
                 
-    defaults = Attribute_Modifier_Button.defaults.copy()
-    defaults.update({"amount" : 10,
-                     "method" : "__add__"}) 
+    defaults = {"amount" : 10,
+                "method" : "__add__"}
                     
                     
 class Scroll_Indicator(gui.Button):
             
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"movable" : True,
-                     "text" : ''})
+    defaults = {"movable" : True,
+                "text" : ''}
                 
     def pack(self, modifiers=None):
         if self.pack_mode in ("right", "horizontal"):
@@ -240,11 +229,10 @@ class Scroll_Indicator(gui.Button):
         
 class Indicator(gui.Button):  
     
-    defaults = gui.Button.defaults.copy()
-    defaults.update({"pack_mode" : "horizontal",
-                     "h" : 16,
-                     "line_color" : (255, 235, 155),
-                     "text" : ''})    
+    defaults = {"pack_mode" : "horizontal",
+                "h" : 16,
+                "line_color" : (255, 235, 155),
+                "text" : ''}
     
     def __init__(self, **kwargs):
         super(Indicator, self).__init__(**kwargs)        
@@ -256,32 +244,27 @@ class Indicator(gui.Button):
         
         self.draw("text", self.area, self.text, color=self.text_color, width=self.w)    
         
-        
-class Application(gui.Window):
-    
-    defaults = gui.Window.defaults.copy()
-    defaults.update({"startup_components" : ("mpre.gui.widgetlibrary.Task_Bar", )})
-
 
 class Done_Button(gui.Button):
         
     def left_click(self, mouse):
-        getattr(mpre.objects[self.callback_owner], self.callback)()        
+        getattr(pride.objects[self.callback_owner], self.callback)()        
         
         
-class Prompt(Application):
+class Prompt(gui.Application):
         
-    defaults = Application.defaults.copy()
-    defaults.update({"callback_owner" : '',
-                     "callback" : ''})
+    defaults = {"callback_owner" : '',
+                "callback" : ''}
                      
     def __init__(self, **kwargs):
         super(Application, self).__init__(**kwargs)
-        self.create("mpre.gui.widgetlibrary.Text_Box", text=self.text,
+        self.create("pride.gui.widgetlibrary.Text_Box", text=self.text,
                     allow_text_edit=False)
-        self.user_text = self.create("mpre.gui.widgetlibrary.Text_Box")
-        self.create("mpre.gui.widgetlibrary.Done_Button")
+        self.user_text = self.create("pride.gui.widgetlibrary.Text_Box")
+        self.create("pride.gui.widgetlibrary.Done_Button")
    
     def handle_input(self, user_input):
-        getattr(mpre.objects[self.callback_owner], self.callback)(user_input)
+        getattr(pride.objects[self.callback_owner], self.callback)(user_input)
+        
+        
         

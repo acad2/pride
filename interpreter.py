@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" Provides classes for the main and basic components of the environment. """
+""" Provides classes for the launcher class and parts for an interpreter."""
 import sys
 import codeop
 import os
@@ -10,33 +10,31 @@ try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
-    
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.authentication as authentication
-import mpre.utilities as utilities
-import mpre.fileio as fileio
-import mpre.shell
-objects = mpre.objects
-Instruction = mpre.Instruction            
+
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.authentication as authentication
+import pride.utilities as utilities
+import pride.fileio as fileio
+import pride.shell
+objects = pride.objects
+Instruction = pride.Instruction            
 
     
 class Shell(authentication.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
-    defaults = authentication.Authenticated_Client.defaults.copy()
-    defaults.update({"username" : "",
-                     "password" : "",
-                     "prompt" : ">>> ",
-                     "startup_definitions" : '',
-                     "target_service" : "Interpreter"})
+    defaults = {"username" : "",
+                "password" : "",
+                "prompt" : ">>> ",
+                "startup_definitions" : '',
+                "target_service" : "Interpreter"}
     
     parser_ignore = (authentication.Authenticated_Client.parser_ignore + 
                      ("prompt", "auto_login", "target_service"))
     
-    verbosity = authentication.Authenticated_Client.verbosity.copy()
-    verbosity["logging_in"] = ''
+    verbosity = {"logging_in" : ''}
     
     def __init__(self, **kwargs):
         super(Shell, self).__init__(**kwargs)
@@ -51,7 +49,7 @@ class Shell(authentication.Authenticated_Client):
             self.handle_startup_definitions()                
              
     def handle_startup_definitions(self):
-        source = mpre.compiler.preprocess(self.startup_definitions)
+        source = pride.compiler.preprocess(self.startup_definitions)
         try:
             compile(source, "Shell", 'exec')
         except:
@@ -65,7 +63,7 @@ class Shell(authentication.Authenticated_Client):
         if not user_input:
             user_input = '\n'
         else:
-            user_input = mpre.compiler.preprocess(user_input)
+            user_input = pride.compiler.preprocess(user_input)
             
         self.lines += user_input
         lines = self.lines
@@ -117,9 +115,8 @@ class Interpreter(authentication.Authenticated_Service):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     
-    defaults = authentication.Authenticated_Service.defaults.copy()
-    defaults.update({"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-                     "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"})
+    defaults = {"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+                "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"}
     
     def __init__(self, **kwargs):
         self.user_namespaces = {}
@@ -143,7 +140,7 @@ class Interpreter(authentication.Authenticated_Service):
         return response
 
     def exec_code(self, source):
-        log = mpre.objects[self.log]
+        log = pride.objects[self.log]
         session_id, sender = self.current_session
                 
         username = self.session_id[session_id]
@@ -151,7 +148,7 @@ class Interpreter(authentication.Authenticated_Service):
                                             sender) + source)           
         result = ''         
         try:
-            code = mpre.compiler.compile(source)
+            code = pride.compiler.compile(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:                
@@ -165,7 +162,7 @@ class Interpreter(authentication.Authenticated_Service):
                 namespace["__builtins__"] = __builtins__
             
             backup_raw_input = namespace["__builtins__"]["raw_input"]
-            namespace["__builtins__"]["raw_input"] = mpre.shell.get_user_input
+            namespace["__builtins__"]["raw_input"] = pride.shell.get_user_input
             try:
                 exec code in namespace
             except Exception as error:
@@ -188,35 +185,31 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
-                   
-            
-class Metapython(base.Base):
+                             
+class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
         starts the execution of the Processor component."""
-    defaults = base.Base.defaults.copy()
-    defaults.update({"command" : os.path.join((os.getcwd() if "__file__" 
-                                               not in globals() else 
-                                               os.path.split(__file__)[0]), 
-                                              "shell_launcher.py"),
-                     "environment_setup" : ["PYSDL2_DLL_PATH = C:\\Python27\\DLLs"],
-                     "startup_components" : (#"mpre.fileio.File_System",
-                                             "mpre.vmlibrary.Processor",
-                                             "mpre.network.Socket_Error_Handler",
-                                             "mpre.network.Network", 
-                                             "mpre.shell.Command_Line",
-                                             "mpre.srp.Secure_Remote_Password"),
-                     "prompt" : ">>> ",
-                     "copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
-                     "interpreter_enabled" : True,
-                     "rpc_enabled" : True,
-                     "startup_definitions" : '',
-                     "interpreter_type" : "mpre._metapython.Interpreter"})    
+    defaults = {"command" : os.path.join((os.getcwd() if "__file__" 
+                                          not in globals() else 
+                                          os.path.split(__file__)[0]), 
+                                          "shell_launcher.py"),
+                "environment_setup" : ["PYSDL2_DLL_PATH = " + 
+                                       os.path.dirname(os.path.realpath(__file__)) +
+                                       os.path.sep + "gui" + os.path.sep],
+                "startup_components" : ("pride.vmlibrary.Processor",
+                                        "pride.network.Network", 
+                                        "pride.shell.Command_Line",
+                                        "pride.srp.Secure_Remote_Password",
+                                        "pride.interpreter.Interpreter",
+                                        "pride.rpc.Rpc_Server"),
+                "interpreter_enabled" : True,
+                "rpc_enabled" : True,
+                "startup_definitions" : '',
+                "interpreter_type" : "pride.interpreter.Interpreter"}
                      
-    parser_ignore = base.Base.parser_ignore + ("environment_setup", "prompt",
-                                               "copyright", 
+    parser_ignore = base.Base.parser_ignore + ("environment_setup",
                                                "traceback", 
-                                               "interpreter_enabled",
                                                "startup_components", 
                                                "startup_definitions")
                      
@@ -230,17 +223,11 @@ class Metapython(base.Base):
     exit_on_help = False
 
     def __init__(self, **kwargs):
-        super(Metapython, self).__init__(**kwargs)
+        super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
         
         if self.startup_definitions:
             self._exec_command(self.startup_definitions)           
-                        
-        if self.interpreter_enabled:
-            self.create(self.interpreter_type)    
-        
-        if self.rpc_enabled:
-            self.create("mpre.rpc.Rpc_Server")
                         
         with open(self.command, 'r') as module_file:
             source = module_file.read()            
@@ -248,7 +235,7 @@ class Metapython(base.Base):
                 
     def _exec_command(self, source):
         """ Executes the supplied source as the __main__ module"""
-        code = mpre.compiler.compile(source, "__main__")
+        code = pride.compiler.compile(source, "__main__")
         with self.main_as_name():
             exec code in globals(), globals()
             
@@ -262,8 +249,8 @@ class Metapython(base.Base):
             globals()["__name__"] = backup
              
     def setup_os_environ(self):
-        """ This method is called automatically in Metapython.__init__; os.environ can
-            be customized on startup via modifying Metapython.defaults["environment_setup"].
+        """ This method is called automatically in Python.__init__; os.environ can
+            be customized on startup via modifying Python.defaults["environment_setup"].
             This can be useful for modifying system path only for the duration of the applications run time."""
         modes = {"=" : "equals",
                  "+=" : "__add__", # append strings or add ints
@@ -283,13 +270,14 @@ class Metapython(base.Base):
             
     def start_machine(self):
         """ Begins the processing of Instruction objects."""
-        processor = mpre.objects[self.processor]
+        processor = pride.objects[self.processor]
         processor.running = True
         processor.run()
         self.alert("Graceful shutdown initiated", level='v')
         
     def exit(self, exit_code=0):
-        mpre.objects[self.processor].running = False
+        pride.objects[self.processor].running = False
         # cleanup/finalizers go here?
         raise SystemExit
         #sys.exit(exit_code)
+        

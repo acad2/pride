@@ -59,7 +59,7 @@ def base_decoder(loaded_json):
         loaded_objects[_instance_type] = [base_decoder(serialized_instance) for
                                           serialized_instance in values]
     attributes["objects"] = loaded_objects
-    instance_type = mpre.utilities.resolve_string(type_name)
+    instance_type = pride.utilities.resolve_string(type_name)
     instance = instance_type.__new__(instance_type)
     
     instance.on_load(attributes)
@@ -67,7 +67,7 @@ def base_decoder(loaded_json):
     return instance
     
 if __name__ == "__main__":
-    import mpre._metapython
-    m = mpre._metapython.Metapython()
+    import pride.interpreter
+    m = pride.interpreter.Python()
     s = json.dumps(m, cls=Base_Encoder)
     base_decoder(json.loads(s))

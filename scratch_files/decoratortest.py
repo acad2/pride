@@ -1,7 +1,7 @@
 import importlib
 import inspect
 
-import mpre._compile
+import pride._compile
 
 def find_source_body(_object):
     """ Returns the body of the source code of the object. The body
@@ -77,7 +77,7 @@ class Compiled(object):
         filename = "{}_compiled".format(function.__name__)
         with open(filename + ".py", 'wb') as _file:
             _file.write(source)
-        mpre._compile.py_to_compiled([filename + ".py"], "pyd")
+        pride._compile.py_to_compiled([filename + ".py"], "pyd")
         pyd_module = importlib.import_module(filename)
         return getattr(pyd_module, function.__name__)
         

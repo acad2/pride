@@ -36,9 +36,9 @@ import getpass
 import os
 import sqlite3
 
-import mpre
-import mpre.base
-import mpre.errors
+import pride
+import pride.base
+import pride.errors
 
 class InsecureValueError(Warning): pass
 
@@ -66,12 +66,11 @@ N = int(''.join(str(ord(char)) for char in
 g = 2
 k = _hash_function(N, g)
 
-class Secure_Remote_Password(mpre.base.Base):
+class Secure_Remote_Password(pride.base.Base):
     """ Provides the server side for the secure remote password protocol. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({'N' : N,
-                     'g' : g,
-                     "hash_function" : None})     
+    defaults = {'N' : N,
+                'g' : g,
+                "hash_function" : None}
     
     def _get_hash_function(self):
         return self._hash_function or _hash_function
@@ -159,15 +158,14 @@ class Secure_Remote_Password(mpre.base.Base):
         self.login_threads = {}
         
         
-class SRP_Client(mpre.base.Base):
+class SRP_Client(pride.base.Base):
     """ Provides the client side of the secure remote password protocol. """
-    defaults = mpre.base.Base.defaults.copy()
-    defaults.update({"username" : "",
-                     "password" : '',
-                     "thread" : None,
-                     "hash_function" : None,
-                     'N' : N,
-                     'g' : g})
+    defaults = {"username" : "",
+                "password" : '',
+                "thread" : None,
+                "hash_function" : None,
+                'N' : N,
+                'g' : g}
     
     def _get_hash_function(self):
         return self._hash_function or _hash_function
@@ -178,7 +176,7 @@ class SRP_Client(mpre.base.Base):
     def __init__(self, **kwargs):
         super(SRP_Client, self).__init__(**kwargs)
         if not self.username:
-            raise mpre.errors.ArgumentError("Username attribute not supplied")
+            raise pride.errors.ArgumentError("Username attribute not supplied")
         self.a = a = random_bits()
         self.A = pow(self.g, a, self.N)
 
@@ -247,7 +245,7 @@ def test_srp():
         return K
   
 if __name__ == "__main__":
-    if "Secure_Remote_Password" not in mpre.objects:
-        mpre.objects["Metapython"].create(Secure_Remote_Password)
+    if "Secure_Remote_Password" not in pride.objects:
+        pride.objects["Python"].create(Secure_Remote_Password)
     if test_srp():
         print "SRP Success"    

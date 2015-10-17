@@ -17,17 +17,16 @@
 import heapq
 import time
 import traceback
+import timeit
 from functools import partial
 
-import mpre
-import mpre.base as base
+import pride
+import pride.base
 
-import mpre.utilities as utilities
+Instruction = pride.Instruction
+timer_function = timeit.default_timer
 
-Instruction = mpre.Instruction
-timer_function = utilities.timer_function
-
-class Process(base.Base):
+class Process(pride.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
         Create a logical process. Note that while Process objects
@@ -42,11 +41,10 @@ class Process(base.Base):
         object presumes the desire for some kind of explicitly timed
         or periodic event."""
 
-    defaults = base.Base.defaults.copy()
-    defaults.update({"priority" : .04,
-                     "running" : True,
-                     "run_callback" : None})
-    parser_ignore = base.Base.parser_ignore + ("priority", "run_callback", )
+    defaults = {"priority" : .04,
+                "running" : True,
+                "run_callback" : None}
+    parser_ignore = pride.base.Base.parser_ignore + ("priority", "run_callback", )
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -95,17 +93,17 @@ class Processor(Process):
         and any exception that could be raised inside the method call
         itself."""
         
-    defaults = Process.defaults.copy()
-    defaults.update({"running" : False,
-                     "execution_verbosity" : 'vvvv',
-                     "parse_args" : True})
+    defaults = {"running" : False,
+                "execution_verbosity" : 'vvvv',
+                "parse_args" : True}
 
     parser_ignore = Process.parser_ignore + ("running", )
     exit_on_help = False
             
     def run(self):
-        instructions = mpre.environment.Instructions
-        objects = mpre.objects
+        self._return = {}
+        instructions = pride.environment.Instructions
+        objects = pride.objects
                 
         sleep = time.sleep
         heappop = heapq.heappop

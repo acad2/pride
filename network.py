@@ -22,12 +22,12 @@ import traceback
 import sys
 import binascii
 
-import mpre
-import mpre.vmlibrary as vmlibrary
-import mpre.base as base
+import pride
+import pride.vmlibrary as vmlibrary
+import pride.base as base
 from utilities import Latency, Average
-Instruction = mpre.Instruction
-objects = mpre.objects
+Instruction = pride.Instruction
+objects = pride.objects
 
 _socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 
@@ -70,7 +70,7 @@ def local_sends(socket_send):
             return socket_send(self, data)
            
         self.alert("Sending data locally, bypassing nic")
-        instance = mpre.objects[instance_name]
+        instance = pride.objects[instance_name]
         instance._local_data += data
         instance.alert("recv called locally")
         instance.recv()            
@@ -88,7 +88,7 @@ def local_recvs(socket_recv):
     return _recv
      
 #def local_     
-class Socket_Error_Handler(mpre.base.Base):
+class Socket_Error_Handler(pride.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
                  "connection_in_progress" : 0,
@@ -147,28 +147,26 @@ class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
         Wrapper to a _socketobject. The default socket family is socket.AF_INET and
         the default socket type is socket.SOCK_STREAM (a tcp socket)."""
-    defaults = base.Wrapper.defaults.copy()
-    additional_defaults = {"blocking" : 0,
-                           "timeout" : 0,
-                           "add_on_init" : True,                                 
-                           "socket_family" : socket.AF_INET,
-                           "socket_type" : socket.SOCK_STREAM,
-                           "protocol" : socket.IPPROTO_IP,
-                           "interface" : "0.0.0.0",
-                           "port" : 0,
-                           "_byte_count" : 0,
-                           "connection_attempts" : 10,
-                           "bind_on_init" : False,
-                           "closed" : False,
-                           "_connecting" : False,
-                           "_endpoint_instance_name" : '',
-                           "connected" : False,
-                           "added_to_network" : False,
-                           "replace_reference_on_load" : False,
-                           "bypass_network_stack" : True}
-    defaults.update(additional_defaults)
-    
-    additional_parser_ignores = additional_defaults.keys()
+    defaults = {"blocking" : 0,
+                "timeout" : 0,
+                "add_on_init" : True,                                 
+                "socket_family" : socket.AF_INET,
+                "socket_type" : socket.SOCK_STREAM,
+                "protocol" : socket.IPPROTO_IP,
+                "interface" : "0.0.0.0",
+                "port" : 0,
+                "_byte_count" : 0,
+                "connection_attempts" : 10,
+                "bind_on_init" : False,
+                "closed" : False,
+                "_connecting" : False,
+                "_endpoint_instance_name" : '',
+                "connected" : False,
+                "added_to_network" : False,
+                "replace_reference_on_load" : False,
+                "bypass_network_stack" : True}
+        
+    additional_parser_ignores = defaults.keys()
     additional_parser_ignores.remove("interface")
     additional_parser_ignores.remove("port")
     parser_ignore = base.Wrapper.parser_ignore + tuple(additional_parser_ignores)
@@ -275,7 +273,7 @@ class Socket(base.Wrapper):
         peername = self.peername
         byte_count = len(data)
         
-        if False:#self.bypass_network_stack:
+        if self.bypass_network_stack:
             if not self._endpoint_instance_name:
                 if self.sockname in _socket_names: # socket is the client
                     self._endpoint_instance_name = _local_connections[self.sockname]
@@ -283,7 +281,7 @@ class Socket(base.Wrapper):
                     self._endpoint_instance_name = _socket_names[self.peername]
             self.alert("Bypassing network stack. Sending to {}", 
                        (self._endpoint_instance_name, ), level='vvv')
-            instance = mpre.objects[self._endpoint_instance_name]
+            instance = pride.objects[self._endpoint_instance_name]
             instance._local_data += data
             instance.recv()                 
         else:
@@ -310,7 +308,7 @@ class Socket(base.Wrapper):
                 self.on_connect()
             elif not self._connecting:
                 self._connection_attempts = self.connection_attempts
-                latency = self.latency = mpre.utilities.Latency(size=10)
+                latency = self.latency = pride.utilities.Latency(size=10)
                 latency.start_measuring()
                 self._connecting = True
                 objects["Network"].connecting.add(self)
@@ -325,14 +323,14 @@ class Socket(base.Wrapper):
         #self.latency.finish_measuring()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
-        peername = self.peername = self.getpeername()
-        sockname = self.sockname = self.getsockname()
+        self.peername = self.getpeername()
+        self.sockname = self.getsockname()
         self.alert("Connected", level='v')
                 
     def delete(self):
         if not self.closed:
             self.close()        
-        del _local_data[self]
+        #del _local_data[self]
         super(Socket, self).delete()
     
     def close(self):
@@ -368,9 +366,8 @@ class Socket(base.Wrapper):
                 
 class Raw_Socket(Socket):
     
-    defaults = Socket.defaults.copy()
-    defaults.update({"socket_type" : socket.SOCK_RAW,
-                     "protocol" : 0})
+    defaults = {"socket_type" : socket.SOCK_RAW,
+                "protocol" : 0}
     
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, 
@@ -381,8 +378,7 @@ class Raw_Socket(Socket):
         
 class Packet_Sniffer(Raw_Socket):
             
-    defaults = Raw_Socket.defaults.copy()
-    defaults.update({"IP_HDRINCL" : 1})
+    defaults = {"IP_HDRINCL" : 1}
     
     parser_ignore = Raw_Socket.parser_ignore + ("IP_HDRINCL", )
     
@@ -419,10 +415,9 @@ class Packet_Sniffer(Raw_Socket):
         
 class Tcp_Socket(Socket):
 
-    defaults = Socket.defaults.copy()
-    defaults.update({"socket_family" : socket.AF_INET,
-                     "socket_type" : socket.SOCK_STREAM,
-                     "dont_save" : True})
+    defaults = {"socket_family" : socket.AF_INET,
+                "socket_type" : socket.SOCK_STREAM,
+                "dont_save" : True}
     
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
@@ -444,16 +439,16 @@ class Tcp_Socket(Socket):
         
 class Server(Tcp_Socket):
 
-    defaults = Tcp_Socket.defaults.copy()
-    defaults.update({"port" : 80,
-                     "backlog" : 50,
-                     "reuse_port" : 0,
-                     "Tcp_Socket_type" : "network.Tcp_Socket",
-                     "allow_port_zero" : False,
-                     "dont_save" : False,
-                     "replace_reference_on_load" : True})
+    defaults = {"port" : 80,
+                "backlog" : 50,
+                "reuse_port" : 0,
+                "Tcp_Socket_type" : "network.Tcp_Socket",
+                "allow_port_zero" : False,
+                "dont_save" : False,
+                "replace_reference_on_load" : True}
 
-    parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", "Tcp_Socket_type",
+    parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", 
+                                                "Tcp_Socket_type",
                                                 "allow_port_zero")
     
     def __init__(self, **kwargs):       
@@ -493,12 +488,11 @@ class Server(Tcp_Socket):
         
 class Tcp_Client(Tcp_Socket):
 
-    defaults = Tcp_Socket.defaults.copy()
-    defaults.update({"ip" : "",
-                     "port" : 80,
-                     "host_info" : tuple(),
-                     "auto_connect" : True,
-                     "as_port" : 0})
+    defaults = {"ip" : "",
+                "port" : 80,
+                "host_info" : tuple(),
+                "auto_connect" : True,
+                "as_port" : 0}
     
     parser_ignore = Tcp_Socket.parser_ignore + ("host_info", "auto_connect", "as_port")
     
@@ -526,9 +520,8 @@ class Tcp_Client(Tcp_Socket):
         
 class Udp_Socket(Socket):
 
-    defaults = Socket.defaults.copy()
-    defaults.update({"bind_on_init" : True})
-    del defaults["connection_attempts"]
+    defaults = {"bind_on_init" : True}
+    #del defaults["connection_attempts"]
 
     def __init__(self, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -543,10 +536,9 @@ class Udp_Socket(Socket):
         
 class Multicast_Beacon(Udp_Socket):
 
-    defaults = Udp_Socket.defaults.copy()
-    defaults.update({"packet_ttl" : struct.pack("b", 127),
-                     "multicast_group" : "224.0.0.0",
-                     "multicast_port" : 1929})
+    defaults = {"packet_ttl" : struct.pack("b", 127),
+                "multicast_group" : "224.0.0.0",
+                "multicast_port" : 1929}
 
     parser_ignore = Udp_Socket.parser_ignore + ("packet_ttl", )
     
@@ -557,8 +549,7 @@ class Multicast_Beacon(Udp_Socket):
 
 class Multicast_Receiver(Udp_Socket):
 
-    defaults = Udp_Socket.defaults.copy()
-    defaults.update({"address" : "224.0.0.0"})
+    defaults = {"address" : "224.0.0.0"}
 
     def __init__(self, **kwargs):
         super(Multicast_Receiver, self).__init__(**kwargs)
@@ -574,21 +565,21 @@ class Network(vmlibrary.Process):
         readability/writability of sockets. Also responsible for non blocking connect logic. 
         This component is created by default upon application startup, and in most cases will
         not require user interaction."""
-    defaults = vmlibrary.Process.defaults.copy()
-    defaults.update({"number_of_sockets" : 0,
-                     "priority" : .01,
-                     "update_priority" : 5,
-                     "_updating" : False,
-                     "running" : False})
+    defaults = {"number_of_sockets" : 0,
+                "priority" : .01,
+                "update_priority" : 5,
+                "_updating" : False,
+                "running" : False}
    
+    error_handler = Socket_Error_Handler()
+    
     def __init__(self, **kwargs):
         # minor optimization; pre allocated slices and ranges for
         # sliding through the socket list to sidestep the 500 
         # file descriptor limit that select has. Produces slice objects
         # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
         self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(100))
-                        
+                                    x in xrange(100))                        
         self.connecting = set()
         self.sockets = []
         super(Network, self).__init__(**kwargs)       
@@ -620,8 +611,8 @@ class Network(vmlibrary.Process):
             readable, writable, empty_list = [], [], []
             # select has a max # of file descriptors it can handle, which
             # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
-            for socket_list in (sockets[self._slice_mapping[chunk_number]] for 
-                                chunk_number in xrange((len(sockets) / 500) + 1)):   
+            for socket_list in (sockets[self._slice_mapping[chunk_number]] for
+                                chunk_number in xrange((len(sockets) / 500) + 1)): 
                 (readable_sockets, 
                  writable_sockets, _) = select.select(socket_list, socket_list, 
                                                       empty_list, 0.0)

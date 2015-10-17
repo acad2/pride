@@ -1,6 +1,6 @@
 import string
 
-import mpre.base
+import pride.base
 
 PLAINTEXT_KEY = string.ascii_lowercase
 POLYBIUS_SQUARE = [chr(x) for x in xrange(65, 90)] # capital ascii letters
@@ -91,9 +91,9 @@ ADFGVX_TABLE = ['8', 'p', '3', 'd', '1', 'n',
 ADFGVX = "adfgvx"         
 DVORAK = "axje.uidchtnmbrl'poygk,qf;"
          
-class Encryption_Scheme(mpre.base.Base):
+class Encryption_Scheme(pride.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     
     def encrypt(self, message):
         for cipher in self.ciphers:
@@ -106,9 +106,9 @@ class Encryption_Scheme(mpre.base.Base):
         return message
         
         
-class Cipher(mpre.base.Base):
+class Cipher(pride.base.Base):
            
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     
     def encode(self, message):
         raise NotImplementedError

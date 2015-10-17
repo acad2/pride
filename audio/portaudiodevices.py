@@ -11,13 +11,13 @@ from ctypes import *
 
 import pyaudio
 
-import mpre
-import mpre.base as base
-import mpre.vmlibrary as vmlibrary
-import mpre.audio.audiolibrary as audiolibrary
-from mpre.utilities import Latency
-Instruction = mpre.Instruction
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.vmlibrary as vmlibrary
+import pride.audio.audiolibrary as audiolibrary
+from pride.utilities import Latency
+Instruction = pride.Instruction
+objects = pride.objects
 
 @contextmanager
 def _alsa_errors_suppressed():
@@ -75,21 +75,20 @@ format_lookup = _formats_to_indices()
            
 class Audio_Device(audiolibrary.Audio_Reactor):
 
-    defaults = audiolibrary.Audio_Reactor.defaults.copy()
-    defaults.update({"format" : 8,
-                     "frames_per_buffer" : 1024,
-                     "data" : "",
-                     "record_to_disk" : False,
-                     "frame_count" : 0,
-                     "source_name" : '',
-                     "data_source" : '',
-                     "mute" : False,
-                     "silence" : b"\x00" * 65535})
+    defaults = {"format" : 8,
+                "frames_per_buffer" : 1024,
+                "data" : "",
+                "record_to_disk" : False,
+                "frame_count" : 0,
+                "source_name" : '',
+                "data_source" : '',
+                "mute" : False,
+                "silence" : b"\x00" * 65535}
     possible_options = ("rate", "channels", "format", "input", "output",    
                         "input_device_index", "output_device_index", 
                         "frames_per_buffer", "start", "stream_callback",
                         "input_host_api_specific_stream_info",
-                        "output_host_api_specific_stream_info")                        
+                        "output_host_api_specific_stream_info")          
     def _get_options(self):
         options = {}
         for option in self.possible_options:
@@ -113,8 +112,8 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         self.sample_size = PORTAUDIO.get_sample_size(pyaudio.paInt16)
         super(Audio_Device, self).__init__(**kwargs)
         
-     #   import mpre.utilities
-       # self.latency = mpre.utilities.Latency("audio input")
+     #   import pride.utilities
+       # self.latency = pride.utilities.Latency("audio input")
         
     def open_stream(self):
         return PORTAUDIO.open(**self.options)
@@ -125,10 +124,9 @@ class Audio_Device(audiolibrary.Audio_Reactor):
             
 class Audio_Input(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"input" : True,
-                     "data" : '',
-                     "priority" : .01})
+    defaults = {"input" : True,
+                "data" : '',
+                "priority" : .01}
     
     def __init__(self, **kwargs):
         self.playing_files = []
@@ -201,8 +199,7 @@ class Audio_Input(Audio_Device):
 
 class Audio_Output(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"output" : True})
+    defaults = {"output" : True}
 
     def __init__(self, **kwargs):
         super(Audio_Output, self).__init__(**kwargs)

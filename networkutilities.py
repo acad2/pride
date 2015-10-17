@@ -1,7 +1,7 @@
-import mpre.base
-import mpre.network
-import mpre.utilities
-shell = mpre.utilities.shell
+import pride.base
+import pride.network
+import pride.utilities
+shell = pride.utilities.shell
 
 def tune_tcp_performance(minimum_size=10240, initial_size=87830,
                          maximum_size=1258912, window_scaling=1,
@@ -56,7 +56,7 @@ def set_max_connection(limit):
     shell("sysctl -w net.core.somaxconn = {}".format(limit))
     
     
-class RTT_Test(mpre.network.Tcp_Client):
+class RTT_Test(pride.network.Tcp_Client):
     
     def on_connect(self):
         super(RTT_Test, self).on_connect()

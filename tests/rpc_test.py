@@ -1,13 +1,13 @@
 """ Tests remote procedure call mechanism. """
 import unittest
 
-import mpre
-import mpre.rpc
-import mpre.authentication
+import pride
+import pride.rpc
+import pride.authentication
 
 HOST_INFO = ("192.168.1.240", 40022)
 
-class Test_Responder(mpre.base.Base):
+class Test_Responder(pride.base.Base):
     """ Runs on the remote machine """
     def test_method(self, arguments, test_flag=False):
         self.alert("Received: {}, test_flag={}".format(arguments, test_flag))
@@ -20,9 +20,9 @@ class RPC_Test(unittest.TestCase):
         def _response(result):
             self.failUnless(result)
             self.failIf(isinstance(result, 
-                                   mpre.authentication.UnauthorizedError))
+                                   pride.authentication.UnauthorizedError))
             
-        mpre.Instruction("Test_Responder", "test_method", 
+        pride.Instruction("Test_Responder", "test_method", 
                          (1, 2, 3, 'string', [4, 5, 6], {'testagain' : None}),
                          test_flag=True).execute(callback=_response,
                                                  host_info=(HOST_INFO))

@@ -1,13 +1,13 @@
 import random
 import sys
 
-import mpre
-import mpre.vmlibrary
-import mpre.utilities
+import pride
+import pride.vmlibrary
+import pride.utilities
 
 
-class Ca_Test(mpre.vmlibrary.Process):
-    defaults = mpre.vmlibrary.Process.defaults.copy()
+class Ca_Test(pride.vmlibrary.Process):
+    defaults = pride.vmlibrary.Process.defaults.copy()
     defaults.update({"priority" : .5,
                      "size" : 8,
                      "grid" : None})
@@ -28,7 +28,7 @@ class Ca_Test(mpre.vmlibrary.Process):
                 self.grid[midpoint + left_adjustment][midpoint + right_adjustment] = 1
                 
     def run(self):
-        mpre.utilities.shell("cls", True)    
+        pride.utilities.shell("cls", True)    
         grid = self.grid
         
         grid_size = len(grid)
@@ -68,8 +68,8 @@ class Ca_Test(mpre.vmlibrary.Process):
                 new_grid[row_index][cell_index] = state
 
 
-class Ca_Test2(mpre.vmlibrary.Process):
-    defaults = mpre.vmlibrary.Process.defaults.copy()
+class Ca_Test2(pride.vmlibrary.Process):
+    defaults = pride.vmlibrary.Process.defaults.copy()
     defaults.update({"priority" : .5,
                      "size" : 8,
                      "grid" : None,
@@ -93,7 +93,7 @@ class Ca_Test2(mpre.vmlibrary.Process):
                 self.grid[midpoint + left_adjustment][midpoint + right_adjustment] = self.alive_symbol
                 
     def run(self):
-        mpre.utilities.shell("cls", True)    
+        pride.utilities.shell("cls", True)    
         grid = self.grid
         
         grid_size = len(grid)
@@ -101,7 +101,7 @@ class Ca_Test2(mpre.vmlibrary.Process):
         grid_range = range(grid_size)
         
         print '\n\n'.join(str(row) for row in grid)
-        if 'exit' in mpre.shell.get_user_input("type exit to quit ").lower():
+        if 'exit' in pride.shell.get_user_input("type exit to quit ").lower():
             self.running = False
         dead, alive = self.dead_symbol, self.alive_symbol
         new_grid = self.grid = [list((dead for count in grid_range)) for row in grid_range]
@@ -138,8 +138,8 @@ class Ca_Test2(mpre.vmlibrary.Process):
                 new_grid[row_index][cell_index] = state
 
 
-class Ca_Test3(mpre.vmlibrary.Process):
-    defaults = mpre.vmlibrary.Process.defaults.copy()
+class Ca_Test3(pride.vmlibrary.Process):
+    defaults = pride.vmlibrary.Process.defaults.copy()
     defaults.update({"priority" : .5,
                      "size" : 8,
                      "grid" : None})
@@ -161,7 +161,7 @@ class Ca_Test3(mpre.vmlibrary.Process):
                 self.grid[midpoint + left_adjustment][midpoint + right_adjustment] = 1
                 
     def run(self):
-        mpre.utilities.shell("cls", True)    
+        pride.utilities.shell("cls", True)    
         grid = self.grid
         
         grid_size = len(grid)
@@ -169,7 +169,7 @@ class Ca_Test3(mpre.vmlibrary.Process):
         grid_range = range(grid_size)
         
         print '\n\n'.join(str(row) for row in grid)
-        if 'exit' in mpre.shell.get_user_input("type exit to quit ").lower():
+        if 'exit' in pride.shell.get_user_input("type exit to quit ").lower():
             self.running = False
         
         new_grid = self.grid = [list((dead for count in grid_range)) for row in grid_range]
@@ -208,4 +208,4 @@ class Ca_Test3(mpre.vmlibrary.Process):
 
                 
 if __name__ == "__main__":
-    mpre.Instruction("Metapython", "create", Ca_Test2).execute()
+    pride.Instruction("Python", "create", Ca_Test2).execute()

@@ -4,13 +4,13 @@ import functools
 from multiprocessing import Process
 from contextlib import contextmanager
 
-import mpre
-import mpre.base as base
+import pride
+import pride.base as base
 
-import mpre.vmlibrary as vmlibrary
-import mpre.network as network
-from mpre.utilities import Latency
-Instruction = mpre.Instruction
+import pride.vmlibrary as vmlibrary
+import pride.network as network
+from pride.utilities import Latency
+Instruction = pride.Instruction
 
 """def trace_function(frame, instruction, args):
     pass

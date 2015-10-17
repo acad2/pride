@@ -3,7 +3,11 @@ import sys
 import contextlib
 import inspect
 import symtable
+import pkgutil
 
+def installed_modules(directories=None):
+    return [module[1] for module in pkgutil.iter_modules(directories)]
+    
 #def unused_imports(module):
 #    source = inspect.getsource(module)
 #    symbol_table = symtable.symtable(source, "string", "exec")

@@ -1,11 +1,11 @@
 import hashlib
 import random
 
-import mpre.base
+import pride.base
 
-class _Object(mpre.base.Base):
+class _Object(pride.base.Base):
     
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     
     def __add__(self, other_self):
         self_class, other_class = self.__class__, other_self.__class__

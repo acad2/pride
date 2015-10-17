@@ -2,12 +2,12 @@ import time
 import wave
 import contextlib
 
-import mpre
-import mpre.base as base
-import mpre.audio.audiolibrary as audiolibrary
-objects = mpre.objects
+import pride
+import pride.base as base
+import pride.audio.audiolibrary as audiolibrary
+objects = pride.objects
 
-# to install alsaaudio, use mpre.audio.utilities.install_pyalsaaudio
+# to install alsaaudio, use pride.audio.utilities.install_pyalsaaudio
 import alsaaudio
 
 class Audio_Device(audiolibrary.Audio_Reactor):
@@ -25,17 +25,16 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         return self.channels * self.period_size * (self.sample_size / 8)
     full_buffer_size = property(_get_full_buffer_size)
 
-    defaults = audiolibrary.Audio_Reactor.defaults.copy()
-    defaults.update({"channels" : 1,
-                     "rate" : 48000,
-                     "format" : 2, # alsaaudio.PCM_FORMAT_S16_LE
-                     "sample_size" : 16,
-                     "period_size" : 1024,
-                     "card" : "hw:0,0",
-                     "data" : '',
-                     "data_source" : None,
-                     "frame_count" : 0,
-                     "mute" : False})
+    defaults = {"channels" : 1,
+                "rate" : 48000,
+                "format" : 2, # alsaaudio.PCM_FORMAT_S16_LE
+                "sample_size" : 16,
+                "period_size" : 1024,
+                "card" : "hw:0,0",
+                "data" : '',
+                "data_source" : None,
+                "frame_count" : 0,
+                "mute" : False}
 
     def __init__(self, **kwargs):
         super(Audio_Device, self).__init__(**kwargs)
@@ -62,10 +61,9 @@ class Audio_Device(audiolibrary.Audio_Reactor):
 
 class Audio_Input(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"type" : 1, # PCM_CAPTURE
-                     "mode" : 1, # PCM_NONBLOCK
-                     "_data" : ''})
+    defaults = {"type" : 1, # PCM_CAPTURE
+                "mode" : 1, # PCM_NONBLOCK
+                "_data" : ''}
 
     def __init__(self, **kwargs):
         super(Audio_Input, self).__init__(**kwargs)
@@ -108,9 +106,8 @@ class Audio_Input(Audio_Device):
         
 class Audio_Output(Audio_Device):
 
-    defaults = Audio_Device.defaults.copy()
-    defaults.update({"type" : 0, # PCM_PLAYBACK
-                     "mode" : 1}) # PCM_NONBLOCK
+    defaults = {"type" : 0, # PCM_PLAYBACK
+                "mode" : 1} # PCM_NONBLOCK
 
     def __init__(self, **kwargs):
         super(Audio_Output, self).__init__(**kwargs)

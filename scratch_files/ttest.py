@@ -1,4 +1,4 @@
-from mpre.misc.decoratorlibrary import Timed
+from pride.misc.decoratorlibrary import Timed
 
 connecting = set([x for x in xrange(500)][::2])
 writable = [x for x in list(connecting)[::2]]

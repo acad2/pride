@@ -5,7 +5,7 @@ import importlib
 
 class Compiler(object):
     
-    def __init__(self, packages=("mpre", "mpre.audio"), preprocessors=tuple()):
+    def __init__(self, packages=("pride", "pride.audio"), preprocessors=tuple()):
         self.packages = packages
         self.preprocessors = preprocessors
         self.module_source = {}
@@ -45,5 +45,5 @@ class Compiler(object):
 compiler = Compiler()
 sys.meta_path.insert(0, compiler)
 
-import mpre.base
-print mpre.base
+import pride.base
+print pride.base

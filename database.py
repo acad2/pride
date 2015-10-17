@@ -2,7 +2,7 @@
 
 import sqlite3
 
-import mpre.base
+import pride.base
 
 def create_where_string(where):
     keys = []
@@ -15,17 +15,16 @@ def create_where_string(where):
                                               key in keys)
     return condition_string, values
     
-class Database(mpre.base.Wrapper):
+class Database(pride.base.Wrapper):
     """ An object with methods for dispatching sqlite3 commands. 
         Database objects may be simpler and safer then directly
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
         
-    defaults = mpre.base.Wrapper.defaults.copy()
-    defaults.update({"database_name" : '',
-                     "connection" : None,
-                     "cursor" : None,
-                     "text_factory" : str})
+    defaults = {"database_name" : '',
+                "connection" : None,
+                "cursor" : None,
+                "text_factory" : str}
         
     wrapped_object_name = "connection"
     

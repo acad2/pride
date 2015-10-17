@@ -2,10 +2,10 @@ import sys
 import os
 import ssl
 
-import mpre.base
-import mpre.network
-import mpre.utilities
-import mpre.shell
+import pride.base
+import pride.network
+import pride.utilities
+import pride.shell
 
 SSL_DEFAULTS = {"keyfile" : None, 
                 "certfile" : None,
@@ -36,10 +36,10 @@ else: # python 2.7.9+ will use SSLContext.wrap_socket
 def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and arguments
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
-    name = name or mpre.shell.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
+    name = name or pride.shell.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
     delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
-    shell = mpre.utilities.shell
+    shell = pride.utilities.shell
     
     shell("{} genrsa -aes256 -passout pass:x -out {}.pass.key 2048".format(openssl, name))
     shell("{} rsa -passin pass:x -in {}.pass.key -out {}.key".format(openssl, name, name))
@@ -48,19 +48,18 @@ def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and
     shell("{} {}.pass.key".format(delete_program, name), True)
         
 def generate_rsa_keypair(name=''):
-    shell = mpre.utilities.shell
+    shell = pride.utilities.shell
     shell("openssl genrsa -out {}_private_key.pem 4096".format(name))
     shell("openssl rsa -pubout -in {}_private_key.pem -out {}_public_key.pem".format(
           name))
             
-class SSL_Client(mpre.network.Tcp_Client):
+class SSL_Client(pride.network.Tcp_Client):
     
     """ An asynchronous client side Tcp socket wrapped in an ssl socket.
         Users should extend on_ssl_authentication instead of on_connect to
         initiate data transfer; on_connect is used to start the
         ssl handshake"""
-    defaults = mpre.network.Tcp_Client.defaults.copy()
-    defaults.update(SSL_DEFAULTS)    
+    defaults = SSL_DEFAULTS
     
     def __init__(self, **kwargs):        
         super(SSL_Client, self).__init__(**kwargs)
@@ -109,13 +108,12 @@ class SSL_Client(mpre.network.Tcp_Client):
         self.alert("Authenticated", level=0)
             
         
-class SSL_Socket(mpre.network.Tcp_Socket):    
+class SSL_Socket(pride.network.Tcp_Socket):    
     """ An asynchronous server side client socket wrapped in an ssl socket.
         Users should override the on_ssl_authentication method instead of
         on_connect. """
         
-    defaults = mpre.network.Tcp_Socket.defaults.copy()
-    defaults.update({"ssl_authenticated" : False})
+    defaults = {"ssl_authenticated" : False}
      
     def on_connect(self):
         super(SSL_Socket, self).on_connect()
@@ -147,12 +145,11 @@ class SSL_Socket(mpre.network.Tcp_Socket):
         self.alert("Authenticated", level='v')
                 
         
-class SSL_Server(mpre.network.Server):
+class SSL_Server(pride.network.Server):
     
-    defaults = mpre.network.Server.defaults.copy()
-    defaults.update(SSL_DEFAULTS)
+    defaults = SSL_DEFAULTS
     defaults.update({"port" : 443,
-                     "Tcp_Socket_type" : "mpre.networkssl.SSL_Socket",
+                     "Tcp_Socket_type" : "pride.networkssl.SSL_Socket",
                      "dont_save" : False,
                      "server_side" : True,
                      "certfile" : "server.crt",

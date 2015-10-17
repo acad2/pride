@@ -18,6 +18,6 @@ def point_in_area(area, position):
             return True
             
 def enable():
-    import mpre
-    mpre.objects["Metapython"].create("mpre.gui.sdllibrary.SDL_Window")  
-    mpre.objects["Metapython"].create("mpre.gui.gui.Organizer")                 
+    import pride
+    pride.objects["Python"].create("pride.gui.sdllibrary.SDL_Window")  
+    pride.objects["Python"].create("pride.gui.gui.Organizer")                 

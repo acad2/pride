@@ -1,4 +1,5 @@
 """ Contains import related functions and objects, including the compiler """
+import os
 import inspect
 import sys
 import importlib
@@ -8,11 +9,27 @@ import imp
 import tokenize
 import shlex
 import string
+import operator
 try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
-        
+  
+OPERATORS = r"""+  -  *  ** /  // %
+                << >> &  |  ^  ~  
+                <  >  <= >= == != <>""".strip()
+               
+DELIMITERS = r"""(  )  [  ]   {   }   @
+                 ,  :  .  `   =   ;  
+                 += -= *= /=  //= %= 
+                 &= |= ^= >>= <<= **=""".strip() + r' '
+                
+unused = "$?"
+
+misc = "\'\"\#\\"
+
+special_symbols = misc + unused + DELIMITERS + OPERATORS
+  
 @contextlib.contextmanager
 def sys_meta_path_switched(new_meta_path):
     backup = sys.meta_path
@@ -48,16 +65,19 @@ class Parser(object):
     @staticmethod
     def get_string_indices(source):
         """ Return a list of indices of strings found in source. 
-            Does not include strings located within other strings. """
-        quotes = ["'", '"', "'''", '"""']        
+            Includes substrings located within other strings. """
+        quote_symbols = ["'", '"', "'''", '"""']        
         triple_quote_start = triple_quote_end = ignore_count = 0
         source_length = len(source) - 1
         triple_quote_closing = closing_quote = ''
         indices, open_quotes = [], []
         start_index, end_index = {}, {}
-        print_stuff = False
+    #    print "Getting strings from: ", len(source), source
         for index, character in enumerate(source):
-            if character == '#':
+         #   print index, len(source)
+            if character == '\\': # backslash
+                ignore_count += 2                
+            elif character == '#':
                 try:
                     newline = source[index:].index('\n') + index
                 except ValueError: # comment with no newline at end of file
@@ -69,8 +89,8 @@ class Parser(object):
                 ignore_count -= 1
                 continue
             _character = source[index:index + min(3, source_length - index)]
-            is_triple_quote = _character in quotes                             
-            if character in quotes or is_triple_quote:
+            is_triple_quote = _character in quote_symbols                    
+            if is_triple_quote or character in quote_symbols:
                 if is_triple_quote:
                     character = _character
                     ignore_count = 2
@@ -88,36 +108,75 @@ class Parser(object):
                     end_index.pop(__character, None)
                     start_index.pop(__character, None)
                 open_quotes = open_quotes[:layer]
-        return indices
+        return sorted(indices, key=operator.itemgetter(0))
     
     @staticmethod    
     def find_symbol(symbol, source, quantity=0):
+        """ Locates all occurrences of symbol inside source up to the given
+            quantity of times. Matches only count if the symbol is not inside
+            a quote or behind a comment. """
         strings = [range(start, end + 1) 
                    for start, end in Parser.get_string_indices(source)]
-     #   print "Found strings: "
-     #   for _range in strings:
-     #       print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
+        delimiters = DELIMITERS + OPERATORS
+        #print "Found strings: "
+        #for _range in strings[:len(strings) / 2]:
+        #    print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
         indices = []
         symbol_size = len(symbol)
         source_index = 0
-        while symbol in source:
-            start = source_index + source.index(symbol)
-            for _range in strings:
-                if start in _range:
-                    end_of_quote = _range[-1]
-                    source = source[end_of_quote:]
-                    source_index += end_of_quote
+  #      print "Trying to find: {} in source".format(symbol)
+        while symbol in source[source_index:]:          
+            start = source.index(symbol, source_index)
+            for string_range in strings:
+                if start in string_range:
+                    source_index += string_range[-1]
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
-                indices.append((start, end))
-                source = source[end:]
-                source_index += end
-                quantity -= 1
+             #   print start-1, end, end-start, len(source), symbol, source
+                if start - 1 > 0 and source[start-1] in delimiters:
+                    quantity -= 1
+                    indices.append((start, end))
+                 #   print source[start-1], source[start-1] in delimiters, "Found an unquoted {} at {}".format(symbol, indices[-1])
+                else:
+                  #  print "Symbol is not the start of a word", source[start-1:end], source
+                    source_index
+                source_index += end                
                 if not quantity:
                     break
+        #    print "Incrementing index by {} to {}".format(end, source_index)
         return indices
-
+        
+    @staticmethod
+    def replace_symbol(symbol, source, replacement):
+        delimiters = DELIMITERS + OPERATORS
+   #     print "Replacing {} with {}".format(symbol, replacement)
+        _count = 0
+        while symbol in source:
+            slice_information = Parser.find_symbol(symbol, source, 1)
+            if not slice_information: # last symbol in source was in a string
+                #print "last symbol in source was a string", slice_information
+                break
+            symbol_start, _end = slice_information[0]
+     #       print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end, source
+            for index, character in enumerate(source[symbol_start:]):
+                if character in delimiters:
+                    delimiter = delimiters[delimiters.index(character)]
+                    end_index = index
+                    break
+            else:
+                end_index = index
+            name = source[symbol_start + 1:symbol_start + end_index]
+            replaced = replacement.format(name)
+      #      print symbol_start + 1, symbol_start + end_index, replaced
+            source = ''.join((source[:symbol_start], replaced,
+                              source[symbol_start + 1 + len(name):]))
+            _count += 1
+      #  assert symbol not in source, source
+    
+      #  print "Created replacement source: ", source
+        return source 
+        
     @staticmethod
     def remove_comments(source):
         new_source = []
@@ -125,22 +184,21 @@ class Parser(object):
         for line in source.split('\n'):
             if '#' in line:
                 line = line[:line.index('#')]
+                if not line.replace('\t', '    ').replace('    ', ''):
+                    continue
             new_source.append(line)
         return '\n'.join(new_source)
         
     @staticmethod
-    def extract_code(source):
-        """ Returns start/end of all parts of source that are not in quotes. """
-        source = Parser.remove_comments(source)
-        string_indices = Parser.get_string_indices(source)
-        sections = []        
-        last_end = 0
-        for start, end in Parser.get_string_indices(source):
-            sections.append((last_end, start))
-            last_end = end
-        sections.append((last_end, len(source)))
-        return sections
+    def remove_docstring(source):
+        """ Returns source without docstring """
+        return source[Parser.get_string_indices(source)[0][1]:]        
 
+    @staticmethod
+    def extract_code(source):
+        """ Returns source without comments or docstring. """
+        return Parser.remove_docstring(Parser.remove_comments(source))        
+        
         
 class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
@@ -148,44 +206,44 @@ class Compiler(object):
         sys.meta_path as the first entry. """
     def __init__(self, preprocessors=tuple()):
         self.preprocessors = preprocessors
-        self.module_source = {}
-        
+        self.path_loader, self.module_source = {}, {}
+                            
     def find_module(self, module_name, path):
         modules = module_name.split('.')
         loader = None
         end_of_modules = len(modules) - 1
         for count, module in enumerate(modules):
             try:
-                _file, path, description = imp.find_module(module, path)
+                _file, _path, description = imp.find_module(module, path)
             except ImportError:
                 pass
             else:
-                if path.split('.')[-1] == "pyd":
+                if _path.split('.')[-1] == "pyd":
                     continue
                 if _file:
-                    if ".pyc" in path:
-                        print "Unable to import {} @ {}; No source, only bytecode available".format(module_name, path)
+                    if ".pyc" in _path:
+                        print "Unable to import {} @ {}; No source, only bytecode available".format(module_name, _path)
                         break
-                    self.module_source[module_name] = (_file.read(), path)
+                    self.module_source[module_name] = (_file.read(), _path)
                     if count == end_of_modules:
                         loader = self
-        return loader        
-  
+        return loader    
+    
     def load_module(self, module_name):
         if module_name not in sys.modules:
             source, path = self.module_source[module_name]
             self.compile_module(module_name, source, path)
+ #       print "Loading: ", module_name
         return sys.modules[module_name]
                     
     def compile_module(self, module_name, source, path):
         new_module = types.ModuleType(module_name) 
-        #print '\n\ncompiling: ', module_name
+    #    print '\n\ncompiling: ', module_name
         sys.modules[module_name] = new_module
         new_module.__name__ = module_name
         new_module.__file__ = path
         module_code = self.compile(source, module_name)        
-        exec module_code in new_module.__dict__     
-        
+        exec module_code in new_module.__dict__
         if not hasattr(new_module, "__package__"):
             split = module_name.split('.', 1)
             if len(split) > 1:
@@ -204,30 +262,12 @@ class Compiler(object):
         
         
 class Dollar_Sign_Directive(object):
-    """ Replaces '$' directive with mpre.objects lookup. This
+    """ Replaces '$' directive with pride.objects lookup. This
         facilitates the syntatic sugar $Component, which is
-        translated to mpre.objects['Component']. """
+        translated to pride.objects['Component']. """
         
     def handle_source(self, source):
-        delimiters = ['.', ' ', '\t', '(', ')', '\n', ',']
-        length = len("mpre.objects['']")
-        while '$' in source:
-            slice_information = Parser.find_symbol('$', source, 1)
-            if not slice_information: # last symbol in source was in a string
-                break
-            symbol_start, _end = slice_information[0]
-           # print "\n\nFound string replacement: ", source[symbol_start-1:_end + 1] + "...", "index: ", symbol_start, _end
-            for index, character in enumerate(source[symbol_start:]):
-                if character in delimiters:
-                    delimiter = delimiters[delimiters.index(character)]
-                    end_index = index
-                    break
-            name = source[symbol_start + 1:symbol_start + end_index]
-            replaced = "mpre.objects['{}']".format(name)
-            source = ''.join((source[:symbol_start], replaced,
-                              source[symbol_start + 1 + len(name):]))
-      #  print "Created replacement source: ", source
-        return source        
+        return Parser.replace_symbol('$', source, "pride.objects['{}']")     
         
   
 class New_Keyword(object):
@@ -239,20 +279,6 @@ class New_Keyword(object):
 class AntipatternError(BaseException):
     meaning = "Source code error indicating poor design"
     
-operators = r"""+       -       *       **      /       //      %
-                <<      >>      &       |       ^       ~
-                <       >       <=      >=      ==      !=      <>"""
-               
-delimiters = r"""(       )       [       ]       {       }      @
-                 ,       :       .       `       =       ;
-                 +=      -=      *=      /=      //=     %=
-                 &=      |=      ^=      >>=     <<=     **="""
-                
-unused = "$?"
-
-misc = "\'\"\#\\"
-
-special_symbols = misc + unused + delimiters + operators
 
 class Name_Enforcer(object):
     
@@ -268,8 +294,7 @@ class Name_Enforcer(object):
                     break
             else:
                 self.cache[token] = True
-                return True
-        
+                return True        
 
     def handle_source(self, source): 
         strings = Parser.get_string_indices(source)

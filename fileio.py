@@ -7,13 +7,15 @@ import pprint
 import binascii
 import contextlib
 import shutil
+import platform
+import time
 
-import mpre    
-import mpre.vmlibrary as vmlibrary
-import mpre.base as base
-import mpre.utilities as utilities
-import mpre.shell
-objects = mpre.objects
+import pride    
+import pride.vmlibrary as vmlibrary
+import pride.base as base
+import pride.utilities as utilities
+import pride.shell
+objects = pride.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)
@@ -108,7 +110,55 @@ class Cached(object):
         else:
             print "references remaining for", key
         #self.handles[function][key] = handles[key]
-                                
+                                                   
+                   
+class File_Attributes(pride.base.Adapter):
+    
+    adaptations = {"protection_bits" : "st_mode", "inode_number" : "st_ino",
+                   "number_of_hard_links" : "st_nlink", 
+                   "owner_user_id" : "st_uid", "owner_group_id" : "gid",
+                   "file_size" : "st_size"}# "last_accessed" : "st_atime",
+                  # "last_modified" : "st_mtime", 
+                  # "metadata_last_modified" : "st_ctime", # Unix
+                  # "date_created" : "st_ctime"} # Windows
+                               
+    defaults = {"filename" : '',
+                "attributes" : ("protection_bits", "inode_number", "device",
+                                "number_of_hard_links", "owner_user_id", 
+                                "owner_group_id", "file_size", 
+                                "last_accessed", "last_modified",
+                                "metadata_last_modified", "time_created")} 
+    
+    if platform.system() == "Linux":
+        linux_adaptations = {"blocks_allocated" : "st_blocks", 
+                             "filesystem_block_size" : "st_blksize",
+                             "device_type" : "st_rdev", 
+                             "user_flags" : "st_flags"}  
+        adaptations.update(linux_adaptations)
+        defaults["attributes"] += tuple(linux_adaptations.keys())
+        
+    def _get_last_accessed(self):
+        return time.asctime(time.localtime(self.wrapped_object.st_atime))
+    last_accessed = property(_get_last_accessed)
+    
+    def _get_last_modified(self):
+        return time.asctime(time.localtime(self.wrapped_object.st_mtime))
+    last_modified = property(_get_last_modified)
+    
+    def _get_metadata_last_modified(self):
+        assert platform.system() == "Linux"
+        return time.asctime(time.localtime(self.wrapped_object.st_ctime))
+    metadata_last_modified = property(_get_metadata_last_modified)
+    
+    def _get_date_created(self):
+        assert platform.system() == "Windows"
+        return time.asctime(time.localtime(self.wrapped_object.st_ctime))
+    date_created = property(_get_date_created)
+    
+    def __init__(self, **kwargs):
+        super(File_Attributes, self).__init__(**kwargs)
+        self.wraps(os.stat(self.filename))
+
         
 class File(base.Wrapper):
     """ usage: File(path='', mode='', 
@@ -123,11 +173,10 @@ class File(base.Wrapper):
         attribute. The default is a regular file, which will require
         an appropriate path and mode to be specified when initializing. """
         
-    defaults = base.Wrapper.defaults.copy()
-    defaults.update({"file" : None,
-                     "file_type" : "file",
-                     "mode" : "",
-                     "persistent" : True})
+    defaults = {"file" : None,
+                "file_type" : "file",
+                "mode" : "",
+                "persistent" : True}
     
     def __init__(self, path='', mode='', **kwargs):  
         super(File, self).__init__(**kwargs)
@@ -142,7 +191,9 @@ class File(base.Wrapper):
             else:
                 self.file = utilities.resolve_string(self.file_type)()             
         self.wraps(self.file)        
-            
+        self.properties = self.create("pride.fileio.File_Attributes",
+                                      filename=path)
+                                      
     def __enter__(self):
         return self
         
@@ -273,8 +324,8 @@ if __name__ == "__main__":
         for x in xrange(iterations):
             f = File(filename, 'rb')
     
-    import mpre.misc.decoratorlibrary
-    Timed = mpre.misc.decoratorlibrary
+    import pride.misc.decoratorlibrary
+    Timed = pride.misc.decoratorlibrary
     
     time = Timed(test_case1)("demofile.exe")
     time2 = Timed(test_case2)("demofile.exe")

@@ -3,7 +3,7 @@ import os
 import sys
 import ctypes
 
-import mpre.base
+import pride.base
 
 if 'win' in sys.platform:
     IS_WINDOWS = True
@@ -24,16 +24,16 @@ class Compiled(object):
             source_file.write(source)
         os.system("gcc {}.c -o {}.{}".format(name, name, SHARED_OBJECT_TYPE))
     
-class Interpreter(mpre.base.Base):
+class Interpreter(pride.base.Base):
      
-    defaults = mpre.base.Base.defaults.copy()
+    defaults = pride.base.Base.defaults.copy()
     defaults.update({"shared_object_type" : 'dll' if IS_WINDOWS else 'so',
                      "loader" : ctypes.windll if IS_WINDOWS else ctypes.cdll})
                      
     def compile_shared_library(self, source, name):    
         with open(name + ".c", 'w') as source_file:
             source_file.write(source)
-        mpre.utilities.shell("gcc {}.c -o {}.{}".format(name, name, self.shared_object_type), True)
+        pride.utilities.shell("gcc {}.c -o {}.{}".format(name, name, self.shared_object_type), True)
 
     def load_shared_library(self, name):
         return self.loader.LoadLibrary(name)
