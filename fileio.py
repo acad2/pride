@@ -324,8 +324,8 @@ if __name__ == "__main__":
         for x in xrange(iterations):
             f = File(filename, 'rb')
     
-    import pride.misc.decoratorlibrary
-    Timed = pride.misc.decoratorlibrary
+    import pride.decoratrs
+    Timed = pride.decoratrs
     
     time = Timed(test_case1)("demofile.exe")
     time2 = Timed(test_case2)("demofile.exe")

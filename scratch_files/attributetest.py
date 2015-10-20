@@ -216,10 +216,10 @@ class Persistent_Reactor(base.Base):
                 
 if __name__ == "__main__":
     import unittest
-    import pride.misc.decoratorlibrary
+    import pride.decoratrs
     import pride.base
     Base = pride.base.Base
-    Timed = pride.misc.decoratorlibrary.Timed
+    Timed = pride.decoratrs.Timed
     
     b = Base(none=None)
     struc_attributes = {"integer" : 123, 

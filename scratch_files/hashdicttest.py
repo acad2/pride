@@ -1,5 +1,5 @@
-import pride.misc.decoratorlibrary
-Timed = pride.misc.decoratorlibrary.Timed
+import pride.decoratrs
+Timed = pride.decoratrs.Timed
 
 def unpack_dict(dictionary):
     new = []

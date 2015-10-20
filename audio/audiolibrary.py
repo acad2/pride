@@ -312,7 +312,7 @@ class Audio_Manager(base.Base):
         return [(instance.name, instance.instance_name) for 
                 instance in self.objects[devices]]
                         
-    def record(self, device_name, file):  
+    def record(self, device_name, audio_file):  
         device_name = self.device_names[device_name].instance_name
-        file.set_input_device(device_name)
+        audio_file.set_input_device(device_name)
         

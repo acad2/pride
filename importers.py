@@ -124,7 +124,7 @@ class Parser(object):
         indices = []
         symbol_size = len(symbol)
         source_index = 0
-  #      print "Trying to find: {} in source".format(symbol)
+    #    print "Trying to find: {} in source".format(symbol)
         while symbol in source[source_index:]:          
             start = source.index(symbol, source_index)
             for string_range in strings:
@@ -133,13 +133,14 @@ class Parser(object):
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
-             #   print start-1, end, end-start, len(source), symbol, source
-                if start - 1 > 0 and source[start-1] in delimiters:
+                #print start-1, end, end-start, len(source), symbol, source
+                if (start - 1 >= 0 and source[start-1] in delimiters or
+                    start == 0):
                     quantity -= 1
                     indices.append((start, end))
-                 #   print source[start-1], source[start-1] in delimiters, "Found an unquoted {} at {}".format(symbol, indices[-1])
+                #    print source[start-1], source[start-1] in delimiters, "Found an unquoted {} at {}".format(symbol, indices[-1])
                 else:
-                  #  print "Symbol is not the start of a word", source[start-1:end], source
+                #    print "Symbol is not the start of a word", source[start-1:end], source
                     source_index
                 source_index += end                
                 if not quantity:
@@ -155,10 +156,10 @@ class Parser(object):
         while symbol in source:
             slice_information = Parser.find_symbol(symbol, source, 1)
             if not slice_information: # last symbol in source was in a string
-                #print "last symbol in source was a string", slice_information
+         #       print "last symbol in source was a string", slice_information, source
                 break
             symbol_start, _end = slice_information[0]
-     #       print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end, source
+        #    print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start:]):
                 if character in delimiters:
                     delimiter = delimiters[delimiters.index(character)]

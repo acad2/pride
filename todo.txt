@@ -17,10 +17,6 @@ degrees of rotation about the center of the instance.
 
 branch removal based on arguments. based on whatever arguments are provided
 to the call, create new source with branches based on the condition removed.
-
-recently done:    
-    updated class defaults to remove old style explicit copying
-    preemptive threading started
     
 known bugs:
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff

@@ -1,18 +1,10 @@
 import pride.gui.gui
 import pride.gui.widgetlibrary
 
-class File_Button(pride.gui.gui.Button):
+class File_Button(pride.gui.widgetlibrary.Popup_Button):
     
-    defaults = pride.gui.gui.Button.defaults.copy()
-    defaults.update({"_file_menu" : '',
-                     "text" : "File",
-                     "pack_mode" : "horizontal"})
-    
-    def left_click(self, mouse):
-        if not self._file_menu:
-            self._file_menu = self.create(File_Menu)
-        else:
-            self._file_menu.delete()
+    defaults = {"_popup_type" : "pride.gui.text_editor.File_Menu",
+                "text" : "File", "pack_mode" : "horizontal"}
             
 
 class Edit_Button(pride.gui.gui.Button):

@@ -69,7 +69,19 @@ class Exit_Button(Delete_Button):
         
     defaults = {"text" : "exit"}
     
-    
+
+class Popup_Button(gui.Button):
+        
+    defaults = {"popup_type" : '', "_popup" : None}
+
+    def left_click(self, mouse):
+        if self._popup:
+            self._popup.delete()
+        elif self.popup_type:
+            self.alert("Creating: {}".format(self.popup_type), level='vv')
+            self._popup = self.create(self.popup_type)
+        
+        
 class Homescreen(gui.Window):
     
     def __init__(self, **kwargs):

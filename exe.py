@@ -95,11 +95,11 @@ class Executable(pride.base.Base):
         
 if __name__ == "__main__":
     import pride
-    import pride.metapython
+    import pride.main
     import pride.package   
     #import pride.fileio
     packages=[pride.package.Package(pride, include_source=True)]       
-    exe = Executable(pride.metapython, packages=[pride.base.Base(package_name="Test")])#packages)
+    exe = Executable(pride.main, packages=[pride.base.Base(package_name="Test")])#packages)
     exe.build()
     print "Complete"
     #exe.alert("Complete", level=0)

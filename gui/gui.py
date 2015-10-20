@@ -56,17 +56,17 @@ class Organizer(base.Base):
         setattr(self, name, "pack_{}".format(name), callback)
         
     def pack(self, item):
-        self.alert("packing: {}, {} {}", [item, item.area, item.pack_mode],
+        self.alert("packing: {}, {} {} {}", 
+                  [item, item.area, item.z, item.pack_mode],
                    level=self.verbosity["packing"])
         instance_name = item.instance_name
         pack_mode = self.pack_modes[instance_name]
         pack = getattr(self, "pack_{0}".format(pack_mode))
         parent = item.parent
         old_size = item.size
-
         pack(parent, item, self._pack_index[instance_name], 
              len(self._pack_modes[parent.instance_name][pack_mode]))
-        self.alert("Finished packing {}: {}", [item, item.area], 
+        self.alert("Finished packing {}: {} {}", [item, item.area, item.z], 
                    level=self.verbosity["packing"])
         
     def pack_horizontal(self, parent, item, count, length):
@@ -96,10 +96,10 @@ class Organizer(base.Base):
 
     def pack_menu_bar(self, parent, item, count, length):
         item.z = parent.z + 1
-        item.x = parent.x
-        item.y = parent.y
         item.size = (parent.w,
-                     parent.h / 5 if parent.h else 0)
+                     parent.h / 6 if parent.h else 0)        
+        item.x = parent.x
+        item.y = parent.y + (count * item.h)
 
     def pack_z(self, parent, item, count, length):
         item.z = parent.z + 1

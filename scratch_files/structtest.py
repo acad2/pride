@@ -1,8 +1,8 @@
 import pride.tests.attributetest 
 Struct = pride.tests.attributetest.Struct
 import pride.base
-import pride.misc.decoratorlibrary
-Timed = pride.misc.decoratorlibrary.Timed
+import pride.decoratrs
+Timed = pride.decoratrs.Timed
 
 from cPickle import dumps
 

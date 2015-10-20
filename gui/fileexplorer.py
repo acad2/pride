@@ -1,3 +1,4 @@
+import pride.gui.widgetlibrary
 import pride.gui.gui
 
 class File_Explorer(pride.gui.gui.Application):
@@ -11,17 +12,39 @@ class File_Explorer(pride.gui.gui.Application):
 
 class Navigation_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "menu_bar"}
+    defaults = {"pack_mode" : "menu_bar", "h_range" : (0, 20)}
     
     def __init__(self, **kwargs):
         super(Navigation_Bar, self).__init__(**kwargs)
-        #self.create(Back_Button)
-        #self.create(Forward_Button)
-        #self.create(History_Dropdown)
-        #self.create(Ascend_Button)
+        self.create(Back_Button)
+        self.create(Forward_Button)
+        self.create(History_Dropdown)
+    #    self.create(Ascend_Button)
         #self.create(Search_Bar)
         
+   
+class Back_Button(pride.gui.widgetlibrary.Method_Button):
+    
+    defaults = {"text" : "<-", "method" : "back", "pack_mode" : "horizontal",
+                "w_range" : (0, 20)}
+    
+    
+class Forward_Button(pride.gui.widgetlibrary.Method_Button):
         
+    defaults = {"text" : "->", "method" : "forward", 
+                "pack_mode" : "horizontal", "w_range" : (0, 20)}
+    
+
+class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
+        
+    defaults = {"popup_type" : "pride.gui.fileexplorer.Directory_History"}
+        
+
+class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
+            
+    defaults = {"method" : "ascend_directory"}
+    
+    
 class Places_Bar(pride.gui.gui.Container):
             
     defaults = {"pack_mode" : "left"}
@@ -34,7 +57,7 @@ class Places_Bar(pride.gui.gui.Container):
 
 class Info_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "bottom"}
+    defaults = {"pack_mode" : "bottom", "h_range" : (0, 20)}
     
     def __init__(self, **kwargs):
         super(Info_Bar, self).__init__(**kwargs)
