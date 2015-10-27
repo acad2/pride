@@ -31,8 +31,7 @@ class Shell(authentication.Authenticated_Client):
                 "startup_definitions" : '',
                 "target_service" : "Interpreter"}
     
-    parser_ignore = (authentication.Authenticated_Client.parser_ignore + 
-                     ("prompt", "auto_login", "target_service"))
+    parser_ignore = ("prompt", )
     
     verbosity = {"logging_in" : ''}
     
@@ -185,6 +184,7 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
+        
                              
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
@@ -203,25 +203,20 @@ class Python(base.Base):
                                         "pride.srp.Secure_Remote_Password",
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Server"),
-                "interpreter_enabled" : True,
-                "rpc_enabled" : True,
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
-    parser_ignore = base.Base.parser_ignore + ("environment_setup",
-                                               "traceback", 
-                                               "startup_components", 
-                                               "startup_definitions")
+    parser_ignore = ("environment_setup", "startup_components", 
+                     "startup_definitions", "interpreter_type")
                      
     # make an optional "command" positional argument and allow 
     # both -h and --help flags
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
-                                  "nargs" : '?'}
-                        }
-    exit_on_help = False
-
+                                  "nargs" : '?'},
+                        "exit_on_help" : False}
+    
     def __init__(self, **kwargs):
         super(Python, self).__init__(**kwargs)
         self.setup_os_environ()

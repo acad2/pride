@@ -41,10 +41,9 @@ class Process(pride.base.Base):
         object presumes the desire for some kind of explicitly timed
         or periodic event."""
 
-    defaults = {"priority" : .04,
-                "running" : True,
+    defaults = {"priority" : .04, "context_managed" : False, "running" : True,
                 "run_callback" : None}
-    parser_ignore = pride.base.Base.parser_ignore + ("priority", "run_callback", )
+    parser_ignore = ("priority", "run_callback", "context_managed")
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -68,7 +67,12 @@ class Process(pride.base.Base):
         
     def run(self):
         if self.target:
-            return self.target(*self.args, **self.kwargs)
+            if self.context_managed:
+                with self:
+                    result = self.target(*self.args, **self.kwargs)
+            else:
+                result = self.target(*self.args, **self.kwargs)
+            return result
             
     def delete(self):
         self.running = False
@@ -85,7 +89,15 @@ class Process(pride.base.Base):
         if self.running:
             Instruction(self.instance_name, "start").execute()
             
-            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        if traceback:
+            raise
+        return value
+        
+    
 class Processor(Process):
     """ Removes enqueued Instructions via heapq.heappop, then
         performs the specified method call while handling the
@@ -93,12 +105,11 @@ class Processor(Process):
         and any exception that could be raised inside the method call
         itself."""
         
-    defaults = {"running" : False,
-                "execution_verbosity" : 'vvvv',
+    defaults = {"running" : False, "execution_verbosity" : 'vvvv',
                 "parse_args" : True}
 
-    parser_ignore = Process.parser_ignore + ("running", )
-    exit_on_help = False
+    parser_ignore = ("running", )
+    parser_modifiers = {"exit_on_help" : False}
             
     def run(self):
         self._return = {}

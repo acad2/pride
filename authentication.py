@@ -31,10 +31,10 @@ class Authenticated_Service(pride.base.Base):
         be decorated explicitly with the access controls desired."""
     defaults = {"allow_registration" : True,
                 "protocol_component" : "Secure_Remote_Password",
-                "database_name" : '',
-                "login_message" : '',
-                "current_session" : (None, None),
-                "session_id_size" : 256}
+                "database_name" : '', "login_message" : '',
+                "current_session" : (None, None), "session_id_size" : 256}
+    
+    parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
     def __init__(self, **kwargs):
         self.logging_in = set()
@@ -189,26 +189,18 @@ class Authenticated_Service(pride.base.Base):
         
 class Authenticated_Client(pride.base.Base):
     
-    defaults = {"username" : '',
-                "password" : '',
-                "target_service" : '',
+    defaults = {"username" : '', "password" : '', "target_service" : '',
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 "protocol_client" : "pride.srp.SRP_Client",
-                "ip" : "localhost", 
-                "port" : 40022,
-                "auto_login" : True,
-                "logged_in" : False,
-                "session_id_size" : 256}
+                "ip" : "localhost", "port" : 40022, "session_id_size" : 256,
+                "auto_login" : True, "logged_in" : False}
     
-    parser_ignore = pride.base.Base.parser_ignore + ("password_prompt", "protocol_client", "logged_in")
+    parser_ignore = ("password_prompt", "protocol_client", "logged_in",
+                     "target_service", "auto_login", "session_id_size")
     
-    verbosity = {"logging_in" : 'v',
-                 "on_login" : 'v',
-                 "registering" : 'v',
-                 "send_proof" : 'v',
-                 "registration_success" : '',
-                 "registration_failed" : 0,
-                 "login_failed" : 0}
+    verbosity = {"logging_in" : 'v', "on_login" : 'v', "registering" : 'v',
+                 "send_proof" : 'v', "registration_success" : '',
+                 "registration_failed" : 0, "login_failed" : 0}
         
     def _get_host_info(self):
         return (self.ip, self.port)

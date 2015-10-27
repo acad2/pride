@@ -202,11 +202,9 @@ class Alert_Handler(pride.base.Base):
                      "log_is_persistent" : False,
                      "parse_args" : True})
 
-    parser_ignore = pride.base.Base.parser_ignore + ("parse_args",
-                                                    "log_is_persistent",
-                                                    "verbosity")
-    exit_on_help = False
-
+    parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
+    parser_modifiers = {"exit_on_help" : False}
+    
     def __init__(self, **kwargs):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = open(self.log_name, 'a+')

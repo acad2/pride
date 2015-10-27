@@ -109,9 +109,8 @@ class Base(object):
     # the default attributes new instances will initialize with
     # mutable datatypes (i.e. lists) should not be used inside the
     # defaults dictionary and should be set inside the call to __init__   
-    defaults = {"_deleted" : False,
+    defaults = {"_deleted" : False, "dont_save" : False,
                 "replace_reference_on_load" : True,
-                "dont_save" : False,
                 "startup_components" : tuple()}   
                 
     # A command line argument parser is generated automatically for
@@ -128,14 +127,13 @@ class Base(object):
     # or --long long style flags. nargs indicates the number of expected
     # arguments for the flag in question. Note that attributes default to 
     # using --long style flags.
-    parser_modifiers = {}    
+    # exit_on_help determines whether or not to quit when the --help flag
+    # is specified as a command line argument    
+    parser_modifiers = {"exit_on_help" : True}    
     
     # names in parser_ignore will not be available as command line arguments
-    parser_ignore = ("objects", "replace_reference_on_load", "_deleted",
-                     "parse_args", "dont_save")
-    # exit_on_help determines whether or not to quit when the --help flag
-    # is specified as a command line argument
-    exit_on_help = True
+    parser_ignore = ("replace_reference_on_load", "_deleted",
+                     "parse_args", "dont_save", "startup_components")    
     
     # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
@@ -202,10 +200,11 @@ class Base(object):
                 raise
             instance = pride.utilities.resolve_string(instance_type)(*args, **kwargs)        
 
+        pride.environment.parents[instance] = self_name
         if instance not in pride.environment.instance_name:
             pride.environment.add(instance)
         self.add(instance)
-        pride.environment.parents[instance] = self_name
+        
         return instance
 
     def delete(self):

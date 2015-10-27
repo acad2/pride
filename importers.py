@@ -15,18 +15,16 @@ try:
 except ImportError:
     import StringIO
   
-OPERATORS = r"""+  -  *  ** /  // %
-                << >> &  |  ^  ~  
-                <  >  <= >= == != <>""".strip()
+OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
+             '~', '<', '>', '<=', '>=', '==', '!=', '<>')
                
-DELIMITERS = r"""(  )  [  ]   {   }   @
-                 ,  :  .  `   =   ;  
-                 += -= *= /=  //= %= 
-                 &= |= ^= >>= <<= **=""".strip() + r' '
+DELIMITERS = ('(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', '=',
+              ';', '$', '+=', '-=', '*=', '/=', '//=', '%=', '&=', '|=', 
+              '^=', ">>=", "<<=", "**=", ' ')
                 
-unused = "$?"
+unused = tuple("$?")
 
-misc = "\'\"\#\\"
+misc = tuple("\'\"\#\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
   
@@ -111,7 +109,7 @@ class Parser(object):
         return sorted(indices, key=operator.itemgetter(0))
     
     @staticmethod    
-    def find_symbol(symbol, source, quantity=0):
+    def find_symbol(symbol, source, quantity=0, back_delimit=True, forward_delimit=True):
         """ Locates all occurrences of symbol inside source up to the given
             quantity of times. Matches only count if the symbol is not inside
             a quote or behind a comment. """
@@ -124,7 +122,8 @@ class Parser(object):
         indices = []
         symbol_size = len(symbol)
         source_index = 0
-    #    print "Trying to find: {} in source".format(symbol)
+        source_length = len(source)
+     #   print "\nTrying to find: {} ".format(symbol)
         while symbol in source[source_index:]:          
             start = source.index(symbol, source_index)
             for string_range in strings:
@@ -134,14 +133,30 @@ class Parser(object):
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
-                if (start - 1 >= 0 and source[start-1] in delimiters or
-                    start == 0):
+                
+                if back_delimit and (start - 1 >= 0 and source[start-1] in delimiters or
+                                     start == 0):
+                    character = source[end]
+                    print source[start-1:end], "Found potential match"
+                  #  print "character: ", character, "delimiters", delimiters, "is member", character in delimiters
+                    
+                    if forward_delimit and end == source_length or source[end] in delimiters:
+                #        print source[start-1:end], "is delimited properly!"
+                        quantity -= 1
+                        indices.append((start, end))
+                    else:
+                #        print "Found properly delimited {}".format(symbol), start, end, source[start:end+16]
+                        quantity -= 1
+                        indices.append((start, end))
+                elif forward_delimit and end == source_length or source[end] in delimiters:
                     quantity -= 1
                     indices.append((start, end))
-                #    print source[start-1], source[start-1] in delimiters, "Found an unquoted {} at {}".format(symbol, indices[-1])
+                elif not (forward_delimit or back_delimit):
+                    quantity -= 1
+                    indices.append((start, end))
                 else:
-                #    print "Symbol is not the start of a word", source[start-1:end], source
-                    source_index
+                    print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
+                    print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
                 source_index += end                
                 if not quantity:
                     break
@@ -149,27 +164,31 @@ class Parser(object):
         return indices
         
     @staticmethod
-    def replace_symbol(symbol, source, replacement):
+    def replace_symbol(symbol, source, replacement, back_delimit=True,
+                       forward_delimit=True):
         delimiters = DELIMITERS + OPERATORS
    #     print "Replacing {} with {}".format(symbol, replacement)
         _count = 0
         while symbol in source:
-            slice_information = Parser.find_symbol(symbol, source, 1)
+            slice_information = Parser.find_symbol(symbol, source, 1, 
+                                                   back_delimit, forward_delimit)
             if not slice_information: # last symbol in source was in a string
-         #       print "last symbol in source was a string", slice_information, source
+    #            print "last symbol in source was a string", slice_information
                 break
             symbol_start, _end = slice_information[0]
-        #    print "\nFound string replacement: ", source[symbol_start:_end] + "...", "index: ", symbol_start, _end
-            for index, character in enumerate(source[symbol_start:]):
+    #        print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
+            for index, character in enumerate(source[symbol_start + 1:]):
                 if character in delimiters:
+    #                print "Found delimiter: ", character
                     delimiter = delimiters[delimiters.index(character)]
                     end_index = index
                     break
             else:
                 end_index = index
-            name = source[symbol_start + 1:symbol_start + end_index]
+            name = source[symbol_start + 1:symbol_start + end_index + 1]
+    #        print "replacing name: ", source[symbol_start-20:symbol_start+end_index + 20], end_index, symbol_start + 1, symbol_start + end_index + 1
             replaced = replacement.format(name)
-      #      print symbol_start + 1, symbol_start + end_index, replaced
+    #        print symbol_start + 1, symbol_start + end_index, replaced
             source = ''.join((source[:symbol_start], replaced,
                               source[symbol_start + 1 + len(name):]))
             _count += 1
@@ -181,11 +200,11 @@ class Parser(object):
     @staticmethod
     def remove_comments(source):
         new_source = []
-        progress = 0
         for line in source.split('\n'):
             if '#' in line:
-                line = line[:line.index('#')]
-                if not line.replace('\t', '    ').replace('    ', ''):
+                _line = line[:line.index('#')]
+                if not _line.replace('\t', '    ').replace('    ', ''):
+                    #print "removing comment line: ", line
                     continue
             new_source.append(line)
         return '\n'.join(new_source)
@@ -193,12 +212,48 @@ class Parser(object):
     @staticmethod
     def remove_docstring(source):
         """ Returns source without docstring """
-        return source[Parser.get_string_indices(source)[0][1]:]        
-
+        indices = Parser.get_string_indices(source)
+        result = source
+        if indices:
+            start_of_string, end_of_string = indices[0]
+            if (source[start_of_string-4:start_of_string] == '    ' or
+                source[start_of_string-1] == '\t'):
+                result = source[:start_of_string] + source[end_of_string:]            
+        return result
+      
+    @staticmethod
+    def remove_header(source):
+        """ Returns source without a class or def header. """
+        if not (':' in source and '\n' in source and 
+                ('    ' in source or '\t' in source)):
+            raise ValueError("Could not find class or def header in {}".format(source))      
+        colon_found = newline_found = indent_found = False 
+        enclosing_characters = ('{', '[', '(')
+        end_enclosing_characters = ('}', ']', ')')
+        enclose_count = 0
+        for index, character in enumerate(source):
+            if character in enclosing_characters:
+            #    print "Found opening character: ", character
+                enclose_count += 1
+            elif character in end_enclosing_characters:
+           #     print "Found closing character: ", character
+                enclose_count -= 1
+            if not enclose_count:
+                if character == ':' and not colon_found:
+                    colon_found = True
+                elif character == '\n':
+                    newline_found = True
+                elif character == '\t' or source[index:index+4] == "    ":
+                    indent_found = True
+            if colon_found and newline_found and indent_found:
+                end_of_header = index
+                break
+        return source[end_of_header:]
+                
     @staticmethod
     def extract_code(source):
-        """ Returns source without comments or docstring. """
-        return Parser.remove_docstring(Parser.remove_comments(source))        
+        """ Returns source without header, comments, or docstring. """
+        return Parser.remove_docstring(Parser.remove_header(Parser.remove_comments(source)))
         
         
 class Compiler(object):
@@ -233,17 +288,17 @@ class Compiler(object):
     def load_module(self, module_name):
         if module_name not in sys.modules:
             source, path = self.module_source[module_name]
-            self.compile_module(module_name, source, path)
+            module_code = self.compile(source, path)
+            self.compile_module(module_name, module_code, path)
  #       print "Loading: ", module_name
         return sys.modules[module_name]
                     
-    def compile_module(self, module_name, source, path):
+    def compile_module(self, module_name, module_code, path):
         new_module = types.ModuleType(module_name) 
     #    print '\n\ncompiling: ', module_name
         sys.modules[module_name] = new_module
         new_module.__name__ = module_name
         new_module.__file__ = path
-        module_code = self.compile(source, module_name)        
         exec module_code in new_module.__dict__
         if not hasattr(new_module, "__package__"):
             split = module_name.split('.', 1)
@@ -268,9 +323,36 @@ class Dollar_Sign_Directive(object):
         translated to pride.objects['Component']. """
         
     def handle_source(self, source):
-        return Parser.replace_symbol('$', source, "pride.objects['{}']")     
+        _source = Parser.remove_comments(source)
+      #  print _source
+        return Parser.replace_symbol('$', source, "pride.objects['{}']", False, False)     
         
   
+class Function_Inliner(object):
+
+    def handle_source(self, source):
+        delimiters = DELIMITERS + OPERATORS
+        _source = Parser.replace_symbol('$', source, '{}')
+        print source
+        print _source
+        bytecode = compile(_source, 'inline_test', 'exec')
+        module = sys.meta_path[0].compile_module('', bytecode, '')
+        sources = []
+        for start, end in Parser.find_symbol('$', source):
+            for end_of_symbol, character in enumerate(source[end:]):
+                if character in delimiters:
+                    break
+            function_name = source[end:end + end_of_symbol + 1]
+            print 'Function name: ', function_name, end, end + end_of_symbol + 1
+            function_source = inspect.getsource(getattr(module, function_name))
+            sources.append((function_name, Parser.extract_code(function_source)))
+            
+        for function_name, inline_source in sources:
+            source = Parser.replace_symbol('$' + function_name, inline_source)
+        print "Returning: ", source
+        return source
+        
+        
 class New_Keyword(object):
     
     def handle_source(self, source):
