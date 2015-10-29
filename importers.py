@@ -20,7 +20,7 @@ OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
                
 DELIMITERS = ('(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', '=',
               ';', '$', '+=', '-=', '*=', '/=', '//=', '%=', '&=', '|=', 
-              '^=', ">>=", "<<=", "**=", ' ')
+              '^=', ">>=", "<<=", "**=", ' ', '\n')
                 
 unused = tuple("$?")
 
@@ -167,28 +167,28 @@ class Parser(object):
     def replace_symbol(symbol, source, replacement, back_delimit=True,
                        forward_delimit=True):
         delimiters = DELIMITERS + OPERATORS
-   #     print "Replacing {} with {}".format(symbol, replacement)
+        #print "Replacing {} with {}".format(symbol, replacement)
         _count = 0
         while symbol in source:
             slice_information = Parser.find_symbol(symbol, source, 1, 
                                                    back_delimit, forward_delimit)
             if not slice_information: # last symbol in source was in a string
-    #            print "last symbol in source was a string", slice_information
+        #        print "last symbol in source was a string", slice_information
                 break
             symbol_start, _end = slice_information[0]
-    #        print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
+        #    print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start + 1:]):
                 if character in delimiters:
-    #                print "Found delimiter: ", character
+        #            print "Found delimiter: ", character
                     delimiter = delimiters[delimiters.index(character)]
                     end_index = index
                     break
             else:
                 end_index = index
             name = source[symbol_start + 1:symbol_start + end_index + 1]
-    #        print "replacing name: ", source[symbol_start-20:symbol_start+end_index + 20], end_index, symbol_start + 1, symbol_start + end_index + 1
+        #    print "\nreplacing name: ", len(name), name, "in source: ..." + source[symbol_start-64:symbol_start+end_index + 64] + '...'
             replaced = replacement.format(name)
-    #        print symbol_start + 1, symbol_start + end_index, replaced
+        #    print symbol_start + 1, symbol_start + end_index, len(replaced), replaced
             source = ''.join((source[:symbol_start], replaced,
                               source[symbol_start + 1 + len(name):]))
             _count += 1
