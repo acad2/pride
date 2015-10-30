@@ -67,7 +67,8 @@ def inline_function_source(method, method_name, component='',
         new_name = full_name + '_' + name
         declaration = "{} = {}_namespace.{}".format(new_name, full_name, name)
         #print "Replacing {} with {}".format(name, new_name)
-        method_source = pride.importers.Parser.replace_symbol(name, method_source, new_name) 
+        method_source = pride.importers.Parser.replace_symbol(name, method_source, 
+                                                              new_name, True, True)
     if return_string:
         method_source = pride.importers.Parser.replace_symbol('return', 
                                                               method_source, 

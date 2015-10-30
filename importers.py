@@ -109,7 +109,8 @@ class Parser(object):
         return sorted(indices, key=operator.itemgetter(0))
     
     @staticmethod    
-    def find_symbol(symbol, source, quantity=0, back_delimit=True, forward_delimit=True):
+    def find_symbol(symbol, source, quantity=0, back_delimit=True, 
+                    forward_delimit=True, start_index=0):
         """ Locates all occurrences of symbol inside source up to the given
             quantity of times. Matches only count if the symbol is not inside
             a quote or behind a comment. """
@@ -121,77 +122,80 @@ class Parser(object):
         #    print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
         indices = []
         symbol_size = len(symbol)
-        source_index = 0
+        source_index = start_index
         source_length = len(source)
-     #   print "\nTrying to find: {} ".format(symbol)
-        while symbol in source[source_index:]:          
+    #    print "# Trying to find: {} ".format(symbol), start_index, len(source)#, source[source_index:]
+        while symbol in source[source_index:] and quantity > 0:          
             start = source.index(symbol, source_index)
+    #        print "Found start of symbol: ", start
             for string_range in strings:
                 if start in string_range:
+                   # print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
                     source_index += string_range[-1]
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
-                
-                if back_delimit and (start - 1 >= 0 and source[start-1] in delimiters or
-                                     start == 0):
-                    character = source[end]
-                    print source[start-1:end], "Found potential match"
-                  #  print "character: ", character, "delimiters", delimiters, "is member", character in delimiters
-                    
-                    if forward_delimit and end == source_length or source[end] in delimiters:
-                #        print source[start-1:end], "is delimited properly!"
+    #            print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
+                is_back_delimited = (start - 1 >= 0 and source[start-1] in delimiters or start == 0)
+                is_forward_delimited = (end == source_length or source[end] in delimiters)
+                if back_delimit:
+                    if is_back_delimited:
+                        if forward_delimit:
+                            if is_forward_delimited:
+    #                            print "Found forward/back delimited ", symbol, (start, end)
+                                quantity -= 1
+                                indices.append((start, end))
+                        else:
+    #                        print "Found back delimited {}".format(symbol), (start, end)
+                            quantity -= 1
+                            indices.append((start, end))                
+                elif forward_delimit:
+                    if is_forward_delimited:
+    #                    print "Found forward delimited ", symbol, (start, end)
                         quantity -= 1
                         indices.append((start, end))
-                    else:
-                #        print "Found properly delimited {}".format(symbol), start, end, source[start:end+16]
-                        quantity -= 1
-                        indices.append((start, end))
-                elif forward_delimit and end == source_length or source[end] in delimiters:
-                    quantity -= 1
-                    indices.append((start, end))
-                elif not (forward_delimit or back_delimit):
+                elif not (back_delimit or forward_delimit):
+    #                print "Found non delimited ", symbol, (start, end)
                     quantity -= 1
                     indices.append((start, end))
                 else:
                     print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
-                    print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
-                source_index += end                
-                if not quantity:
-                    break
-        #    print "Incrementing index by {} to {}".format(end, source_index)
+        #            print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
+                source_index = end
+    #        print "Incrementing index by {} to {}".format(end, source_index)
         return indices
         
     @staticmethod
     def replace_symbol(symbol, source, replacement, back_delimit=True,
-                       forward_delimit=True):
+                       forward_delimit=True, start_index=0):
         delimiters = DELIMITERS + OPERATORS
-        #print "Replacing {} with {}".format(symbol, replacement)
+        #print "\nReplacing {} with {}".format(symbol, replacement)
         _count = 0
         while symbol in source:
             slice_information = Parser.find_symbol(symbol, source, 1, 
-                                                   back_delimit, forward_delimit)
+                                                   back_delimit, forward_delimit,
+                                                   start_index)
             if not slice_information: # last symbol in source was in a string
         #        print "last symbol in source was a string", slice_information
                 break
             symbol_start, _end = slice_information[0]
-        #    print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
+          #  print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
             for index, character in enumerate(source[symbol_start + 1:]):
                 if character in delimiters:
-        #            print "Found delimiter: ", character
+        #            print "Found word delimiter: ", character, source[symbol_start:symbol_start + index + 1]
                     delimiter = delimiters[delimiters.index(character)]
                     end_index = index
                     break
             else:
                 end_index = index
             name = source[symbol_start + 1:symbol_start + end_index + 1]
-        #    print "\nreplacing name: ", len(name), name, "in source: ..." + source[symbol_start-64:symbol_start+end_index + 64] + '...'
             replaced = replacement.format(name)
-        #    print symbol_start + 1, symbol_start + end_index, len(replaced), replaced
+        #    print "Created replacement symbol: ", replacement
             source = ''.join((source[:symbol_start], replaced,
                               source[symbol_start + 1 + len(name):]))
             _count += 1
+            start_index = symbol_start + 1 + len(replaced)
       #  assert symbol not in source, source
     
       #  print "Created replacement source: ", source
@@ -323,7 +327,7 @@ class Dollar_Sign_Directive(object):
         translated to pride.objects['Component']. """
         
     def handle_source(self, source):
-        _source = Parser.remove_comments(source)
+      #  _source = Parser.remove_comments(source)
       #  print _source
         return Parser.replace_symbol('$', source, "pride.objects['{}']", False, False)     
         
