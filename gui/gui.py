@@ -13,9 +13,11 @@ SDL_Rect = sdl2.SDL_Rect
 
 R, G, B, A = 0, 80, 255, 30
 
-def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET):
-    return $SpriteFactory.create_texture_sprite($Renderer.wrapped_object,
-                                                size, access=access)
+def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
+                   factory="->Python->SDL_Window->Renderer->SpriteFactory",
+                   renderer="->Python->SDL_Window->Renderer"):
+    return $factory.create_texture_sprite($renderer.wrapped_object,
+                                          size, access=access)
     
 class Organizer(base.Base):
     
@@ -231,6 +233,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self._layer_index = 0        
         self._texture_window_x = self._texture_window_y = 0
         self._glow_modifier = 20
+        self.sdl_window = "->Python->SDL_Window"
         max_w, max_h = pride.gui.SCREEN_SIZE
         self.w_range = self.x_range = (0, max_w)
         self.h_range = self.y_range = (0, max_h)

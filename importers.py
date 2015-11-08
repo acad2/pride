@@ -194,12 +194,24 @@ class Parser(object):
                 break
             symbol_start, _end = slice_information[0]
           #  print "\nFound string replacement: ...", source[symbol_start-10:_end+10] + "...", "index: ", symbol_start, _end
+            ignore_count = 0
+            size = len(source[symbol_start + 1:]) - 1
             for index, character in enumerate(source[symbol_start + 1:]):
+                if ignore_count:
+                    ignore_count -= 1
+                    continue
+                if index < size:
+                    _character = character + source[symbol_start + 2 + index]
+                else:
+                    _character = character
                 if character in delimiters:
-        #            print "Found word delimiter: ", character, source[symbol_start:symbol_start + index + 1]
-                    delimiter = delimiters[delimiters.index(character)]
-                    end_index = index
-                    break
+                    if _character == "->":
+                        ignore_count += 2
+                    else:
+        #                print "Found word delimiter: ", character, source[symbol_start:symbol_start + index + 1]
+                        delimiter = delimiters[delimiters.index(character)]
+                        end_index = index
+                        break
             else:
                 end_index = index
             name = source[symbol_start + 1:symbol_start + end_index + 1]
@@ -348,7 +360,7 @@ class Dollar_Sign_Directive(Preprocessor):
     def handle_source(self, source):
       #  _source = Parser.remove_comments(source)
       #  print _source
-        return Parser.replace_symbol('$', source, "pride.objects['{}']", False, False)     
+        return Parser.replace_symbol('$', source, "pride.objects[{}]", False, False)     
         
 
 class Dereference_Macro(Preprocessor):

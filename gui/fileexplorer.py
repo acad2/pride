@@ -4,7 +4,7 @@ import pride.gui.gui
 class File_Explorer(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
-        super(File_Explorer, self).__init__(**kwargs)
+        super(File_Explorer, self).__init__(**kwargs)        
         self.create(Navigation_Bar)
         self.create(Info_Bar, pack_mode="bottom")
       #  self.create(Directory_Viewer)        

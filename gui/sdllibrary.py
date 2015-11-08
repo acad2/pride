@@ -51,7 +51,7 @@ class SDL_Window(SDL_Component):
         window = sdl2.ext.Window(self.name, size=self.size, 
                                  flags=self.window_flags)
         self.wraps(window)
-        self.create(Window_Handler)
+        self.window_handler = self.create(Window_Handler)
         
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
@@ -82,7 +82,11 @@ class SDL_Window(SDL_Component):
     def create(self, *args, **kwargs):
         instance = super(SDL_Window, self).create(*args, **kwargs)
         if hasattr(instance, 'pack'):
-            instance.pack()
+            try:
+                instance.pack()
+            except TypeError:
+                if instance.__class__.__name__ != "Organizer":
+                    raise
         return instance
         
     def run(self):
