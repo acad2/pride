@@ -8,13 +8,13 @@ import pride.base as base
 import pride.vmlibrary as vmlibrary
 import pride.fileio as fileio
 from pride.utilities import Latency
-Instruction = pride.Instruction
 objects = pride.objects
+Instruction = pride.Instruction
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)
    
 def record_wav_file(parse_args=False, **kwargs):
-    audio_manager = objects["Audio_Manager"]
+    audio_manager = pride.objects["->Python->Audio_Manager"]
     print "Creating wav file: ", kwargs
     wav_file = audio_manager.create("pride.audio.audiolibrary.Wav_File",
                                     parse_args=parse_args, mode='wb', **kwargs)
@@ -239,7 +239,7 @@ class Audio_Manager(base.Base):
                     devices=self.devices)
         
         if exit_when_finished:
-            Instruction("Python", "exit").execute()
+            Instruction("->Python", "exit").execute()
         
     def load_api(self):
         if "linux" in sys.platform:

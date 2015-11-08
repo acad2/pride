@@ -22,9 +22,9 @@ DELIMITERS = ('(', ')', '[', ']', '{', '}', '@', ',', ':', '.', '`', '=',
               ';', '$', '+=', '-=', '*=', '/=', '//=', '%=', '&=', '|=', 
               '^=', ">>=", "<<=", "**=", ' ', '\n')
                 
-unused = tuple("$?")
+unused = ('$', '?')
 
-misc = tuple("\'\"\#\\")
+misc = ("\'", "\"", "\#", "\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
   
@@ -41,7 +41,21 @@ def sys_meta_path_switched(new_meta_path):
 def imports_from_disk():
     with sys_meta_path_switched([From_Disk()]):
         yield
-                    
+ 
+def split_instance_name(instance_name):
+    assert instance_name
+    for index, character in enumerate(reversed(instance_name)):
+        try:
+            number = int(character)
+        except ValueError:
+            break
+    try:
+        number = int(instance_name[-index:])
+    except ValueError:
+        number = 0
+    return (instance_name[:index], number)
+        
+        
 class From_Disk(object):
         
     def __init__(self, modules=tuple()):
@@ -109,8 +123,8 @@ class Parser(object):
         return sorted(indices, key=operator.itemgetter(0))
     
     @staticmethod    
-    def find_symbol(symbol, source, quantity=0, back_delimit=True, 
-                    forward_delimit=True, start_index=0):
+    def find_symbol(symbol, source, back_delimit=True, forward_delimit=True, 
+                    start_index=0, quantity=1):
         """ Locates all occurrences of symbol inside source up to the given
             quantity of times. Matches only count if the symbol is not inside
             a quote or behind a comment. """
@@ -124,43 +138,43 @@ class Parser(object):
         symbol_size = len(symbol)
         source_index = start_index
         source_length = len(source)
-    #    print "# Trying to find: {} ".format(symbol), start_index, len(source)#, source[source_index:]
-        while symbol in source[source_index:] and quantity > 0:          
+        #print "# Trying to find: {} ".format(symbol), start_index, len(source)#, source[source_index:]
+        while symbol in source[source_index:] and quantity > 0:  
             start = source.index(symbol, source_index)
-    #        print "Found start of symbol: ", start
+        #    print "Found start of symbol: ", start
             for string_range in strings:
                 if start in string_range:
-                   # print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
+        #            print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
                     source_index += string_range[-1]
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
-    #            print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
+        #        print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
                 is_back_delimited = (start - 1 >= 0 and source[start-1] in delimiters or start == 0)
                 is_forward_delimited = (end == source_length or source[end] in delimiters)
                 if back_delimit:
                     if is_back_delimited:
                         if forward_delimit:
                             if is_forward_delimited:
-    #                            print "Found forward/back delimited ", symbol, (start, end)
+                                print "Found forward/back delimited ", symbol, (start, end)
                                 quantity -= 1
                                 indices.append((start, end))
                         else:
-    #                        print "Found back delimited {}".format(symbol), (start, end)
+        #                    print "Found back delimited {}".format(symbol), (start, end)
                             quantity -= 1
                             indices.append((start, end))                
                 elif forward_delimit:
                     if is_forward_delimited:
-    #                    print "Found forward delimited ", symbol, (start, end)
+        #                print "Found forward delimited ", symbol, (start, end)
                         quantity -= 1
                         indices.append((start, end))
                 elif not (back_delimit or forward_delimit):
-    #                print "Found non delimited ", symbol, (start, end)
+        #            print "Found non delimited ", symbol, (start, end)
                     quantity -= 1
                     indices.append((start, end))
-                else:
-                    print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
+        #        else:
+        #            print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
         #            print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
                 source_index = end
     #        print "Incrementing index by {} to {}".format(end, source_index)
@@ -173,9 +187,8 @@ class Parser(object):
         #print "\nReplacing {} with {}".format(symbol, replacement)
         _count = 0
         while symbol in source:
-            slice_information = Parser.find_symbol(symbol, source, 1, 
-                                                   back_delimit, forward_delimit,
-                                                   start_index)
+            slice_information = Parser.find_symbol(symbol, source, back_delimit,
+                                                   forward_delimit, start_index)
             if not slice_information: # last symbol in source was in a string
         #        print "last symbol in source was a string", slice_information
                 break
@@ -320,8 +333,14 @@ class Compiler(object):
     def compile(self, source, filename=''):
         return compile(self.preprocess(source), filename, 'exec')         
         
-        
-class Dollar_Sign_Directive(object):
+  
+class Preprocessor(object):
+    """ Base class for establishing interface of preprocessor objects """
+    
+    def handle_source(self, source): pass
+    
+    
+class Dollar_Sign_Directive(Preprocessor):
     """ Replaces '$' directive with pride.objects lookup. This
         facilitates the syntatic sugar $Component, which is
         translated to pride.objects['Component']. """
@@ -331,8 +350,163 @@ class Dollar_Sign_Directive(object):
       #  print _source
         return Parser.replace_symbol('$', source, "pride.objects['{}']", False, False)     
         
-  
-class Function_Inliner(object):
+
+class Dereference_Macro(Preprocessor):
+    """ Facilitates the macro for dereferencing instance names. Source
+        handled by this object will have '->' lookup chains resolved to
+        a name resolution function with the instance names as arguments.
+        Example:
+            
+            ->Python->Network->Rpc_Server->Rpc_Socket1
+            # resolves to
+            pride.objects["->Python"].objects["Network"][0].objects["Rpc_Server"][0].objects["Rpc_Socket"][1]
+            
+            self->Network->Rpc_Server->Rpc_Socket1
+            self.objects["Network"][0].objects["Rpc_Server"][0].objects["Rpc_Socket"][1]"""
+        
+    def handle_source(self, source):
+        delimiters = DELIMITERS + OPERATORS
+        ignore_count = source_index = 0
+        reference_start = None
+        quote_open = is_string = False
+        parenthesis_open = 0
+        while '->' in source[source_index:]:
+            indices = Parser.find_symbol('->', source, back_delimit=False,
+                                         forward_delimit=False, start_index=source_index)
+            if not indices:
+                break  
+            #start, end = indices[0]
+            #progress = 0
+            #lines = []
+            #for line in source.split('\n'):
+            #    progress += len(line)
+            #    if start <= progress:
+            #        new_line = ''
+            #        try:
+            #            equals, _line = line.split('=')
+            #        except ValueError:
+            #            pass
+            #        else:
+            #            new_line += equals + '='
+            #        
+            #        new_line += "pride.dereference(packed_args=("
+            #        names = _line.split("->")
+            #        for name in names:
+            #            if '"' in name or "'" in name:
+            #                new_line += str(split_instance_name(name)) + ", "
+            #            else:
+            #                new_line += "split_instance_name({}), ".format(name)
+            #        new_line = new_line[:2] + "))"
+            #        lines.append
+
+
+
+
+
+
+
+                
+            name = ''
+            names = []
+            start, end = indices[0]
+            #print "Looking for names in: ", source[end:]
+            # look for the attribute/name before the ->
+        #    _name = ''
+        #    for pre_name_index, character in enumerate(reversed(source[:start])):
+        #        print "Testing index: ", pre_name_index, character
+        #        if character in delimiters and character != '.':
+        #            print "Breaking because of: ", character
+        #            break
+        #        print "Adding character to name: ", character
+        #        _name += character
+        #    names.append((''.join(reversed(_name)), False))
+            line = ''
+        #    end_of_
+        #    for character in enumerate(source[end:]):
+        #        current_index = end + index
+        #        _character = source[current_index:current_index+2]
+        #        __character = source[current_index:current_index+3]            
+        #        if character in delimiters or _character
+            
+        #    print "Added prefix name: ", names[0]   
+            for index, character in enumerate(source[end:]):
+                if ignore_count:
+                    ignore_count -= 1
+                    continue
+                current_index = end + index
+                _character = source[current_index:current_index+2]
+                __character = source[current_index:current_index+3]
+                if _character == '->':
+                    #for __character_ in source[index+2:]:
+                    #    if __character_ in (' ', '\t', '('):
+                    #        if __character_ == '(':
+                    #            
+                    #            parenthesis_open += 1
+                    #    elif __character_ in delimiters:
+                    #        break
+                    
+                    print "Next arrow, Finished last name: ", name
+                    source_index = index
+                    names.append((name, is_string))
+                    name = ''
+                    is_string = False
+                    ignore_count += 1
+                elif (character in delimiters or _character in delimiters or
+                      __character in delimiters) and character != '.':
+                    print "Found delimiter: ", character, _character, __character, name
+                    names.append((name, is_string))
+                    name = ''
+                    source_index = index
+                    is_string = False
+                    break
+                    #if character == '(':
+                    #    if not name:
+                    #        parenthesis_open += 1
+                    #    elif parenthesis_open:
+                    #        parenthesis_open += 1
+                    #        
+                    #if parenthesis_open:
+                    #    print "Adding character inside ()", character, name
+                    #    name += character
+                        
+                    #if character == ')':
+                    #    parenthesis_open -= 1
+                    #    if not parenthesis_open:
+                    #        break
+                    #else:
+                    #    break
+                else:
+                    if character in ('"', "'"):
+                        if not quote_open:
+                            quote_open = True
+                            is_string = True
+                        else:
+                            quote_open = False
+                    else:
+                        print "Adding character: ", character, name
+                        source_index = index
+                        name += character
+            if name:
+                names.append((name, is_string))
+                index += 1
+            source_index = end + index 
+            arg_string = "packed_args=("
+            #replacement = "pride.dereference(packed_args=("
+            for name, is_string in names:
+                if name:
+                    if not is_string:                    
+                        arg_string += "pride.split_instance_name({}), ".format(name)
+                    else:
+                        arg_string += str(split_instance_name(name)) + ", "
+            arg_string = arg_string[:-2] + "))" # replace the last ", " with "))" 
+            replacement = "pride.dereference(" + arg_string
+            _end = start# - len(names[0][0])
+            source = source[:_end] + replacement + source[end + index:]
+            print "\nSource:", source
+        return source
+        
+        
+class Function_Inliner(Preprocessor):
 
     def handle_source(self, source):
         delimiters = DELIMITERS + OPERATORS
@@ -356,18 +530,13 @@ class Function_Inliner(object):
         print "Returning: ", source
         return source
         
-        
-class New_Keyword(object):
-    
-    def handle_source(self, source):
-        pass
-            
+                   
             
 class AntipatternError(BaseException):
     meaning = "Source code error indicating poor design"
     
 
-class Name_Enforcer(object):
+class Name_Enforcer(Preprocessor):
     
     cache = {}
     

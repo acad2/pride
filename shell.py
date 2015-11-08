@@ -91,13 +91,15 @@ class Command_Line(pride.vmlibrary.Process):
                 "idle_threshold" : 10000}
                      
     def __init__(self, **kwargs):
-        self.set_default_program(("Shell", "handle_input"), set_backup=True)
+     #   self.programs = {}
+        
         self._idle = True
         self.screensaver = None
         super(Command_Line, self).__init__(**kwargs)       
         
         self._new_thread()  
         self.programs = self.programs or {}
+        self.set_default_program("python", ("->Python->Shell", "handle_input"), set_backup=True)
         
         for program in self.default_programs:
             self.create(program)
@@ -116,7 +118,9 @@ class Command_Line(pride.vmlibrary.Process):
     def remove_program(self, program_name):
         del self.programs[program_name]
         
-    def set_default_program(self, callback_info, set_backup=False):
+    def set_default_program(self, name, callback_info, set_backup=False):
+        if name not in self.programs:
+            self.programs[name] = callback_info
         self.default_program = callback_info
         if set_backup:
             self.__default_program = callback_info
@@ -205,10 +209,10 @@ class Program(pride.base.Base):
   
     def __init__(self, **kwargs):
         super(Program, self).__init__(**kwargs)
-        command_line = objects["Command_Line"]
+        command_line = objects["->Python->Command_Line"]
         
         if self.set_as_default:
-            command_line.set_default((self.name, "handle_input"))
+            command_line.set_default(self.name, (self.instance_name, "handle_input"))
         else:
             command_line.add_program(self.name, (self.instance_name, "handle_input"))       
         
@@ -239,10 +243,11 @@ class Switch_Program(Program):
     defaults = {"name" : "switch"}
             
     def handle_input(self, input):
-        command_line = pride.objects["Command_Line"]
+        command_line = pride.objects["->Python->Command_Line"]
         if not input:
             input = "__default"
-        command_line.set_default_program(command_line.get_program(input.strip()))
+        _input = input.strip()
+        command_line.set_default_program(_input, command_line.get_program(_input))
         
         
 class File_Explorer(Program):

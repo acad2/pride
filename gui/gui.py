@@ -137,14 +137,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "held" : False, "allow_text_edit" : False,
                 "_ignore_click" : False, "hidden" : False, "movable" : True, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
-                "sdl_window" : "SDL_Window"}
+                "sdl_window" : "->Python->SDL_Window"}
     Hotkeys = {}
     
     def _get_texture_invalid(self):
         return self._texture_invalid
     def _set_texture_invalid(self, value):
         if not self._texture_invalid and value:
-            objects["SDL_Window"].invalidate_layer(self.z)
+            objects[self.sdl_window].invalidate_layer(self.z)
         self._texture_invalid = value
     texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
     
@@ -156,7 +156,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         super(Window_Object, self)._on_set(coordinate, value)
                                                                  
     def _set_z(self, value):
-        objects["SDL_Window"].set_layer(self, value)
+        objects[self.sdl_window].set_layer(self, value)
         super(Window_Object, self)._set_z(value)
     z = property(pride.gui.shapes.Bounded_Shape._get_z, _set_z)
     
@@ -203,9 +203,9 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
     
     def _get_pack_mode(self):      
-        return objects["Organizer"].get_pack_mode(self.instance_name)
+        return objects[self.sdl_window + "->Organizer"].get_pack_mode(self.instance_name)
     def _set_pack_mode(self, value):
-        objects["Organizer"].set_pack_mode(self.instance_name, value)
+        objects[self.sdl_window + "->Organizer"].set_pack_mode(self.instance_name, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def _get_parent_application(self):
@@ -310,7 +310,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             self.y += y_change
             
             if top_level:
-                mouse_position = objects["SDL_Window"].get_mouse_position()            
+                mouse_position = objects[self.sdl_window].get_mouse_position()            
                 if not pride.gui.point_in_area(self.parent.area, mouse_position):
                     if self in self.parent.children:
                     #    self.parent.alert("Removing {}; {} not in {}", [self, objects["SDL_Window"].get_mouse_position(), self.parent.area], level=0)
@@ -331,7 +331,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
      
     def toggle_hidden(self):
         if not self.hidden:
-            sdl_user_input = pride.objects["SDL_User_Input"]
+            sdl_user_input = pride.objects[self.sdl_window + "->SDL_User_Input"]
             sdl_user_input._update_coordinates(self.instance_name,
                                                self.area, -1)            
         self.hidden = not self.hidden
@@ -342,7 +342,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                                                                
     def _draw_texture(self):
         self.draw_texture()  
-        objects["Renderer"].draw(self.texture.texture, self._draw_operations)
+        objects[self.sdl_window + "->Renderer"].draw(self.texture.texture, self._draw_operations)
         self._draw_operations = []
         self.texture_invalid = False            
         return self.texture.texture
@@ -355,7 +355,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                       bg_color=self.background_color, color=self.text_color)
         
     def pack(self, modifiers=None):
-        objects["Organizer"].pack(self)
+        objects[self.sdl_window + "->Organizer"].pack(self)
         if modifiers:
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
@@ -368,8 +368,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def delete(self):
         self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()
-        objects["SDL_Window"].remove_from_layer(self, self.z)
-        objects["SDL_User_Input"]._remove_from_coordinates(self.instance_name) 
+        objects[self.sdl_window].remove_from_layer(self, self.z)
+        objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.instance_name) 
         self.texture_invalid = True
         
         

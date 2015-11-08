@@ -60,9 +60,8 @@
     This is equal to type(instance).__name__ + str(instance_count). There
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
-    This name associates the instance to the instance_name in the
-    pride.environment.objects. The instance_name can be used to reference
-    the object from any scope, as long as the component exists at runtime."""
+    The instance_name can be used to reference the object from any scope, 
+    as long as the component exists at runtime."""
 import operator
        
 import pride
@@ -138,7 +137,7 @@ class Base(object):
     # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
         return pride.environment.parents.get(self, 
-                                            pride.environment.last_creator)     
+                                             pride.environment.last_creator)     
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
@@ -150,7 +149,7 @@ class Base(object):
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance
         
-        pride.environment.add(self) # acquire instance_name
+        pride.environment.register(self) # acquire instance_name
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
@@ -164,13 +163,13 @@ class Base(object):
                                     command_line_args.items() if 
                                     value != defaults[key]))  
                                     
-        [setattr(self, attribute, value) for 
-         attribute, value in attributes.items()]            
+        [setattr(self, attribute, value) for attribute, value in attributes.items()]
 
         if self.startup_components:
             for component_type in self.startup_components:
-                component_name = self.create(component_type).instance_name
-                setattr(self, component_name.lower(), component_name) 
+                component = self.create(component_type)
+                setattr(self, component.__class__.__name__.lower(), 
+                        component.instance_name) 
                 
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
@@ -202,7 +201,7 @@ class Base(object):
 
         pride.environment.parents[instance] = self_name
         if instance not in pride.environment.instance_name:
-            pride.environment.add(instance)
+            pride.environment.register(instance)
         self.add(instance)
         
         return instance
@@ -272,9 +271,9 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        return objects["Alert_Handler"]._alert(self.instance_name + 
-                                               ": " + message, 
-                                               level, format_args)     
+        return objects["->Alert_Handler"]._alert(self.instance_name + 
+                                                 ": " + message, 
+                                                 level, format_args)     
     def __getstate__(self):
         return self.__dict__.copy()
         

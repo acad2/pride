@@ -1,3 +1,4 @@
+# pride.shell_launcher - configuration file for launching the shell 
 import pride
 
 options = {"parse_args" : True,
@@ -34,7 +35,7 @@ def save(instance_name, _file=None):
     return objects[instance_name].save(_file=None)
     
 def create(instance_type, *args, **kwargs):
-    return objects["Python"].create(instance_type, *args, **kwargs)
+    return objects["->Python"].create(instance_type, *args, **kwargs)
 
 def delete(instance_name):
     objects[instance_name].delete()
@@ -59,9 +60,9 @@ def update(instance_name):
 #import pride.package
 #p = pride.package.Package(pride)
 
-#update("Python")
-#update("Python")
-#x = objects["Python"].save()
+#update("->Python")
+#update("->Python")
+#x = objects["->Python"].save()
 #y = pride.base.Base.load(x) # calls .on_load automatically
 
 #z = s(constructor)
@@ -73,8 +74,8 @@ def update(instance_name):
 #ssl_server = create("pride.networkssl.SSL_Server")
 #ssl_client = create("pride.networkssl.SSL_Client", target=("127.0.0.1", 443))
 
-#objects["Python"].create("pride.voip.Message_Server")
-#client = objects["Python"].create("pride.voip.Message_Client", username="test", auto_login=False)
+#objects["->Python"].create("pride.voip.Message_Server")
+#client = objects["->Python"].create("pride.voip.Message_Client", username="test", auto_login=False)
 
 #import pride.gui
 #pride.gui.enable()
@@ -94,9 +95,9 @@ def update(instance_name):
 #l = pride.base.load(s) 
 
 import pride.gui
-pride.gui.enable()
+#pride.gui.enable()
 #$SDL_Window.create("pride.gui.cyvasse.Cyvasse")
-$SDL_Window.create("pride.gui.fileexplorer.File_Explorer")
+#$SDL_Window.create("pride.gui.fileexplorer.File_Explorer")
 #objects["SDL_Window"].create("pride.gui.widgetlibrary.Homescreen")
 #objects["SDL_Window"].create("pride.gui.text_editor.Text_Editor")
 #$SDL_Window.create("pride.gui.terminal.Terminal")
@@ -116,11 +117,12 @@ $SDL_Window.create("pride.gui.fileexplorer.File_Explorer")
 #from rnltest import relative_name_lookup
 #server = relative_name_lookup("Python.Network.Rpc_Server")  
 #import objgraph
-#objgraph.show_refs([$Python])
+#objgraph.show_refs([->"->Python"])
+
 
 """
 
 options["startup_definitions"] += definitions
 
 if __name__ == "__main__":
-    objects["Python"].create("pride.interpreter.Shell", **options)
+    objects["->Python"].create("pride.interpreter.Shell", **options)

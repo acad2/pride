@@ -29,7 +29,7 @@ class SDL_Window(SDL_Component):
                 'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
                 'w' : pride.gui.SCREEN_SIZE[0], 'h' : pride.gui.SCREEN_SIZE[1],
                 "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
-                "name" : "Python",
+                "name" : "->Python",
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
     
@@ -55,6 +55,7 @@ class SDL_Window(SDL_Component):
         
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
+        self.organizer = self.create("pride.gui.gui.Organizer")
         self.run_instruction = Instruction(self.instance_name, "run")
                
         if self.showing:
@@ -90,7 +91,7 @@ class SDL_Window(SDL_Component):
         renderer.set_render_target(None)
         renderer.clear()
                 
-        user_input = objects["SDL_User_Input"]
+        user_input = self.user_input
         layers = self.layers
         screen_width, screen_height = self.size
       #  print
@@ -227,16 +228,16 @@ class Window_Handler(pride.base.Base):
         
     def handle_leave(self, event):
         try:
-            objects["SDL_User_Input"].active_item.held = False
+            self.parent.user_input.active_item.held = False
         except AttributeError:
             pass
         
     def handle_focus_gained(self, event):
-        objects["SDL_User_Input"]._ignore_click = True
+        self.parent.user_input._ignore_click = True
         
     def handle_focus_lost(self, event):
         try:
-            objects["SDL_User_Input"].active_item.held = False
+            self.parent.user_input.active_item.held = False
         except AttributeError:
             pass
                 
@@ -313,7 +314,7 @@ class SDL_User_Input(vmlibrary.Process):
                          sdl2.SDL_TEXTEDITING : unhandled,
                          sdl2.SDL_TEXTINPUT : self.handle_textinput,
                          sdl2.SDL_USEREVENT : unhandled,
-                         sdl2.SDL_WINDOWEVENT : objects["Window_Handler"].handle_event}
+                         sdl2.SDL_WINDOWEVENT : self.parent.window_handler.handle_event}
 
     def run(self):
         handlers = self.handlers

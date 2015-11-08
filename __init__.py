@@ -15,15 +15,16 @@ import copy
 import types
 import timeit
 timer_function = timeit.default_timer
-
+    
 class Environment(object):
     """ Stores global state for the process. This includes reference
         reference information, most importantly the objects dictionary. """
     fields = ("objects", "instance_count", "instance_name",
-              "instance_number", "parents", "references_to")
+              "instance_count", "parents", "references_to")
 
     def __init__(self):
         super(Environment, self).__init__()
+        self.last_creator = None
         self.Instructions = []
         for field in self.fields:
             setattr(self, field, {})
@@ -52,8 +53,7 @@ class Environment(object):
                                                             new_component)
 
         self.instance_name[new_component] = self.instance_name.pop(component)
-        self.instance_number[new_component] = self.instance_number.pop(component)
-
+        
         parents = self.parents
         if component in parents:
             parents[new_component] = parents.pop(component)
@@ -90,28 +90,51 @@ class Environment(object):
             del self.references_to[instance_name]
         del self.objects[instance_name]
         del self.instance_name[instance]
-        del self.instance_number[instance]
-
-    def add(self, instance):
-        """ Adds an instance to the environment. This is done automatically
-            for Base objects and for objects instantiated via the create
-            method. """
-        instance_class = instance.__class__.__name__
-        try:
-            count = self.instance_count[instance_class]
-        except KeyError:
-            count = 0
-        instance_name = instance_class + str(count) if count else instance_class
-        self.instance_count[instance_class] = count + 1
-
-        self.objects[instance_name] = instance
+        
+    def register(self, instance):
+        """ Registers an instance_name reference with the supplied instance. """
+        instance_type = instance.__class__.__name__
+        if not self.last_creator:
+            try:
+                count = self.instance_count[instance_type]
+            except KeyError:
+                count = self.instance_count[instance_type] = 0
+            finally:
+                self.instance_count[instance_type] += 1
+                instance_name = "->" + instance_type + (str(count) if count else '')
+        else:            
+            try:
+                parent_name = self.last_creator
+            except AttributeError:
+                try:
+                    count = self.instance_count[instance_type]
+                except KeyError:
+                    count = self.instance_count[instance_type] = 0
+                finally:
+                    self.instance_count[instance_type] += 1
+                parent_name = ''
+            else:
+                parent = self.objects[parent_name]
+                try:
+                    count = len(parent.objects[instance_type])
+                except KeyError:
+                    _objects = parent.objects[instance_type] = []
+                    count = 0     
+            instance_name = (parent_name + "->" + instance_type + 
+                            (str(count) if count else ''))
         try:
             self.instance_name[instance] = instance.instance_name = instance_name
-            self.instance_number[instance] = instance.instance_number = count
         except AttributeError:
             self.instance_name[instance] = instance_name
-            self.instance_number[instance] = count
-
+        self.objects[instance_name] = instance
+    #    print "Registered instance: ", instance_name, instance
+        
+    def add(self, instance):
+        try:
+            self.objects[instance.__class__.__name__].append(instance)
+        except KeyError:
+            self.objects[instance.__class__.__name__] = [instance]
+            
     def __contains__(self, component):
         if (component in self.objects.keys() or
             component in itertools.chain(self.objects.values())):
@@ -126,7 +149,6 @@ class Environment(object):
         self.objects.update(objects)
         self.parents.update(environment.parents)
         self.references_to.update(environment.references_to)
-        self.instance_number.update(environment.instance_number)
         self.instance_count.update(environment.instance_count)
 
 

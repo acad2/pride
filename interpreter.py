@@ -29,7 +29,7 @@ class Shell(authentication.Authenticated_Client):
                 "password" : "",
                 "prompt" : ">>> ",
                 "startup_definitions" : '',
-                "target_service" : "Interpreter"}
+                "target_service" : "->Python->Interpreter"}
     
     parser_ignore = ("prompt", )
     
@@ -91,14 +91,14 @@ class Shell(authentication.Authenticated_Client):
                     self.prompt = "... "
         else:
             self.lines = ''
-        objects["Command_Line"].set_prompt(self.prompt)
+        objects["->Python->Command_Line"].set_prompt(self.prompt)
         
     def execute_source(self, source):
         if not self.logged_in:
             self.alert("Not logged in. Unable to process {}".format(source))
             self.login()            
         else:
-            self.session.execute(Instruction(self.target_service, "exec_code",
+            self.session.execute(Instruction(self.target_service, "handle_input",
                                              source), callback=self.result)
                                     
     def result(self, packet):
@@ -107,7 +107,7 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write('\b' * 4 + packet)
+            sys.stdout.write('\b' * 4 + packet + self.prompt)
         
 
 class Interpreter(authentication.Authenticated_Service):
@@ -121,8 +121,9 @@ class Interpreter(authentication.Authenticated_Service):
         self.user_namespaces = {}
         self.user_session = {}
         super(Interpreter, self).__init__(**kwargs)
+        filename = '_'.join(word for word in self.instance_name.split("->") if word)
         self.log = self.create("fileio.File", 
-                               "{}.log".format(self.instance_name), 'a+',
+                               "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
                 
     def login(self, username, credentials):
@@ -138,7 +139,7 @@ class Interpreter(authentication.Authenticated_Service):
             response = (self.login_message.format(*string_info), response[1])
         return response
 
-    def exec_code(self, source):
+    def handle_input(self, source):
         log = pride.objects[self.log]
         session_id, sender = self.current_session
                 
@@ -185,7 +186,7 @@ class Interpreter(authentication.Authenticated_Service):
         log.flush()        
         return result
         
-                             
+        
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
@@ -273,6 +274,5 @@ class Python(base.Base):
     def exit(self, exit_code=0):
         pride.objects[self.processor].running = False
         # cleanup/finalizers go here?
-        raise SystemExit
-        #sys.exit(exit_code)
+        sys.exit(exit_code)
         

@@ -106,7 +106,7 @@ class Socket_Error_Handler(pride.base.Base):
         
     def call_would_block(self, sock, error):
         if getattr(sock, "_connecting", False):
-            sock.latency.finish_measuring()
+            sock.latency.mark()
             message = "Connection timed out after {:5f}\n{}"
         else:
             message = "{}"
@@ -169,7 +169,7 @@ class Socket(base.Wrapper):
     additional_parser_ignores = defaults.keys()
     additional_parser_ignores.remove("interface")
     additional_parser_ignores.remove("port")
-    parser_ignore = base.Wrapper.parser_ignore + tuple(additional_parser_ignores)
+    parser_ignore = tuple(additional_parser_ignores)
     
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
@@ -212,7 +212,7 @@ class Socket(base.Wrapper):
         if self.add_on_init:
             self.added_to_network = True
             try:
-                objects["Network"].add(self)
+                objects["->Python->Network"].add(self)
             except KeyError:
                 self.alert("Network component does not exist", level=0)
          
@@ -308,10 +308,9 @@ class Socket(base.Wrapper):
                 self.on_connect()
             elif not self._connecting:
                 self._connection_attempts = self.connection_attempts
-                latency = self.latency = pride.utilities.Latency(size=10)
-                latency.start_measuring()
+                self.latency = pride.utilities.Latency(size=10)
                 self._connecting = True
-                objects["Network"].connecting.add(self)
+                objects["->Python->Network"].connecting.add(self)
             else:
                 raise
         else:
@@ -320,7 +319,7 @@ class Socket(base.Wrapper):
     def on_connect(self):
         """ Performs any logic required when a Tcp connection succeeds. This 
             method should be extended by subclasses."""
-        #self.latency.finish_measuring()
+        #self.latency.mark()
         #buffer_size = round_trip_time * connection_bps # 100Mbps for default
         self.connected = True        
         self.peername = self.getpeername()
@@ -335,7 +334,7 @@ class Socket(base.Wrapper):
     
     def close(self):
         if self.added_to_network:
-            objects["Network"].remove(self)
+            objects["->Python->Network"].remove(self)
         self.wrapped_object.close()
         self.closed = True
     
@@ -607,7 +606,7 @@ class Network(vmlibrary.Process):
         if not sockets:
             self.running = False
         else:
-            error_handler = objects["Socket_Error_Handler"]       
+            error_handler = self.error_handler
             readable, writable, empty_list = [], [], []
             # select has a max # of file descriptors it can handle, which
             # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           

@@ -20,4 +20,4 @@ class Terminal(pride.gui.gui.Application):
         self.create("pride.gui.terminal.Prompt")
                 
     def handle_input(self, source_code):
-        pride.objects["Shell"].handle_input(source_code)
+        pride.objects["->Python->Shell"].handle_input(source_code)

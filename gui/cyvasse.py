@@ -119,9 +119,10 @@ class Cyvasse(pride.gui.gui.Application):
     defaults = {"startup_components" : tuple()}
     
     def _get_current_game(self):
+        reference = "->Python->SDL_Window->Cyvasse->Cyvasse_Gameboard"
         return (self._current_game or
-                self.objects["Cyvasse_Gameboard"][0].instance_name if
-                self.objects["Cyvasse_Gameboard"] else None)
+                self.objects[reference][0].instance_name if
+                self.objects[reference] else None)
     def _set_current_game(self, value):
         self._current_game = value
     current_game = property(_get_current_game, _set_current_game)

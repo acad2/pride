@@ -2,7 +2,7 @@
 # an instance would take on the properties of it's parents as well as it's
 # base classes. It's like attribute inheritance at an instance level
 
-# just because you can doesn't mean you should
+# just because you can doesn't mean you should!
 
 #The style dictated by the modules design lends itself to a well pronounced
 #entry point when developing new components. 
@@ -36,7 +36,7 @@ things that could be done:
     persistent objects
     rotation descriptor on window objects. modify area based upon the given degrees of rotation about the center of the instance.
     branch pruning based on runtime analysis of arguments
-    attribute unpacking? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
+    load name pruning? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
     clear the screen after screensaver breaks from receiving input
     
 class System_Restore(mpre.vmlibrary.Process):

@@ -24,29 +24,43 @@ class Authenticated_Service(pride.base.Base):
     """ Provides functionality for user registration and login, and
         provides interface for use with blacklisted/whitelisted/authenticated
         decorators. Currently uses the secure remote password protocol
-        for authentication. 
-        
-        Note that authentication is not automatically required for all
-        method calls on an Authenticated_Service object. Each method must
-        be decorated explicitly with the access controls desired."""
-    defaults = {"allow_registration" : True,
-                "protocol_component" : "Secure_Remote_Password",
+        for authentication. """
+    defaults = {"allow_registration" : True, "allow_login" : True,
+                "protocol_component" : "->Python->Secure_Remote_Password",
                 "database_name" : '', "login_message" : '',
-                "current_session" : (None, None), "session_id_size" : 256}
+                "current_session" : (None, None), "session_id_size" : 256,
+                "validation_failure_string" : \
+                   ".validate: Authorization Failure:\n    blacklisted: {}" +
+                   "    session_id logged in: {}\n    method_name: '{}'\n    " +
+                   "login allowed: {}    registration allowed: {}"}
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
+    
+    verbosity = {"validate_success" : "vv", "validate_failure" : "vv",
+                 "register_attempt" : "vv", "register_success" : "vv",
+                 "login_attempt" : "vv", "multiple_login" : "vv",
+                 "login_success" : "vv", "login_unregistered" : "vv",
+                 "logout_failure" : "vv"}
+   
+    rate_limit = {"login" : 2, "register" : 2}
+    
+    inherited_attributes = {"rate_limit" : dict}
     
     def __init__(self, **kwargs):
         self.logging_in = set()
         # maps authentication token to username
         self.session_id = {}
+        self._rate = {}
         self.ip_whitelist = ["127.0.0.1", "localhost"]
         self.ip_blacklist = []
         self.method_blacklist = []
         super(Authenticated_Service, self).__init__(**kwargs)
-        name = self.database_name = (self.database_name or 
-                                     "{}_{}".format(self.instance_name, 
-                                                    "user_registry.db"))
+        if not self.database_name:
+            _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
+            name = self.database_name = "{}_{}".format(_instance_name,
+                                                       "user_registry.db")
+        else:
+            name = self.database_name
         self.database = self.create("database.Database", database_name=name,
                                     text_factory=str)
         self.database.create_table("Credentials", 
@@ -59,7 +73,8 @@ class Authenticated_Service(pride.base.Base):
             authenticated_service.allow_registration flag must be True or
             registration will fail. If the username is already registered,
             registration will fail. Returns True on successful registration. """
-        self.alert("Attempting to register '{}'", [username], level='v')
+        self.alert("Attempting to register " + username, 
+                   level=self.verbosity["register_attempt"])
         if self.allow_registration:
             database = self.database
             try:
@@ -72,7 +87,7 @@ class Authenticated_Service(pride.base.Base):
                 cursor = database.cursor
                 registered = cursor.fetchone()
                 if not registered:       
-                    salt, password_verifier = objects["Secure_Remote_Password"].new_verifier(username, password) 
+                    salt, password_verifier = objects["->Python->Secure_Remote_Password"].new_verifier(username, password) 
                     try:
                         database.insert_into("Credentials", 
                                             (username, salt, 
@@ -83,6 +98,8 @@ class Authenticated_Service(pride.base.Base):
                         database.rollback()
                     else:
                         database.commit()
+                        self.alert("user {} registered successfully".format(username),
+                                   level=self.verbosity["register_success"])
                         return True
          
     def login(self, username, credentials):
@@ -98,11 +115,12 @@ class Authenticated_Service(pride.base.Base):
             secret are returned."""
         session_id, host_info = self.current_session
         self.alert("{} attempting to login from {}. Session id: {}",
-                   (username, host_info, session_id), level='v')
+                   (username, host_info, session_id), 
+                   level=self.verbosity["login_attempt"])
         if session_id in self.session_id:
             self.alert("Multiple login attempt by {} on account {} from {}", 
                        [(session_id, self.session_id[session_id]), username, 
-                         host_info], level='v')
+                         host_info], level=self.verbosity["multiple_login"])
             self.logout()
             raise UnauthorizedError()
             
@@ -112,7 +130,8 @@ class Authenticated_Service(pride.base.Base):
             response = (self.login_message, response)        
             #print self, "Sending response: ", response
             if K:
-                self.alert("{} logged in".format(username), level='vv')
+                self.alert("{} logged in".format(username), 
+                           level=self.verbosity["login_success"])
                 session_id = derive_session_id(K, "session_id", 
                                                self.session_id_size)
                 self.session_id[session_id] = username
@@ -124,12 +143,12 @@ class Authenticated_Service(pride.base.Base):
             registered = cursor.fetchone()
             if not registered:
                 # pretend to go through login process with a fake verifier
-                srp = objects["Secure_Remote_Password"]
+                srp = objects["->Python->Secure_Remote_Password"]
                 salt, verifier = srp.new_verifier(username, srp.new_salt(64))
-                self.alert("Verifying unregistered user", level='v')
+                self.alert("Verifying unregistered user", 
+                           level=self.verbosity["login_unregistered"])
             else:
-                salt, verifier = registered
-                        
+                salt, verifier = registered                
             response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
             self.logging_in.add(username)
         return response
@@ -143,34 +162,49 @@ class Authenticated_Service(pride.base.Base):
             del self.session_id[session_id]
         except KeyError:
             self.alert("Failed to logout session id {} @ {}; not logged in",
-                       (session_id, host_info), level='vv')
-        $Secure_Remote_Password.abort_login(username)
+                       (session_id, host_info), 
+                       level=self.verbosity["logout_failure"])
+        objects["->Python->Secure_Remote_Password"].abort_login(username)
         
     def validate(self, session_id, peername, method_name):
+        """ Determines whether or not the peer with the supplied
+            session id is allowed to call the requested method """
         if method_name in self.method_blacklist:
             return False
+        if self.rate_limit and method_name in self.rate_limit:
+            try:
+                self._rate[session_id][method_name].mark()
+            except KeyError:
+                latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
+                try:
+                    self._rate[session_id][method_name] = latency
+                except KeyError:
+                    self._rate[session_id] = {method_name : latency}
             
+            current_rate = self._rate[session_id][method_name].last_measurement
+            if current_rate < self.rate_limit[method_name]:
+                self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
+                          (method_name, self.rate_limit[method_name], current_rate),                           
+                          level=self.verbosity["validate_failure"])
+                return False
+
         ip = peername[0]
-        permission = False
-   #     if ip in ("localhost", "127.0.0.1"):
-   #         permission = True  
-   #         print "Giving permission because it's localhost"
         if ip in self.ip_whitelist or ip not in self.ip_blacklist:
-            #print "Checking: " * 3, session_id, method_name
             if session_id in self.session_id or (session_id == '0' and 
                                                 ((method_name == "login" and 
                                                  self.allow_login) or
                                                 (method_name == "resgiter" and
                                                  self.allow_registration))):
-            #    print "Permission granted"
-                #permission = True        
-       # if permission:
                 self.current_session = (session_id, peername)
                 self.alert("Authorizing: {} for {}", 
-                        (self.current_session, method_name), level='vv')
+                          (self.current_session, method_name), 
+                          level=self.verbosity["validate_success"])
                 return True
-            #else:
-            #    print "Denied"
+        self.alert(self.validation_failure_string,
+                   (ip in self.ip_blacklist, session_id in self.session_id,
+                    method_name, self.allow_login, self.allow_registration),
+                    level=self.verbosity["validate_failure"])
+        
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]

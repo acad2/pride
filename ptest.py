@@ -48,7 +48,7 @@ def indent_lines(string, amount=1, spacing="    "):
     return '\n'.join(spacing * amount + line for line in string.split('\n'))     
            
 def inline_function_source(method, method_name, component='',
-                           return_string="$Preemptive_Multiprocessor._return['{}'] ="):
+                           return_string="pride.objects['->Preemptive_Multiprocessor']._return['{}'] ="):
     full_name = ''.join((component, '_', method_name))
 #    method_source = inspect.getsource(method)
 #    end_of_def = method_source.index(":")
@@ -175,10 +175,11 @@ class Thread(pride.base.Base):
             packed_args = _arguments 
         if self._self:
             packed_args = (self._self, ) + packed_args
-        pride.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))    
+        pride.objects["->Preemptive_Multiprocessor"].threads.append((self, packed_args))    
         
 if __name__ == "__main__":
     import pride.base
+    import pride
     b = pride.base.Base()
     def test(testing, idek=True, *args, **test_kwargs):
         print "Inside test :)", testing, idek, args, test_kwargs
@@ -192,7 +193,7 @@ if __name__ == "__main__":
     thread2 = Thread(method=run_functions)
     thread3 = Thread(method=_spawn_thread)
     thread4 = Thread(method=b.create)
-    p = Preemptive_Multiprocessor()
+    p = Preemptive_Multiprocessor()    
     thread(1, False, 2, 3, 4, 5, woo="hooray")
     thread2([(1, 2, 3)])
     thread3(method=_test_function)

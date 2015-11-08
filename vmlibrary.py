@@ -59,7 +59,11 @@ class Process(pride.base.Base):
                                      callback=self.run_callback)
 
     def _run(self):
-        result = self.run()
+        if self.context_managed:
+            with self:
+                result = self.run()
+        else:
+            result = self.run()
         if self.running:
             self.run_instruction.execute(priority=self.priority, 
                                          callback=self.run_callback)
@@ -67,13 +71,8 @@ class Process(pride.base.Base):
         
     def run(self):
         if self.target:
-            if self.context_managed:
-                with self:
-                    result = self.target(*self.args, **self.kwargs)
-            else:
-                result = self.target(*self.args, **self.kwargs)
-            return result
-            
+            return self.target(*self.args, **self.kwargs)
+                        
     def delete(self):
         self.running = False
         super(Process, self).delete()

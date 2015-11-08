@@ -283,13 +283,18 @@ class Inherited_Attributes(type):
     inherited_attributes = {}
     
     def __new__(cls, name, bases, attributes):
+        inherited_attributes = cls.inherited_attributes
+        if "inherited_attributes" in attributes:
+            inherited_attributes.update(attributes["inherited_attributes"])
+        attributes["inherited_attributes"] = inherited_attributes
+            
         for attribute_name, attribute_type in cls.inherited_attributes.items():
             if issubclass(attribute_type, dict):
                 _attribute = {}
                 for _class in bases:
                     _attribute.update(getattr(_class, attribute_name, {}))
                 _attribute.update(attributes.get(attribute_name, 
-                                                getattr(_class, attribute_name, {}).copy()))
+                                                 getattr(_class, attribute_name, {}).copy()))
             elif issubclass(attribute_type, tuple):
                 empty_tuple = tuple()
                 _attribute = empty_tuple
