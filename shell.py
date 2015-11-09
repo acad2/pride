@@ -1,3 +1,4 @@
+import random
 import pprint
 import sys
 import os
@@ -134,15 +135,14 @@ class Command_Line(pride.vmlibrary.Process):
         return result
         
     def run(self):
-        if input_waiting():
+        if input_waiting():                                
             if self.screensaver is not None:
-                screensaver = pride.objects[self.screensaver]
+                pride.objects[self.screensaver].delete()
                 self.screensaver = None
                 self.clear()
-                line_width, line_count = pride._termsize.getTerminalSize()
-                assert sys.stdout_log.tell() == len(sys.stdout_log[:])
-                print sys.stdout_log[:self._position]
-                screensaver.delete()
+                #line_width, line_count = pride._termsize.getTerminalSize()
+                sys.stdout.write(sys.stdout_log[:self._position])
+               # sys.stdout.write(self.prompt)
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -195,7 +195,7 @@ class Command_Line(pride.vmlibrary.Process):
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
             self._position = sys.stdout_log.tell()
-            self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name            
+            self.screensaver = self.create("pride.shell.Matrix_Screensaver").instance_name            
         self._idle = True        
         priority = self.idle_threshold * self.priority
         pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
@@ -286,7 +286,7 @@ class File_Explorer(Program):
 class Terminal_Screensaver(pride.vmlibrary.Process):
     
     defaults = {"rate" : 3, "priority" : .08, "newline_scalar" : 1.5,
-                "file_text" : '', "_data_amount" : 0}
+                "file_text" : ''}
     
     def __init__(self, **kwargs):
         super(Terminal_Screensaver, self).__init__(**kwargs)
@@ -305,4 +305,26 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
             self.priority = self._priority
             
         self.file_text = self.file_text[self.rate:]
-        self._data_amount += self.rate
+        
+        
+class Matrix_Screensaver(Terminal_Screensaver):
+    
+    defaults = {"priority" : .16}
+    
+    def __init__(self, **kwargs):
+        super(Matrix_Screensaver, self).__init__(**kwargs)
+        self.rows = []
+        self.width, self.height = pride._termsize.getTerminalSize()
+
+    def run(self):
+        if not self.rows:
+            sys.stdout.write('\n')
+        self.rows.append([])
+        for character_number in range(self.width):
+            character = chr(random.randint(0, 255))
+            self.rows[-1].append(character)
+        self.rows.append(''.join(self.rows.pop(-1)))
+        sys.stdout.write(self.rows[-1])
+        sys.stdout.flush()
+        if len(self.rows) == self.height:
+            self.rows = []

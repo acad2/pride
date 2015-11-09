@@ -27,6 +27,9 @@ class File_Logger(pride.base.Wrapper):
         self.file.write(data)
         self.file.flush()
             
+    def flush(self):
+        self.file.flush()
+        
         
 class Patched_sys(Patched_Module):
             
