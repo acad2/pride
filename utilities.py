@@ -84,6 +84,8 @@ def resolve_string(module_name):
             module_name = module_name.split('.')
             attributes.append(module_name.pop())
             module_name = '.'.join(module_name)
+        except ValueError:
+            raise ValueError("Unable to load package or module: {}".format(_original))
     try:
         for attribute in reversed(attributes):
             result = getattr(result, attribute)

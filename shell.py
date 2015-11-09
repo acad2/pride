@@ -6,6 +6,7 @@ import threading
 import pride
 import pride.vmlibrary
 import pride.utilities
+import pride._termsize
 objects = pride.objects
 
 try:
@@ -88,7 +89,7 @@ class Command_Line(pride.vmlibrary.Process):
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 1000}
+                "idle_threshold" : 10000}
                      
     def __init__(self, **kwargs):
      #   self.programs = {}
@@ -140,7 +141,8 @@ class Command_Line(pride.vmlibrary.Process):
                 pride.objects[self.screensaver].delete()
                 self.screensaver = None
                 self.clear()
-                print sys._logger.log[self._position - 1024:]
+                line_width, line_count = pride._termsize.getTerminalSize()
+                print sys._logger.log[min(0, self._position - line_width * line_count):self._position]
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -285,9 +287,7 @@ class File_Explorer(Program):
             
 class Terminal_Screensaver(pride.vmlibrary.Process):
     
-    defaults = {"rate" : 3,
-                "priority" : .08,
-                "newline_scalar" : 1.5,
+    defaults = {"rate" : 3, "priority" : .08, "newline_scalar" : 1.5,
                 "file_text" : ''}
     
     def __init__(self, **kwargs):
@@ -306,4 +306,5 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
         else:
             self.priority = self._priority
             
-        self.file_text = self.file_text[self.rate:]            
+        self.file_text = self.file_text[self.rate:]
+        

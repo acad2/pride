@@ -230,7 +230,7 @@ class Base(object):
         #self.alert("Removing {}", [instance], level=0)
         try:
             self.objects[instance.__class__.__name__].remove(instance)
-        except:
+        except ValueError:
             print self, "Failed to remove: ", instance
             raise
         pride.environment.references_to[instance.instance_name].remove(self.instance_name)

@@ -208,3 +208,60 @@ class Time_Adapter(mpre.base.Adapter):
                    "minute" : "tm_min", "second" : "tm_sec", 
                    "day_of_week" : "tm_wday", "day_of_year" : "tm_yday",
                    "daylight_savings_time" : "tm_isdst"}                                                
+                   
+                   
+def xor(input_one, input_two):
+    return (input_one or input_two) and not (input_one and input_two)
+    
+def preprocess_file(filename='', _file=None, output_filename='', 
+                    output_file=None, output_file_mode='w'):
+    
+    assert xor(filename, _file)
+    if filename:
+        with open(filename, 'r') as _file:
+            source = _file.read()
+    else:
+        source = _file.read()
+    source = pride.compiler.preprocess(source)
+    if output_filename:
+        with open(output_filename, 'w') as output_file:
+            output_file.write(source)
+            output_file.flush()
+    elif output_file:
+        output_file.write(source)
+        output_file.flush()
+    else:
+        return source
+        
+def preprocess_package(package_name='', package=None):
+    assert xor(package_name, package)
+    if package_name:
+        package = importlib.import_module(package_name)
+    
+    
+crypto_hash = hashlib.sha1
+_hashes = {}
+
+class HashFailure(Exception):
+    meaning = "The calculated hash did not match the hash on record"
+    
+def hash_function(function):
+    try:
+        _function = function.im_func
+    except AttributeError:
+        pass
+    try:
+        _hash = crypto_hash(_function.func_code.co_code).digest()
+    except AttributeError:
+        _hash = hash(function)
+    return _hash
+    
+def cryptographic_id(function):
+    _hashes[function] = hash_function(function)
+    def _hash_test(*args, **kwargs):
+        if hash_function(function) == _hashes[function]:
+            return function(*args, **kwargs)
+        else:
+            raise HashFailure(function)
+    return _hash_test    
+    
