@@ -11,7 +11,9 @@ objects = pride.objects
 try:
     from msvcrt import getwch, kbhit
     input_waiting = kbhit
+    PLATFORM = "Windows"
 except:
+    PLATFORM = "POSIX"
     import select
     def input_waiting():
         return select.select([sys.stdin], [], [], 0.0)[0]
@@ -80,15 +82,13 @@ class Command_Line(pride.vmlibrary.Process):
     
         Available programs can be modified via the add_program, remove_program,
         set_default_program, and get_program methods."""
-    defaults = {"thread_started" : False,
-                "write_prompt" : True,
-                "prompt" : ">>> ",
-                "programs" : None,
+    defaults = {"thread_started" : False, "write_prompt" : True,
+                "prompt" : ">>> ", "programs" : None,
                 "default_programs" : ("pride.shell.Shell_Program", 
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 10000}
+                "idle_threshold" : 1000}
                      
     def __init__(self, **kwargs):
      #   self.programs = {}
@@ -138,7 +138,9 @@ class Command_Line(pride.vmlibrary.Process):
         if input_waiting():
             if self.screensaver is not None:
                 pride.objects[self.screensaver].delete()
-                self.screensaver = None           
+                self.screensaver = None
+                self.clear()
+                print sys._logger.log[self._position - 1024:]
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -191,9 +193,17 @@ class Command_Line(pride.vmlibrary.Process):
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
             self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name
+            self._position = sys._logger.log.tell()
         self._idle = True        
         priority = self.idle_threshold * self.priority
         pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
+        
+    def clear(self):
+        if PLATFORM == "Windows":
+            command = "CLS"
+        else:
+            command = "CLEAR"
+        os.system(command)
         
         
 class Program(pride.base.Base):

@@ -3,32 +3,32 @@ import importlib
 
 import pride.base
 
-class Module_Wrapper(pride.base.Wrapper):
+class Patched_Module(pride.base.Wrapper):
+    """ The base class for patching modules """
     
     defaults = {"module_name" : ''}
     
     def __init__(self, **kwargs):
-        super(Module_Wrapper, self).__init__(**kwargs)
+        super(Patched_Module, self).__init__(**kwargs)
         self.wraps(importlib.import_module(self.module_name))
         sys.modules[self.module_name] = self
         
  
 class File_Logger(pride.base.Wrapper):
     
-    defaults = {"file" : None,
-                "log_type" : "StringIO.StringIO"}
+    defaults = {"file" : None, "log_type" : "StringIO.StringIO"}
     
     def __init__(self, **kwargs):
         super(File_Logger, self).__init__(**kwargs)
         self.log = self.create(self.log_type)
         
     def write(self, data):
-        self.log.write(data)
+    #    self.log.write(data)
         self.file.write(data)
         self.file.flush()
         
         
-class sys_Wrapper(Module_Wrapper):
+class Patched_sys(Patched_Module):
             
     defaults = {"module_name" : "sys"}
     
@@ -40,6 +40,7 @@ class sys_Wrapper(Module_Wrapper):
     stdout = property(_get_stdout, _set_stdout)               
     
     def __init__(self, **kwargs):
-        super(sys_Wrapper, self).__init__(**kwargs)
+        super(Patched_sys, self).__init__(**kwargs)
         self._logger = File_Logger(file=sys.stdout)
-        sys.stdout = self._logger
+        #sys.stdout = self._logger
+        

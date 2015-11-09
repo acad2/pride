@@ -289,8 +289,9 @@ class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
         sys.meta_path as the first entry. """
-    def __init__(self, preprocessors=tuple()):
+    def __init__(self, preprocessors=tuple(), patches=None):
         self.preprocessors = preprocessors
+        self.patches = patches or {}
         self.path_loader, self.module_source = {}, {}
                             
     def find_module(self, module_name, path):
@@ -315,10 +316,16 @@ class Compiler(object):
         return loader    
     
     def load_module(self, module_name):
-        if module_name not in sys.modules:
+        if module_name in self.patches:
+            print "Loading patch: ", module_name
+            utilities.resolve_string(self.patches.pop(module_name))()
+             
+        elif module_name not in sys.modules:
             source, path = self.module_source[module_name]
             module_code = self.compile(source, path)
             self.compile_module(module_name, module_code, path)
+
+
  #       print "Loading: ", module_name
         return sys.modules[module_name]
                     

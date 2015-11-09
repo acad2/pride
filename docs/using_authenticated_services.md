@@ -93,3 +93,53 @@ call the specified method on the target service.
 The main launcher section creates a server and client. If the username 
 "test user" is not yet registered in the database, the client attempts to 
 register it. Then the client proceeds to login and send a message to itself.
+
+FAQs
+------------
+
+Q: How do I create a network service that requires authentication?
+    
+    A: Subclass the pride.authentication.Authenticated_Service and 
+       Authenticated_Client classes
+       
+Q: How do I control access to authenticated services?
+
+    A: Authenticated services support:
+        
+        - ip black/whitelisting
+            - use the ip_whitelist and ip_blacklist attributes
+            - entries in the form of "xxx.xxx.xxx.xxx"
+        - method blacklisting
+            - use the method_blacklist attribute
+            - entries in the form of string method names
+        - method rate limiting
+            - use the rate_limit inherited attribute
+            - rate_limit maps method name to minimum time interval that the
+              name method can be called (1 call every x seconds)
+            - login and registration default to 1 call every 2 seconds
+        - allow_login and allow_registration flags
+            - enable or disable login and registration
+        - the validate method determines permission for the specified request
+            - can be extended or overloaded to fine tune permissions given the
+              current sesion id, host info, and method name
+              
+Q: How do I interact with authenticated services?
+
+    A: Authenticated_Client objects come with the appropriate boilerplate code
+       for working with registration/logging in to authenticated services.
+       
+       - use the session attribute and it's execute method to execute Instructions
+         remotely
+         
+Q: What kind of security protects remote object access?
+
+    A: Communication between machines is secured via tls. This in itself does
+       not control access to sensitive services. Authenticated services and
+       clients support user registration and login. Login is negotiated via
+       the secure remote password protocol and a cryptographic session identifier
+       is generated from the resultant secret. Current no additional security
+       measures are applied to network data (no redundant encryption or MAC).
+       
+       Remote procedure call sockets are programmed to decline any request to
+       objects that do not possess a validate method. Access to arbitrary 
+       objects can be obtained through the Shell and Interpreter.

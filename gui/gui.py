@@ -96,7 +96,7 @@ class Organizer(base.Base):
         item.x = (item.w * position[1]) + parent.x
         item.y = (item.h * position[0]) + parent.y
 
-    def pack_menu_bar(self, parent, item, count, length):
+    def pack_top(self, parent, item, count, length):
         item.z = parent.z + 1
         item.size = (parent.w,
                      parent.h / 6 if parent.h else 0)        
@@ -107,12 +107,12 @@ class Organizer(base.Base):
         item.z = parent.z + 1
 
     def pack_bottom(self, parent, item, count, length):
-        self.pack_menu_bar(parent, item, count, length)
-        item.y = parent.y + parent.h - item.h
+        self.pack_top(parent, item, count, length)
+        item.y = parent.y + parent.h - (item.h * count)
      
-    def pack_top(self, parent, item, count, length):
-        self.pack_menu_bar(parent, item, count, length)
-        item.y = parent.y - item.h
+   # def pack_top(self, parent, item, count, length):
+   #     self.pack_menu_bar(parent, item, count, length)
+   #     item.y = parent.y - item.h
                 
     def pack_right(self, parent, item, count, length):
         self.pack_horizontal(parent, item, count, length)

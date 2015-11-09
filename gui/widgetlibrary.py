@@ -93,8 +93,7 @@ class Homescreen(gui.Window):
 
 class Task_Bar(gui.Container):
 
-    defaults = {"pack_mode" : "menu_bar",
-                "bound" : (0, 20)}
+    defaults = {"pack_mode" : "top", "bound" : (0, 20)}
     
     def _set_pack_mode(self, value):
         super(Task_Bar, self)._set_pack_mode(value)

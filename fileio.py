@@ -157,7 +157,8 @@ class File_Attributes(pride.base.Adapter):
     
     def __init__(self, **kwargs):
         super(File_Attributes, self).__init__(**kwargs)
-        self.wraps(os.stat(self.filename))
+        if self.filename and not self.wrapped_object:
+            self.wraps(os.stat(self.filename))
 
         
 class File(base.Wrapper):
@@ -173,9 +174,7 @@ class File(base.Wrapper):
         attribute. The default is a regular file, which will require
         an appropriate path and mode to be specified when initializing. """
         
-    defaults = {"file" : None,
-                "file_type" : "file",
-                "mode" : "",
+    defaults = {"file" : None, "file_type" : "file", "mode" : "",
                 "persistent" : True}
     
     def __init__(self, path='', mode='', **kwargs):  
@@ -187,12 +186,17 @@ class File(base.Wrapper):
         self.mode = mode or self.mode
         if not self.file:
             if self.file_type == "file":      
-                self.file = open(path, self.mode)                
+                self.file = open(path, self.mode)    
+                self.properties = self.create("pride.fileio.File_Attributes",
+                                              filename=path)              
+                self.filesize = self.properties.file_size
             else:
-                self.file = utilities.resolve_string(self.file_type)()             
+                self.file = utilities.resolve_string(self.file_type)()
+                self.filesize = 0
+            #    self.properties = self.create("pride.filefio.File_Attributes",
+            #                                  wrapped_object=self.file, filename=path)
         self.wraps(self.file)        
-        self.properties = self.create("pride.fileio.File_Attributes",
-                                      filename=path)
+
                                       
     def __enter__(self):
         return self
@@ -200,13 +204,37 @@ class File(base.Wrapper):
     def __exit__(self, type, value, traceback):
         self.delete()
         return value
+    
+    def write(self, data):
+        self.file.write(data)
+        self.filesize += len(data)
+        
+    def truncate(self, size=None):
+        print 'TRUNCATING' * 80
+        if size is None:
+            self.filesize -= self.filesize - self.file.tell()
+        else:
+            self.filesize -= self.filesize - size
+        self.file.truncate(size)
         
     def __getitem__(self, slice):
-        stop = slice.stop if slice.stop is not None else -1
-        start = slice.start if slice.start is not None else 0
         original = self.tell()
-        self.seek(start)        
-        data = self.file.read(stop)[::slice.step]
+        try:
+            stop = slice.stop if slice.stop is not None else -1
+        except AttributeError: 
+            if slice < 0:
+                slice = self.filesize + slice
+            self.seek(slice)
+            data = self.read(1)
+        else:    
+            start = slice.start if slice.start is not None else 0
+            stop = stop - start
+            if start < 0:
+                start = self.filesize + start            
+            self.seek(0)
+            size = len(self.read())
+            self.seek(start)        
+            data = self.read(stop)[::slice.step]
         self.seek(original)
         return data
         

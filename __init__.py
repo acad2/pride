@@ -1,7 +1,7 @@
 """ Stores global objects including instructions and the environment """
 import sys
 import pride.importers
-compiler = pride.importers.Compiler(preprocessors=(importers.Dollar_Sign_Directive(),))
+compiler = pride.importers.Compiler(preprocessors=(importers.Dollar_Sign_Directive(),))                                    
 sys.meta_path.insert(0, compiler)
 
 import heapq
@@ -204,6 +204,9 @@ objects = environment.objects
 # Things must be done in this order for Alert_Handler to exist inside this file
 # and reuse Base machinery, namely for argument parsing. 
 import pride.base
+
+import pride.patch
+sys = pride.patch.Patched_sys()
 
 class Alert_Handler(pride.base.Base):
     """ Provides the backend for the base.alert method. The print_level

@@ -12,7 +12,7 @@ class File_Explorer(pride.gui.gui.Application):
 
 class Navigation_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "menu_bar", "h_range" : (0, 20)}
+    defaults = {"pack_mode" : "top", "h_range" : (0, 20)}
     
     def __init__(self, **kwargs):
         super(Navigation_Bar, self).__init__(**kwargs)

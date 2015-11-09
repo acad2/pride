@@ -7,12 +7,6 @@ import pkgutil
 
 def installed_modules(directories=None):
     return [module[1] for module in pkgutil.iter_modules(directories)]
-    
-#def unused_imports(module):
-#    source = inspect.getsource(module)
-#    symbol_table = symtable.symtable(source, "string", "exec")
-#    return [symbol.get_name() for symbol in symbol_table.get_symbols() if 
-#            symbol.is_imported() and not symbol.is_referenced()]
             
 def create_module(module_name, source, context=None):
     """ Creates a module with the supplied name and source"""
@@ -110,40 +104,4 @@ def get_required_sources(modules):
             except (IOError, TypeError):
                 module_source[module_name] = None
 
-    return module_source
-    
-class Module_Listing(object):
-
-    def __init__(self, _file):
-        super(Module_Listing, self).__init__()
-        self.file = _file        
-
-    def from_help(self):
-        helper = pydoc.Helper(output=self.file)
-        helper("modules")
-
-    def read_file(self):
-        file = self.file
-        file.seek(0)
-        text = file.read()
-        return text
-
-    def trim(self, text):
-        _file = StringIO(text)
-        found = []
-        count = 0
-        for line in _file.readlines():
-            if line.split(" ").count("") > 2:
-                found += line.split()
-
-        return ' '.join(found)
-
-    def get_modules(self):
-        self.from_help()
-        original = self.read_file()
-        return self.trim(original)
-
-    def make_file(self, filename):
-        with open(filename, 'w') as _file:
-            _file.write(self.get_modules())
-            _file.flush()        
+    return module_source       

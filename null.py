@@ -8,7 +8,7 @@
           of name:value pairs. These pairs will be assigned as attributes
           to new instances; Any attribute specified via keyword argument
           will override a default
-        
+          
         - An instance name, which provides a reference to the component from any context. 
           Instance names are mapped to instance objects in pride.objects.
           
@@ -144,7 +144,7 @@ class Base(object):
         return objects[self.parent_name]
     parent = property(_get_parent)
             
-    verbosity = {"delete" : "vv", "initialized" : "vv"}
+    verbosity = {"delete" : "vv"}
                  
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance
@@ -170,11 +170,7 @@ class Base(object):
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
                         component.instance_name) 
-        try:
-            self.alert("Initialized", level=self.verbosity["initialized"])
-        except KeyError:
-            pass
-            
+                
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance
@@ -207,7 +203,7 @@ class Base(object):
         if instance not in pride.environment.instance_name:
             pride.environment.register(instance)
         self.add(instance)
-        pride.environment.last_creator = None
+        
         return instance
 
     def delete(self):
@@ -467,8 +463,6 @@ class Adapter(Base):
     def __init__(self, **kwargs):
         if "wrapped_object" in kwargs:
             self.wraps(kwargs.pop("wrapped_object"))
-        else:
-            self.wrapped_object = None
         super(Adapter, self).__init__(**kwargs)
             
     def wraps(self, _object):
