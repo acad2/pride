@@ -207,6 +207,7 @@ import pride.base
 
 import pride.patch
 sys = pride.patch.Patched_sys()
+sys.stdout = sys.stdout # print statement appears to require this before logging starts
 
 class Alert_Handler(pride.base.Base):
     """ Provides the backend for the base.alert method. The print_level

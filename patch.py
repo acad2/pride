@@ -16,8 +16,7 @@ class Patched_Module(pride.base.Wrapper):
  
 class File_Logger(pride.base.Wrapper):
     
-    defaults = {"file" : None, "log_type" : "StringIO.StringIO", 
-                "log_size_limit" : 32678}
+    defaults = {"file" : None, "log_type" : "StringIO.StringIO"}
     
     def __init__(self, **kwargs):
         super(File_Logger, self).__init__(**kwargs)
@@ -27,8 +26,6 @@ class File_Logger(pride.base.Wrapper):
         self.log.write(data)
         self.file.write(data)
         self.file.flush()
-        if self.log.filesize > self.log_size_limit:
-            self.log.truncate(0)
             
         
 class Patched_sys(Patched_Module):
@@ -45,5 +42,4 @@ class Patched_sys(Patched_Module):
     def __init__(self, **kwargs):
         super(Patched_sys, self).__init__(**kwargs)
         self._logger = File_Logger(file=sys.stdout)
-        #sys.stdout = self._logger
-        
+        sys.stdout_log = self._logger.log        

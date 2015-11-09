@@ -89,11 +89,9 @@ class Command_Line(pride.vmlibrary.Process):
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 10000}
+                "idle_threshold" : 100}
                      
     def __init__(self, **kwargs):
-     #   self.programs = {}
-        
         self._idle = True
         self.screensaver = None
         super(Command_Line, self).__init__(**kwargs)       
@@ -138,11 +136,13 @@ class Command_Line(pride.vmlibrary.Process):
     def run(self):
         if input_waiting():
             if self.screensaver is not None:
-                pride.objects[self.screensaver].delete()
+                screensaver = pride.objects[self.screensaver]
                 self.screensaver = None
                 self.clear()
                 line_width, line_count = pride._termsize.getTerminalSize()
-                print sys._logger.log[min(0, self._position - line_width * line_count):self._position]
+                assert sys.stdout_log.tell() == len(sys.stdout_log[:])
+                print sys.stdout_log[:self._position]
+                screensaver.delete()
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -194,8 +194,8 @@ class Command_Line(pride.vmlibrary.Process):
                 
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
-            self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name
-            self._position = sys._logger.log.tell()
+            self._position = sys.stdout_log.tell()
+            self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name            
         self._idle = True        
         priority = self.idle_threshold * self.priority
         pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
@@ -210,8 +210,7 @@ class Command_Line(pride.vmlibrary.Process):
         
 class Program(pride.base.Base):
             
-    defaults = {"set_as_default" : False,
-                "name" : ''}
+    defaults = {"set_as_default" : False, "name" : ''}
 
     def _get_name(self):
         return self._name or self.instance_name
@@ -243,8 +242,7 @@ class Program(pride.base.Base):
         
 class Shell_Program(Program):
             
-    defaults = {"use_shell" : True,
-                "name" : "shell"}
+    defaults = {"use_shell" : True, "name" : "shell"}
                      
     def handle_input(self, input):
         pride.utilities.shell(input, shell=self.use_shell)
@@ -288,7 +286,7 @@ class File_Explorer(Program):
 class Terminal_Screensaver(pride.vmlibrary.Process):
     
     defaults = {"rate" : 3, "priority" : .08, "newline_scalar" : 1.5,
-                "file_text" : ''}
+                "file_text" : '', "_data_amount" : 0}
     
     def __init__(self, **kwargs):
         super(Terminal_Screensaver, self).__init__(**kwargs)
@@ -307,4 +305,4 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
             self.priority = self._priority
             
         self.file_text = self.file_text[self.rate:]
-        
+        self._data_amount += self.rate

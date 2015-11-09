@@ -42,8 +42,8 @@ class Process(pride.base.Base):
         or periodic event."""
 
     defaults = {"priority" : .04, "context_managed" : False, "running" : True,
-                "run_callback" : None}
-    parser_ignore = ("priority", "run_callback", "context_managed")
+                "run_callback" : None, "_run_queued" : False}
+    parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued")
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -57,8 +57,10 @@ class Process(pride.base.Base):
     def start(self):
         self.run_instruction.execute(priority=self.priority,
                                      callback=self.run_callback)
-
+        self._run_queued = True
+        
     def _run(self):
+        self._run_queued = False
         if self.context_managed:
             with self:
                 result = self.run()
@@ -67,6 +69,7 @@ class Process(pride.base.Base):
         if self.running:
             self.run_instruction.execute(priority=self.priority, 
                                          callback=self.run_callback)
+            self._run_queued = True
         return result
         
     def run(self):
@@ -75,6 +78,8 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
+        if self._run_queued:
+            pride.objects["->Python->Processor"]._recently_deleted.add(self.instance_name)
         super(Process, self).delete()
         
     def __getstate__(self):
@@ -112,6 +117,7 @@ class Processor(Process):
             
     def run(self):
         self._return = {}
+        recently_deleted = self._recently_deleted = set()
         instructions = pride.environment.Instructions
         objects = pride.objects
                 
@@ -135,6 +141,10 @@ class Processor(Process):
                 call = _getattr(objects[instruction.component_name],
                                 instruction.method)
             except component_errors as error:
+                component = instruction.component_name
+                if component in recently_deleted:
+                    recently_deleted.remove(component)
+                    continue
                 if isinstance(error, KeyError):
                     error = "'{}' component does not exist".format(instruction.component_name)                        
                 component_alert((str(instruction), error)) 
