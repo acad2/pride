@@ -320,7 +320,7 @@ class Matrix_Screensaver(Terminal_Screensaver):
             self.characters.append(bytearray(self.width))            
             
     def run(self):
-        if not self.row:
+        if not self.row: # pick a new row at random to go down
             row_number = 0
             used_numbers = set()
             while self.characters[0][row_number]:
@@ -332,8 +332,6 @@ class Matrix_Screensaver(Terminal_Screensaver):
                         self.characters.append(bytearray(self.width))
                     break
             self.row = row_number
-         #   print "Working on row: ", self.row
-          #  raw_input()
             self.column = 0
         self.characters[self.column][self.row] = chr(random.randint(0, 255))
         sys.stdout.write(str(self.characters[self.column]))
@@ -343,15 +341,3 @@ class Matrix_Screensaver(Terminal_Screensaver):
             self.row = None            
             objects["->Python->Command_Line"].clear()
             
-
-        #if not self.rows:
-        #    sys.stdout.write('\n')
-        #self.rows.append([])
-        #for character_number in range(self.width):
-        #    character = chr(random.randint(0, 255))
-        #    self.rows[-1].append(character)
-        #self.rows.append(''.join(self.rows.pop(-1)))
-        #sys.stdout.write(self.rows[-1])
-        #sys.stdout.flush()
-        #if len(self.rows) == self.height:
-        #    self.rows = []
