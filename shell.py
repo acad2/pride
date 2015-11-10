@@ -90,7 +90,7 @@ class Command_Line(pride.vmlibrary.Process):
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 100}
+                "idle_threshold" : 100}#00}
                      
     def __init__(self, **kwargs):
         self._idle = True

@@ -26,9 +26,6 @@ class File_Logger(pride.base.Wrapper):
         self.log.write(data)
         self.file.write(data)
         self.file.flush()
-            
-    def flush(self):
-        self.file.flush()
         
         
 class Patched_sys(Patched_Module):
@@ -36,13 +33,15 @@ class Patched_sys(Patched_Module):
     defaults = {"module_name" : "sys"}
     
     def _get_stdout(self):
-        return self.wrapped_object.stdout
+        return self._logger.wrapped_object
     def _set_stdout(self, value):
-        self._logger.wraps(value) 
-        self.wrapped_object.stdout = self._logger        
+        if value is None:
+            value = self.wrapped_object.__stdout__
+        self._logger.wraps(value)         
     stdout = property(_get_stdout, _set_stdout)               
     
     def __init__(self, **kwargs):
         super(Patched_sys, self).__init__(**kwargs)
         self._logger = File_Logger(file=sys.stdout)
+        self.wrapped_object.stdout = self._logger        
         sys.stdout_log = self._logger.log        

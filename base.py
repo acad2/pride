@@ -396,6 +396,7 @@ class Wrapper(Base):
             setattr(self, self.wrapped_object_name, self.wrapped_object)
             
     def __getattr__(self, attribute):
+       # print "Getting ", attribute, "From ", self.wrapped_object
         return getattr(self.wrapped_object, attribute)        
                         
     def wraps(self, _object):
