@@ -45,3 +45,4 @@ class Patched_sys(Patched_Module):
         self._logger = File_Logger(file=sys.stdout)
         self.wrapped_object.stdout = self._logger        
         sys.stdout_log = self._logger.log        
+        self.stdout = self.wrapped_object.stdout

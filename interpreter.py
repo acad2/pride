@@ -21,6 +21,14 @@ import pride.shell
 objects = pride.objects
 Instruction = pride.Instruction            
 
+@contextlib.contextmanager
+def main_as_name():
+    backup = globals()["__name__"]        
+    globals()["__name__"] = "__main__"
+    try:
+        yield
+    finally:
+        globals()["__name__"] = backup        
     
 class Shell(authentication.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
@@ -186,6 +194,16 @@ class Interpreter(authentication.Authenticated_Service):
         log.flush()        
         return result
         
+    def _exec_command(self, source):
+        """ Executes the supplied source as the __main__ module"""
+        code = pride.compiler.compile(source, "__main__")
+        with main_as_name():
+            exec code in globals(), globals()
+            
+    def execute_instruction(self, instruction, priority, callback):
+        """ Executes the supplied instruction with the specified priority and callback """
+        instruction.execute(priority=priority, callback=callback)
+        
         
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
@@ -223,26 +241,11 @@ class Python(base.Base):
         self.setup_os_environ()
         
         if self.startup_definitions:
-            self._exec_command(self.startup_definitions)           
+            self.interpreter._exec_command(self.startup_definitions)           
                         
         with open(self.command, 'r') as module_file:
             source = module_file.read()            
-        Instruction(self.instance_name, "_exec_command", source).execute()
-                
-    def _exec_command(self, source):
-        """ Executes the supplied source as the __main__ module"""
-        code = pride.compiler.compile(source, "__main__")
-        with self.main_as_name():
-            exec code in globals(), globals()
-            
-    @contextlib.contextmanager
-    def main_as_name(self):
-        backup = globals()["__name__"]        
-        globals()["__name__"] = "__main__"
-        try:
-            yield
-        finally:
-            globals()["__name__"] = backup
+        Instruction(self.interpreter, "_exec_command", source).execute()
              
     def setup_os_environ(self):
         """ This method is called automatically in Python.__init__; os.environ can

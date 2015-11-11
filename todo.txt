@@ -32,13 +32,57 @@ things that could be done:
     integrate ssl contexts into networkssl    
     pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    
     class update feature
-    --optimized flag that comments out alerts that are above a threshold
+    --optimized flag that comments out alerts that are above a threshold. __debug__ flag
     persistent objects
     rotation descriptor on window objects. modify area based upon the given degrees of rotation about the center of the instance.
     branch pruning based on runtime analysis of arguments
-    load name pruning? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
-    clear the screen after screensaver breaks from receiving input
+    store name pruning? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
+   
+things other people could do:
+-------------------------
+security related:
+    - penetration testing and security auditing of srp/rpc/authention
+        - try to break your way in!
     
+    - secure serialization format
+        - json implementation already started
+        - struct implementation?        
+        
+gui design:
+    - need cool looking themes!
+        - very simple low level drawing api 
+        - calls take the form of draw(shape, coordinates, color)
+        - Opengl supported by sdl2 but not implemented anywhere yet
+        
+    - need graphical applications
+        - need more widgets
+        - assemble applications out of generic windows and containers and buttons        
+        - customize mouse ui interaction via the click methods
+        - customize keyboard interaction via the hotkeys dictionary
+        
+source code manipulation:        
+    - source code optimization?
+        - function inlining, constant folding, branch pruning, etc
+        - remove "store name" operations for constants and pass names in as arguments?
+            - i.e.:
+                def math_stuff(a):
+                    pi = 3.14
+                    return pi * a
+                    
+                # change the above to:
+                def math_stuff(a, pi):
+                    return pi * a
+                    
+            - results in fewer bytecode operations in the function call?
+            
+    - source code obfuscation?
+        - could maybe use compiler hook to obfuscate names across entire process instead of
+          limited to one module like current best known tool
+        - modify + - / *... etc to use magic method calls instead of operator expressions. 
+          The magic method name could be obfuscated?
+
+scratch space
+------------------          
 class System_Restore(mpre.vmlibrary.Process):
     defaults = defaults.Process.copy()
     System_Restore.update({"priority" : 300,

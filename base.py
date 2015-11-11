@@ -143,7 +143,7 @@ class Base(object):
     def _get_parent(self):
         return objects[self.parent_name]
     parent = property(_get_parent)
-            
+    
     verbosity = {"delete" : "vv", "initialized" : "vv"}
                  
     def __init__(self, **kwargs):

@@ -20,7 +20,7 @@ class Environment(object):
     """ Stores global state for the process. This includes reference
         reference information, most importantly the objects dictionary. """
     fields = ("objects", "instance_count", "instance_name",
-              "instance_count", "parents", "references_to")
+              "instance_count", "parents", "references_to", "creation_count")
 
     def __init__(self):
         super(Environment, self).__init__()
@@ -103,23 +103,18 @@ class Environment(object):
                 self.instance_count[instance_type] += 1
                 instance_name = "->" + instance_type + (str(count) if count else '')
         else:            
+            parent_name = self.last_creator
+            parent = self.objects[parent_name]
             try:
-                parent_name = self.last_creator
-            except AttributeError:
+                count = self.creation_count[parent_name][instance_type]
+            except KeyError: # instance_type not created yet
                 try:
-                    count = self.instance_count[instance_type]
-                except KeyError:
-                    count = self.instance_count[instance_type] = 0
-                finally:
-                    self.instance_count[instance_type] += 1
-                parent_name = ''
-            else:
-                parent = self.objects[parent_name]
-                try:
-                    count = len(parent.objects[instance_type])
-                except KeyError:
-                    _objects = parent.objects[instance_type] = []
-                    count = 0     
+                    count = self.creation_count[parent_name][instance_type] = 0
+                except KeyError: # parent_name has not created anything yet
+                    self.creation_count[parent_name] = {instance_type : 0}
+                    count = 0
+            
+            self.creation_count[parent_name][instance_type] += 1
             instance_name = (parent_name + "->" + instance_type + 
                             (str(count) if count else ''))
         try:
@@ -207,7 +202,6 @@ import pride.base
 
 import pride.patch
 sys = pride.patch.Patched_sys()
-sys.stdout = sys.stdout # print statement appears to require this before logging starts
 
 class Alert_Handler(pride.base.Base):
     """ Provides the backend for the base.alert method. The print_level
