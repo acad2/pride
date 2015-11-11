@@ -195,6 +195,7 @@ class Base(object):
             obtained via the pride.environment.instance_name dictionary, 
             using the instance as the key."""
         self_name = self.instance_name
+        backup = pride.environment.last_creator
         pride.environment.last_creator = self_name
         try:
             instance = instance_type(*args, **kwargs)
@@ -207,7 +208,7 @@ class Base(object):
         if instance not in pride.environment.instance_name:
             pride.environment.register(instance)
         self.add(instance)
-        pride.environment.last_creator = None
+        pride.environment.last_creator = backup
         return instance
 
     def delete(self):

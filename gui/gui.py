@@ -108,7 +108,7 @@ class Organizer(base.Base):
 
     def pack_bottom(self, parent, item, count, length):
         self.pack_top(parent, item, count, length)
-        item.y = parent.y + parent.h - (item.h * count)
+        item.y = parent.y + parent.h - (item.h * (count + 1))
      
    # def pack_top(self, parent, item, count, length):
    #     self.pack_menu_bar(parent, item, count, length)
@@ -165,7 +165,10 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _get_text(self):
         return self._text
     def _set_text(self, value):
-        self._text = value
+        if self._use_text_entry_callback:
+            self.text_entry(value)
+        else:
+            self._text = value
         self.texture_invalid = True
     text = property(_get_text, _set_text)
     
@@ -218,6 +221,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 result = instance
             else:
                 try:
+                    print "Getting parent: ", instance
                     instance = instance.parent
                 except AttributeError:
                     raise ValueError("Unable to find parent application of {}".format(self))
@@ -227,7 +231,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     verbosity = {"press" : "vv", "release" : "vv"}
     
     def __init__(self, **kwargs):
-        self._texture_invalid = False
+        self._use_text_entry_callback = self._texture_invalid = False
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
         self._layer_index = 0        
@@ -331,7 +335,10 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 instance.held = True
                 instance.mousemotion(x_difference, y_difference, top_level=False)
                 instance.held = False
-     
+    
+    def text_entry(self, value):
+        pass
+        
     def toggle_hidden(self):
         if not self.hidden:
             sdl_user_input = pride.objects[self.sdl_window + "->SDL_User_Input"]
