@@ -221,7 +221,6 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 result = instance
             else:
                 try:
-                    print "Getting parent: ", instance
                     instance = instance.parent
                 except AttributeError:
                     raise ValueError("Unable to find parent application of {}".format(self))

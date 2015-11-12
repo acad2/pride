@@ -397,11 +397,12 @@ class Wrapper(Base):
             setattr(self, self.wrapped_object_name, self.wrapped_object)
             
     def __getattr__(self, attribute):
-       # print "Getting ", attribute, "From ", self.wrapped_object
+     #   print repr(self), "Getting ", attribute, "From ", self.wrapped_object
         return getattr(self.wrapped_object, attribute)        
                         
     def wraps(self, _object):
         """ Sets the specified object as the object wrapped by this object. """
+        assert _object is not self
         self.wrapped_object = _object
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)

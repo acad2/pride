@@ -33,9 +33,9 @@ class Patched_sys(Patched_Module):
     defaults = {"module_name" : "sys"}
     
     def _get_stdout(self):
-        return self._logger.wrapped_object
+        return self._logger#.wrapped_object
     def _set_stdout(self, value):
-        if value is None:
+        if value is None or value is self._logger:
             value = self.wrapped_object.__stdout__
         self._logger.wraps(value)         
     stdout = property(_get_stdout, _set_stdout)               
@@ -43,6 +43,5 @@ class Patched_sys(Patched_Module):
     def __init__(self, **kwargs):
         super(Patched_sys, self).__init__(**kwargs)
         self._logger = File_Logger(file=sys.stdout)
-        self.wrapped_object.stdout = self._logger        
         sys.stdout_log = self._logger.log        
         self.stdout = self.wrapped_object.stdout
