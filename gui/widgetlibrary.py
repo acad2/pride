@@ -141,10 +141,10 @@ class Text_Box(gui.Container):
     def __init__(self, **kwargs):
         super(Text_Box, self).__init__(**kwargs)
         text_box_name = self.instance_name
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-                    pack_mode="bottom")         
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-                    pack_mode="right")
+        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
+        #            pack_mode="bottom")         
+        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
+        #            pack_mode="right")
                         
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
@@ -263,7 +263,7 @@ class Done_Button(gui.Button):
       
 class Prompt(Text_Box):
     
-    defaults = {"use_done_button" : False}
+    defaults = {"use_done_button" : False, }
     
     def __init__(self, **kwargs):
         super(Prompt, self).__init__(**kwargs)
@@ -273,8 +273,8 @@ class Prompt(Text_Box):
                         callback=self._done_callback)
                         
     def text_entry(self, value):
-        self._text += value
-        if value == '\n':
+        self._text = value
+        if value and value[-1] == '\n':
             callback_owner, method = self.callback
             getattr(pride.objects[callback_owner], method)(self.text)
             

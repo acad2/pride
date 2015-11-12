@@ -72,18 +72,31 @@ class Organizer(base.Base):
                    level=self.verbosity["packing"])
         
     def pack_horizontal(self, parent, item, count, length):
-        item.z = parent.z + 1
-        #print "Setting {}.area to: ({} / {} (={}), {}".format(item, parent.w, length, parent.w / length, parent.h)
-        item.size = (parent.w / length, parent.h)
-        item.x = (item.w * count) + parent.x
+        item.z = parent.z + 1       
+        if count:
+            item.x = parent.x + sum(($item.w for item in self._pack_modes[parent.instance_name]["horizontal"][:count]))
+        else:
+            item.x = parent.x
         item.y = parent.y
+        
+        if count == length - 1:
+            item.size = (parent.w - item.x, parent.h)
+        else:
+            item.size = (parent.w / length, parent.h)        
 
     def pack_vertical(self, parent, item, count, length):
-        item.z = parent.z + 1
-        item.size = (parent.w, parent.h / length)
-        item.y = (item.h * count) + parent.y
+        item.z = parent.z + 1        
+        if count:
+            item.y = parent.y + sum(($item.h for item in self._pack_modes[parent.instance_name]["vertical"][:count]))
+        else:
+            item.y = parent.y
         item.x = parent.x
-
+        
+        if count == length - 1:
+            item.size = (parent.w, parent.h - item.y)
+        else:
+            item.size = (parent.w, parent.h / length)       
+        
     def pack_grid(self, parent, item, count, length):
         grid_size = sqrt(length)
 

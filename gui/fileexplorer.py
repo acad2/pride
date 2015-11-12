@@ -19,10 +19,10 @@ class Navigation_Bar(pride.gui.gui.Container):
         self.create(Back_Button)
         self.create(Forward_Button)
         self.create(History_Dropdown)
-      #  self.create(Ascend_Button)
-       # self.create(Search_Bar, 
-       #             callback=(self.parent_application.instance_name + "->Directory_Viewer",
-       #                       "handle_input"))
+        self.create(Ascend_Button)
+        self.create(Search_Bar, 
+                    callback=(self.parent_application.instance_name + "->Directory_Viewer",
+                              "handle_input"))
         
    
 class Back_Button(pride.gui.widgetlibrary.Method_Button):
@@ -46,11 +46,13 @@ class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
 
 class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
             
-    defaults = {"method" : "ascend_directory", "text" : ".."}
+    defaults = {"method" : "ascend_directory", "text" : "..",
+                "pack_mode" : "horizontal"}
     
     
-class Search_Bar(pride.gui.widgetlibrary.Prompt): pass
-        
+class Search_Bar(pride.gui.widgetlibrary.Prompt): 
+
+    defaults = {"pack_mode" : "horizontal"}        
     
         
 class Places_Bar(pride.gui.gui.Container):
