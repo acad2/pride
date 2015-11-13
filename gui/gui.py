@@ -179,12 +179,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         if value and self.scale_to_text:
             w, h = objects[self.sdl_window].renderer._get_text_size(self.area, value)
             w += 2
-       #     h += 2
             self.w_range = (0, w)
-        #    self.h_range = (0, h)
-        #    self.size = (w, h)
-            self.w = w
-            
+            self.w = w            
         self.texture_invalid = True
     text = property(_get_text, _set_text)
     

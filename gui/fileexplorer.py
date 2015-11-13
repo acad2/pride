@@ -27,28 +27,25 @@ class Navigation_Bar(pride.gui.gui.Container):
    
 class Back_Button(pride.gui.widgetlibrary.Method_Button):
     
-    defaults = {"text" : "<-", "method" : "back", "pack_mode" : "horizontal",
-                "w_range" : (0, 20)}
-    
+    defaults = {"text" : "<-", "method" : "back", "pack_mode" : "horizontal",}
+       
     
 class Forward_Button(pride.gui.widgetlibrary.Method_Button):
         
-    defaults = {"text" : "->", "method" : "forward", 
-                "pack_mode" : "horizontal", "w_range" : (0, 20)}
-    
+    defaults = {"text" : "->", "method" : "forward", "pack_mode" : "horizontal"}
+       
 
 class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
         
     defaults = {"popup_type" : "pride.gui.fileexplorer.Directory_History",
                 "pack_mode" : "horizontal", "text" : "history"}
-        
+    flags = {"scale_to_text" : True}
+    
 
 class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
             
-    defaults = {"method" : "ascend_directory", "text" : "..",
-                "pack_mode" : "horizontal"}
-    
-    flags = {"scale_to_text" : True}
+    defaults = {"method" : "ascend_directory", "text" : "..", "pack_mode" : "horizontal"}    
+      
     
 class Search_Bar(pride.gui.widgetlibrary.Prompt): 
 

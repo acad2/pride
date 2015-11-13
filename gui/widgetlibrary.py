@@ -45,11 +45,9 @@ class Instruction_Button(gui.Button):
     
 class Method_Button(gui.Button):
         
-    defaults = {"args" : tuple(),
-                "kwargs" : None,
-                "method" : '',
-                "target" : ''}
-                     
+    defaults = {"args" : tuple(), "kwargs" : None, "method" : '', "target" : ''}
+    flags = {"scale_to_text" : True}
+    
     def left_click(self, mouse):
         try:
             instance = self.target()
@@ -60,10 +58,9 @@ class Method_Button(gui.Button):
 
 class Delete_Button(Method_Button):
     
-    defaults = {"pack_mode" : "horizontal",
-                "text" : "delete",
-                "method" : "delete"}
-        
+    defaults = {"pack_mode" : "right", "text" : "x", "method" : "delete"}
+    flags = {"scale_to_text" : True}
+    
         
 class Exit_Button(Delete_Button):
         
@@ -73,12 +70,6 @@ class Exit_Button(Delete_Button):
 class Popup_Button(gui.Button):
         
     defaults = {"popup_type" : '', "_popup" : None}
-
-    flags = {"scale_to_text" : True}
-    
-    def __init__(self, **kwargs):
-        
-        super(Popup_Button, self).__init__(**kwargs)
         
     def left_click(self, mouse):
         if self._popup:

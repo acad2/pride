@@ -236,7 +236,7 @@ class Rpc_Socket(Packet_Socket):
                         stack_trace = traceback.format_exc()
                         self.alert("Exception processing request {}.{}: \n{}",
                                    [component_name, method, stack_trace],
-                                   level=self.verbosty["request_exception"])
+                                   level=self.verbosity["request_exception"])
                         if isinstance(result, SystemExit):
                             raise                                   
                         result.traceback = stack_trace

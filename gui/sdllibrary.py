@@ -1,3 +1,4 @@
+import operator
 import os
 import sys
 import string
@@ -375,12 +376,18 @@ class SDL_User_Input(vmlibrary.Process):
         active_item = None
         max_z = 0
         coordinates = self.coordinate_tracker
+        possible = []
         for layer_number, layer in reversed(self._coordinate_tracker.items()):
             for item in layer:
                 area, z = coordinates[item]
                 if pride.gui.point_in_area(area, mouse_position):
-                    active_item = item
-                    break
+                    #active_item = item
+                    #break
+                    possible.append((item, area[0]))
+            if len(possible) > 1:
+                active_item = sorted(possible, key=operator.itemgetter(1))[-1][0]
+            elif possible:
+                active_item = possible[0][0]
             if active_item:
                 break
 
