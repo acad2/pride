@@ -40,8 +40,7 @@ class Forward_Button(pride.gui.widgetlibrary.Method_Button):
 class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
         
     defaults = {"popup_type" : "pride.gui.fileexplorer.Directory_History",
-                "pack_mode" : "horizontal", "text" : "history", 
-                "w_range" : (0, 20)}
+                "pack_mode" : "horizontal", "text" : "history"}
         
 
 class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
@@ -49,6 +48,7 @@ class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
     defaults = {"method" : "ascend_directory", "text" : "..",
                 "pack_mode" : "horizontal"}
     
+    flags = {"scale_to_text" : True}
     
 class Search_Bar(pride.gui.widgetlibrary.Prompt): 
 
@@ -84,7 +84,7 @@ class Directory_Viewer(pride.gui.gui.Window):
         self.create(Column_Viewer)
         #for attribute in self.display_attributes:
         #    container = self.create("pride.gui.gui.Container", 
-        #                            pack_mode="vertical")
+        #                            pack_mode="top")
         #    container.create(Sort_Button, text=attribute, pack_mode="top")
         #    container.create(Indicator, 
         #    self.create(Sort_Button, text=attribute)
@@ -95,7 +95,7 @@ class Column_Viewer(pride.gui.gui.Window):
         
     defaults = {"default_columns" : ("Type", "Name", "Size", 
                                      "Date_Created", "Date_Modified"),
-                "pack_mode" : "vertical"}
+                "pack_mode" : "top"}
                 
     def __init__(self, **kwargs):
         super(Column_Viewer, self).__init__(**kwargs)

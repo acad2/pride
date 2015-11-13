@@ -141,7 +141,10 @@ class Rpc_Server(pride.networkssl.SSL_Server):
     
     
 class Rpc_Client(Packet_Client):
-    """ Client socket for making rpc requests using packetized tcp stream. """           
+    """ Client socket for making rpc requests using packetized tcp stream. """  
+    verbosity = {"delayed_request_sent" : "vv", "request_delayed" : "vv",
+                 "request_sent" : "vv", "unresolved_callback" : 0, "handle_exception" : 0}
+                 
     def __init__(self, **kwargs):
         self._requests, self._callbacks = [], []
         super(Rpc_Client, self).__init__(**kwargs)
@@ -150,17 +153,19 @@ class Rpc_Client(Packet_Client):
         count = 1
         length = len(self._requests)
         for request, callback in self._requests:
-            self.alert("Making delayed request {}/{}: {}".format(count, length, request)[:128], level='vv')
+            self.alert("Making delayed request {}/{}: {}".format(count, length, request)[:128], 
+                       level=self.verbosity["delayed_request_sent"])
             self._callbacks.append(callback)  
             self.send(request)
             
     def make_request(self, request, callback_owner):
         """ Send request to remote host and queue callback_owner for callback """
         if not self.ssl_authenticated:
-            self.alert("Delaying request until authenticated: {}".format(request)[:128], level='vv')
+            self.alert("Delaying request until authenticated: {}".format(request)[:128], 
+                       level=self.verbosity["request_delayed"])
             self._requests.append((request, callback_owner))
         else:    
-            self.alert("Making request for {}".format(callback_owner), level='v')
+            self.alert("Making request for {}".format(callback_owner), level=self.verbosity["request_sent"])
             self._callbacks.append(callback_owner)
             self.send(request)            
         
@@ -174,7 +179,7 @@ class Rpc_Client(Packet_Client):
             except KeyError:
                 self.alert("Could not resolve callback_owner '{}' for {} {}",
                            (callback_owner, "callback with arguments {}",
-                            _response), level=0)
+                            _response), level=self.verbosity["unresolved_callback"])
             else:
                 if isinstance(_response, BaseException):
                     self.handle_exception(_call, callback, _response)
@@ -185,7 +190,7 @@ class Rpc_Client(Packet_Client):
         self.alert("\n    Remote Traceback: Exception calling {}: {}: {}\n    Unable to proceed with callback {}",
                    ('.'.join(_call), response.__class__.__name__, 
                     getattr(response, "traceback", response), callback), 
-                   level=0)
+                   level=self.verbosity["handle_exception"])
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
             print "Reraising exception", type(response)()
@@ -198,6 +203,9 @@ class Rpc_Client(Packet_Client):
 class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for handling and performing rpc requests """
     
+    verbosity = {"request_exception" : 'v', "request_denied" : 'v',
+                 "request_result" : "vvv"}
+                 
     def recv(self, packet_count=0):
         peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
@@ -228,16 +236,16 @@ class Rpc_Socket(Packet_Socket):
                         stack_trace = traceback.format_exc()
                         self.alert("Exception processing request {}.{}: \n{}",
                                    [component_name, method, stack_trace],
-                                   level='vv')
+                                   level=self.verbosty["request_exception"])
                         if isinstance(result, SystemExit):
                             raise                                   
                         result.traceback = stack_trace
                 else:
                     self.alert("Denying unauthorized request: {}",
-                               (packet, ), level='v')
+                               (packet, ), level=self.verbosity["request_denied"])
                     result = pride.authentication.UnauthorizedError()
             self.alert("Sending result of {}.{}: {}",
-                       (component_name, method, result), level='vv')
+                       (component_name, method, result), level=self.verbosity["request_result"])
             self.send(self.serealize(result))
             
     def deserealize(self, serialized_arguments):

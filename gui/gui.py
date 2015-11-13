@@ -21,7 +21,7 @@ def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
     
 class Organizer(base.Base):
     
-    verbosity = {"packing" : 'v'}
+    verbosity = {"packing" : 'vvv'}
     
     def __init__(self, **kwargs):
         super(Organizer, self).__init__(**kwargs)
@@ -82,12 +82,12 @@ class Organizer(base.Base):
         if count == length - 1:
             item.size = (parent.w - item.x, parent.h)
         else:
-            item.size = (parent.w / length, parent.h)        
-
-    def pack_vertical(self, parent, item, count, length):
+            item.size = (parent.w / length, parent.h)             
+   
+    def pack_top(self, parent, item, count, length):
         item.z = parent.z + 1        
         if count:
-            item.y = parent.y + sum(($item.h for item in self._pack_modes[parent.instance_name]["vertical"][:count]))
+            item.y = parent.y + sum(($item.h for item in self._pack_modes[parent.instance_name]["top"][:count]))
         else:
             item.y = parent.y
         item.x = parent.x
@@ -95,8 +95,8 @@ class Organizer(base.Base):
         if count == length - 1:
             item.size = (parent.w, parent.h - item.y)
         else:
-            item.size = (parent.w, parent.h / length)       
-        
+            item.size = (parent.w, parent.h / length)  
+            
     def pack_grid(self, parent, item, count, length):
         grid_size = sqrt(length)
 
@@ -109,23 +109,17 @@ class Organizer(base.Base):
         item.x = (item.w * position[1]) + parent.x
         item.y = (item.h * position[0]) + parent.y
 
-    def pack_top(self, parent, item, count, length):
-        item.z = parent.z + 1
-        item.size = (parent.w,
-                     parent.h / 6 if parent.h else 0)        
-        item.x = parent.x
-        item.y = parent.y + (count * item.h)
-
     def pack_z(self, parent, item, count, length):
         item.z = parent.z + 1
 
     def pack_bottom(self, parent, item, count, length):
-        self.pack_top(parent, item, count, length)
-        item.y = parent.y + parent.h - (item.h * (count + 1))
-     
-   # def pack_top(self, parent, item, count, length):
-   #     self.pack_menu_bar(parent, item, count, length)
-   #     item.y = parent.y - item.h
+        item.z = parent.z + 1       
+        item.size = (parent.w, parent.h / length)
+        if count:
+            item.y = parent.y + parent.h - sum(($item.h for item in self._pack_modes[parent.instance_name]["bottom"][:count]))
+        else:
+            item.y = parent.y + parent.h - item.h
+        item.x = parent.x
                 
     def pack_right(self, parent, item, count, length):
         self.pack_horizontal(parent, item, count, length)
@@ -182,6 +176,15 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             self.text_entry(value)
         else:
             self._text = value
+        if value and self.scale_to_text:
+            w, h = objects[self.sdl_window].renderer._get_text_size(self.area, value)
+            w += 2
+       #     h += 2
+            self.w_range = (0, w)
+        #    self.h_range = (0, h)
+        #    self.size = (w, h)
+            self.w = w
+            
         self.texture_invalid = True
     text = property(_get_text, _set_text)
     
@@ -243,7 +246,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     verbosity = {"press" : "vv", "release" : "vv"}
     
     def __init__(self, **kwargs):
-        self._use_text_entry_callback = self._texture_invalid = False
+        self.scale_to_text = self._use_text_entry_callback = self._texture_invalid = False
+        #self.scale_to_text = True
         self.children, self.draw_queue, self._draw_operations = [], [], []
         self.pack_count = {}
         self._layer_index = 0        
@@ -251,8 +255,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self._glow_modifier = 20
         self.sdl_window = "->Python->SDL_Window"
         max_w, max_h = pride.gui.SCREEN_SIZE
-        self.w_range = self.x_range = (0, max_w)
-        self.h_range = self.y_range = (0, max_h)
+        self.x_range = (0, max_w)
+        self.y_range = (0, max_h) 
         self.z_range = (0, pride.gui.MAX_LAYER)   
         super(Window_Object, self).__init__(**kwargs)
         self.texture_window_x = self.texture_window_y = 0
@@ -370,10 +374,11 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self.texture.texture
         
     def draw_texture(self):
-        self.draw("fill", self.area, color=self.background_color)
-        self.draw("rect", self.area, color=self.color)
+        area = self.area
+        self.draw("fill", area, color=self.background_color)
+        self.draw("rect", area, color=self.color)
         if self.text:
-            self.draw("text", self.area, self.text, 
+            self.draw("text", area, self.text, 
                       bg_color=self.background_color, color=self.text_color)
         
     def pack(self, modifiers=None):
@@ -402,12 +407,12 @@ class Window(Window_Object):
     
 class Container(Window_Object):
 
-    defaults = {"pack_mode" : "vertical"}
+    defaults = {"pack_mode" : "top"}
 
 
 class Button(Window_Object):
 
-    defaults = {"shape" : "rect", "pack_mode" : "vertical"}
+    defaults = {"shape" : "rect", "pack_mode" : "top"}
 
 
 class Application(Window):

@@ -145,7 +145,13 @@ class Base(object):
     parent = property(_get_parent)
     
     verbosity = {"delete" : "vv", "initialized" : "vv"}
-                 
+            
+    # defaults have a pitfall that can be a problem in certain cases
+    # because dictionaries are unordered, the order in which defaults
+    # are assigned cannot be guaranteed. 
+    # flags are guaranteed to be assigned before defaults 
+    flags = {}
+    
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance
         
@@ -162,7 +168,8 @@ class Base(object):
             attributes.update(dict((key, value) for key, value in 
                                     command_line_args.items() if 
                                     value != defaults[key]))  
-                                    
+        if self.flags:
+            [setattr(self, attribute, value) for attribute, value in self.flags.items()]
         [setattr(self, attribute, value) for attribute, value in attributes.items()]
 
         if self.startup_components:

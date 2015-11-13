@@ -116,13 +116,30 @@ class Bounded_Shape(Shape):
        
     defaults = Shape.defaults.copy()
     
-    def __init__(self, **kwargs):       
+    def _get_w_range(self):
+        return self._w_range
+    def _set_w_range(self, value):
+        self._w_range = value
+        self.w = self._w
+    w_range = property(_get_w_range, _set_w_range)
+    
+    def _get_h_range(self):
+        return self._h_range
+    def _set_h_range(self, value):
+        self._h_range = value
+        self.h = self._h
+    h_range = property(_get_h_range, _set_h_range)
+    
+    def __init__(self, **kwargs):
         max_width, max_height = pride.gui.SCREEN_SIZE
-        self.w_range = (0, max_width)
-        self.h_range = (0, max_height)
+        self._w_range, self._h_range = (0, max_width), (0, max_height)
+        super(Bounded_Shape, self).__init__(**kwargs)
+        
+        #self.w_range = (0, max_width)
+        #self.h_range = (0, max_height)
         for color in self.colors:
             setattr(self, color + "_range", (0, 255))
-        super(Bounded_Shape, self).__init__(**kwargs)
+        #super(Bounded_Shape, self).__init__(**kwargs)
     
     def _on_set(self, coordinate, value):
         lower_bound, upper_bound = getattr(self, 

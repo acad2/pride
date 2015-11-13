@@ -62,7 +62,7 @@ class Save_Button(pride.gui.gui.Button):
 class Text_File(pride.gui.gui.Window):
             
     defaults = {"allow_text_edit" : True,
-                "pack_mode" : "vertical"}
+                "pack_mode" : "top"}
     
     
 class Text_Editor(pride.gui.gui.Application):

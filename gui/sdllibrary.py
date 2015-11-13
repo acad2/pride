@@ -482,7 +482,13 @@ class Renderer(SDL_Component):
                                   name in ("point", "line", "rect", "rect_width", "text"))
         self.instructions["fill"] = self.fill
         self.clear()
-        
+    
+    def _get_text_size(self, area, text, **kwargs):
+        x, y, w, h = area
+        kwargs.setdefault("width", w)
+        return self.sprite_factory.from_text(text, fontmanager=self.font_manager,
+                                             **kwargs).size
+                                             
     def draw_text(self, area, text, **kwargs):
         x, y, w, h = area
         kwargs.setdefault("width", w)

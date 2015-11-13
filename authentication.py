@@ -36,7 +36,7 @@ class Authenticated_Service(pride.base.Base):
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
-    verbosity = {"validate_success" : "vv", "validate_failure" : "vv",
+    verbosity = {"validate_success" : "vvv", "validate_failure" : "vv",
                  "register_attempt" : "vv", "register_success" : "vv",
                  "login_attempt" : "vv", "multiple_login" : "vv",
                  "login_success" : "vv", "login_unregistered" : "vv",

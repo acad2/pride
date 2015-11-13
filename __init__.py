@@ -215,12 +215,9 @@ class Alert_Handler(pride.base.Base):
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
 
-    defaults = pride.base.Base.defaults.copy()
-    defaults.update({"log_level" : '',
-                     "print_level" : '',
-                     "log_name" : "Alerts.log",
-                     "log_is_persistent" : False,
-                     "parse_args" : True})
+    defaults = {"log_level" : '', "print_level" : '',
+                "log_name" : "Alerts.log", "log_is_persistent" : False,
+                "parse_args" : True}
 
     parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
     parser_modifiers = {"exit_on_help" : False}

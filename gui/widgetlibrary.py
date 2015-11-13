@@ -74,6 +74,12 @@ class Popup_Button(gui.Button):
         
     defaults = {"popup_type" : '', "_popup" : None}
 
+    flags = {"scale_to_text" : True}
+    
+    def __init__(self, **kwargs):
+        
+        super(Popup_Button, self).__init__(**kwargs)
+        
     def left_click(self, mouse):
         if self._popup:
             self._popup.delete()
@@ -141,10 +147,10 @@ class Text_Box(gui.Container):
     def __init__(self, **kwargs):
         super(Text_Box, self).__init__(**kwargs)
         text_box_name = self.instance_name
-        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-        #            pack_mode="bottom")         
-        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-        #            pack_mode="right")
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
+                    pack_mode="bottom")         
+        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
+                    pack_mode="right")
                         
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
@@ -193,10 +199,10 @@ class Scroll_Bar(gui.Container):
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
         if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
-            self.w_range = (0, 10)
-            pack_mode = "vertical"
+            self.w_range = (0, 6)
+            pack_mode = "top"
         else:
-            self.h_range = (0, 20)
+            self.h_range = (0, 6)
             pack_mode = "horizontal"
         options = {"target" : self.target, "pack_mode" : pack_mode}
         self.create(Decrement_Button, **options)
