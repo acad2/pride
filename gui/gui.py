@@ -24,7 +24,7 @@ def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
     
 class Organizer(base.Base):
     
-    verbosity = {"packing" : 0}#'vvv'}
+    verbosity = {"packing" : 'vvv'}
     
     def __init__(self, **kwargs):
         super(Organizer, self).__init__(**kwargs)

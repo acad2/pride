@@ -1,3 +1,4 @@
+import time
 import collections
 import os
 
@@ -12,16 +13,18 @@ class File_Explorer(pride.gui.gui.Application):
         self.file_details = collections.defaultdict(lambda: [])        
         super(File_Explorer, self).__init__(**kwargs) 
         current_directory = self.current_working_directory
+        epoch_to_english = lambda _time: time.asctime(time.localtime(_time))
         for filename in os.listdir(current_directory):
             full_name = os.path.join(current_directory, filename)
             if os.path.isfile(full_name):
                 self.file_details["Name"].append(filename)
-                self.file_details["Type"].append(os.path.split(filename)[-1][1:]) # 1: removes the dot
+                self.file_details["Type"].append(os.path.splitext(filename)[-1] or filename)
                 self.file_details["Size"].append(os.path.getsize(full_name))
                 
                 file_information = os.stat(full_name)
-                self.file_details["Date_Created"].append(file_information.st_ctime)
-                self.file_details["Date_Modified"].append(file_information.st_mtime)
+                
+                self.file_details["Date_Created"].append(epoch_to_english(file_information.st_ctime))
+                self.file_details["Date_Modified"].append(epoch_to_english(file_information.st_mtime))
                 
         self.create(Navigation_Bar)
         self.create(Info_Bar, pack_mode="bottom")
@@ -111,18 +114,19 @@ class Column_Viewer(pride.gui.gui.Window):
         super(Column_Viewer, self).__init__(**kwargs)
         for column_name in self.default_columns:
             container = self.create("pride.gui.gui.Container", pack_mode="left")
-            container.create(Sort_Button, text=column_name)
+            container.create(Sort_Button, text=column_name, h_range=(20, 20))
             if column_name == "Name":
                 button_type = Filename_Button
             else:
                 button_type = "pride.gui.widgetlibrary.Text_Box"
                     
-          #  for file_detail in self.parent_application.file_details[column_name]:
-          #      container.create(button_type, text=str(file_detail), pack_mode="top")
+            for file_detail in self.parent_application.file_details[column_name]:
+                container.create(button_type, text=str(file_detail), pack_mode="top",
+                                 h_range=(20, 20))
             
             
 class Sort_Button(pride.gui.gui.Button):
-                
+        
     def left_click(self, mouse):
         self.parent.sorted_by = self.text
         
