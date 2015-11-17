@@ -13,6 +13,9 @@ SDL_Rect = sdl2.SDL_Rect
 
 R, G, B, A = 0, 80, 255, 30
 
+MAX_W, MAX_H = pride.gui.SCREEN_SIZE
+_OPPOSING_SIDE = {"left" : "right", "right" : "left", "top" : "bottom", "bottom" : "top"}
+
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
                    factory="->Python->SDL_Window->Renderer->SpriteFactory",
                    renderer="->Python->SDL_Window->Renderer"):
@@ -21,7 +24,7 @@ def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
     
 class Organizer(base.Base):
     
-    verbosity = {"packing" : 'vvv'}
+    verbosity = {"packing" : 0}#'vvv'}
     
     def __init__(self, **kwargs):
         super(Organizer, self).__init__(**kwargs)
@@ -49,7 +52,8 @@ class Organizer(base.Base):
             self._pack_modes[parent][value].append(instance)
         except KeyError:
             if parent not in self._pack_modes:
-                self._pack_modes[parent] = {value : [instance]}
+                self._pack_modes[parent] = dict((key, []) for key in ("top", "bottom", "left", "right", "main"))
+                self._pack_modes[parent][value] = [instance]
             else:
                 self._pack_modes[parent][value] = [instance]
         self._pack_index[instance] = self._pack_modes[parent][value].index(instance)
@@ -70,32 +74,81 @@ class Organizer(base.Base):
              len(self._pack_modes[parent.instance_name][pack_mode]))
         self.alert("Finished packing {}: {} {}", [item, item.area, item.z], 
                    level=self.verbosity["packing"])
+    
+    def pack_main(self, parent, item, count, length):
+        item.z = parent.z + 1
+        pack_modes = self._pack_modes[parent.instance_name]
+        sides = [[objects[name] for name in pack_modes[side]] for side in ("top", "bottom", "left", "right")]
+        top, bottom, left, right = sides
+        top_count, bottom_count, left_count, right_count = (len(item) for item in sides)
+        item_x, item_y, item_w, item_h = parent_x, parent_y, parent_w, parent_h = parent.area
+
+        try:
+            width_spacing = parent_w / (left_count + right_count)
+        except ZeroDivisionError:
+            width_spacing = parent_w
+        try:
+            height_spacing = parent_h / (top_count + bottom_count)
+        except ZeroDivisionError:
+            height_spacing = parent_h
         
-    def pack_horizontal(self, parent, item, count, length):
+        width_of = lambda side: sum(item.w or min(width_spacing, item.w_range[1]) for item in side)
+        height_of = lambda side: sum(item.h or min(height_spacing, item.h_range[1]) for item in side)
+
+        item.area = (item_x + width_of(left), item_y + height_of(top), 
+                     item_w - width_of(right), item_h - height_of(bottom))                         
+        
+    def pack_left(self, parent, item, count, length):
         item.z = parent.z + 1       
-        if count:
-            item.x = parent.x + sum(($item.w for item in self._pack_modes[parent.instance_name]["horizontal"][:count]))
+        pack_modes = self._pack_modes[parent.instance_name]
+        assert parent.w, item
+        space_per_object = parent.w / (length + len(pack_modes["right"]))
+        left_items = [objects[name] for name in pack_modes["left"][:count]]
+        if left_items:
+            required_space = lambda item: item.w or min(space_per_object, item.w_range[1])
+            left_total = sum(required_space(item) for item in left_items)
         else:
-            item.x = parent.x
-        item.y = parent.y
+            left_total = 0
         
+        item.position = parent.x + left_total, parent.y        
+               
         if count == length - 1:
-            item.size = (parent.w - item.x, parent.h)
+            item_w = parent.w - item.x
+            assert item_w, (parent.w, item.x)
+            if pack_modes["right"]:
+                right_items = [objects[name] for name in pack_modes["right"]]
+                required_space = lambda item: item.w or min(space_per_object, item.w_range[1])
+                item_w -= sum(required_space(item) for item in right_items)
+            item.size = (max(item_w, 0) or space_per_object, parent.h)    
+            assert item.w, (parent.w, item.x, (not pack_modes["right"] or sum(opposite_item.w or min(space_per_object, opposite_item.w_range[1]) for 
+                                                        opposite_item in right_items)), left_total, pack_modes["right"], item_w)
         else:
-            item.size = (parent.w / length, parent.h)             
+            item.size = (space_per_object, parent.h)             
    
     def pack_top(self, parent, item, count, length):
-        item.z = parent.z + 1        
+        item.z = parent.z + 1
+        assert parent.w
+        top_size = parent.h / length
         if count:
-            item.y = parent.y + sum(($item.h for item in self._pack_modes[parent.instance_name]["top"][:count]))
+            top_items = (objects[name] for name in self._pack_modes[parent.instance_name]["top"][:count])
+            
+            item.y = parent.y + sum(top_item.h or min(top_size, top_item.h_range[1]) for
+                                    top_item in top_items)
         else:
             item.y = parent.y
         item.x = parent.x
         
         if count == length - 1:
-            item.size = (parent.w, parent.h - item.y)
+            bottom_objects = [objects[name] for name in self._pack_modes[parent.instance_name]["bottom"]]
+            item_h = parent.h - item.y
+            if bottom_objects:
+                width_spacing = parent.h / len(bottom_objects)
+                item_h - sum(bottom_object.h or min(width_spacing, bottom_object.h_range[1]) for
+                             bottom_object in bottom_objects)
+            item.size = (parent.w, item_h)
         else:
-            item.size = (parent.w, parent.h / length)  
+            item.size = (parent.w, top_size)  
+        assert item.w, (item.size, item)
             
     def pack_grid(self, parent, item, count, length):
         grid_size = sqrt(length)
@@ -114,19 +167,43 @@ class Organizer(base.Base):
 
     def pack_bottom(self, parent, item, count, length):
         item.z = parent.z + 1       
-        item.size = (parent.w, parent.h / length)
+        assert parent.w
+        bottom_size = parent.h / length
+        item.size = (parent.w, bottom_size)
         if count:
-            item.y = parent.y + parent.h - sum(($item.h for item in self._pack_modes[parent.instance_name]["bottom"][:count]))
+            pack_modes = self._pack_modes[parent.instance_name]
+            bottom_objects = (objects[name] for name in pack_modes["bottom"][:count])            
+            item.y = parent.y + parent.h - sum(item.h or min(bottom_size, item.h_range[1]) for 
+                                               item in bottom_objects)
+            if count == length - 1:
+                top_objects = [objects[name] for name in pack_modes["top"]]
+                top_size = parent.h / len(top_objects)
+                item.h = parent.y - sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
         else:
-            item.y = parent.y + parent.h - item.h
+            item.y = parent.y + parent.h - item.h         
         item.x = parent.x
                 
-    def pack_right(self, parent, item, count, length):
-        self.pack_horizontal(parent, item, count, length)
-        item.x = parent.x + parent.w - item.w
-
-    def pack_left(self, parent, item, count, length):
-        self.pack_vertical(parent, item, count, length)
+    def pack_right(self, parent, item, count, length):  
+        assert parent.w
+        left_objects = [objects[name] for name in self._pack_modes[parent.instance_name]["left"]]
+        if left_objects:
+            left_unit = parent.w / len(left_objects)
+            required_space = lambda item: item.w or min(left_unit, item.w_range[1])
+            left_size = sum(required_space(item) for item in left_objects)        
+            if count == length - 1:                
+                item.size = (parent.w - left_size, parent.h)
+        #      print "Set item size: ", item, item.size, parent.w
+                assert item.w, (item, item.size, parent.w / length, parent.h, sum(($item._pack_width for item in self._pack_modes[parent.instance_name]["left"])))
+        else:
+            item.size = (parent.w / length, parent.h)
+            left_size = 0
+            
+        right_objects = (objects[name] for name in self._pack_modes[parent.instance_name]["right"][:count + 1])
+        right_unit = (parent.w - left_size) / length
+        required_space = lambda item: item.w or min(right_unit, item.w_range[1])
+        item.x = parent.x + parent.w - sum(required_space(item) for item in right_objects)        
+        item.y = parent.y
+        item.z = parent.z + 1
                 
     def pack_drop_down_menu(self, parent, item, count, length): 
         SCREEN_SIZE = pride.gui.SCREEN_SIZE
@@ -138,15 +215,20 @@ class Organizer(base.Base):
         
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
-    defaults = {'x' : 0, 'y' : 0, 'z' : 0,
-                'size' : pride.gui.SCREEN_SIZE,
+    defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
                 "texture_size" : pride.gui.SCREEN_SIZE,
                 "background_color" : (25, 125, 225, 125),
                 "color" : (25, 235, 235, 255), "text_color" : (145, 165, 235),
                 "held" : False, "allow_text_edit" : False,
                 "_ignore_click" : False, "hidden" : False, "movable" : True, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
-                "sdl_window" : "->Python->SDL_Window"}
+                "sdl_window" : "->Python->SDL_Window"}    
+        
+    flags = {"x_range" : (0, MAX_W), "y_range" : (0, MAX_H), "z_range" : (0, pride.gui.MAX_LAYER),
+             "scale_to_text" : False, "_use_text_entry_callback" : False, "_texture_invalid" : False,
+             "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
+             "sdl_window" : "->Python->SDL_Window"}
+             
     Hotkeys = {}
     
     def _get_texture_invalid(self):
@@ -233,63 +315,36 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 result = instance
             else:
                 try:
+                    print "Getting parent of: ", instance
                     instance = instance.parent
                 except AttributeError:
+                    print "Attribute Error encountered!"
                     raise ValueError("Unable to find parent application of {}".format(self))
         return result
     parent_application = property(_get_parent_application)
-     
-    verbosity = {"press" : "vv", "release" : "vv"}
     
-    def __init__(self, **kwargs):
-        self.scale_to_text = self._use_text_entry_callback = self._texture_invalid = False
-        #self.scale_to_text = True
-        self.children, self.draw_queue, self._draw_operations = [], [], []
-        self.pack_count = {}
-        self._layer_index = 0        
-        self._texture_window_x = self._texture_window_y = 0
-        self._glow_modifier = 20
-        self.sdl_window = "->Python->SDL_Window"
-        max_w, max_h = pride.gui.SCREEN_SIZE
-        self.x_range = (0, max_w)
-        self.y_range = (0, max_h) 
-        self.z_range = (0, pride.gui.MAX_LAYER)   
-        super(Window_Object, self).__init__(**kwargs)
+    verbosity = {"press" : "vv", "release" : "vv"}    
+    
+    def __init__(self, **kwargs):       
+        self.children, self.draw_queue, self._draw_operations = [], [], []       
+        self.pack_count = {}        
+        super(Window_Object, self).__init__(**kwargs)        
         self.texture_window_x = self.texture_window_y = 0
-        self.available_size = self.size
         self.texture = create_texture(self.texture_size)
         self.texture_invalid = True
-        
-    #    self.glow_instruction = Instruction(self.instance_name, "glow")
-    #    self.glow_instruction.execute(.16)
-    #    
-    #def glow(self):
-    #    #color = self.color
-    #    #r, g, b = colors = (color.r, color.g, color.b)
-    #    #max_color = max(colors)
-    #    #glow = self._glow_modifier = (-20 if max_color == 255 else
-    #    #                              20 if max_color == 0 else self._glow_modifier)
-    #    #self.color = (r + glow, g + glow, b + glow, color.a)
-    #  #  print "set color to", glow, self.color
-    #    color = self.color
-    #    a = color.a
-    #    glow = self._glow_modifier = -20 if a == 255 else 20 if a == 0 else self._glow_modifier
-    #    self.color = (color.r, color.g, color.b, a + glow)
-    #    
-    #  #  bg_color = self.background_color
-    #  #  self.background_color = (bg_color.r, bg_color.g, bg_color.b, bg_color.a + glow)
-    #    self.glow_instruction.execute(.16)
         
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
         return super(Window_Object, self).create(*args, **kwargs)
                 
     def add(self, instance):
-        self.children.append(instance)
+        if hasattr(instance, "pack"):
+            self.children.append(instance)
         super(Window_Object, self).add(instance)
 
     def remove(self, instance):
-        self.children.remove(instance)
+        if instance in self.children:
+            self.children.remove(instance)            
         super(Window_Object, self).remove(instance)
         
     def press(self, mouse):
@@ -383,11 +438,9 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
         
-        size = self.available_size = self.size
         for item in self.children:
             item.pack()
-            size = self.available_size = size[0] - item.x, size[1] - item.y
-            
+                    
     def delete(self):
         self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()
@@ -398,7 +451,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         
 class Window(Window_Object):
 
-    defaults = {"pack_mode" : "z"}
+    defaults = {"pack_mode" : "z", "size" : pride.gui.SCREEN_SIZE}
 
     
 class Container(Window_Object):

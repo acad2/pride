@@ -93,7 +93,7 @@ class File_Menu(pride.gui.gui.Container):
         
 class File_Button(pride.gui.gui.Button):
     
-    defaults = {"text" : "File", "pack_mode" : "horizontal", 
+    defaults = {"text" : "File", "pack_mode" : "left", 
                 "_file_menu" : None}
     
     verbosity = {"file_menu_create" : 'vv', "file_menu_delete" : 'vv'}

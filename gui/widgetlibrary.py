@@ -94,7 +94,7 @@ class Task_Bar(gui.Container):
     
     def _set_pack_mode(self, value):
         super(Task_Bar, self)._set_pack_mode(value)
-        if self.pack_mode in ("right", "left", "horizontal"):
+        if self.pack_mode in ("right", "left", "left"):
             self._backup_w_range = self.w_range
             self.w_range = self.bound
             self.h_range = self._backup_h_range
@@ -120,7 +120,7 @@ class Task_Bar(gui.Container):
         
 class Text_Box(gui.Container):
     
-    defaults = {"h" : 16, "pack_mode" : "horizontal",
+    defaults = {"h" : 16, "pack_mode" : "left",
                 "allow_text_edit" : True,  "editing" : False}
     
     def _get_editing(self):
@@ -138,10 +138,10 @@ class Text_Box(gui.Container):
     def __init__(self, **kwargs):
         super(Text_Box, self).__init__(**kwargs)
         text_box_name = self.instance_name
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-                    pack_mode="bottom")         
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-                    pack_mode="right")
+        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
+        #            pack_mode="bottom")         
+        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
+        #            pack_mode="right")
                         
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
@@ -158,7 +158,7 @@ class Text_Box(gui.Container):
                 
 class Date_Time_Button(gui.Button):
 
-    defaults = {"pack_mode" : "horizontal"}
+    defaults = {"pack_mode" : "left"}
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
@@ -174,8 +174,8 @@ class Color_Palette(gui.Window):
             
     def __init__(self, **kwargs):
         super(Color_Palette, self).__init__(**kwargs)
-        color_button = self.create("pride.gui.gui.Button", pack_mode="horizontal")
-        slider_container = self.create("pride.gui.gui.Container", pack_mode="horizontal")
+        color_button = self.create("pride.gui.gui.Button", pack_mode="left")
+        slider_container = self.create("pride.gui.gui.Container", pack_mode="left")
         
         button_name = color_button.instance_name
         for color in ('r', 'g', 'b'):
@@ -189,12 +189,12 @@ class Scroll_Bar(gui.Container):
     
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
-        if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
+        if self.pack_mode in ("right", "left"): # horizontal packs on the left side
             self.w_range = (0, 6)
             pack_mode = "top"
         else:
             self.h_range = (0, 6)
-            pack_mode = "horizontal"
+            pack_mode = "left"
         options = {"target" : self.target, "pack_mode" : pack_mode}
         self.create(Decrement_Button, **options)
      #   self.create(Scroll_Indicator, **options)
@@ -219,7 +219,7 @@ class Scroll_Indicator(gui.Button):
                 "text" : ''}
                 
     def pack(self, modifiers=None):
-        if self.pack_mode in ("right", "horizontal"):
+        if self.pack_mode in ("right", "left"):
             width = int(self.parent.w * .8)
             self.w_range = (width, width)
         else:
@@ -235,7 +235,7 @@ class Scroll_Indicator(gui.Button):
         
 class Indicator(gui.Button):  
     
-    defaults = {"pack_mode" : "horizontal",
+    defaults = {"pack_mode" : "left",
                 "h" : 16,
                 "line_color" : (255, 235, 155),
                 "text" : ''}

@@ -94,7 +94,7 @@ class Environment(object):
     def register(self, instance):
         """ Registers an instance_name reference with the supplied instance. """
         instance_type = instance.__class__.__name__
-        if not self.last_creator:
+        if not self.last_creator: # instance was not create'd
             try:
                 count = self.instance_count[instance_type]
             except KeyError:

@@ -4,21 +4,21 @@ import pride.gui.widgetlibrary
 class File_Button(pride.gui.widgetlibrary.Popup_Button):
     
     defaults = {"_popup_type" : "pride.gui.text_editor.File_Menu",
-                "text" : "File", "pack_mode" : "horizontal"}
+                "text" : "File", "pack_mode" : "left"}
             
 
 class Edit_Button(pride.gui.gui.Button):
                 
     defaults = pride.gui.gui.Button.defaults.copy()
     defaults.update({"text" : "Edit",
-                     "pack_mode" : "horizontal"})
+                     "pack_mode" : "left"})
     
  
 class Options_Button(pride.gui.gui.Button):
     
     defaults = pride.gui.gui.Button.defaults.copy()
     defaults.update({"text" : "options",
-                     "pack_mode" : "horizontal"})
+                     "pack_mode" : "left"})
     
     
 class File_Menu(pride.gui.gui.Container):

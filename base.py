@@ -141,6 +141,7 @@ class Base(object):
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
+        assert self.parent_name != self.instance_name
         return objects[self.parent_name]
     parent = property(_get_parent)
     
@@ -153,9 +154,11 @@ class Base(object):
     flags = {}
     
     def __init__(self, **kwargs):
-        super(Base, self).__init__() # facilitates complicated inheritance
+        super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
         
         pride.environment.register(self) # acquire instance_name
+        pride.environment.parents[self] = pride.environment.last_creator
+        
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
