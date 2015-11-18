@@ -10,43 +10,35 @@ import sdl2
 
 class Attribute_Modifier_Button(gui.Button):
 
-    defaults = {"amount" : 0,
-                "method" : "",
-                "target" : None}
+    defaults = {"amount" : 0, "operation" : "",  "target" : None}
                      
     def left_click(self, mouse):        
         instance_name, attribute = self.target
         instance = pride.objects[instance_name]        
         old_value = getattr(instance, attribute)
-        new_value = getattr(old_value, self.method)(self.amount)
+        new_value = getattr(old_value, self.operation)(self.amount)
         setattr(instance, attribute, new_value)
         self.alert("Modified {}.{}; {}.{}({}) = {}",
                    (instance_name, attribute, old_value, 
-                    self.method, self.amount, getattr(instance, attribute)),
+                    self.operation, self.amount, getattr(instance, attribute)),
                    level='vv')  
                     
  
 class Instruction_Button(gui.Button):
     
-    defaults = {"args" : tuple(),
-                "kwargs" : None,
-                "method" : '',
-                "instance_name" : '',
-                "priority" : 0.0,
-                "host_info" : tuple(),
-                "callback" : None}
+    defaults = {"args" : tuple(), "kwargs" : None, "method" : '',
+                "instance_name" : '', "priority" : 0.0, "callback" : None}
                      
     def left_click(self, mouse):
         Instruction(self.instance_name, self.method, 
                     *self.args, **self.kwargs or {}).execute(priority=self.priority, 
-                                                             host_info=self.host_info,
                                                              callback=self.callback)
                                              
     
 class Method_Button(gui.Button):
         
     defaults = {"args" : tuple(), "kwargs" : None, "method" : '', "target" : ''}
-    flags = {"scale_to_text" : True}
+    flags = {"scale_to_text" : True}.items()
     
     def left_click(self, mouse):
         try:
@@ -59,7 +51,7 @@ class Method_Button(gui.Button):
 class Delete_Button(Method_Button):
     
     defaults = {"pack_mode" : "right", "text" : "x", "method" : "delete"}
-    flags = {"scale_to_text" : True}
+    flags = {"scale_to_text" : True}.items()
     
         
 class Exit_Button(Delete_Button):
@@ -134,15 +126,7 @@ class Text_Box(gui.Container):
             self.alert("Disabling text input", level='vv')
             sdl2.SDL_StopTextInput()
     editing = property(_get_editing, _set_editing) 
-    
-    def __init__(self, **kwargs):
-        super(Text_Box, self).__init__(**kwargs)
-        text_box_name = self.instance_name
-        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-        #            pack_mode="bottom")         
-        #self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-        #            pack_mode="right")
-                        
+         
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
         self.editing = not self.editing
@@ -189,34 +173,33 @@ class Scroll_Bar(gui.Container):
     
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
+        _target = self.target
         if self.pack_mode in ("right", "left"): # horizontal packs on the left side
-            self.w_range = (0, 6)
+            self.w_range = (0, 8)  
             pack_mode = "top"
+            #crement_pack_mode = "bottom"
         else:
-            self.h_range = (0, 6)
+            self.h_range = (0, 8)
             pack_mode = "left"
-        options = {"target" : self.target, "pack_mode" : pack_mode}
-        self.create(Decrement_Button, **options)
-     #   self.create(Scroll_Indicator, **options)
-        self.create(Increment_Button, **options)
+            #increment_pack_mode = "right"
+        self.create(Decrement_Button, target=_target, pack_mode=pack_mode)
+     #   self.create(Sc+roll_Indicator, **options)
+        self.create(Increment_Button, target=_target, pack_mode=pack_mode)
         
         
 class Decrement_Button(Attribute_Modifier_Button):
       
-    defaults = {"amount" : 10,
-                "method" : "__sub__"}
+    defaults = {"amount" : 10, "operation" : "__sub__", "h_range" : (0, 8), "w_range" : (0, 8)}
         
         
 class Increment_Button(Attribute_Modifier_Button):
                 
-    defaults = {"amount" : 10,
-                "method" : "__add__"}
+    defaults = {"amount" : 10, "operation" : "__add__", "h_range" : (0, 8), "w_range" : (0, 8)}
                     
                     
 class Scroll_Indicator(gui.Button):
             
-    defaults = {"movable" : True,
-                "text" : ''}
+    defaults = {"movable" : True, "text" : ''}
                 
     def pack(self, modifiers=None):
         if self.pack_mode in ("right", "left"):
@@ -242,7 +225,7 @@ class Indicator(gui.Button):
     
     def __init__(self, **kwargs):
         super(Indicator, self).__init__(**kwargs)        
-        text = self.text = self.text or self.parent_name
+        self.text = self.text or self.parent_name
         
     def draw_texture(self):
         super(Indicator, self).draw_texture()

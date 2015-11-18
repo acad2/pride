@@ -106,12 +106,14 @@ class Base(object):
     __metaclass__ = pride.metaclass.Metaclass
                 
     # the default attributes new instances will initialize with
-    # mutable datatypes (i.e. lists) should not be used inside the
-    # defaults dictionary and should be set inside the call to __init__   
+    # mutable datatypes (i.e. lists) should be set via
+    # the mutable_defaults attribute or inside __init__
     defaults = {"_deleted" : False, "dont_save" : False,
                 "replace_reference_on_load" : True,
                 "startup_components" : tuple()}   
-                
+        
+    mutable_defaults = {} # {attribute : type}, i.e {'defaults' : dict}
+    
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
     # class defaults dictionary. Specific attributes can be modified
@@ -150,8 +152,8 @@ class Base(object):
     # defaults have a pitfall that can be a problem in certain cases
     # because dictionaries are unordered, the order in which defaults
     # are assigned cannot be guaranteed. 
-    # flags are guaranteed to be assigned before defaults 
-    flags = {}
+    # flags are guaranteed to be assigned before defaults, in order
+    flags = {}.items() 
     
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
@@ -172,7 +174,9 @@ class Base(object):
                                     command_line_args.items() if 
                                     value != defaults[key]))  
         if self.flags:
-            [setattr(self, attribute, value) for attribute, value in self.flags.items()]
+            [setattr(self, attribute, value) for attribute, value in self.flags]
+        if self.mutable_defaults:
+            [setattr(self, attribute, value()) for attribute, value in self.mutable_defaults.items()]            
         [setattr(self, attribute, value) for attribute, value in attributes.items()]
 
         if self.startup_components:

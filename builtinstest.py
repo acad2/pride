@@ -1,0 +1,1 @@
+print type(__builtins__)

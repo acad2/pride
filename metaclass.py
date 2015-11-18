@@ -316,7 +316,8 @@ class Inherited_Attributes(type):
 class Defaults(Inherited_Attributes):
 
     inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
-                            "parser_ignore" : tuple, "flags" : dict}
+                            "parser_ignore" : tuple, "flags" : list,
+                            "mutable_default" : dict}
 
     
 class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):

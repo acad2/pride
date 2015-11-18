@@ -229,8 +229,11 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     flags = {"x_range" : (0, MAX_W), "y_range" : (0, MAX_H), "z_range" : (0, pride.gui.MAX_LAYER),
              "scale_to_text" : False, "_use_text_entry_callback" : False, "_texture_invalid" : False,
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
-             "sdl_window" : "->Python->SDL_Window"}
-             
+             "sdl_window" : "->Python->SDL_Window"}.items()
+    
+    mutable_defaults = {"children" : list, "draw_queue" : list, "_draw_operations" : list,
+                        "pack_count" : dict}
+         
     Hotkeys = {}
     
     def _get_texture_invalid(self):
@@ -327,9 +330,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     
     verbosity = {"press" : "vv", "release" : "vv"}    
     
-    def __init__(self, **kwargs):       
-        self.children, self.draw_queue, self._draw_operations = [], [], []       
-        self.pack_count = {}        
+    def __init__(self, **kwargs):               
         super(Window_Object, self).__init__(**kwargs)        
         self.texture_window_x = self.texture_window_y = 0
         self.texture = create_texture(self.texture_size)

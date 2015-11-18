@@ -33,20 +33,13 @@ def main_as_name():
 class Shell(authentication.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
-    defaults = {"username" : "",
-                "password" : "",
-                "prompt" : ">>> ",
-                "startup_definitions" : '',
-                "target_service" : "->Python->Interpreter"}
+    defaults = {"username" : "", "password" : "", "prompt" : ">>> ",
+                "startup_definitions" : '', "target_service" : "->Python->Interpreter",
+                "lines" : '', "user_is_entering_definition" : False}
     
-    parser_ignore = ("prompt", )
+    parser_ignore = ("prompt", "lines", "user_is_entering_definition")
     
     verbosity = {"logging_in" : ''}
-    
-    def __init__(self, **kwargs):
-        super(Shell, self).__init__(**kwargs)
-        self.lines = ''
-        self.user_is_entering_definition = False     
                 
     def on_login(self, message):
         self.alert("{}", [message], level='')
@@ -122,12 +115,12 @@ class Interpreter(authentication.Authenticated_Service):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     
-    defaults = {"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+    defaults = {"help_string" : 'Type "help", "copyright", "credits" or "license" for more information.',
                 "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"}
     
+    mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
+    
     def __init__(self, **kwargs):
-        self.user_namespaces = {}
-        self.user_session = {}
         super(Interpreter, self).__init__(**kwargs)
         filename = '_'.join(word for word in self.instance_name.split("->") if word)
         self.log = self.create("fileio.File", 
@@ -143,7 +136,7 @@ class Interpreter(authentication.Authenticated_Service):
            #                                   "Instruction" : Instruction}
             self.user_session[username] = ''
             string_info = (username, sender, sys.version, sys.platform, 
-                           self.copyright)    
+                           self.help_string)    
             response = (self.login_message.format(*string_info), response[1])
         return response
 
@@ -205,6 +198,22 @@ class Interpreter(authentication.Authenticated_Service):
         instruction.execute(priority=priority, callback=callback)
         
         
+class Finalizer(base.Base):
+    
+    mutable_defaults = {"_callbacks" : list}
+        
+    def run(self):
+        for callback, args, kwargs in self._callbacks:
+            callback(*args, **kwargs)
+        self._callbacks = []    
+        
+    def add_callback(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+        
+    def remove_callback(self, callback, *args, **kwargs):
+        self._callbacks.remove((callback, args, kwargs))
+        
+        
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
@@ -221,7 +230,8 @@ class Python(base.Base):
                                         "pride.shell.Command_Line",
                                         "pride.srp.Secure_Remote_Password",
                                         "pride.interpreter.Interpreter",
-                                        "pride.rpc.Rpc_Server"),
+                                        "pride.rpc.Rpc_Server",
+                                        "pride.interpreter.Finalizer"),
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
@@ -273,9 +283,9 @@ class Python(base.Base):
         processor.running = True
         processor.run()
         self.alert("Graceful shutdown initiated", level='v')
+        self.exit()
         
     def exit(self, exit_code=0):
-        pride.objects[self.processor].running = False
-        # cleanup/finalizers go here?
-        sys.exit(exit_code)
+        pride.objects[self.finalizer].run()
+        sys.exit()
         

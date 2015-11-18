@@ -60,7 +60,7 @@ class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
         
     defaults = {"popup_type" : "pride.gui.fileexplorer.Directory_History",
                 "pack_mode" : "left", "text" : "history"}
-    flags = {"scale_to_text" : True}
+    flags = {"scale_to_text" : True}.items()
     
 
 class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
@@ -70,12 +70,12 @@ class Ascend_Button(pride.gui.widgetlibrary.Method_Button):
     
 class Search_Bar(pride.gui.widgetlibrary.Prompt): 
 
-    defaults = {"pack_mode" : "left"}        
+    defaults = {"pack_mode" : "left", "scroll_bar_enabled" : True}        
     
         
 class Places_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "left"}
+    defaults = {"pack_mode" : "left", "w_range" : (0, 200)}
     
     def __init__(self, **kwargs):
         super(Places_Bar, self).__init__(**kwargs)
@@ -101,20 +101,21 @@ class Directory_Viewer(pride.gui.gui.Window):
     def __init__(self, **kwargs):
         super(Directory_Viewer, self).__init__(**kwargs)
         self.create(Places_Bar)
-        self.create(Column_Viewer)
-    
+        viewer = self.create(Column_Viewer)
+        self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
+                    target=(viewer.instance_name, "texture_window_y"))
+        
     
 class Column_Viewer(pride.gui.gui.Window):
         
     defaults = {"default_columns" : ("Type", "Name", "Size", 
                                      "Date_Created", "Date_Modified"),
-                "pack_mode" : "right", "sorted_by" : "Type"}
+                "pack_mode" : "left", "sorted_by" : "Type"}
                 
     def __init__(self, **kwargs):
         super(Column_Viewer, self).__init__(**kwargs)
         for column_name in self.default_columns:
-            container = self.create("pride.gui.gui.Container", pack_mode="left",
-                                    scroll_bars_enabled=True)
+            container = self.create("pride.gui.gui.Container", pack_mode="left",)
             container.create(Sort_Button, text=column_name, h_range=(20, 20))
             if column_name == "Name":
                 button_type = Filename_Button

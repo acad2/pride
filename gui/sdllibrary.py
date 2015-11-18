@@ -34,6 +34,10 @@ class SDL_Window(SDL_Component):
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
     
+    mutable_defaults = {"children" : list}
+    
+    flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}.items()
+    
     def _get_size(self):
         return (self.w, self.h)
     def _set_size(self, size):
@@ -41,13 +45,10 @@ class SDL_Window(SDL_Component):
     size = property(_get_size, _set_size)
     
     def __init__(self, **kwargs):
-        self.max_layer, self.invalid_layer = 1, 0
-        self.children = []
         self.layers = collections.OrderedDict((x, (None, [])) for 
                                                x in xrange(100))
         self.latency = utilities.Latency(name="framerate")
-        self.running = False
-        
+                
         super(SDL_Window, self).__init__(**kwargs)
         window = sdl2.ext.Window(self.name, size=self.size, 
                                  flags=self.window_flags)
@@ -252,20 +253,15 @@ class Window_Handler(pride.base.Base):
         
 class SDL_User_Input(vmlibrary.Process):
 
-    defaults = {"event_verbosity" : 0,
-                "_ignore_click" : False,
-                "active_item" : None}
-    
+    defaults = {"event_verbosity" : 0, "_ignore_click" : False, "active_item" : None}
+    mutable_defaults = {"coordinate_tracker" : dict, "_coordinate_tracker" : collections.OrderedDict}
+                        
     def _get_active_item(self):
         return self._active_item
     def _set_active_item(self, value):
         self._active_item = value
         
     def __init__(self, **kwargs):
-        self.coordinate_tracker = {}
-        self._coordinate_tracker = collections.OrderedDict()
-        self.popups = []
-        self._stringio = StringIO.StringIO()
         super(SDL_User_Input, self).__init__(**kwargs)
         self.uppercase_modifiers = (sdl2.KMOD_SHIFT, sdl2.KMOD_CAPS,
                                     sdl2.KMOD_LSHIFT, sdl2.KMOD_RSHIFT)

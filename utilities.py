@@ -90,8 +90,8 @@ def resolve_string(module_name):
         for attribute in reversed(attributes):
             result = getattr(result, attribute)
     except AttributeError:
-        error_message = "resolve_string unable to load {} from {}"
-        print error_message.format(attribute, _original)
+        error_message = "unable to load {} from {}; failed to resolve string '{}'"
+        print error_message.format(attribute, result, _original)
         raise
         #error_message = '\n'.join((error_message, traceback.format_exc()))
         #raise AttributeError(error_message)
