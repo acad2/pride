@@ -217,12 +217,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
                 "texture_size" : pride.gui.SCREEN_SIZE,
-                "background_color" : (25, 125, 225, 125),
-                "color" : (25, 235, 235, 255), "text_color" : (145, 165, 235),
+                "background_color" : (0, 0, 0, 0), #(25, 125, 225, 125),
+                "color" : (15, 165, 25, 255), "text_color" : (15, 165, 25),
                 "held" : False, "allow_text_edit" : False,
                 "_ignore_click" : False, "hidden" : False, "movable" : True, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
-                "sdl_window" : "->Python->SDL_Window"}    
+                "sdl_window" : "->Python->SDL_Window",
+                "scroll_bars_enabled" : False, "_scroll_bar_h" : None,
+                "_scroll_bar_w" : None}    
         
     flags = {"x_range" : (0, MAX_W), "y_range" : (0, MAX_H), "z_range" : (0, pride.gui.MAX_LAYER),
              "scale_to_text" : False, "_use_text_entry_callback" : False, "_texture_invalid" : False,
@@ -433,14 +435,40 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                       bg_color=self.background_color, color=self.text_color)
         
     def pack(self, modifiers=None):
-        objects[self.sdl_window + "->Organizer"].pack(self)
+        organizer = objects[self.sdl_window + "->Organizer"]
+        organizer.pack(self)
         if modifiers:
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
         
         for item in self.children:
             item.pack()
-                    
+        
+        if self.scroll_bars_enabled:
+            pack_modes = organizer._pack_modes[self.instance_name]
+            excess_height = sum((objects[name].h for name in pack_modes["top"] + pack_modes["bottom"])) > self.h
+            excess_width = sum((objects[name].w for name in pack_modes["right"] + pack_modes["left"])) > self.w
+            if not self._scroll_bar_h:
+                if excess_height:
+                    bar = self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
+                                      target=(self.instance_name, "texture_window_y"))
+                    self._scroll_bar_h = bar.instance_name
+                    bar.pack()
+            elif not excess_height:
+                objects[self._scroll_bar_h].delete()
+                self._scroll_bar_h = None
+                
+            if not self._scroll_bar_w:
+                if excess_width:
+                    bar = self.create("pride.gui.widgetlibrary.Scroll_Bar",
+                                      pack_mode="bottom", target=(self.instance_name,
+                                                                  "texture_window_x"))
+                    self._scroll_bar_w = bar.instance_name
+                    bar.pack()
+            elif not excess_width:
+                objects[self._scroll_bar_w].delete()
+                self._scroll_bar_w = None
+                
     def delete(self):
         self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()

@@ -108,8 +108,8 @@ class Task_Bar(gui.Container):
     pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
     
     def __init__(self, **kwargs):  
-        parent_name = self.parent_name
         super(Task_Bar, self).__init__(**kwargs)        
+        parent_name = self.parent_name
         self.create(Indicator, text=parent_name)
         self.create(Delete_Button, target=parent_name)
              
