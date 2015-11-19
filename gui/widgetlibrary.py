@@ -11,7 +11,9 @@ import sdl2
 class Attribute_Modifier_Button(gui.Button):
 
     defaults = {"amount" : 0, "operation" : "",  "target" : None}
-                     
+                
+    verbosity = {"left_click" : 0}
+    
     def left_click(self, mouse):        
         instance_name, attribute = self.target
         instance = pride.objects[instance_name]        
@@ -21,7 +23,7 @@ class Attribute_Modifier_Button(gui.Button):
         self.alert("Modified {}.{}; {}.{}({}) = {}",
                    (instance_name, attribute, old_value, 
                     self.operation, self.amount, getattr(instance, attribute)),
-                   level='vv')  
+                   level=self.verbosity["left_click"])  
                     
  
 class Instruction_Button(gui.Button):
@@ -61,7 +63,7 @@ class Exit_Button(Delete_Button):
 
 class Popup_Button(gui.Button):
         
-    defaults = {"popup_type" : '', "_popup" : None}
+    defaults = {"popup_type" : '', "_popup" : None}    
         
     def left_click(self, mouse):
         if self._popup:
@@ -247,7 +249,6 @@ class Prompt(Text_Box):
     
     def __init__(self, **kwargs):
         super(Prompt, self).__init__(**kwargs)
-        self._use_text_entry_callback = True
         if self.use_done_button:
             self.create("pride.gui.widgetlibrary.Done_Button", 
                         callback=self._done_callback)

@@ -18,6 +18,7 @@ branch removal based on arguments. based on whatever arguments are provided
 to the call, create new source with branches based on the condition removed.
     
 known bugs:
+    fix z layer issue with multiple objects on the same space
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     usage of startup_components and accessing parent_name in __init__ after super will return self as parent

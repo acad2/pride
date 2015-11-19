@@ -204,7 +204,13 @@ class Finalizer(base.Base):
         
     def run(self):
         for callback, args, kwargs in self._callbacks:
-            callback(*args, **kwargs)
+            instance_name, method = callback
+            try:
+                getattr(objects[instance_name], method)(*args, **kwargs)
+            except KeyError:
+                if instance_name in objects:
+                    raise
+                
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):

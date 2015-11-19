@@ -9,11 +9,8 @@ import pickle
 
 import pride
 import pride.base
-import pride.network
 import pride.networkssl
 import pride.authentication
-import pride.persistence
-import pride.decorators
 objects = pride.objects
 
 default_serializer = pickle

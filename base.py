@@ -147,7 +147,7 @@ class Base(object):
         return objects[self.parent_name]
     parent = property(_get_parent)
     
-    verbosity = {"delete" : "vv", "initialized" : "vv"}
+    verbosity = {"delete" : 'vv', "initialized" : "vv"}
             
     # defaults have a pitfall that can be a problem in certain cases
     # because dictionaries are unordered, the order in which defaults

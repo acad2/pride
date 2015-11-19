@@ -7,7 +7,7 @@ import pride.gui.gui
 
 class File_Explorer(pride.gui.gui.Application):
     
-    defaults = {"current_working_directory" : '.'}
+    defaults = {"current_working_directory" : '.', "filetype_filter" : ''}
                                      
     def __init__(self, **kwargs):
         self.file_details = collections.defaultdict(lambda: [])        
@@ -16,9 +16,11 @@ class File_Explorer(pride.gui.gui.Application):
         epoch_to_english = lambda _time: time.asctime(time.localtime(_time))
         for filename in os.listdir(current_directory):
             full_name = os.path.join(current_directory, filename)
-            if os.path.isfile(full_name):
+            file_type = os.path.splitext(filename)[-1] or filename
+            if ((file_type == self.filetype_filter and self.filetype_filter) or
+                os.path.isfile(full_name)):
                 self.file_details["Name"].append(filename)
-                self.file_details["Type"].append(os.path.splitext(filename)[-1] or filename)
+                self.file_details["Type"].append(file_type)
                 self.file_details["Size"].append(os.path.getsize(full_name))
                 
                 file_information = os.stat(full_name)
@@ -28,6 +30,7 @@ class File_Explorer(pride.gui.gui.Application):
                 
         self.create(Navigation_Bar)
         self.create(Info_Bar, pack_mode="bottom")
+        self.create(File_Open_Prompt)
         self.create(Directory_Viewer)        
         
 
@@ -102,9 +105,9 @@ class Directory_Viewer(pride.gui.gui.Window):
         super(Directory_Viewer, self).__init__(**kwargs)
         self.create(Places_Bar)
         viewer = self.create(Column_Viewer)
-        self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
-                    target=(viewer.instance_name, "texture_window_y"))
-        
+    #    self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
+    #                target=(viewer.instance_name, "texture_window_y"))
+                
     
 class Column_Viewer(pride.gui.gui.Window):
         
@@ -115,7 +118,7 @@ class Column_Viewer(pride.gui.gui.Window):
     def __init__(self, **kwargs):
         super(Column_Viewer, self).__init__(**kwargs)
         for column_name in self.default_columns:
-            container = self.create("pride.gui.gui.Container", pack_mode="left",)
+            container = self.create("pride.gui.gui.Container", pack_mode="left", scroll_bars_enabled=True)
             container.create(Sort_Button, text=column_name, h_range=(20, 20))
             if column_name == "Name":
                 button_type = Filename_Button
@@ -126,7 +129,7 @@ class Column_Viewer(pride.gui.gui.Window):
                 container.create(button_type, text=str(file_detail), pack_mode="top",
                                  h_range=(20, 20))
             
-            
+        
 class Sort_Button(pride.gui.gui.Button):
         
     def left_click(self, mouse):
@@ -140,3 +143,19 @@ class Filename_Button(pride.gui.gui.Button):
             self.selected = True
         else:
             self.allow_text_edit = True
+            
+            
+class File_Open_Prompt(pride.gui.gui.Container):
+                
+    defaults = {"h_range" : (0, 200), "pack_mode" : "bottom"}
+    
+    def __init__(self, **kwargs):
+        super(File_Open_Prompt, self).__init__(**kwargs)
+        textbox = self.create("pride.gui.widgetlibrary.Text_Box", 
+                              pack_mode="top", scroll_bars_enabled=False)
+        self.create(Filetype_Filter_Selector)
+        
+        
+class Filetype_Filter_Selector(pride.gui.widgetlibrary.Popup_Button):
+    
+    defaults = {"popup_type" : "pride.gui.pyobjecttest.List"}

@@ -1,3 +1,4 @@
+import itertools
 import operator
 import os
 import sys
@@ -63,6 +64,8 @@ class SDL_Window(SDL_Component):
         if self.showing:
             self.show()  
 
+        objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
+        
     def invalidate_layer(self, layer):
         self.invalid_layer = min(self.invalid_layer, layer)
         if not self.running:
@@ -89,6 +92,8 @@ class SDL_Window(SDL_Component):
             except TypeError:
                 if instance.__class__.__name__ != "Organizer":
                     raise
+    #    else:
+    #        self._sdl_objects.add(instance)
         return instance
         
     def run(self):
@@ -128,10 +133,10 @@ class SDL_Window(SDL_Component):
                     w = screen_width - x
                 if y + h > screen_height:
                     h = screen_height - y
-                if source_rect[0] + w > screen_width:
-                    source_rect[0] = x
-                if source_rect[1] + h > screen_height:
-                    source_rect[1] = y
+               # if source_rect[0] + w > screen_width:
+               #     source_rect[0] = x
+               # if source_rect[1] + h > screen_height:
+               #     source_rect[1] = y
                 area = (x, y, w, h)
                 
                # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
@@ -150,7 +155,7 @@ class SDL_Window(SDL_Component):
                     instance._draw_operations = []
                     renderer.set_render_target(layer_texture.texture)
                     instance.texture_invalid = False
-             #   self.alert("Copying {} texture from {} to {}", [instance, (x + instance.texture_window_x, y + instance.texture_window_y, w, h), area], level=0)
+           #     self.alert("Copying {} texture from {} to {}", [instance, source_rect, area], level=0)
            #     if instance.rotation:
            #         renderer.copyex(instance.texture.texture, srcrect=
                 renderer.copy(instance.texture.texture, 
@@ -178,7 +183,15 @@ class SDL_Window(SDL_Component):
     def pack(self, modifiers=None):
         pass
             
-            
+    def delete(self):
+        # delete window objects before sdl components
+        for children in self.objects.values():
+            for child in children:
+                if hasattr(child, "pack"):
+                    child.delete()
+        super(SDL_Window, self).delete()
+        
+        
 class Window_Handler(pride.base.Base):
     
     def __init__(self, **kwargs):
