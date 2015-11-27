@@ -90,7 +90,8 @@ class Command_Line(pride.vmlibrary.Process):
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 10000}
+                "idle_threshold" : 10000, 
+                "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):
         self._idle = True
@@ -195,7 +196,7 @@ class Command_Line(pride.vmlibrary.Process):
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
             self._position = sys.stdout_log.tell()
-            self.screensaver = self.create("pride.shell.Matrix_Screensaver").instance_name            
+            self.screensaver = self.create(self.screensaver_type).instance_name            
         self._idle = True        
         priority = self.idle_threshold * self.priority
         pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
@@ -341,3 +342,31 @@ class Matrix_Screensaver(Terminal_Screensaver):
             self.row = None            
             objects["->Python->Command_Line"].clear()
             
+            
+class CA_Screensaver(Terminal_Screensaver):
+                
+    defaults = {"storage_size" : 1024}
+    
+    next_state = {(1, 1, 1) : 1, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
+                  (0, 1, 1) : 0, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
+ 
+    rule_30 = {(1, 1, 1) : 0, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
+               (0, 1, 1) : 1, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
+           
+    def __init__(self, **kwargs):
+        super(CA_Screensaver, self).__init__(**kwargs)
+        self.bytearray = bytearray(1024)
+        self.bytearray[sum(ord(random._urandom(1)) for x in xrange(4))] = 1
+        self._state = CA_Screensaver.rule_30 if random._urandom(1) < 128 else CA_Screensaver.next_state
+        
+    def run(self):
+        _bytearray = self.bytearray
+        size = self.storage_size
+        new_bytearray = bytearray(size)
+        _state = self._state
+        for index, byte in enumerate(_bytearray):
+            current_state = (_bytearray[index - 1], byte, _bytearray[(index + 1) % size])
+            new_bytearray[index] = _state[current_state]
+        self.bytearray = new_bytearray
+        objects["->Python->Command_Line"].clear()
+        sys.stdout.write(new_bytearray)            

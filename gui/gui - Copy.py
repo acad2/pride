@@ -202,7 +202,7 @@ class Organizer(base.Base):
             if count == length - 1:                
                 item.size = (parent.w - left_size, item_height)
         #      print "Set item size: ", item, item.size, parent.w
-                assert item.w, (item, item.size, parent.w / length, parent.h, sum((objects[item]._pack_width for item in self._pack_modes[parent.instance_name]["left"])))
+                assert item.w, (item, item.size, parent.w / length, parent.h, sum(($item._pack_width for item in self._pack_modes[parent.instance_name]["left"])))
         else:
             item.size = (parent.w / length, item_height)
             left_size = 0
@@ -241,25 +241,22 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
              "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}.items()
     
-    mutable_defaults = {"children" : list, "draw_queue" : list, "_draw_operations" : list}
+    mutable_defaults = {"children" : list, "draw_queue" : list, "_draw_operations" : list,
+                        "pack_count" : dict}
          
-    verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv"}   
-    
     Hotkeys = {}
     
     def _get_texture_invalid(self):
         return self._texture_invalid
     def _set_texture_invalid(self, value):
-        if not self._texture_invalid and value: # texture invalidated
-            window = objects[self.sdl_window]
-            if self.z < window.invalid_layer:
-                window.invalidate_layer(self.z)
-                window._redraw_object = self
-            
+        if not self._texture_invalid and value:
+            objects[self.sdl_window].invalidate_layer(self.z)
         self._texture_invalid = value
     texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
     
     def _on_set(self, coordinate, value):
+      #  coordinates = (('w', 'h', 'r', 'g', 'b', 'a') if not self. else
+       #                ('w', 'h', 'r', 'g', 'b', 'a', 'x', 'y'))
         if not self.texture_invalid and coordinate in ('x', 'y', 'w', 'h', 'r', 'g', 'b', 'a'):
             self.texture_invalid = True           
         super(Window_Object, self)._on_set(coordinate, value)
@@ -320,7 +317,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
     
     def _get_pack_mode(self):      
-        return self._pack_mode
+        return self._pack_mode#objects[self.sdl_window + "->Organizer"].get_pack_mode(self.instance_name)
     def _set_pack_mode(self, value):
         self._pack_mode = value
         objects[self.sdl_window + "->Organizer"].set_pack_mode(self.instance_name, value)
@@ -340,12 +337,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return result
     parent_application = property(_get_parent_application)
     
+    verbosity = {"press" : "vv", "release" : "vv"}    
+    
     def __init__(self, **kwargs):               
         super(Window_Object, self).__init__(**kwargs)        
         self.texture_window_x = self.texture_window_y = 0
         self.texture = create_texture(self.texture_size)
         self.texture_invalid = True
-                
+        
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
         return super(Window_Object, self).create(*args, **kwargs)
@@ -438,37 +437,13 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self._draw_operations.append((figure, args, kwargs))
                                                                
     def _draw_texture(self):
-        window = objects[self.sdl_window]
-        renderer = window.renderer
-        draw_instructions = renderer.instructions
-        self.alert("Drawing texture", level=0)   
-        window.user_input._update_coordinates(self.instance_name, self.area, self.z)
-        layer_texture = window.layers[self.z][0].texture
-        with renderer.target_set_to(None):
-            for operation, args, kwargs in self._draw_operations:
-                if operation == "text" and not args[0]:
-                    continue
-       #         self.alert("...Drawing shape: {} {} {}", (operation, args, kwargs), level=0)
-                draw_instructions[operation](*args, **kwargs)                   
-            self._texture_invalid = False
-                    
-            for child in self.children:
-            #  if child._texture_invalid:
-                child._draw_texture()  
-    
-            if self._texture_window_x or self._texture_window_y:
-                x, y, w, h = self.area
-                source_rect = (x, y, w, h)#self._texture_window_x, y + self._texture_window_y, w, h)
-                screen_width, screen_height = pride.gui.SCREEN_SIZE
-                if x + w > screen_width:
-                    w = screen_width - x
-                if y + h > screen_height:
-                    h = screen_height - y
-                self.alert("Scrolling: taking slice from {} and displaying at {}", (source_rect, (x, y, w, h)), level=0)
-              #  with renderer.target_set_to(None):
-                renderer.copy(layer_texture, srcrect=self.area, dstrect=self.area) 
-            
-    def draw_texture(self):    
+        self.draw_texture()  
+        objects[self.sdl_window + "->Renderer"].draw(self.texture.texture, self._draw_operations)
+        self._draw_operations = []
+        self.texture_invalid = False            
+        return self.texture.texture
+        
+    def draw_texture(self):
         area = self.area
         self.draw("fill", area, color=self.background_color)
         self.draw("rect", area, color=self.color)
@@ -492,17 +467,15 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         else:
             total_height = sum((objects[name].h for name in pack_modes["top"] + pack_modes["bottom"]))
             total_width = sum((objects[name].w for name in pack_modes["right"] + pack_modes["left"]))
-            #if total_height > self.h:
-            #    if total_width > self.w:
-            #        self.texture_size = (total_width, total_height)
-            #    else:
-            #        self.texture_size = (self.texture_size[0], total_height)
-            #    #self.texture = create_texture(self.texture_size)
-            #    
-            #    self.alert("Resized texture to: {}".format(self.texture_size), 
-            #               level=self.verbosity["texture_resized"])
-            #elif total_width > self.w:
-            #    self.texture_size = (total_width, self.texture_size[1])
+            if total_height > self.h:
+                if total_width > self.w:
+                    self.texture_size = (total_width, total_height)
+                else:
+                    self.texture_size = (self.texture_size[0], total_height)
+                self.texture = create_texture(self.texture_size)
+                self.alert("Resized texture to: {}".format(self.texture_size), level=0)
+            elif total_width > self.w:
+                self.texture_size = (total_width, self.texture_size[1])
                 
             if self.scroll_bars_enabled:
                 excess_height = total_height > self.h
@@ -527,9 +500,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 elif not excess_width:
                     objects[self._scroll_bar_w].delete()
                     self._scroll_bar_w = None
-        self.draw_texture()
-#        window.layer_instructions[self.z].extend(self._draw_operations)
-        
+                
     def delete(self):
         self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()

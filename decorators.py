@@ -4,7 +4,6 @@ import trace
 import time
 import inspect
 import StringIO
-from test import pystone
 from functools import wraps
 from weakref import ref
 
@@ -16,6 +15,7 @@ else:
 class Pystone_Test(object):
 
     def __init__(self, function):
+        from test import pystone
         self.function = function
         if not hasattr(Pystone_Test, "pystones_per_second"):
             Pystone_Test.pystones_per_second = pystone.pystones(pystone.LOOPS)

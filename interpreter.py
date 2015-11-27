@@ -39,10 +39,10 @@ class Shell(authentication.Authenticated_Client):
     
     parser_ignore = ("prompt", "lines", "user_is_entering_definition")
     
-    verbosity = {"logging_in" : ''}
+    verbosity = {"logging_in" : 0}
                 
     def on_login(self, message):
-        self.alert("{}", [message], level='')
+        self.alert("{}", [message], level=0)
         sys.stdout.write(">>> ")
         self.logged_in = True
         if self.startup_definitions:

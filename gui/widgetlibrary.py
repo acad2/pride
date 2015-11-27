@@ -134,7 +134,8 @@ class Text_Box(gui.Container):
         self.editing = not self.editing
         
     def draw_texture(self):
-        area = self.texture.area
+        width, height = pride.gui.SCREEN_SIZE#self.texture.area
+        area = (0, 0, width, height)
         self.draw("fill", area, color=self.background_color)
         self.draw("rect", area, color=self.color)
         if self.text:

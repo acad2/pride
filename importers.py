@@ -10,6 +10,7 @@ import tokenize
 import shlex
 import string
 import operator
+import textwrap
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -157,7 +158,7 @@ class Parser(object):
                     if is_back_delimited:
                         if forward_delimit:
                             if is_forward_delimited:
-                                print "Found forward/back delimited ", symbol, (start, end)
+        #                        print "Found forward/back delimited ", symbol, (start, end)
                                 quantity -= 1
                                 indices.append((start, end))
                         else:
@@ -359,14 +360,49 @@ class Preprocessor(object):
     def handle_source(self, source): pass
     
     
+class Preprocess_Decorator(Preprocessor):
+        
+    def handle_source(self, source):
+        while "@pride.preprocess" in source:
+            index = Parser.find_symbol("@pride.preprocess", source, True, False, quantity=1)
+            if not index:
+                break
+            start, end = index[0]
+            _source = source[end:].split('\n')[1:]
+            first_line = _source[0].replace('\t', '    ')
+            
+            def_index = first_line.index("def")
+            indentation = first_line[:def_index].count("    ")
+            name = first_line[def_index + 4:first_line.index('(')]
+            function_source = [first_line]
+            for line in _source[1:]:
+                function_source.append(line)
+                line = line.replace('\t', "    ")
+                _indentation = 0
+                while line[:4] == "    ":
+                    _indentation += 1
+                    line = line[4:]
+                if _indentation == indentation or not line.strip():
+                    break
+            code = compile(textwrap.dedent('\n'.join(function_source)), "preprocessor_decorator", "exec")
+            namespace = {}
+            exec code in namespace, namespace
+            new_source = namespace[name]()
+            assert new_source, "Preprocessor function failed to return new source"
+            #print source[:start] + new_source
+            #print 'end of source next\n'
+            #print source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
+            source = source[:start] + new_source + source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
+            
+        return source
+            
+                
 class Dollar_Sign_Directive(Preprocessor):
     """ Replaces '$' directive with pride.objects lookup. This
         facilitates the syntatic sugar $Component, which is
         translated to pride.objects['Component']. """
         
     def handle_source(self, source):
-      #  _source = Parser.remove_comments(source)
-      #  print _source
         return Parser.replace_symbol('$', source, "pride.objects[{}]", False, False)     
         
 

@@ -207,10 +207,11 @@ class File(base.Wrapper):
     
     def write(self, data):
         self.file.write(data)
+    #    assert isinstance(data, str), (data, type(data))
         self.filesize += len(data)
         
     def truncate(self, size=None):
-        print 'TRUNCATING' * 80
+   #     print 'TRUNCATING' * 80
         if size is None:
             self.filesize -= self.filesize - self.file.tell()
         else:

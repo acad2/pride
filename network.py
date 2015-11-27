@@ -356,7 +356,7 @@ class Socket(base.Wrapper):
                 
         if self.add_on_init:
             try:
-                $Network.add(self)
+                pride.objects["->Python->Network"].add(self)
             except KeyError: 
                 self.alert("Network unavailable")
             else:

@@ -105,14 +105,41 @@ class Base(object):
 
     __metaclass__ = pride.metaclass.Metaclass
                 
-    # the default attributes new instances will initialize with
-    # mutable datatypes (i.e. lists) should be set via
-    # the mutable_defaults attribute or inside __init__
+    # certain container type class attributes are "inherited" from base classes
+    # these include defaults, required_arguments, mutable_defaults, verbosity
+    # parser_ignore, and flags (all of which are explained below)
+    # when subclassing, creating new class defaults will automatically merge the
+    # newly specified defaults with the base class defaults, and similarly so for each 
+    # attribute inherited this way.
+    
+    # the defaults attribute sets what attributes new instances will initialize with
+    # they can be overridden when initialized an object via keyword arguments
+    # PITFALL: do not use mutable objects as a default. use mutable_defaults instead
     defaults = {"_deleted" : False, "dont_save" : False,
                 "replace_reference_on_load" : True,
                 "startup_components" : tuple()}   
-        
-    mutable_defaults = {} # {attribute : type}, i.e {'defaults' : dict}
+    
+    # if certain attributes must be passed explicitly, including them in the
+    # required_arguments class attribute will automatically raise an 
+    # ArgumentError when they are not supplied.
+    required_arguments = tuple()
+    
+    # mutable objects should not be included as defaults attributes
+    # for the same reason they should not be used as default arguments
+    # the type associated with the attribute name will be instantiated with 
+    # no arguments when the object initializes
+    mutable_defaults = {} # {attribute_name : mutable_type}, i.e {'defaults' : dict}
+    
+    # verbosity is an inherited class attribute used to store the verbosity
+    # level of a particular message.
+    verbosity = {"delete" : 'vv', "initialized" : "vv"}
+            
+    # defaults have a pitfall that can be a problem in certain cases
+    # because dictionaries are unordered, the order in which defaults
+    # are assigned cannot be guaranteed. 
+    # flags are guaranteed to be assigned before defaults, and in the order specified
+    # flags should be a container of 2-tuples, which are attribute value pairs
+    flags = {}.items() 
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -147,14 +174,6 @@ class Base(object):
         return objects[self.parent_name]
     parent = property(_get_parent)
     
-    verbosity = {"delete" : 'vv', "initialized" : "vv"}
-            
-    # defaults have a pitfall that can be a problem in certain cases
-    # because dictionaries are unordered, the order in which defaults
-    # are assigned cannot be guaranteed. 
-    # flags are guaranteed to be assigned before defaults, in order
-    flags = {}.items() 
-    
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
         
@@ -184,6 +203,13 @@ class Base(object):
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
                         component.instance_name) 
+        if self.required_arguments:
+            for attribute in self.required_arguments:
+                try:
+                    if getattr(self, attribute) == self.defaults[attribute]:
+                        raise ArgumentError("Required argument {} not supplied".format(attribute))
+                except AttributeError:
+                    raise ArgumentError("Required argument {} not supplied".format(attribute))
         try:
             self.alert("Initialized", level=self.verbosity["initialized"])
         except KeyError:

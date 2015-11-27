@@ -19,7 +19,45 @@ class UnauthorizedError(Warning): pass
 def derive_session_id(key, purpose='', key_size=256):
     return hkdf.hkdf(key, key_size, purpose)
 
-        
+def remote_procedure_call(callback=None):
+    def decorate(function):
+        call_name = function.__name__
+        def _make_rpc(*args, **kwargs):
+            self = args[0]
+            self.alert("Making request '{}.{}'", (self.target_service, call_name),
+                       level=self.verbosity[call_name])
+            self.session.execute(Instruction(self.target_service, call_name, 
+                                             *args, **kwargs), callback)
+        return _make_rpc
+    return decorate
+  
+def enter(entry_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            args, kwargs = entry_function(*args, **kwargs)
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
+
+def exit(exit_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            return exit_function(function(*args, **kwargs))
+        return new_call
+    return decorate
+    
+def call_if(**conditions):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            self = args[0]
+            for key, value in conditions.items():
+                if not getattr(self, key) == value:
+                    break
+            else:
+                return function(*args, **kwargs)
+        return new_call
+    return decorate
+    
 class Authenticated_Service(pride.base.Base):
     """ Provides functionality for user registration and login, and
         provides interface for use with blacklisted/whitelisted/authenticated
@@ -124,35 +162,36 @@ class Authenticated_Service(pride.base.Base):
             self.logout()
             raise UnauthorizedError()
             
-        if username in self.logging_in:
-            K, response = objects[self.protocol_component].login(username, credentials)
-            self.logging_in.remove(username)
-            response = (self.login_message, response)        
-            #print self, "Sending response: ", response
-            if K:
-                self.alert("{} logged in".format(username), 
-                           level=self.verbosity["login_success"])
-                session_id = derive_session_id(K, "session_id", 
-                                               self.session_id_size)
-                self.session_id[session_id] = username
+        database = self.database
+        cursor = database.query("Credentials", 
+                                retrieve_fields=("salt", "verifier"), 
+                                where={"username" : username})
+        registered = cursor.fetchone()
+        if not registered:
+            # pretend to go through login process with a fake verifier
+            srp = objects["->Python->Secure_Remote_Password"]
+            salt, verifier = srp.new_verifier(username, srp.new_salt(64))
+            self.alert("Verifying unregistered user", 
+                       level=self.verbosity["login_unregistered"])
         else:
-            database = self.database
-            cursor = database.query("Credentials", 
-                                    retrieve_fields=("salt", "verifier"), 
-                                    where={"username" : username})
-            registered = cursor.fetchone()
-            if not registered:
-                # pretend to go through login process with a fake verifier
-                srp = objects["->Python->Secure_Remote_Password"]
-                salt, verifier = srp.new_verifier(username, srp.new_salt(64))
-                self.alert("Verifying unregistered user", 
-                           level=self.verbosity["login_unregistered"])
-            else:
-                salt, verifier = registered                
-            response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
-            self.logging_in.add(username)
+            salt, verifier = registered                
+        response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
+        self.logging_in.add(username)
         return response
     
+    def login_stage_two(self, username, credentials):
+        K, response = objects[self.protocol_component].login(username, credentials)
+        self.logging_in.remove(username)
+        response = (self.login_message, response)        
+        #print self, "Sending response: ", response
+        if K:
+            self.alert("{} logged in".format(username), 
+                       level=self.verbosity["login_success"])
+            session_id = derive_session_id(K, "session_id", 
+                                           self.session_id_size)
+            self.session_id[session_id] = username        
+        return response
+        
     def logout(self):
         session_id, host_info = self.current_session
         username = self.session_id[session_id]
@@ -232,8 +271,8 @@ class Authenticated_Client(pride.base.Base):
     parser_ignore = ("password_prompt", "protocol_client", "logged_in",
                      "target_service", "auto_login", "session_id_size")
     
-    verbosity = {"logging_in" : 'v', "on_login" : 'v', "registering" : 'v',
-                 "send_proof" : 'v', "registration_success" : '',
+    verbosity = {"logging_in" : 0, "on_login" : 0, "registering" : 'v',
+                 "send_proof" : 'v', "registration_success" : 0,
                  "registration_failed" : 0, "login_failed" : 0}
         
     def _get_host_info(self):
@@ -263,16 +302,13 @@ class Authenticated_Client(pride.base.Base):
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
             self.login()
-            
-    def register(self): 
+    
+    @remote_procedure_call(register_results)
+    def register(self, username, password): pass
         """ Attempt to register username with target_service operating 
             on the machine specified by host_info. A password prompt
             will be presented if password was not passed in as an 
             attribute of the authenticated_client (recommended). """
-        self.alert("Registering", level=self.verbosity["registering"])
-        self.session.execute(Instruction(self.target_service, "register", 
-                                         self.username, self.password), 
-                             self.register_results)
                
     def register_results(self, success):
         """ The callback used by the register method. Proceeds to login
@@ -289,30 +325,32 @@ class Authenticated_Client(pride.base.Base):
                        [self.host_info, success], 
                        level=self.verbosity["registration_failed"])
     
+    def _setup_login(self, *args, **kwargs):
+        if self.logged_in:
+            self.logout()
+            assert self.session.id == '0'
+            self._client = self.create(self.protocol_client, 
+                                       username=self.username,
+                                       password=self.password)
+        return self._client.login(), {}
+        
+    @enter(_setup_login)
+    @remote_procedure_call(callback=login_stage_two)
     def login(self):
         """ Attempt to log in to the target_service operating on the
             machine specified by host_info. A password prompt will be
             presented if password was not specified as an attribute of
             the authenticated_client (recommended). """
-        if self.logged_in:
-            self.logout()
-            assert self.session.id == '0'
-        self.alert("Logging in...", level=self.verbosity["logging_in"])
-        self._client = self.create(self.protocol_client, 
-                                   username=self.username,
-                                   password=self.password)
-        self.session.execute(Instruction(self.target_service, "login", 
-                                         *self._client.login()),
-                             self.send_proof)
-                                                  
-    def send_proof(self, response):
-        """ The second stage of the login process. This is the callback
-            used by login. Sends proof of key to server."""
-        self.alert("Sending proof of key", level=self.verbosity["send_proof"])
+    
+    def _derive_proof_of_key(response):
         self.key, self.proof_of_key = self._client.login(response)
-        self.session.execute(Instruction(self.target_service, "login", 
-                                         self.username, self.proof_of_key),
-                             self.login_result)       
+        return self.username, self.proof_of_key
+        
+    @enter(_derive_proof_of_key)
+    @remote_procedure_call(callback=login_result)
+    def login_stage_2(self): pass
+        """ The second stage of the login process. This is the callback
+            used by login. Sends proof of key to server."""   
         
     def login_result(self, response):
         """ Calls on_login in the event of login success, provides
@@ -339,13 +377,19 @@ class Authenticated_Client(pride.base.Base):
             extended by subclasses. """        
         self.alert("Login success {}", [message], 
                    level=self.verbosity["on_login"])
-                   
-    def logout(self):
-        if self.logged_in:
-            self.logged_in = False
-            self.session.execute(Instruction(self.target_service, "logout"), None)
-            self.session.id = '0'
-            
+   
+    def _reset_login_flags(self):
+        self.logged_in = False
+        self.session.id = '0'
+        
+    @call_if(logged_in=True)
+    @enter(_reset_login_flags)
+    @remote_procedure_call
+    def logout(self): pass
+        """ Logout self.username from the target service. If the user is logged in,
+            the logged_in flag will be set to False and the session.id set to '0'.
+            If the user is not logged in, this is a no-op. """
+        
     def delete(self):
         if self.logged_in:
             self.logout()

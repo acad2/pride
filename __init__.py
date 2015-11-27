@@ -1,7 +1,7 @@
 """ Stores global objects including instructions and the environment """
 import sys
 import pride.importers
-compiler = pride.importers.Compiler(preprocessors=(importers.Dollar_Sign_Directive(),))                                    
+compiler = pride.importers.Compiler(preprocessors=(importers.Preprocess_Decorator(),))                                    
 sys.meta_path.insert(0, compiler)
 
 import heapq
@@ -15,6 +15,9 @@ import copy
 import types
 import timeit
 timer_function = timeit.default_timer
+    
+def preprocess(function):
+    raise ImportError("Failed to replace preprocess function with source")
     
 class Environment(object):
     """ Stores global state for the process. This includes reference
@@ -215,29 +218,51 @@ class Alert_Handler(pride.base.Base):
                 'vvv' : "very verbose notification ",
                 'vvvv' : "extremely verbose notification "}
 
-    defaults = {"log_level" : '', "print_level" : '',
+    defaults = {"log_level" : '0+v', "print_level" : '0',
                 "log_name" : "Alerts.log", "log_is_persistent" : False,
                 "parse_args" : True}
 
     parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
     parser_modifiers = {"exit_on_help" : False}
     
+    def _get_print_level(self):
+        return self._print_level
+    def _set_print_level(self, value):
+        value = value or '0'
+        print_level = value.split('+')
+        if '0' in print_level:
+            print_level.remove('0')
+            print_level.append(0)
+        self._print_level = print_level
+    print_level = property(_get_print_level, _set_print_level)
+
+    def _get_log_level(self):
+        return self._log_level
+    def _set_log_level(self, value):
+        value = value or '0'
+        log_level = value.split('+')
+        if '0' in log_level:
+            log_level.remove('0')
+            log_level.append(0)
+        self._log_level = log_level
+    log_level = property(_get_log_level, _set_log_level)
+        
     def __init__(self, **kwargs):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = open(self.log_name, 'a+')
 
     def _alert(self, message, level, format_args=tuple()):
         formatted = False
-        if self.print_level is 0 or level <= self.print_level:
+        assert level is not ''
+        if level in self._print_level or level is 0:
             formatted = True
             message = message.format(*format_args) if format_args else message
             sys.stdout.write(message + "\n")
-        if level <= self.log_level:
+        if level in self._log_level or level is 0:
             if not formatted and format_args:
                 message = message.format(*format_args)
-            severity = self.level_map.get(level, str(level))
-            # windows might complain about files in + mode if this isn't done
-            self.log.seek(0, 1)
+            severity = self.level_map.get(level, str(level))            
+            self.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
             self.log.write(severity + message + "\n")
 
 alert_handler = Alert_Handler()
