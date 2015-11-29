@@ -85,13 +85,13 @@ class Authenticated_Service(pride.base.Base):
     inherited_attributes = {"rate_limit" : dict}
     
     def __init__(self, **kwargs):
-        self.logging_in = set()
         # maps authentication token to username
         self.session_id = {}
         self._rate = {}
         self.ip_whitelist = ["127.0.0.1", "localhost"]
         self.ip_blacklist = []
         self.method_blacklist = []
+        self.method_whitelist = []
         super(Authenticated_Service, self).__init__(**kwargs)
         if not self.database_name:
             _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
@@ -141,16 +141,18 @@ class Authenticated_Service(pride.base.Base):
                         return True
          
     def login(self, username, credentials):
-        """ Attempt to log in as username using credentials. Due to
-            implementation details it is best to call this method only
-            via Authenticated_Client.login. 
+        """ Attempt to log in as username using credentials. The default
+            implementation uses the secure remote password protocol, which is
+            a 2 stage protocol. Login success and failure are not determined
+            until login_stage_2 returns. 
             
-            On login failure, provides non specific information as to why.
+            Alternative single stage login protocols may be implemented by
+            overloading this method. Note that implementing a traditional
+            password hashing authentication system is arguably less secure
+            then the default protocol used. 
+            
             Nonexistant username login proceeds with a fake verifier to
-            defy timing attacks.
-
-            On login success, a login message and proof of the shared
-            secret are returned."""
+            defy timing attacks. """
         session_id, host_info = self.current_session
         self.alert("{} attempting to login from {}. Session id: {}",
                    (username, host_info, session_id), 
@@ -176,12 +178,16 @@ class Authenticated_Service(pride.base.Base):
         else:
             salt, verifier = registered                
         response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
-        self.logging_in.add(username)
         return response
     
     def login_stage_two(self, username, credentials):
+        """ Concludes the 2 stage login process.
+        
+            On login failure, provides non specific information as to why.
+            
+            On login success, a login message and proof of the shared
+            secret are returned. """  
         K, response = objects[self.protocol_component].login(username, credentials)
-        self.logging_in.remove(username)
         response = (self.login_message, response)        
         #print self, "Sending response: ", response
         if K:
@@ -195,8 +201,6 @@ class Authenticated_Service(pride.base.Base):
     def logout(self):
         session_id, host_info = self.current_session
         username = self.session_id[session_id]
-        if username in self.logging_in:
-            self.logging_in.remove(username)
         try:
             del self.session_id[session_id]
         except KeyError:
@@ -205,9 +209,10 @@ class Authenticated_Service(pride.base.Base):
                        level=self.verbosity["logout_failure"])
         objects["->Python->Secure_Remote_Password"].abort_login(username)
         
-    def validate(self, session_id, peername, method_name):
+    def validate(self, rpc_socket, session_id, peername, method_name):
         """ Determines whether or not the peer with the supplied
             session id is allowed to call the requested method """
+        if not
         if method_name in self.method_blacklist:
             return False
         if self.rate_limit and method_name in self.rate_limit:
@@ -247,12 +252,10 @@ class Authenticated_Service(pride.base.Base):
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
-        del state["logging_in"]
         return state
         
     def on_load(self, attributes):
         super(Authenticated_Service, self).on_load(attributes)
-        self.logging_in = set()
         self.database = self.create("database.Database", database_name=name,
                                     text_factory=str)
         self.database.create_table("Credentials", 

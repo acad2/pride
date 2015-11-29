@@ -155,13 +155,13 @@ def test_generator():
     for x in xrange(1000):
         next(generator)
 from pride.decorators import Timed
-print Timed(test_generator, 1)()
+#print Timed(test_generator, 1)()
         
 N = int(''.join(str(ord(char)) for char in 
         """MIGHAoGBAN01l"""))#Qw6DEtRySBBm+"""))#Sxl2ivcYmNB6UHovD1m4JOzZKXdHSg/V2S8j5q
         #8nb42Up17iYluPqTBxJH49JzoRqc3lGN4QtiSgQYI0DK9dkYlUIJcqdlYtcefhHH
         #w7hXtOHOTDx6ffAZaIx8j2BlmtQAZHqSBXRp0Uy4xPyfXMHdbP0DAgEC"""))        
 #    print "\nfactors of {}: ".format(x), prime_factorization(x)    
-#print len(str(N)), N
-#for factors in prime_factorization(N):
-#    print factors
+print len(str(N)), N
+for factors in prime_factorization(N):
+    print factors
