@@ -495,9 +495,6 @@ class Authenticated_Client(pride.base.Base):
         self.key, self.proof_of_key = self._client.login(srp_response)
         with open(self.authentication_table_file, "a+b") as _file:
             bytestream = _file.read()
-            _file.truncate(0)
-            _file.write(hkdf.hkdf(bytestream, 256, self.hkdf_table_update_string))
-            _file.flush()
         table_response = Authentication_Table.load(bytestream).get_passcode(*table_challenge)
         return (self, self.username, self.proof_of_key, table_response), {}
         
@@ -520,6 +517,11 @@ class Authenticated_Client(pride.base.Base):
                 self.logged_in = True
                 self.session.id = hkdf.hkdf(self.key, self.session_id_size, "session_id")
                 self.on_login(message)
+                with open(self.authentication_table_file, "a+b") as _file:
+                    bytestream = _file.read()
+                    _file.truncate(0)
+                    _file.write(hkdf.hkdf(bytestream, 256, self.hkdf_table_update_string))
+                    _file.flush()            
             else:
                 self.alert("Login failed", 
                            level=self.verbosity["login_failed"])           
