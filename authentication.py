@@ -186,7 +186,8 @@ class Authenticated_Service(pride.base.Base):
                 "validation_failure_string" : \
                    ".validate: Authorization Failure:\n    blacklisted: {}" +
                    "    session_id logged in: {}\n    method_name: '{}'\n    " +
-                   "login allowed: {}    registration allowed: {}"}
+                   "login allowed: {}    registration allowed: {}",
+                "hkdf_table_update_string" : "updating the authentication table"}
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
@@ -316,10 +317,14 @@ class Authenticated_Service(pride.base.Base):
             if authentication_table.compare_challenge_response(self._table_challenge.pop(username), table_response):
                 self.alert("{} logged in".format(username), 
                         level=self.verbosity["login_success"])
-                session_id = derive_session_id(K, "session_id", 
-                                            self.session_id_size)
+                session_id = hkdf.hkdf(K, self.session_id_size, "session_id")
                 self.session_id[session_id] = username
                 login_message = self.on_login(username)
+                
+                # hash the table with the entropy of K to "refresh" it
+                self.database.update_table("Credentials", where={"username" : username}, 
+                                           arguments={"authentication_table" : 
+                                                      hkdf.hkdf(saved_table, 256, self.hkdf_table_update_string)})
         return (login_message, proof_of_K)
         
     def on_login(self, username):
@@ -396,7 +401,8 @@ class Authenticated_Client(pride.base.Base):
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 "protocol_client" : "pride.srp.SRP_Client",
                 "ip" : "localhost", "port" : 40022, "session_id_size" : 256,
-                "auto_login" : True, "logged_in" : False}
+                "auto_login" : True, "logged_in" : False,
+                "hkdf_table_update_string" : "updating the authentication table"}
     
     parser_ignore = ("password_prompt", "protocol_client", "logged_in",
                      "target_service", "auto_login", "session_id_size")
@@ -488,7 +494,10 @@ class Authenticated_Client(pride.base.Base):
         srp_response, table_challenge = response
         self.key, self.proof_of_key = self._client.login(srp_response)
         with open(self.authentication_table_file, "a+b") as _file:
-            bytestream = _file.read()        
+            bytestream = _file.read()
+            _file.truncate(0)
+            _file.write(hkdf.hkdf(bytestream, 256, self.hkdf_table_update_string))
+            _file.flush()
         table_response = Authentication_Table.load(bytestream).get_passcode(*table_challenge)
         return (self, self.username, self.proof_of_key, table_response), {}
         
@@ -509,8 +518,7 @@ class Authenticated_Client(pride.base.Base):
         else:
             if self._client.login((self.proof_of_key, server_proof_of_key, self.key)):
                 self.logged_in = True
-                self.session.id = derive_session_id(self.key, "session_id",
-                                                    self.session_id_size)
+                self.session.id = hkdf.hkdf(self.key, self.session_id_size, "session_id")
                 self.on_login(message)
             else:
                 self.alert("Login failed", 

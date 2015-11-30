@@ -1,6 +1,7 @@
 """ Provides a Database object for working with sqlite3 databases """
 import sqlite3
 
+import pride
 import pride.base
 
 def create_assignment_string(items):
@@ -43,6 +44,7 @@ class Database(pride.base.Wrapper):
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)
+        pride.objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
         
     def open_database(self, database_name, text_factory=None):
         """ Opens database_name and obtain a sqlite3 connection and cursor.
@@ -101,7 +103,8 @@ class Database(pride.base.Wrapper):
                    (table_name, query, values), level=self.verbosity["insert_into"])
         return self.cursor.execute(query, values)
     
-    def update_table(self, table_name, where, arguments):
+    def update_table(self, table_name, where=None, arguments=None):
+        assert where and arguments
         condition_string, values = create_where_string(where)
         assignment_string, _values = create_assignment_string(arguments)
         query = "UPDATE {} SET {} {}".format(table_name, assignment_string, condition_string)

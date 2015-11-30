@@ -199,13 +199,17 @@ class Finalizer(base.Base):
         
     def run(self):
         for callback, args, kwargs in self._callbacks:
-            instance_name, method = callback
             try:
-                getattr(objects[instance_name], method)(*args, **kwargs)
+                instance_name, method = callback
+            except ValueError:
+                pass
+            else:
+                callback = getattr(objects[instance_name], method)
+            try:
+                callback(*args, **kwargs)
             except KeyError:
                 if instance_name in objects:
-                    raise
-                
+                    raise                
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):
@@ -226,13 +230,13 @@ class Python(base.Base):
                 "environment_setup" : ["PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep],
-                "startup_components" : ("pride.vmlibrary.Processor",
+                "startup_components" : ("pride.interpreter.Finalizer",
+                                        "pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.shell.Command_Line",
                                         "pride.srp.Secure_Remote_Password",
                                         "pride.interpreter.Interpreter",
-                                        "pride.rpc.Rpc_Server",
-                                        "pride.interpreter.Finalizer"),
+                                        "pride.rpc.Rpc_Server"),
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
@@ -250,7 +254,7 @@ class Python(base.Base):
     def __init__(self, **kwargs):
         super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
-        
+
         if self.startup_definitions:
             self.interpreter._exec_command(self.startup_definitions)           
                         
