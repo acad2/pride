@@ -187,7 +187,8 @@ class Authenticated_Service(pride.base.Base):
                    ".validate: Authorization Failure:\n    blacklisted: {}" +
                    "    session_id logged in: {}\n    method_name: '{}'\n    " +
                    "login allowed: {}    registration allowed: {}",
-                "hkdf_table_update_string" : "updating the authentication table"}
+                "hkdf_table_update_string" : "updating the authentication table",
+                "hash_function" : "sha512"}
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
@@ -219,7 +220,8 @@ class Authenticated_Service(pride.base.Base):
                                     text_factory=str)
         self.database.create_table("Credentials", 
                                    ("username TEXT PRIMARY KEY", "salt TEXT",   
-                                    "verifier BLOB", "authentication_table BLOB"))
+                                    "verifier BLOB", "authentication_table BLOB",
+                                    "history BLOB"))
         self.database.commit()
                 
     def register(self, username, password):
@@ -247,7 +249,8 @@ class Authenticated_Service(pride.base.Base):
                         database.insert_into("Credentials", 
                                             (username, salt, 
                                              str(password_verifier), 
-                                             authentication_table))
+                                             authentication_table,
+                                             "\x00" * 256))
                     except sqlite3.IntegrityError as error:
                         database.alert("sqlite3 IntegrityError registering {}: {}",
                                        (username, error), level=0)
@@ -311,20 +314,24 @@ class Authenticated_Service(pride.base.Base):
         K, proof_of_K = objects[self.protocol_component].login(username, proof_of_key)
         login_message = self.login_fail_message
         if K:
-            saved_table = self.database.query("Credentials", retrieve_fields=("authentication_table", ),
-                                              where={"username" : username}).fetchone()[0]          
+            database = self.database
+            saved_table, history = database.query("Credentials", retrieve_fields=("authentication_table", "history"),
+                                                  where={"username" : username}).fetchone()          
             authentication_table = Authentication_Table.load(saved_table)
             if authentication_table.compare_challenge_response(self._table_challenge.pop(username), table_response):
                 self.alert("{} logged in".format(username), 
                         level=self.verbosity["login_success"])
-                session_id = hkdf.hkdf(K, self.session_id_size, "session_id")
+                
+                session_id = hkdf.hkdf(K + int(''.join(str(ord(char)) for char in history)), self.session_id_size, "session_id")                
+                new_history = getattr(hashlib, self.hash_function)(session_id + ':' + history).digest()
                 self.session_id[session_id] = username
                 login_message = self.on_login(username)
                 
                 # hash the table with the entropy of K to "refresh" it
-                self.database.update_table("Credentials", where={"username" : username}, 
-                                           arguments={"authentication_table" : 
-                                                      hkdf.hkdf(saved_table, 256, self.hkdf_table_update_string)})
+                # and update our history of shared secrets with the client                
+                database.update_table("Credentials", where={"username" : username}, 
+                                      arguments={"authentication_table" : hkdf.hkdf(saved_table, 256, self.hkdf_table_update_string),
+                                                 "history" : new_history})               
         return (login_message, proof_of_K)
         
     def on_login(self, username):
@@ -402,7 +409,9 @@ class Authenticated_Client(pride.base.Base):
                 "protocol_client" : "pride.srp.SRP_Client",
                 "ip" : "localhost", "port" : 40022, "session_id_size" : 256,
                 "auto_login" : True, "logged_in" : False,
-                "hkdf_table_update_string" : "updating the authentication table"}
+                "hkdf_table_update_string" : "updating the authentication table",
+                "hash_function" : "sha512", "history_file" : '',
+                "authentication_table_file" : ''}
     
     parser_ignore = ("password_prompt", "protocol_client", "logged_in",
                      "target_service", "auto_login", "session_id_size")
@@ -435,7 +444,9 @@ class Authenticated_Client(pride.base.Base):
         
         self.password_prompt = self.password_prompt.format(self.instance_name)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
-        self.authentication_table_file = "{}_auth_table.key".format(self.instance_name.replace("->", '_'))
+        name = self.instance_name.replace("->", '_')
+        self.authentication_table_file = "{}_auth_table.key".format(name)
+        self.history_file = "{}_history.key".format(name)
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
             self.login()
@@ -457,11 +468,12 @@ class Authenticated_Client(pride.base.Base):
             an affirmative is provided by the user. """
         if success:
             assert len(success) == 16 * 16
-            with open(self.authentication_table_file, "a+b") as _file:
-                _file.truncate(0)
+            with open(self.authentication_table_file, "wb") as _file:
                 _file.write(success)
                 _file.flush()
-            
+            with open(self.history_file, "wb") as _file:
+                _file.write("\x00" * 256)
+                _file.flush()
             self.alert("Registered successfully", 
                        level=self.verbosity["registration_success"])
             if (self.auto_login or 
@@ -494,6 +506,7 @@ class Authenticated_Client(pride.base.Base):
         srp_response, table_challenge = response
         self.key, self.proof_of_key = self._client.login(srp_response)
         with open(self.authentication_table_file, "a+b") as _file:
+            _file.seek(0)
             bytestream = _file.read()
         table_response = Authentication_Table.load(bytestream).get_passcode(*table_challenge)
         return (self, self.username, self.proof_of_key, table_response), {}
@@ -515,13 +528,24 @@ class Authenticated_Client(pride.base.Base):
         else:
             if self._client.login((self.proof_of_key, server_proof_of_key, self.key)):
                 self.logged_in = True
-                self.session.id = hkdf.hkdf(self.key, self.session_id_size, "session_id")
-                self.on_login(message)
+                
+                with open(self.history_file, "a+b") as _file:
+                    _file.seek(0)
+                    history = _file.read() or "\x00" * 256
+                    session_id = self.session.id = hkdf.hkdf(self.key + int(''.join(str(ord(char)) for char in history)), 
+                                                             self.session_id_size, "session_id")
+                    new_history = getattr(hashlib, self.hash_function)(session_id + ':' + history).digest()
+                    _file.truncate(0)
+                    _file.write(new_history)
+                    _file.flush()
+                    
                 with open(self.authentication_table_file, "a+b") as _file:
+                    _file.seek(0)
                     bytestream = _file.read()
                     _file.truncate(0)
                     _file.write(hkdf.hkdf(bytestream, 256, self.hkdf_table_update_string))
-                    _file.flush()            
+                    _file.flush()                         
+                self.on_login(message)                               
             else:
                 self.alert("Login failed", 
                            level=self.verbosity["login_failed"])           
