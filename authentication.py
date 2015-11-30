@@ -17,15 +17,23 @@ class UnauthorizedError(Warning): pass
 def derive_session_id(key, purpose='', key_size=256):
     return hkdf.hkdf(key, key_size, purpose)
 
-def _kwargs_only(function):
-    def _call(*args, **kwargs):
-        if args:
-            raise pride.errors.ArgumentError("Positional arguments supplied to {}".format(function))
-        else:
-            return function(**kwargs)
-    return _call
+def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
+                       requires_kwargs=False, **_kwargs):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            raise_error = False
+            if ((no_args and args) or (requires_args and not args) or
+                (no_kwargs and kwargs) or (requires_kwargs and kwargs)):
+                raise pride.errors.ArgumentError("Unable to call {}".format(function))
+            if _kwargs:
+                for key, value in _kwargs.items():
+                    if kwargs[key] != value:
+                        raise pride.errors.ArgumentError("expected {} == {}; found {} == {}".format(key, value, key, kwargs[value]))
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
     
-@_kwargs_only
+@required_arguments(no_args=True)
 def remote_procedure_call(callback_name='', callback=None):
    # print "\nrpc callback info: ", callback_name, callback
     def decorate(function):
@@ -43,16 +51,22 @@ def remote_procedure_call(callback_name='', callback=None):
         return _make_rpc
     return decorate
   
-def enter(entry_function):
+def with_arguments(entry_function):
     def decorate(function):
         def new_call(*args, **kwargs):
-            arguments = entry_function(*args, **kwargs)
-            if arguments is not None:
-                args, kwargs = arguments
+            args, kwargs = entry_function(*args, **kwargs)
             return function(*args, **kwargs)
         return new_call
     return decorate
 
+def enter(enter_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            enter_function(*args, **kwargs)
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
+    
 def exit(exit_function):
     def decorate(function):
         def new_call(*args, **kwargs):
@@ -115,14 +129,25 @@ class Authentication_Table(object):
         self.rows = rows
     
     @staticmethod
-    def generate_passcode_request(count=6):
+    def generate_challenge(count=6):
         """ Generates count random pairs of indices, which range from 0-15 """
         return tuple(_split_byte(ord(byte)) for byte in random._urandom(count))
         
     def get_passcode(self, *args): 
-        """ Returns the symbols located at the indices specified """
+        """ Returns the symbols located at the indices specified in the challenge"""
         return ''.join(self.rows[row][index] for row, index in args)
     
+    def compare_challenge_response(self, challenge, response):
+        """ Compares a response to the correct answer to the challenge """
+        calculation = self.get_passcode(*challenge)
+        success = False
+        for index, byte in enumerate(calculation):
+            if response[index] != byte:
+                break
+        else:
+            success = True
+        return success
+        
     def save(self, _file=None):
         """ Saves the table information to a bytestream. If _file is supplied,
             the bytestream is dumped to the file instead of returned.
@@ -166,19 +191,17 @@ class Authenticated_Service(pride.base.Base):
                  "login_success" : "vv", "login_unregistered" : "vv",
                  "logout_failure" : "vv"}
    
-    rate_limit = {"login" : 2, "register" : 2}
+    inherited_attributes = {"rate_limit" : dict, "remotely_available_methods" : tuple}
     
-    inherited_attributes = {"rate_limit" : dict}
-    
-    inherited_attributes = {"remotely_available_methods" : tuple}
+    rate_limit = {"login" : 2, "register" : 2}            
     
     remotely_available_methods = ("register", "login", "login_stage_two", "logout")
     
+    mutable_defaults = {"_rate" : dict, "_table_challenge" : dict, "ip_blacklist" : list,
+                        "session_id" : dict} # session_id maps session id to username
+    
     def __init__(self, **kwargs):
-        self.session_id = {} # maps session id to username
-        self._rate = {}
-        self.ip_whitelist = ["127.0.0.1", "localhost"]
-        self.ip_blacklist = []
+        self.ip_whitelist = ["127.0.0.1", "localhost"]        
         super(Authenticated_Service, self).__init__(**kwargs)
         if not self.database_name:
             _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
@@ -190,7 +213,7 @@ class Authenticated_Service(pride.base.Base):
                                     text_factory=str)
         self.database.create_table("Credentials", 
                                    ("username TEXT PRIMARY KEY", "salt TEXT",   
-                                    "verifier BLOB"))
+                                    "verifier BLOB", "authentication_table BLOB"))
         self.database.commit()
                 
     def register(self, username, password):
@@ -212,11 +235,13 @@ class Authenticated_Service(pride.base.Base):
                 cursor = database.cursor
                 registered = cursor.fetchone()
                 if not registered:       
-                    salt, password_verifier = objects["->Python->Secure_Remote_Password"].new_verifier(username, password) 
+                    salt, password_verifier = objects["->Python->Secure_Remote_Password"].new_verifier(username, password)
+                    authentication_table = Authentication_Table().save()
                     try:
                         database.insert_into("Credentials", 
                                             (username, salt, 
-                                             str(password_verifier)))
+                                             str(password_verifier), 
+                                             authentication_table))
                     except sqlite3.IntegrityError as error:
                         database.alert("sqlite3 IntegrityError registering {}: {}",
                                        (username, error), level=0)
@@ -225,7 +250,7 @@ class Authenticated_Service(pride.base.Base):
                         database.commit()
                         self.alert("user {} registered successfully".format(username),
                                    level=self.verbosity["register_success"])
-                        return True
+                        return authentication_table
          
     def login(self, username, credentials):
         """ Attempt to log in as username using credentials. The default
@@ -263,29 +288,33 @@ class Authenticated_Service(pride.base.Base):
             self.alert("Verifying unregistered user", 
                        level=self.verbosity["login_unregistered"])
         else:
-            salt, verifier = registered                
-        response = objects[self.protocol_component].login(username, credentials, salt, verifier)         
+            salt, verifier = registered      
+        table_challenge = Authentication_Table.generate_challenge()
+        self._table_challenge[username] = table_challenge
+        response = (objects[self.protocol_component].login(username, credentials, salt, verifier),
+                    table_challenge)
         return response
     
-    def login_stage_two(self, username, credentials):
+    def login_stage_two(self, username, proof_of_key, table_response):
         """ Concludes the 2 stage login process.
         
             On login failure, provides non specific information as to why.
             
             On login success, a login message and proof of the shared
             secret are returned. """  
-        K, proof_of_K = objects[self.protocol_component].login(username, credentials)
-      #  response = (self.login_message, proof_of_K)        
-        #print self, "Sending response: ", response
+        K, proof_of_K = objects[self.protocol_component].login(username, proof_of_key)
+        login_message = self.login_fail_message
         if K:
-            self.alert("{} logged in".format(username), 
-                       level=self.verbosity["login_success"])
-            session_id = derive_session_id(K, "session_id", 
-                                           self.session_id_size)
-            self.session_id[session_id] = username
-            login_message = self.on_login(username)
-        else:
-            login_message = self.login_fail_message
+            saved_table = self.database.query("Credentials", retrieve_fields=("authentication_table", ),
+                                              where={"username" : username}).fetchone()[0]          
+            authentication_table = Authentication_Table.load(saved_table)
+            if authentication_table.compare_challenge_response(self._table_challenge.pop(username), table_response):
+                self.alert("{} logged in".format(username), 
+                        level=self.verbosity["login_success"])
+                session_id = derive_session_id(K, "session_id", 
+                                            self.session_id_size)
+                self.session_id[session_id] = username
+                login_message = self.on_login(username)
         return (login_message, proof_of_K)
         
     def on_login(self, username):
@@ -368,7 +397,7 @@ class Authenticated_Client(pride.base.Base):
                      "target_service", "auto_login", "session_id_size")
     
     verbosity = {"login" : 'v', "login_stage_two" : 'v', "login_result" : 0,
-                 "registering" : 'v', "logout" : 0,
+                 "register" : 'v', "logout" : 0,
                  "send_proof" : 'v', "registration_success" : 0,
                  "registration_failed" : 0, "login_failed" : 0}
         
@@ -391,15 +420,19 @@ class Authenticated_Client(pride.base.Base):
         username_prompt = "{}: please provide a username: ".format(self.instance_name)
         self.username = (self.username or 
                          pride.shell.get_user_input(username_prompt,
-                                                   must_reply=True))
+                                                    must_reply=True))
         
         self.password_prompt = self.password_prompt.format(self.instance_name)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
-        
+        self.authentication_table_file = "{}_auth_table.key".format(self.instance_name.replace("->", '_'))
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
             self.login()
     
+    def _get_username_password(self):
+        return (self, self.username, self.password), {} 
+        
+    @with_arguments(_get_username_password)
     @remote_procedure_call(callback_name="register_results")
     def register(self, username, password): 
         """ Attempt to register username with target_service operating 
@@ -412,6 +445,12 @@ class Authenticated_Client(pride.base.Base):
             upon successful registration if auto_login is True or
             an affirmative is provided by the user. """
         if success:
+            assert len(success) == 16 * 16
+            with open(self.authentication_table_file, "a+b") as _file:
+                _file.truncate(0)
+                _file.write(success)
+                _file.flush()
+            
             self.alert("Registered successfully", 
                        level=self.verbosity["registration_success"])
             if (self.auto_login or 
@@ -421,7 +460,7 @@ class Authenticated_Client(pride.base.Base):
             self.alert("Failed to register with {};\n{}", 
                        [self.host_info, success], 
                        level=self.verbosity["registration_failed"])
-    
+            
     def _setup_login(self):
         if self.logged_in:
             self.logout()
@@ -432,21 +471,25 @@ class Authenticated_Client(pride.base.Base):
         username, A = self._client.login()
         return (self, username, A), {}
         
-    @enter(_setup_login)
+    @with_arguments(_setup_login)
     @remote_procedure_call(callback_name="login_stage_two")
-    def login(self):
+    def login(self, username, password_info):
         """ Attempt to log in to the target_service operating on the
             machine specified by host_info. A password prompt will be
             presented if password was not specified as an attribute of
             the authenticated_client (recommended). """
     
     def _derive_proof_of_key(self, response):
-        self.key, self.proof_of_key = self._client.login(response)
-        return (self, self.username, self.proof_of_key), {}
+        srp_response, table_challenge = response
+        self.key, self.proof_of_key = self._client.login(srp_response)
+        with open(self.authentication_table_file, "a+b") as _file:
+            bytestream = _file.read()        
+        table_response = Authentication_Table.load(bytestream).get_passcode(*table_challenge)
+        return (self, self.username, self.proof_of_key, table_response), {}
         
-    @enter(_derive_proof_of_key)
+    @with_arguments(_derive_proof_of_key)
     @remote_procedure_call(callback_name="login_result")
-    def login_stage_two(self): 
+    def login_stage_two(self, username, proof_of_key, table_response): 
         """ The second stage of the login process. This is the callback
             used by login. Sends proof of key to server."""   
         
