@@ -40,4 +40,4 @@ class Clamd_Connection(pride.network.Tcp_Client):
         self.file_results[filename] = (status, reason)
         if status == "FOUND":
             self.alert("Found infected file: {}: {}: {}",
-                       filename, status, reason, level='')
+                       filename, status, reason, level=0)

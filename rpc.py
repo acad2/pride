@@ -80,6 +80,7 @@ class Session(pride.base.Base):
             followed by the information from the supplied instruction. No
             information regarding the callback is included in the request. """
         _call = component, method = instruction.component_name, instruction.method
+        #print "Pickling: ", instruction.args, instruction.kwargs
         request = ' '.join((self.id_size + self.id, component, method, 
                             default_serializer.dumps((instruction.args, 
                                                       instruction.kwargs))))
@@ -224,7 +225,7 @@ class Rpc_Socket(Packet_Socket):
                     
                 if not hasattr(instance, "validate"):
                     result = pride.authentication.UnauthorizedError()
-                elif permission or instance.validate(session_id, 
+                elif permission or instance.validate(self, session_id, 
                                                      peername, method):
                     try:
                         args, kwargs = self.deserealize(serialized_arguments)

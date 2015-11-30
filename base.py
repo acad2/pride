@@ -298,7 +298,7 @@ class Base(object):
         except KeyError:
             pride.environment.references_to[instance_name] = set((self.instance_name, ))      
             
-    def alert(self, message, format_args=tuple(), level=''):
+    def alert(self, message, format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 

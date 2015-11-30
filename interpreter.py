@@ -120,6 +120,8 @@ class Interpreter(authentication.Authenticated_Service):
     
     mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
     
+    remotely_available_methods = ("handle_input", "execute_instruction")
+    
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
         filename = '_'.join(word for word in self.instance_name.split("->") if word)
@@ -127,19 +129,12 @@ class Interpreter(authentication.Authenticated_Service):
                                "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
                 
-    def login(self, username, credentials):
-        response = super(Interpreter, self).login(username, credentials)
-        session_id, sender = self.current_session
-        if response[0] == self.login_message:
-           # self.user_namespaces[username] = {"__name__" : "__main__",
-           #                                   "__doc__" : '',
-           #                                   "Instruction" : Instruction}
-            self.user_session[username] = ''
-            string_info = (username, sender, sys.version, sys.platform, 
-                           self.help_string)    
-            response = (self.login_message.format(*string_info), response[1])
-        return response
-
+    def on_login(self, username):
+        sessionid, sender = self.current_session
+        self.user_session[username] = ''
+        string_info = (username, sender, sys.version, sys.platform, self.help_string)
+        return self.login_message.format(*string_info)
+        
     def handle_input(self, source):
         log = pride.objects[self.log]
         session_id, sender = self.current_session

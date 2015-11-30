@@ -288,7 +288,7 @@ class Inherited_Attributes(type):
             inherited_attributes.update(attributes["inherited_attributes"])
         attributes["inherited_attributes"] = inherited_attributes
             
-        for attribute_name, attribute_type in cls.inherited_attributes.items():
+        for attribute_name, attribute_type in inherited_attributes.items():
             if issubclass(attribute_type, dict):
                 _attribute = {}
                 for _class in bases:

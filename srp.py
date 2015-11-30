@@ -138,7 +138,7 @@ class Secure_Remote_Password(pride.base.Base):
 
         if M != H( H(N) ^ H(g), H(username), salt, A, B, K):
             self.alert("Proof of K mismatch from user '{}'", [username], level='v')
-            yield None, "Invalid username or password"
+            yield None, None
         else:
             yield K, H(A, M, K)
     
