@@ -3,6 +3,11 @@ import sqlite3
 
 import pride.base
 
+def create_assignment_string(items):
+    keys = items.keys()
+    values = [items[key] for key in keys]
+    return ", ".join("{} = ?".format(key) for key in keys), values    
+    
 def create_where_string(where):
     """ Helper function used by Database objects """
     keys = []
@@ -30,7 +35,8 @@ class Database(pride.base.Wrapper):
     verbosity = {"open_database" : 'v', "create_table" : "v",
                  "query_issued" : "vvv", "query_result" : "vvv",
                  "insert_into" : "vvv", "delete_from" : "vvv",
-                 "drop_table" : "v", "table_info" : "vvv"}
+                 "drop_table" : "v", "table_info" : "vvv",
+                 "update_table" : "vv"}
                  
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
@@ -95,6 +101,15 @@ class Database(pride.base.Wrapper):
                    (table_name, query, values), level=self.verbosity["insert_into"])
         return self.cursor.execute(query, values)
     
+    def update_table(self, table_name, where, arguments):
+        condition_string, values = create_where_string(where)
+        assignment_string, _values = create_assignment_string(arguments)
+        query = "UPDATE {} SET {} {}".format(table_name, assignment_string, condition_string)
+        values = _values + values
+        self.alert("Updating data in table {}; {} {}".format(table_name, query, values),
+                   level=self.verbosity["update_table"])
+        return self.cursor.execute(query, values)
+        
     def delete_from(self, table_name, where=None):
         """ Removes an entry from the specified table. The where
             argument is a dictionary containing field name:value pairs."""

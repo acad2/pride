@@ -1,3 +1,4 @@
+import hashlib
 import random
 import hkdf
 import sqlite3
@@ -110,7 +111,8 @@ class Authentication_Table(object):
         table and the server matches what it expected against the response.
         
         Acts as "something you have", albeit in the form of data. """
-    def __init__(self, rows=None):
+    def __init__(self, rows=None, hash_function="sha256"):
+        self.hash_function = hash_function
         size = 16
         if not rows:
             characters = [chr(x) for x in xrange(256)]
@@ -134,8 +136,11 @@ class Authentication_Table(object):
         return tuple(_split_byte(ord(byte)) for byte in random._urandom(count))
         
     def get_passcode(self, *args): 
-        """ Returns the symbols located at the indices specified in the challenge"""
-        return ''.join(self.rows[row][index] for row, index in args)
+        """ Returns a passcode generated from the symbols located at the 
+            indices specified in the challenge"""
+        return getattr(hashlib, 
+                       self.hash_function)((''.join(self.rows[row][index] for 
+                                            row, index in args))).digest()
     
     def compare_challenge_response(self, challenge, response):
         """ Compares a response to the correct answer to the challenge """
