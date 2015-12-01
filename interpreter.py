@@ -204,12 +204,17 @@ class Finalizer(base.Base):
             except ValueError:
                 pass
             else:
-                callback = getattr(objects[instance_name], method)
+                try:
+                    callback = getattr(objects[instance_name], method)
+                except KeyError:
+                    self.alert("Unable to load object for callback: '{}'".format(instance_name), level=0)
+                except AttributeError:
+                    self.alert("Unable to call method: '{}.{}'".format(instance_name, method), level=0)
             try:
                 callback(*args, **kwargs)
-            except KeyError:
-                if instance_name in objects:
-                    raise                
+            except Exception as error:
+                self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
+                           (instance_name, method, error), level=0)
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):

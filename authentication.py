@@ -15,9 +15,26 @@ objects = pride.objects
 
 class UnauthorizedError(Warning): pass         
                  
-def derive_session_id(key, purpose='', key_size=256):
-    return hkdf.hkdf(key, key_size, purpose)
+def derive_key_from_password(salt, password=None, hash_name="sha512", iterations=50000,
+                             prompt="Please supply the password for the key: ",
+                             dklen=None):
+    return hashlib.pbkdf2(hash_name, getpass.getpass(prompt) if password is None else password, 
+                          salt, iterations, dklen)
+    
+def derive_random_key(random_size=128, salt_size=32):
+    bytes = random._urandom(random_size)
+    salt = random._urandom(salt_size)
+    return hkdf.extract(bytes, salt)
+    
+def derive_encryption_key(key, size=32, purpose="Encryption"):
+    return hkdf.expand(key, size, purpose)
+    
+def derive_session_id(key, size=32, purpose='Session Identifier'):
+    return hkdf.expand(key, size, purpose)
 
+def derive_mac_key(key, size=32, purpose="Message Authentication Code"):
+    return hkdf.expand(key, size, purpose)
+    
 def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
                        requires_kwargs=False, **_kwargs):
     def decorate(function):
@@ -488,9 +505,9 @@ class Authenticated_Client(pride.base.Base):
         if self.logged_in:
             self.logout()
             assert self.session.id == '0'
-        self._client = self.create(self.protocol_client, 
-                                   username=self.username,
-                                   password=self.password)
+        password = self.password
+        self._client = self.create(self.protocol_client, username=self.username,
+                                   password=password)
         username, A = self._client.login()
         return (self, username, A), {}
         
@@ -574,6 +591,7 @@ class Authenticated_Client(pride.base.Base):
         if self.logged_in:
             self.logout()
         super(Authenticated_Client, self).delete()
+        
         
 if __name__ == "__main__":        
     def test():

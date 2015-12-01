@@ -26,10 +26,9 @@ class Database(pride.base.Wrapper):
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
         
-    defaults = {"database_name" : '',
-                "connection" : None,
-                "cursor" : None,
-                "text_factory" : str}
+    defaults = {"database_name" : '', "connection" : None,
+                "cursor" : None, "text_factory" : str,
+                "detect_types_flags" : sqlite3.PARSE_DECLTYPES}
         
     wrapped_object_name = "connection"
     
@@ -163,6 +162,7 @@ class Database(pride.base.Wrapper):
         self.wraps(connection)
         
     def delete(self):
-        super(Database, self).delete()
         self.commit()
-        self.close()        
+        self.close()
+        super(Database, self).delete()
+        

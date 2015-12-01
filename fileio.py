@@ -11,6 +11,7 @@ import platform
 import time
 
 import pride    
+import pride.database
 import pride.vmlibrary as vmlibrary
 import pride.base as base
 import pride.utilities as utilities
@@ -279,7 +280,75 @@ class File(base.Wrapper):
         super(File, self).delete()
         self.wrapped_object.close()
                                                 
+
+class Database_File(File):
+                                                    
+    defaults = {"filename" : '', "mode" : '', "_data" : '', "tags" : '',
+                "file_type" : "StringIO.StringIO"}
+    
+    def __init__(self, **kwargs):
+        super(Database_File, self).__init__(**kwargs)
+        data, self.tags = pride.objects["->Python->File_System"].open_file(self.filename, 'r')
+        self.file.write(data)
+    
+    def __enter__(self):
+        return self
         
+    def __exit__(self, type, value, traceback):
+        self.save()
+        self.delete()
+        return value
+        
+    def flush(self): 
+        self.save()
+        
+    def save(self):
+        pride.objects["->Python->File_System"].save_file(self.filename, self.data,
+                                                         self.tags)                                                         
+                                                         
+                                                         
+class File_System(pride.database.Database):
+        
+    def __init__(self, **kwargs):
+        super(File_System, self).__init__(**kwargs)
+        self.create_table("Files", ("filename TEXT PRIMARY KEY", "data BLOB",
+                                    "date_created TIMESTAMP", "date_modified TIMESTAMP",
+                                    "date_accessed TIMESTAMP", "file_type TEXT",
+                                    "tags TEXT"))
+        
+    def save_file(self, filename, data, tags=tuple()):
+        now = datetime.now()
+        file_info = {"date_modified" : now, 
+                     "file_type" : os.path.splitext(filename)[-1]}
+        if tags:
+            file_info["tags"] = tags
+        try:
+            _data = self.query_table("Files", where={"filename" : filename},
+                                     retrieve_fields=("data", ))
+        except sqlite3.Error:
+            _data = b''
+            file_info["date_created"] = now
+            self.insert_into("Files", (filename, data, now, now, now, 
+                                       file_info["file_type"], 
+                                       file_info.get("tags", '')))
+        else:
+            file_info["data"] = _data + data    
+            self.update_table("Files", where={"filename" : filename}, **file_info)
+        
+    def open_file(self, filename, mode=''):
+        if mode[0] == 'w':
+            try:
+                self.delete_from("Files", where={"filename" : filename})
+            except sqlite3.Error:
+                pass
+            self.save_file(filename, '')        
+        try:
+            return self.query_table("Files", where={"filename" : filename},
+                                    retrieve_fields=("data", "tags")).fetchone()
+        except sqlite3.Error:
+            raise IOError("File '{}' does not exist".format(filename))        
+        
+    
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 
                                           file_position_or_size=0,
