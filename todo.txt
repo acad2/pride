@@ -19,6 +19,12 @@ to the call, create new source with branches based on the condition removed.
     
 an app for drawing/designing themes!
 
+in memory encryption?
+stream cipher, authenticated encryption with associated data for bytecode interpreter?
+2 byte wide bytecode operators. Same number of instructions, ~65300 are errors
+history from storing hashes of shared secrets
+# cryptographically secure rate limiting based on session calculated from proof of work cracking hashes
+
 recently done:
     print_level and log_level ranges. 0+v+vv+vvv+vvvv
     

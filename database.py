@@ -27,7 +27,7 @@ class Database(pride.base.Wrapper):
         do not commit automatically."""
         
     defaults = {"database_name" : '', "connection" : None,
-                "cursor" : None, "text_factory" : str,
+                "cursor" : None, "text_factory" : str, "auto_commit" : True,
                 "detect_types_flags" : sqlite3.PARSE_DECLTYPES}
         
     wrapped_object_name = "connection"
@@ -100,7 +100,10 @@ class Database(pride.base.Wrapper):
         query = "INSERT INTO {} VALUES({})".format(*insert_format)
         self.alert("Inserting data into table {}; {}, {}",
                    (table_name, query, values), level=self.verbosity["insert_into"])
-        return self.cursor.execute(query, values)
+        cursor = self.cursor.execute(query, values)
+        if self.auto_commit:
+            self.commit()
+        return cursor            
     
     def update_table(self, table_name, where=None, arguments=None):
         assert where and arguments
@@ -110,7 +113,10 @@ class Database(pride.base.Wrapper):
         values = _values + values
         self.alert("Updating data in table {}; {} {}".format(table_name, query, values),
                    level=self.verbosity["update_table"])
-        return self.cursor.execute(query, values)
+        cursor = self.cursor.execute(query, values)
+        if self.auto_commit:
+            self.commit()
+        return cursor
         
     def delete_from(self, table_name, where=None):
         """ Removes an entry from the specified table. The where
@@ -122,7 +128,10 @@ class Database(pride.base.Wrapper):
             query = "DELETE FROM {} {}".format(table_name, condition_string)   
             self.alert("Deleting entry from table: {}; {}".format(table_name, query),
                        level=self.verbosity["delete_from"])
-            return self.cursor.execute(query, values)
+            cursor = self.cursor.execute(query, values)
+            if self.auto_commit:
+                self.commit()
+            return cursor
                                              
     def drop_table(self, table_name):
         """ Removes a table from the underlying sqlite3 database. Note
@@ -131,7 +140,9 @@ class Database(pride.base.Wrapper):
         self.alert("Dropping table: {}".format(table_name),
                    level=self.verbosity["drop_table"])
         self.cursor.execute("DROP TABLE {}", (table_name, ))
-                
+        if self.auto_commit:
+            self.commit()
+            
     def table_info(self, table_name):
         """ Returns a generator which yields field information for the
             specified table. Entries consist of the field index, field name,
@@ -162,7 +173,6 @@ class Database(pride.base.Wrapper):
         self.wraps(connection)
         
     def delete(self):
-        self.commit()
         self.close()
         super(Database, self).delete()
         

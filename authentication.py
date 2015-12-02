@@ -59,7 +59,8 @@ def remote_procedure_call(callback_name='', callback=None):
        # if not (callback_name or callback):
        #     raise pride.errors.ArgumentError("callback_name or callback not supplied for {}".format(function))        
         call_name = function.__name__
-        def _make_rpc(self, *args, **kwargs):            
+        def _make_rpc(self, *args, **kwargs):       
+            print "Making request: {}.{}".format(self.target_service, call_name), self.verbosity[call_name]
             self.alert("Making request '{}.{}'", (self.target_service, call_name),
                        level=self.verbosity[call_name])
             self.session.execute(Instruction(self.target_service, call_name, 
@@ -159,9 +160,9 @@ class Authentication_Table(object):
                        self.hash_function)((''.join(self.rows[row][index] for 
                                             row, index in args))).digest()
     
-    def compare_challenge_response(self, challenge, response):
+    @staticmethod
+    def compare(calculation, response):
         """ Compares a response to the correct answer to the challenge """
-        calculation = self.get_passcode(*challenge)
         success = False
         for index, byte in enumerate(calculation):
             if response[index] != byte:
@@ -335,7 +336,8 @@ class Authenticated_Service(pride.base.Base):
             saved_table, history = database.query("Credentials", retrieve_fields=("authentication_table", "history"),
                                                   where={"username" : username}).fetchone()          
             authentication_table = Authentication_Table.load(saved_table)
-            if authentication_table.compare_challenge_response(self._table_challenge.pop(username), table_response):
+            calculation = authentication_table.get_passcode(*self._table_challenge.pop(username))
+            if authentication_table.compare(calculation, table_response):
                 self.alert("{} logged in".format(username), 
                         level=self.verbosity["login_success"])
                 
