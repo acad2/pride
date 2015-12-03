@@ -182,7 +182,7 @@ class Authenticated_Service2(pride.base.Base):
 
             if authentication_table.compare(correct_answer, hashed_answer):  
                 self.alert("Authentication success", level=0)
-                new_key, macd_challenge = pride.keynegotiation.get_login_challenge(saved_table)
+                new_key, macd_challenge = pride.keynegotiation.get_login_challenge(session_key)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
