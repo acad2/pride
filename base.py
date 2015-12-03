@@ -106,7 +106,7 @@ class Base(object):
     __metaclass__ = pride.metaclass.Metaclass
                 
     # certain container type class attributes are "inherited" from base classes
-    # these include defaults, required_arguments, mutable_defaults, verbosity
+    # these include defaults, required_attributes, mutable_defaults, verbosity
     # parser_ignore, and flags (all of which are explained below)
     # when subclassing, creating new class defaults will automatically merge the
     # newly specified defaults with the base class defaults, and similarly so for each 
@@ -120,9 +120,9 @@ class Base(object):
                 "startup_components" : tuple()}   
     
     # if certain attributes must be passed explicitly, including them in the
-    # required_arguments class attribute will automatically raise an 
+    # required_attributes class attribute will automatically raise an 
     # ArgumentError when they are not supplied.
-    required_arguments = tuple()
+    required_attributes = tuple()
     
     # mutable objects should not be included as defaults attributes
     # for the same reason they should not be used as default arguments
@@ -203,8 +203,8 @@ class Base(object):
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
                         component.instance_name) 
-        if self.required_arguments:
-            for attribute in self.required_arguments:
+        if self.required_attributes:
+            for attribute in self.required_attributes:
                 try:
                     if getattr(self, attribute) == self.defaults[attribute]:
                         raise ArgumentError("Required argument {} not supplied".format(attribute))

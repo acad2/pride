@@ -370,3 +370,66 @@ class CA_Screensaver(Terminal_Screensaver):
         self.bytearray = new_bytearray
         objects["->Python->Command_Line"].clear()
         sys.stdout.write(new_bytearray)            
+        
+        
+class Wave_CAtest(Terminal_Screensaver):
+    
+    def __init__(self, **kwargs):
+        super(Wave_CAtest, self).__init__(**kwargs)
+        self.rows = [[(0, 0) for y in xrange(16)] for x in xrange(16)]
+        random_coordinate = format(ord(random._urandom(1)), 'b').zfill(8)
+        x = int(random_coordinate[:4], 2)
+        y = int(random_coordinate[4:], 2)
+        self.rows[x][y] = (ord(random._urandom(1)), ord(random._urandom(1)))
+        
+    def run(self):
+        new_rows = [[(0, 0) for y in xrange(16)] for x in xrange(16)]
+        
+        last_row = False
+        for row_index, row in enumerate(self.rows):
+            new_row = [(0, 0) for x in range(16)]
+            if row_index == 15:
+                last_row = True
+            for point_index, magnitudes in enumerate(row):
+                x_magnitude, y_magnitude = magnitudes
+                if point_index == 15:
+                    x_magnitude = -x_magnitude  
+                if x_magnitude > 0:
+                    x_magnitude -= 1
+                    new_x_coord = point_index + 1
+                elif x_magnitude < 0:
+                    x_magnitude += 1
+                    new_x_coord = point_index - 1
+                else:
+                    new_x_coord = point_index
+                    
+                if last_row:
+                    y_magnitude = -y_magnitude
+                if y_magnitude > 0:
+                    y_magnitude -= 1
+                    new_y_coord = row_index + 1
+                elif y_magnitude < 0:
+                    y_magnitude += 1
+                    new_y_coord = row_index - 1
+                else:
+                    new_y_coord = row_index
+                if new_y_coord > 15:
+                    new_y_coord = 15
+                elif new_y_coord < 0:
+                    new_y_coord = 0
+                    y_magnitude = -y_magnitude
+                if new_x_coord > 15:
+                    new_x_coord = 15
+                elif new_x_coord < 0:
+                    new_x_coord = 0
+                    x_magnitude = -x_magnitude
+                    
+                self.rows[new_y_coord][new_x_coord] = (x_magnitude, y_magnitude)
+                
+        objects["->Python->Command_Line"].clear()
+        def decide_symbol(number):
+            if number[0] or number[1]:
+                return str(number[0]) + str(number[1])
+            else:
+                return '*'
+        print '\n'.join((''.join(decide_symbol(number) for number in row) for row in self.rows))

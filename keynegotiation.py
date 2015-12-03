@@ -35,14 +35,14 @@ def get_login_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sh
         random_bytes = random._urandom(bytes_per_hash)
         key += random_bytes
         
-        hash_input = random_bytes + secret + hash_output
+        hash_input = key + secret + hash_output
         hash_output = hash_function(hash_input).digest()
         challenge += hash_output
    #     print "Created challenge: ", hash_function(hash_input).digest()
         secret = hash_function(secret).digest()        
     mac = hash_function(challenge + mac_key).digest()
   #  print "Generated key: ", key
-    return key, mac + challenge, secret
+    return key, mac + challenge#, secret
     
 def client_attempt_login(secret, challenge, key_size=32, bytes_per_hash=1, hash_size=32, hash_function="sha256"):
     # client begins cracking hashes:
@@ -63,7 +63,7 @@ def client_attempt_login(secret, challenge, key_size=32, bytes_per_hash=1, hash_
         for permutation in itertools.permutations(range_256, bytes_per_hash):
             key_guess = ''.join(permutation)
             #print "Guessing: ", key_guess
-            if hash_function(key_guess + secret + previous_hash).digest() == hash_output:
+            if hash_function(key + key_guess + secret + previous_hash).digest() == hash_output:
                 key += key_guess
                 new_key_length = len(key)
                 #print "Cracked and recoved key fragment"
@@ -74,7 +74,7 @@ def client_attempt_login(secret, challenge, key_size=32, bytes_per_hash=1, hash_
         secret = hash_function(secret).digest()
         challenge = challenge[hash_size:]
     #print "Recovered key ", len(key)
-    return key, secret
+    return key#, secret
     
 # assume attacker receives hashes also...
 # attacker begins cracking hash:
@@ -85,9 +85,10 @@ def client_attempt_login(secret, challenge, key_size=32, bytes_per_hash=1, hash_
 #    the hashes must be cracked in order
     
 if __name__ == "__main__":
-    key, mac_challenge, server_secret = get_server_login_challenge(initial_value)
-    _key, client_secret = client_login(initial_value, mac_challenge)
+    key, mac_challenge, server_secret = get_login_challenge(_initial_value)
+    _key, client_secret = client_attempt_login(_initial_value, mac_challenge)
     assert key == _key
     assert server_secret == client_secret    
     from pride.decorators import Timed
-    print Timed(client_login, 1)(initial_value, mac_challenge)
+    print Timed(client_attempt_login, 1)(_initial_value, mac_challenge)
+    

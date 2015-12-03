@@ -26,7 +26,7 @@ class Database(pride.base.Wrapper):
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
         
-    defaults = {"database_name" : '', "connection" : None,
+    defaults = {"database_name" : '', "connection" : None, "database_structure" : None,
                 "cursor" : None, "text_factory" : str, "auto_commit" : True,
                 "detect_types_flags" : sqlite3.PARSE_DECLTYPES}
         
@@ -37,13 +37,16 @@ class Database(pride.base.Wrapper):
                  "insert_into" : "vvv", "delete_from" : "vvv",
                  "drop_table" : "v", "table_info" : "vvv",
                  "update_table" : "vv"}
-                 
+        
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)
-        pride.objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
+        try:
+            pride.objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
+        except KeyError:
+            self.alert("Unable to queue finalizer callback", level=0)
         
     def open_database(self, database_name, text_factory=None):
         """ Opens database_name and obtain a sqlite3 connection and cursor.
@@ -66,9 +69,12 @@ class Database(pride.base.Wrapper):
                                               if_not_exists else ' ',
                                               table_name, ', '.join(fields))
         self.alert("Creating table: {}".format(query), 
-                   level=self.verbosity["create_table"])
-        return self.cursor.execute(query)
-                                                    
+                   level=self.verbosity["create_table"])        
+        result = self.cursor.execute(query)
+        if self.auto_commit:
+            self.commit()
+        return result
+        
     def query(self, table_name, retrieve_fields=tuple(), where=None):
         """ Retrieves information from the named database table.
             retrieve_fileds is an iterable containing string names of
@@ -108,7 +114,13 @@ class Database(pride.base.Wrapper):
     def update_table(self, table_name, where=None, arguments=None):
         assert where and arguments
         condition_string, values = create_where_string(where)
-        assignment_string, _values = create_assignment_string(arguments)
+        
+        _arguments = {}
+        for item in self.database_structure[table_name]:
+            attribute_name = item.split()[0]
+            _arguments[attribute_name] = arguments[attribute_name]
+        #arguments = [(item, arguments[item]) for item in self.database_structure[table_name]]
+        assignment_string, _values = create_assignment_string(_arguments)
         query = "UPDATE {} SET {} {}".format(table_name, assignment_string, condition_string)
         values = _values + values
         self.alert("Updating data in table {}; {} {}".format(table_name, query, values),
@@ -175,4 +187,50 @@ class Database(pride.base.Wrapper):
     def delete(self):
         self.close()
         super(Database, self).delete()
+        
+        
+class Cached_Database(Database):
+    
+    defaults = {"current_table" : ''}    
+    mutable_defaults = {"in_memory" : dict}
+    required_attributes = ("current_table", )
+        
+    def _get_primary_key(self):
+        return self.database_structure[self.current_table][0].split()[0]
+    primary_key = property(_get_primary_key)
+    
+    def __setitem__(self, item, values):
+        #self.session_id[table_hash] = value
+       # self.alert("Setting item in db: {} = {}".format(item, values), level=0)
+        
+        assert self.primary_key == "authentication_table_hash", self.primary_key
+        try:
+            values[self.primary_key] = item
+        except TypeError: # a tuple
+            raise
+            _values = values
+        else:
+            _values = []
+            for item_name in self.database_structure[self.current_table]:
+                _item = item_name.split()[0]
+                _values.append(values[_item])
+        self.in_memory[item] = _values
+        try:
+            self.insert_into(self.current_table, _values)
+        except sqlite3.Error:
+            self.update_table(self.current_table, where={self.primary_key : item},
+                              arguments=values)            
+            
+    def __getitem__(self, item):
+        self.alert("Retrieving: {}".format(item), level=0)
+        try:
+            return self.in_memory[item]
+        except KeyError:
+            self.alert("Key Error, retrieving from db...", level=0)
+            values = self.query(self.current_table, 
+                               where={self.primary_key : item},
+                               retrieve_fields=(self.primary_key, )).fetchone()
+            assert values, "{} not in db".format(item)
+            self.in_memory[item] = values            
+            return values
         

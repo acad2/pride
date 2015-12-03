@@ -25,7 +25,7 @@ font_module = sdl2.sdlttf
 class Default_Ordered_Dict(pride.base.Wrapper):
     
     defaults = {"_dict" : None, "callback" : None}
-    required_arguments = ("callback", )
+    required_attributes = ("callback", )
     wrapped_object_name = "_dict"
     
     def __init__(self, dictionary=None, **kwargs):

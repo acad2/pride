@@ -162,7 +162,7 @@ class Authentication_Table(object):
     
     @staticmethod
     def compare(calculation, response):
-        """ Compares a response to the correct answer to the challenge """
+        """ Compares two iterables in constant time """
         success = False
         for index, byte in enumerate(calculation):
             if response[index] != byte:
@@ -224,6 +224,12 @@ class Authenticated_Service(pride.base.Base):
     
     mutable_defaults = {"_rate" : dict, "_table_challenge" : dict, "ip_blacklist" : list,
                         "session_id" : dict} # session_id maps session id to username
+        
+    database_structure = {"Credentials" : ("username TEXT PRIMARY_KEY", "salt TEXT", 
+                                           "verifier BLOB", "authentication_table BLOB",
+                                           "history BLOB")}
+    
+    inherited_attributes = {"database_structure" : dict}
     
     def __init__(self, **kwargs):
         self.ip_whitelist = ["127.0.0.1", "localhost"]        
@@ -234,8 +240,8 @@ class Authenticated_Service(pride.base.Base):
                                                        "user_registry.db")
         else:
             name = self.database_name
-        self.database = self.create("database.Database", database_name=name,
-                                    text_factory=str)
+        self.database = self.create("database.Cached_Database", database_name=name,
+                                    text_factory=str, current_table="Credentials")
         self.database.create_table("Credentials", 
                                    ("username TEXT PRIMARY KEY", "salt TEXT",   
                                     "verifier BLOB", "authentication_table BLOB",
