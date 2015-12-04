@@ -225,7 +225,7 @@ class Rpc_Socket(Packet_Socket):
                     
                 if not hasattr(instance, "validate"):
                     result = pride.authentication.UnauthorizedError()
-                elif permission or instance.validate(self, session_id, 
+                elif permission or instance.validate(session_id, 
                                                      peername, method):
                     try:
                         args, kwargs = self.deserealize(serialized_arguments)

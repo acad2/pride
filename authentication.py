@@ -206,7 +206,7 @@ class Authenticated_Service(pride.base.Base):
                    "    session_id logged in: {}\n    method_name: '{}'\n    " +
                    "login allowed: {}    registration allowed: {}",
                 "hkdf_table_update_string" : "updating the authentication table",
-                "hash_function" : "sha512"}
+                "hash_function" : "sha512", "database_type" : "pride.database.Cached_Database"}
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
@@ -216,11 +216,12 @@ class Authenticated_Service(pride.base.Base):
                  "login_success" : "vv", "login_unregistered" : "vv",
                  "logout_failure" : "vv"}
    
-    inherited_attributes = {"rate_limit" : dict, "remotely_available_methods" : tuple}
+    inherited_attributes = {"rate_limit" : dict, "remotely_available_procedures" : tuple,
+                            "database_structure" : dict, "database_flags" : dict}
     
     rate_limit = {"login" : 2, "register" : 2}            
     
-    remotely_available_methods = ("register", "login", "login_stage_two", "logout")
+    remotely_available_procedures = ("register", "login", "login_stage_two", "logout")
     
     mutable_defaults = {"_rate" : dict, "_table_challenge" : dict, "ip_blacklist" : list,
                         "session_id" : dict} # session_id maps session id to username
@@ -229,24 +230,24 @@ class Authenticated_Service(pride.base.Base):
                                            "verifier BLOB", "authentication_table BLOB",
                                            "history BLOB")}
     
-    inherited_attributes = {"database_structure" : dict}
-    
+    database_flags = {"text_factory" : str, "current_table" : "Credentials"}
+        
     def __init__(self, **kwargs):
         self.ip_whitelist = ["127.0.0.1", "localhost"]        
         super(Authenticated_Service, self).__init__(**kwargs)
+        self._load_database()
+        
+    def _load_database(self):
         if not self.database_name:
             _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
-            name = self.database_name = "{}_{}".format(_instance_name,
-                                                       "user_registry.db")
+            name = self.database_name = "{}.db".format(_instance_name)
         else:
             name = self.database_name
-        self.database = self.create("database.Cached_Database", database_name=name,
-                                    text_factory=str, current_table="Credentials")
-        self.database.create_table("Credentials", 
-                                   ("username TEXT PRIMARY KEY", "salt TEXT",   
-                                    "verifier BLOB", "authentication_table BLOB",
-                                    "history BLOB"))
-        self.database.commit()
+        self.database = self.create(self.database_type, database_name=name,
+                                    database_structure=self.database_structure,
+                                    **self.database_flags)
+        for table, structure in self.database_structure.items():
+            self.database.create_table(table, structure)
                 
     def register(self, username, password):
         """ Register a username and corresponding password. The
@@ -373,10 +374,10 @@ class Authenticated_Service(pride.base.Base):
                        level=self.verbosity["logout_failure"])
         objects["->Python->Secure_Remote_Password"].abort_login(username)
         
-    def validate(self, rpc_socket, session_id, peername, method_name):
+    def validate(self, session_id, peername, method_name):
         """ Determines whether or not the peer with the supplied
             session id is allowed to call the requested method """
-        if method_name not in self.remotely_available_methods:
+        if method_name not in self.remotely_available_procedures:
             return False            
         if self.rate_limit and method_name in self.rate_limit:
             try:
@@ -420,11 +421,7 @@ class Authenticated_Service(pride.base.Base):
         
     def on_load(self, attributes):
         super(Authenticated_Service, self).on_load(attributes)
-        self.database = self.create("database.Database", database_name=name,
-                                    text_factory=str)
-        self.database.create_table("Credentials", 
-                                  ("username TEXT PRIMARY KEY", "salt TEXT", "verifier BLOB"))
-        self.database.commit()
+        self._load_database()
         
         
 class Authenticated_Client(pride.base.Base):

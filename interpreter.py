@@ -120,7 +120,7 @@ class Interpreter(authentication.Authenticated_Service):
     
     mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
     
-    remotely_available_methods = ("handle_input", "execute_instruction")
+    remotely_available_procedures = ("handle_input", "execute_instruction")
     
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)

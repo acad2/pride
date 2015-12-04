@@ -126,36 +126,58 @@ class Authentication_Table(object):
 class Authenticated_Service2(pride.base.Base):
    
     defaults = {"hkdf_table_update_info_string" : "Authentication Table Update",
-                "hash_function" : "SHA256"}
+                "hash_function" : "SHA256", "database_name" : '', 
+                "database_type" : "pride.database.Cached_Database",
+                "validation_failure_string" :\
+                   ".validate: Authorization Failure:\n   ip_blacklisted: {}" +
+                   "    session_id logged in: {}\n    method_name: '{}'\n    " +
+                   "login allowed: {}    registration allowed: {}"}                
     
-    verbosity = {"register" : 0, "create_session" : 0, "login_stage_two" : 'v',
+    verbosity = {"register" : 'v', "login_stage_two" : 'v',
                  "on_login" : 0, "login" : 'v'}
                  
     database_structure = {"Users" : ("authentication_table_hash BLOB PRIMARY_KEY", 
                                      "authentication_table BLOB", "session_key BLOB")}
-                               
+                              
+    database_flags = {"current_table" : "Users"}
+    
+    remotely_available_procedures = ("register", "login", "login_stage_two")
+    
+    mutable_defaults = {"_rate" : dict, "ip_whitelist" : list, "ip_blacklist" : list,
+                        "session_id" : dict} # session_id maps session id to username
+                        
+    inherited_attributes = {"database_structure" : dict, "database_flags" : dict,
+                            "remotely_inherited_methods" : tuple}
+    
     def __init__(self, **kwargs):
         super(Authenticated_Service2, self).__init__(**kwargs)
-        self.key = random._urandom(32)
-        self.database = self.create("pride.database.Cached_Database", database_name="testas2.db",
-                                    current_table="Users", database_structure=self.database_structure)
-        self.database.create_table("Users", ("authentication_table_hash BLOB PRIMARY KEY",
-                                             "authentication_table BLOB", "session_key BLOB"))
+        self._load_database()    
         self.hkdf = self.create("cryptography.hazmat.primitives.kdf.hkdf.HKDFExpand",
                                 algorithm=getattr(hashes, self.hash_function)(),
                                 length=256, info=self.hkdf_table_update_info_string,
-                                backend=BACKEND)
+                                backend=BACKEND)     
+        
+    def _load_database(self):
+        if not self.database_name:
+            _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
+            name = self.database_name = "{}.db".format(_instance_name)
+        else:
+            name = self.database_name
+        self.database = self.create(self.database_type, database_name=name,
+                                    database_structure=self.database_structure,
+                                    **self.database_flags)
+        for table, structure in self.database_structure.items():
+            self.database.create_table(table, structure)
+            
     def register(self):
         self.alert("Registering new user", level=self.verbosity["register"])
         authentication_table = random._urandom(256)
         hasher = hash_function(self.hash_function)
         hasher.update(authentication_table + "\x00" * 32)
         table_hash = hasher.finalize()
-        print "\n\nCreated table hash: ", len(table_hash), table_hash
         self.database[table_hash] = {"authentication_table_hash" : table_hash,
                                      "authentication_table" : authentication_table,
                                      "session_key" : "\x00" * 32}
-     #   self.database.insert_into("Users", (table_hash, authentication_table, "\x00" * 32))
         return authentication_table
         
     def login(self, authentication_table_hash):
@@ -167,7 +189,6 @@ class Authenticated_Service2(pride.base.Base):
         user_id = {"authentication_table_hash" : authentication_table_hash}
         self.alert("{} attempting to log in".format(authentication_table_hash),
                    level=self.verbosity["login_stage_two"])
-        #assert authentication_table_hash in self.database.in_memory, self.database.in_memory.keys()
         try:
             (saved_table,
              session_key) = self.database.query("Users", 
@@ -182,7 +203,7 @@ class Authenticated_Service2(pride.base.Base):
 
             if authentication_table.compare(correct_answer, hashed_answer):  
                 self.alert("Authentication success", level=0)
-                new_key, macd_challenge = pride.keynegotiation.get_login_challenge(session_key)
+                new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
@@ -190,16 +211,70 @@ class Authenticated_Service2(pride.base.Base):
                 self.database[authentication_table_hash] = {"authentication_table_hash" : new_table_hash,
                                                             "authentication_table" : new_table,
                                                             "session_key" : new_key}
-                #self.database.update("Users", where=user_id, 
-                #                    arguments=)
                 self.on_login(new_table_hash)
         return macd_challenge
         
     def on_login(self, user_id):
         pass
         
-    def validate(self, *args, **kwargs):
-        return True
+    def validate(self, session_id, peername, method_name):
+        """ Determines whether or not the peer with the supplied
+            session id is allowed to call the requested method """
+        if (method_name not in self.remotely_available_procedures or
+            peername[0] in self.ip_blacklist or 
+            (session_id == '0' and method_name != "register")):
+             
+            self.alert(self.validation_failure_string,
+                      (peername[0] in self.ip_blacklist, session_id in self.session_id,
+                       method_name, self.allow_login, self.allow_registration),
+                       level=self.verbosity["validate_failure"])
+            return False            
+        if self.rate_limit and method_name in self.rate_limit:
+            try:
+                self._rate[session_id][method_name].mark()
+            except KeyError:
+                latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
+                try:
+                    self._rate[session_id][method_name] = latency
+                except KeyError:
+                    self._rate[session_id] = {method_name : latency}            
+            current_rate = self._rate[session_id][method_name].last_measurement
+            
+            if current_rate < self.rate_limit[method_name]:
+                self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
+                          (method_name, self.rate_limit[method_name], current_rate),                           
+                          level=self.verbosity["validate_failure"])
+                return False
+        assert peername[0] not in self.ip_blacklist
+        assert method_name in self.remotely_available_procedures
+        assert session_id != 0 or method_name == "register"
+        self.current_session = (session_id, peername)
+        self.alert("Authorizing: {} for {}", 
+                  (peername, method_name), 
+                  level=self.verbosity["validate_success"])
+        return True        
+        #
+        #ip = peername[0]
+        #if ip in self.ip_whitelist or ip not in self.ip_blacklist:
+        #    if session_id in self.session_id or (session_id == '0' and 
+        #                                        ((method_name in ("login", "login_stage_two") and 
+        #                                         self.allow_login) or
+        #                                        (method_name == "register" and
+        #                                         self.allow_registration))):
+        #        self.current_session = (session_id, peername)
+        #        self.alert("Authorizing: {} for {}", 
+        #                  (peername, method_name), 
+        #                  level=self.verbosity["validate_success"])
+        #        return True
+                        
+    def __getstate__(self):
+        state = super(Authenticated_Service2, self).__getstate__()
+        del state["database"]
+        return state
+        
+    def on_load(self, attributes):
+        super(Authenticated_Service2, self).on_load(attributes)
+        self._load_database()
         
         
 class Authenticated_Client2(pride.authentication.Authenticated_Client):   
@@ -246,8 +321,7 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
             auth_table = _file.read(256)
             shared_key = _file.read(32)
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
-        self.alert("Answered challenge", level=0)
-        print "\n\nsending table hash: ", len(self.table_hash), self.table_hash
+        self.alert("Answering challenge", level=0)
         return (self, self.table_hash, answer, challenge), {}
         
     @with_arguments(_answer_challenge)
@@ -255,11 +329,10 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
     def login_stage_two(self, authenticated_table_hash, answer, challenge): pass
     
     def crack_session_secret(self, macd_challenge):
-        print "Cracking session secret!"
         with open(self.table_file, 'r+b') as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
-            new_key = pride.keynegotiation.client_attempt_login(shared_key, macd_challenge)
+            new_key = pride.keynegotiation.solve_challenge(shared_key, macd_challenge)
             self.shared_key = new_key
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)
