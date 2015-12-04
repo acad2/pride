@@ -47,7 +47,7 @@ def get_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sha256")
         secret = hash_function(secret).digest()        
     mac = hash_function(challenge + mac_key).digest()
   #  print "Generated key: ", key
-    return key, mac + challenge, secret
+    return key, mac + challenge#, secret
     
 def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_size=32, hash_function="sha256"):
     # client begins cracking hashes:
@@ -80,7 +80,7 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_size=
         
         challenge = challenge[hash_size:]
     #print "Recovered key ", len(key)
-    return key, secret
+    return key#, secret
     
 # assume attacker receives hashes also...
 # attacker begins cracking hash:

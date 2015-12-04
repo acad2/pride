@@ -60,7 +60,6 @@ def remote_procedure_call(callback_name='', callback=None):
        #     raise pride.errors.ArgumentError("callback_name or callback not supplied for {}".format(function))        
         call_name = function.__name__
         def _make_rpc(self, *args, **kwargs):       
-            print "Making request: {}.{}".format(self.target_service, call_name), self.verbosity[call_name]
             self.alert("Making request '{}.{}'", (self.target_service, call_name),
                        level=self.verbosity[call_name])
             self.session.execute(Instruction(self.target_service, call_name, 
@@ -206,7 +205,7 @@ class Authenticated_Service(pride.base.Base):
                    "    session_id logged in: {}\n    method_name: '{}'\n    " +
                    "login allowed: {}    registration allowed: {}",
                 "hkdf_table_update_string" : "updating the authentication table",
-                "hash_function" : "sha512", "database_type" : "pride.database.Cached_Database"}
+                "hash_function" : "sha512", "database_type" : "pride.database.Database"}
     
     parser_ignore = ("protocol_component", "current_sesion", "session_id_size")
     
@@ -230,8 +229,10 @@ class Authenticated_Service(pride.base.Base):
                                            "verifier BLOB", "authentication_table BLOB",
                                            "history BLOB")}
     
-    database_flags = {"text_factory" : str, "current_table" : "Credentials"}
-        
+    database_flags = {"text_factory" : str,
+                      "primary_key" : {"Credentials" : "username"},
+                      "return_cursor" : True}
+            
     def __init__(self, **kwargs):
         self.ip_whitelist = ["127.0.0.1", "localhost"]        
         super(Authenticated_Service, self).__init__(**kwargs)

@@ -28,7 +28,8 @@ class Database(pride.base.Wrapper):
         
     defaults = {"database_name" : '', "connection" : None, "database_structure" : None,
                 "cursor" : None, "text_factory" : str, "auto_commit" : True,
-                "detect_types_flags" : sqlite3.PARSE_DECLTYPES}
+                "detect_types_flags" : sqlite3.PARSE_DECLTYPES,
+                "return_cursor" : False}
         
     wrapped_object_name = "connection"
     
@@ -37,7 +38,9 @@ class Database(pride.base.Wrapper):
                  "insert_into" : "vvv", "delete_from" : "vvv",
                  "drop_table" : "v", "table_info" : "vvv",
                  "update_table" : "vv"}
-        
+    
+    mutable_defaults = {"from_memory" : dict}
+    
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
         connection, self.cursor = self.open_database(self.database_name, 
@@ -71,6 +74,7 @@ class Database(pride.base.Wrapper):
         self.alert("Creating table: {}".format(query), 
                    level=self.verbosity["create_table"])        
         result = self.cursor.execute(query)
+        self.from_memory[table_name] = {}
         if self.auto_commit:
             self.commit()
         return result
@@ -80,6 +84,13 @@ class Database(pride.base.Wrapper):
             retrieve_fileds is an iterable containing string names of
             the fields that should be returned. The where argument
             is a dictionary of field name:value pairs. """
+        primary_key = self.primary_key[table_name]
+        if primary_key in where and not self.return_cursor:
+            try:
+                return self.from_memory[table_name][where[primary_key]]
+            except KeyError:
+                pass
+                  
         retrieve_fields = ", ".join(retrieve_fields)
         if where:
             condition_string, values = create_where_string(where)
@@ -95,7 +106,7 @@ class Database(pride.base.Wrapper):
             result = self.cursor.execute(query)
         self.alert("Retrieved: {}".format(result), 
                    level=self.verbosity["query_result"])
-        return result
+        return result if self.return_cursor else result.fetchone()
                                         
     def insert_into(self, table_name, values):
         """ Inserts values into the specified table. The values must
@@ -107,6 +118,8 @@ class Database(pride.base.Wrapper):
         self.alert("Inserting data into table {}; {}, {}",
                    (table_name, query, values), level=self.verbosity["insert_into"])
         cursor = self.cursor.execute(query, values)
+        #primary_key = values[[value for value in values if "primary_key" in value.lower()][0].split()[0]
+        #self.from_memory[table_name][primary_key] = values
         if self.auto_commit:
             self.commit()
         return cursor            
@@ -116,9 +129,12 @@ class Database(pride.base.Wrapper):
         condition_string, values = create_where_string(where)
         
         _arguments = {}
+        primary_key = None
         for item in self.database_structure[table_name]:
             attribute_name = item.split()[0]
             _arguments[attribute_name] = arguments[attribute_name]
+            if "primary_key" in item.lower():
+                primary_key = attribute_name
         #arguments = [(item, arguments[item]) for item in self.database_structure[table_name]]
         assignment_string, _values = create_assignment_string(_arguments)
         query = "UPDATE {} SET {} {}".format(table_name, assignment_string, condition_string)
@@ -126,6 +142,7 @@ class Database(pride.base.Wrapper):
         self.alert("Updating data in table {}; {} {}".format(table_name, query, values),
                    level=self.verbosity["update_table"])
         cursor = self.cursor.execute(query, values)
+        self.from_memory[table_name][primary_key] = _values
         if self.auto_commit:
             self.commit()
         return cursor
@@ -187,50 +204,4 @@ class Database(pride.base.Wrapper):
     def delete(self):
         self.close()
         super(Database, self).delete()
-        
-        
-class Cached_Database(Database):
-    
-    defaults = {"current_table" : ''}    
-    mutable_defaults = {"in_memory" : dict}
-    required_attributes = ("current_table", )
-        
-    def _get_primary_key(self):
-        return self.database_structure[self.current_table][0].split()[0]
-    primary_key = property(_get_primary_key)
-    
-    def __setitem__(self, item, values):
-        #self.session_id[table_hash] = value
-       # self.alert("Setting item in db: {} = {}".format(item, values), level=0)
-        
-        assert self.primary_key == "authentication_table_hash", self.primary_key
-        try:
-            values[self.primary_key] = item
-        except TypeError: # a tuple
-            raise
-            _values = values
-        else:
-            _values = []
-            for item_name in self.database_structure[self.current_table]:
-                _item = item_name.split()[0]
-                _values.append(values[_item])
-        self.in_memory[item] = _values
-        try:
-            self.insert_into(self.current_table, _values)
-        except sqlite3.Error:
-            self.update_table(self.current_table, where={self.primary_key : item},
-                              arguments=values)            
-            
-    def __getitem__(self, item):
-        self.alert("Retrieving: {}".format(item), level=0)
-        try:
-            return self.in_memory[item]
-        except KeyError:
-            self.alert("Key Error, retrieving from db...", level=0)
-            values = self.query(self.current_table, 
-                               where={self.primary_key : item},
-                               retrieve_fields=(self.primary_key, )).fetchone()
-            assert values, "{} not in db".format(item)
-            self.in_memory[item] = values            
-            return values
         
