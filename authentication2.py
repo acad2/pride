@@ -5,31 +5,7 @@ hashes = hashlib
 
 from pride import Instruction
 import pride.keynegotiation
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import openssl
-BACKEND = openssl.backend
-
-class SecurityError(Exception): pass
-
-def hash_function(algorithm_name):
-    return hashes.Hash(getattr(hashes, algorithm_name)(), backend=BACKEND)
-    
-def encrypt(data='', key='', iv_size=12, unencrypted_authenticated_data=''):
-    assert data and key
-    iv = random._urandom(iv_size)
-    encryptor = Cipher(algorithms.AES(key), modes.GCM(iv), 
-                       backend=BACKEND).encryptor()
-    encryptor.authenticate_additional_data(iv + unencrypted_authenticated_data)
-    ciphertext = encryptor.update(data) + encryptor.finalize()
-    return (ciphertext, encryptor.tag, iv + unencrypted_authenticated_data)
-    
-def decrypt(ciphertext, key, iv, tag, unencrypted_authenticated_data=''):
-    decryptor = Cipher(algorithms.AES(key), modes.GCM(iv, tag), 
-                       backend=BACKEND).decryptor()
-    decryptor.authenticate_additional_data(iv + unencrypted_authenticated_data)
-    return decryptor.update(ciphertext) + decryptor.finalize()
+from pride.security import hash_function, SecurityError
                 
 def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
                        requires_kwargs=False, **_kwargs):
@@ -220,10 +196,8 @@ class Authenticated_Service2(pride.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Service2, self).__init__(**kwargs)
         self._load_database()    
-        self.hkdf = self.create("cryptography.hazmat.primitives.kdf.hkdf.HKDFExpand",
-                                algorithm=getattr(hashes, self.hash_function)(),
-                                length=256, info=self.hkdf_table_update_info_string,
-                                backend=BACKEND)     
+        self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
+                                length=256, info=self.hkdf_table_update_info_string)     
         
     def _load_database(self):
         if not self.database_name:
@@ -333,8 +307,7 @@ class Authenticated_Service2(pride.base.Base):
                     self._rate[session_id] = {method_name : latency}   
                     _new_connection = True
             if not _new_connection:
-                current_rate = self._rate[session_id][method_name].last_measurement
-                
+                current_rate = self._rate[session_id][method_name].last_measurement                
                 if current_rate < self.rate_limit[method_name]:
                     self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
                             (method_name, self.rate_limit[method_name], current_rate),                           
@@ -402,10 +375,8 @@ class Authenticated_Client2(pride.base.Base):
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
         
-        self.hkdf = self.create("cryptography.hazmat.primitives.kdf.hkdf.HKDFExpand",
-                        algorithm=getattr(hashes, self.hash_function)(),
-                        length=256, info=self.hkdf_table_update_info_string,
-                        backend=BACKEND)
+        self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
+                                length=256, info=self.hkdf_table_update_info_string)                        
         if self.auto_login:
             self.alert("Auto logging in", level=self.verbosity["auto_login"])
             self.login()        
