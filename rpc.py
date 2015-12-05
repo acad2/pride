@@ -10,11 +10,12 @@ import pickle
 import pride
 import pride.base
 import pride.networkssl
-import pride.authentication
 objects = pride.objects
 
 default_serializer = pickle
 _old_data, _hosts = {}, {}
+
+class UnauthorizedError(Warning): pass  
 
 def packetize_send(send):
     """ Decorator that transforms a tcp stream into packets. Requires the use
