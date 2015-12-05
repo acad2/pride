@@ -14,7 +14,7 @@ except ImportError:
 import pride
 import pride.base as base
 import pride.vmlibrary as vmlibrary
-import pride.authentication as authentication
+import pride.authentication2 as authentication2
 import pride.utilities as utilities
 import pride.fileio as fileio
 import pride.shell
@@ -30,7 +30,7 @@ def main_as_name():
     finally:
         globals()["__name__"] = backup        
     
-class Shell(authentication.Authenticated_Client):
+class Shell(authentication2.Authenticated_Client2):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
     defaults = {"username" : "", "password" : "", "prompt" : ">>> ",
@@ -111,7 +111,7 @@ class Shell(authentication.Authenticated_Client):
             sys.stdout.write('\b' * 4 + packet + self.prompt)
         
 
-class Interpreter(authentication.Authenticated_Service):
+class Interpreter(authentication2.Authenticated_Service2):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     

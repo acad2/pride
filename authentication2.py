@@ -12,13 +12,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import openssl
 BACKEND = openssl.backend
 
-# generate a secret key
-# generate a shared message key server side, encrypt it with the above key
-# send the encrypted shared message key to the client
-# generate a secret key on the client side and encrypt the shared message key again
-# send the twice encrypted key back to the server
-# server decrypts the key and sends the singley encrypted key back to the client
-# client decrypts the key and has the shared message key
+class SecurityError(Exception): pass
 
 def hash_function(algorithm_name):
     return hashes.Hash(getattr(hashes, algorithm_name)(), backend=BACKEND)
@@ -81,7 +75,7 @@ class Authentication_Table(object):
         self.rows = rows
     
     @staticmethod
-    def generate_challenge(count=6):
+    def generate_challenge(count=9):
         """ Generates count random pairs of indices, which range from 0-15 """
         return tuple(_split_byte(ord(byte)) for byte in random._urandom(count))
         
@@ -134,18 +128,20 @@ class Authenticated_Service2(pride.base.Base):
                    "login allowed: {}    registration allowed: {}",
                 "allow_login" : True, "allow_registration" : True}                
     
-    verbosity = {"register" : 'v', "login_stage_two" : 'v', "validate_success" : 0,
-                 "on_login" : 0, "login" : 'v'}
+    verbosity = {"register" : 'v', "login_stage_two" : 'v', "validate_success" : 'v',
+                 "on_login" : 0, "login" : 'v', "authentication_success" : 'v',
+                 "authentication_failure" : 'v'}
                  
     database_structure = {"Users" : ("authentication_table_hash BLOB PRIMARY_KEY", 
-                                     "authentication_table BLOB", "session_key BLOB")}
+                                     "authentication_table BLOB", "session_key BLOB",
+                                     "username TEXT")}
                               
     database_flags = {"primary_key" : {"Users" : "authentication_table_hash"}}
     
     remotely_available_procedures = ("register", "login", "login_stage_two")
     
     mutable_defaults = {"_rate" : dict, "ip_whitelist" : list, "ip_blacklist" : list,
-                        "session_id" : dict} # session_id maps session id to username
+                        "_challenge_answer" : dict, "session_id" : dict}
                         
     inherited_attributes = {"database_structure" : dict, "database_flags" : dict,
                             "remotely_inherited_methods" : tuple}
@@ -170,77 +166,71 @@ class Authenticated_Service2(pride.base.Base):
         for table, structure in self.database_structure.items():
             self.database.create_table(table, structure)
             
-    def register(self):
+    def register(self, username=''):
         self.alert("Registering new user", level=self.verbosity["register"])
         authentication_table = random._urandom(256)
         hasher = hash_function(self.hash_function)
         hasher.update(authentication_table + ':' + "\x00" * 32)
         table_hash = hasher.finalize()
-        print "Inserting newly registered hash into db: "
-        print
-        print table_hash
-        print
-        self.database.insert_into("Users", (table_hash, authentication_table, "\x00" * 32))
+        self.database.insert_into("Users", (table_hash, authentication_table, "\x00" * 32, username))
         return authentication_table
         
-    def login(self):
+    def login(self, challenge):
+        authentication_table_hash, ip = self.current_session
+        (saved_table,
+         session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
+                                                                      "session_key"),
+                                            where={"authentication_table_hash" : authentication_table_hash})
+        table = Authentication_Table.load(saved_table)
+        response = table.get_passcode(*challenge)
+        hasher = hash_function(self.hash_function)
+        hasher.update(response + ':' + session_key)
+        
+        client_challenge = Authentication_Table.generate_challenge()
+        correct_answer = table.get_passcode(*client_challenge)
+        _answer_hasher = hash_function(self.hash_function)
+        _answer_hasher.update(correct_answer + ':' + session_key)
+        self._challenge_answer[authentication_table_hash] = _answer_hasher.finalize()
         self.alert("Issuing authentication challenge", level=self.verbosity["login"])
-        return Authentication_Table.generate_challenge()
+        return hasher.finalize(), client_challenge
         
     def login_stage_two(self, hashed_answer, original_challenge):
-        authentication_table_hash, ip = self.current_session
+        authentication_table_hash, ip = self.current_session           
         user_id = {"authentication_table_hash" : authentication_table_hash}
         self.alert("{} attempting to log in".format(authentication_table_hash),
                    level=self.verbosity["login_stage_two"])
-        print "Checking for id: "
-        print
-        print authentication_table_hash
-        print
+        macd_challenge = random._urandom(32 + (32 * 32)) # a random mac and random "hashes"
         try:
             (saved_table,
-             session_key) = self.database.query("Users", 
+             session_key,
+             username) = self.database.query("Users", 
                                                 retrieve_fields=("authentication_table",
-                                                                 "session_key"),
+                                                                 "session_key", "username"),
                                                 where=user_id)
-        except sqlite3.Error:
-            macd_challenge = random._random(32 + (32 * 32)) # a random mac and random "hashes"
-        except TypeError:
-            print "Dumping database memory: "
-            for item in self.database.in_memory.keys():
-                print
-                print item
-                print
-            print "Dumping database from disk: "
-            for item in self.database.query("Users", retrieve_fields=("authentication_table_hash", )):
-                print 
-                print item[0]
-                print
-            raise
+        except (sqlite3.Error, TypeError):
+            self.alert("Failed to find authentication_table_hash in database for login_stage_two",
+                       level=0)        
         else:                
-            authentication_table = Authentication_Table.load(saved_table)
-            correct_answer = authentication_table.get_passcode(*original_challenge)
-
-            if authentication_table.compare(correct_answer, hashed_answer):  
-                self.alert("Authentication success", level=0)
+            if Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer):
+                del self._challenge_answer[authentication_table_hash]
+                self.alert("Authentication success: {} '{}'",
+                           (authentication_table_hash, username), 
+                           level=self.verbosity["authentication_success"])
                 new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
                 new_table_hash = table_hasher.finalize()      
-                print "Inserting updated table hash into db: "
-                print new_table_hash
-                print
-                print "Input table: "
-                print new_table
-                print
-                print "Input key: "
-                print new_key
-                print
                 self.database.update_table("Users", where=user_id, 
                                            arguments={"authentication_table_hash" : new_table_hash,
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
-                self.on_login(new_table_hash)
+                self.session_id[new_table_hash] = username or new_table_hash
+                self.on_login(username)
+            else:
+                self.alert("Authentication Failure: {} '{}'",
+                           (authentication_table_hash, username), 
+                           level=self.verbosity["authentication_failure"])
         return macd_challenge
         
     def on_login(self, user_id):
@@ -282,19 +272,6 @@ class Authenticated_Service2(pride.base.Base):
                   (peername, method_name), 
                   level=self.verbosity["validate_success"])
         return True        
-        #
-        #ip = peername[0]
-        #if ip in self.ip_whitelist or ip not in self.ip_blacklist:
-        #    if session_id in self.session_id or (session_id == '0' and 
-        #                                        ((method_name in ("login", "login_stage_two") and 
-        #                                         self.allow_login) or
-        #                                        (method_name == "register" and
-        #                                         self.allow_registration))):
-        #        self.current_session = (session_id, peername)
-        #        self.alert("Authorizing: {} for {}", 
-        #                  (peername, method_name), 
-        #                  level=self.verbosity["validate_success"])
-        #        return True
                         
     def __getstate__(self):
         state = super(Authenticated_Service2, self).__getstate__()
@@ -309,10 +286,10 @@ class Authenticated_Service2(pride.base.Base):
 class Authenticated_Client2(pride.authentication.Authenticated_Client):   
     
     verbosity = {"register" : 'v', "login" : 'v', 
-                 "login_stage_two" : 'v', "register_sucess" : 'v'}
+                 "login_stage_two" : 'v', "register_sucess" : 0}
                  
     defaults = {"target_service" : "->Python->Authenticated_Service2",
-                "hash_function" : "SHA256", "table_file" : "test_ac2.key",
+                "hash_function" : "SHA256", "challenge_size" : 9,
                 "hkdf_table_update_info_string" : "Authentication Table Update"}
 
     def __init__(self, **kwargs):
@@ -321,12 +298,15 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
                                 algorithm=getattr(hashes, self.hash_function)(),
                                 length=256, info=self.hkdf_table_update_info_string,
                                 backend=BACKEND)
-        
+    
+    def _supply_username(self):
+        return (self, self.username), {}
+    @with_arguments(_supply_username)
     @remote_procedure_call(callback_name="_store_auth_table")
     def register(self): pass
     
     def _store_auth_table(self, new_table):
-        with open(self.table_file, 'wb') as _file:
+        with open(self.authentication_table_file, 'wb') as _file:
             _file.write(new_table + ("\x00" * 32))
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])        
         if self.auto_login:
@@ -338,38 +318,40 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
         return hasher.finalize()
         
     def _get_auth_table_hash(self):
-        with open(self.table_file, 'rb') as _file:
+        with open(self.authentication_table_file, 'rb') as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
         self.session.id = self._hash_auth_table(auth_table, shared_key)
-        print "Resuming Client session id from disk: "
-        print
-        print self.session.id
-        print
-        print "Input table: ", auth_table
-        print
-        print "input keY : ", shared_key
-        print
-        return (self, ), {}
+        challenge = Authentication_Table.generate_challenge(self.challenge_size)
+        table = Authentication_Table.load(auth_table)
+        hasher = hash_function(self.hash_function)
+        hasher.update(table.get_passcode(*challenge) + ':' + shared_key)
+        self._answer = hasher.finalize()
+        return (self, challenge), {}
         
     @with_arguments(_get_auth_table_hash)
     @remote_procedure_call(callback_name="login_stage_two")
     def login(self): pass
     
-    def _answer_challenge(self, challenge):  
-        with open(self.table_file, 'rb') as _file:
+    def _answer_challenge(self, response):
+        hashed_answer, challenge = response
+        if hashed_answer != self._answer:
+            raise SecurityError("Server responded with incorrect response to challenge")
+        with open(self.authentication_table_file, 'rb') as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
+        hasher = hash_function(self.hash_function)
+        hasher.update(answer + ':' + shared_key)
         self.alert("Answering challenge", level=0)
-        return (self, answer, challenge), {}
+        return (self, hasher.finalize(), challenge), {}
         
     @with_arguments(_answer_challenge)
     @remote_procedure_call(callback_name="crack_session_secret")
     def login_stage_two(self, authenticated_table_hash, answer, challenge): pass
     
     def crack_session_secret(self, macd_challenge):
-        with open(self.table_file, 'r+b') as _file:
+        with open(self.authentication_table_file, 'r+b') as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
             new_key = pride.keynegotiation.solve_challenge(shared_key, macd_challenge)
@@ -377,18 +359,14 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)
             _file.seek(0)
-            print "Writing new table to file: "
-            print new_table
-            print
-            assert new_table != "\x00" * 256
             _file.write(new_table)
             _file.write(new_key)     
             _file.flush()
-        #self.session.id = self._hash_auth_table(new_table, new_key)
-        self.on_login()
+        self.session.id = self._hash_auth_table(new_table, new_key)
+        self.on_login("Login message coming soon!")
         
-    def on_login(self):
-        self.alert("Logged in successfully!", level=0)
+    def on_login(self, login_message):
+        self.alert("Logged in successfully!\n{}".format(login_message), level=0)
         
 if __name__ == "__main__":
     service = objects["->Python"].create(Authenticated_Service2)

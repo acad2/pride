@@ -85,7 +85,7 @@ class Database(pride.base.Wrapper):
             the fields that should be returned. The where argument
             is a dictionary of field name:value pairs. """
         primary_key = self.primary_key[table_name]
-        if primary_key in where and not self.return_cursor:
+        if primary_key in (where or {}) and not self.return_cursor:
             try:
                 return self.from_memory[table_name][where[primary_key]]
             except KeyError:
@@ -132,7 +132,10 @@ class Database(pride.base.Wrapper):
         primary_key = None
         for item in self.database_structure[table_name]:
             attribute_name = item.split()[0]
-            _arguments[attribute_name] = arguments[attribute_name]
+            try:
+                _arguments[attribute_name] = arguments[attribute_name]
+            except KeyError:
+                pass
             if "primary_key" in item.lower():
                 primary_key = attribute_name
         #arguments = [(item, arguments[item]) for item in self.database_structure[table_name]]

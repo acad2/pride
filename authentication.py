@@ -455,21 +455,26 @@ class Authenticated_Client(pride.base.Base):
     def _set_password(self, value):
         self._password = value
     password = property(_get_password, _set_password)    
-                
+    
+    def _get_username(self):
+        if not self._username:
+            username_prompt = "{}: please provide a username: ".format(self.instance_name)
+            self._username = pride.shell.get_user_input(username_prompt)
+        return self._username
+    def _set_username(self, value):
+        self._username = value
+    username = property(_get_username, _set_username)
+    
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         if not self.target_service:
             raise pride.errors.ArgumentError("target_service for {} not supplied".format(self))
-        username_prompt = "{}: please provide a username: ".format(self.instance_name)
-        self.username = (self.username or 
-                         pride.shell.get_user_input(username_prompt,
-                                                    must_reply=True))
-        
+                
         self.password_prompt = self.password_prompt.format(self.instance_name)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
         name = self.instance_name.replace("->", '_')
-        self.authentication_table_file = "{}_auth_table.key".format(name)
-        self.history_file = "{}_history.key".format(name)
+        self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
+        self.history_file = self.history_file or "{}_history.key".format(name)
         if self.auto_login:
             self.alert("Auto logging in", level='vv')
             self.login()
