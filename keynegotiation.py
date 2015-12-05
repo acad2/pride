@@ -17,7 +17,7 @@ _initial_value = random._urandom(32)
 
 # assuming both client and server have knowledge of the secret initial_value
 def get_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sha256",
-                  unencrypted_authenticated_associated_data=''):
+                  unencrypted_data=''):
     """ Usage: get_challenge(secret, key_size=32, 
                                    bytes_per_hash=1, 
                                    hash_function="sha256") => key, challenge, new_secret
@@ -55,10 +55,10 @@ def get_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sha256",
             challenge = _xor(challenge, secret)
    #     print "Created challenge: ", hash_function(hash_input).digest()
         secret = hash_function(secret).digest()    
-    data_prefix_size = len(unencrypted_authenticated_associated_data)
-    package = str(data_prefix_size) + ' ' + unencrypted_authenticated_associated_data + challenge
+    data_prefix_size = len(unencrypted_data)
+    package = str(data_prefix_size) + ' ' + unencrypted_data + challenge
     mac = hash_function(package + mac_key).digest()
-    return key, mac + package, secret
+    return key, mac + package#, secret
     
 def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_function="sha256"):
     # client begins cracking hashes:
@@ -72,7 +72,7 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_funct
     challenge = challenge[32:] # remove the mac
     data_size, challenge = challenge.split(' ', 1)
     data_size = int(data_size)
-    unencrypted_authenticated_associated_data = challenge[:data_size]
+    unencrypted_data = challenge[:data_size]
     challenge = challenge[data_size:]
     
     key = ''
@@ -98,7 +98,7 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_funct
         
         challenge = challenge[hash_size:]
     #print "Recovered key ", len(key)
-    return key, unencrypted_authenticated_associated_data, secret
+    return key, unencrypted_data#, secret
     
 # assume attacker receives hashes also...
 # attacker begins cracking hash:
@@ -110,7 +110,7 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_funct
     
 if __name__ == "__main__":
     key, mac_challenge, server_secret = get_challenge(_initial_value, 
-                                                      unencrypted_authenticated_associated_data="Authentication and Integrity guaranteed!")
+                                                      unencrypted_data="Authentication and Integrity guaranteed!")
     _key, extra_data, client_secret = solve_challenge(_initial_value, mac_challenge)
     assert extra_data == "Authentication and Integrity guaranteed!", extra_data
     assert key == _key

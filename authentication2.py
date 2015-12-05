@@ -216,7 +216,9 @@ class Authenticated_Service2(pride.base.Base):
                 self.alert("Authentication success: {} '{}'",
                            (authentication_table_hash, username), 
                            level=self.verbosity["authentication_success"])
-                new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key)
+                login_message = self.on_login(username)
+                new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key, 
+                                                                             unencrypted_data=login_message)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
@@ -226,7 +228,7 @@ class Authenticated_Service2(pride.base.Base):
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
                 self.session_id[new_table_hash] = username or new_table_hash
-                self.on_login(username)
+                #self.on_login(username)
             else:
                 self.alert("Authentication Failure: {} '{}'",
                            (authentication_table_hash, username), 
@@ -285,7 +287,7 @@ class Authenticated_Service2(pride.base.Base):
         
 class Authenticated_Client2(pride.authentication.Authenticated_Client):   
     
-    verbosity = {"register" : 'v', "login" : 'v', 
+    verbosity = {"register" : 'v', "login" : 'v', "answer_challenge" : 'v',
                  "login_stage_two" : 'v', "register_sucess" : 0}
                  
     defaults = {"target_service" : "->Python->Authenticated_Service2",
@@ -343,7 +345,7 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
         hasher = hash_function(self.hash_function)
         hasher.update(answer + ':' + shared_key)
-        self.alert("Answering challenge", level=0)
+        self.alert("Answering challenge", level=self.verbosity["answer_challenge"])
         return (self, hasher.finalize(), challenge), {}
         
     @with_arguments(_answer_challenge)
@@ -354,7 +356,8 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
         with open(self.authentication_table_file, 'r+b') as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
-            new_key = pride.keynegotiation.solve_challenge(shared_key, macd_challenge)
+            new_key, login_message = pride.keynegotiation.solve_challenge(shared_key, 
+                                                                          macd_challenge)
             self.shared_key = new_key
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)
@@ -363,7 +366,7 @@ class Authenticated_Client2(pride.authentication.Authenticated_Client):
             _file.write(new_key)     
             _file.flush()
         self.session.id = self._hash_auth_table(new_table, new_key)
-        self.on_login("Login message coming soon!")
+        self.on_login(login_message)
         
     def on_login(self, login_message):
         self.alert("Logged in successfully!\n{}".format(login_message), level=0)
