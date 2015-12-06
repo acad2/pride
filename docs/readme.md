@@ -4,22 +4,27 @@ Python Runtime and Integrated Development Environment
 
 Q: What is it?
 
-A: An application framework. Programs written with pride tend to be very concise
-   yet very capable.
+A: An application framework for the python programming language. Programs 
+   written with pride tend to be concise, robust, capable, and extensible;
+   all while remaining as simple and straightforward as possible.
     
 Q: What features does it offer?
 
 A: Most features are aimed at productivity and an improving minimum standard of quality.
-   1. Automatically generated documentation (docstrings and websites) - zero config
-   2. Automatically generated command line argument parsers - zero config
+   1. Automatically generated documentation (docstrings and websites)
+   2. Automatically generated command line argument parsers for all Base objects
    3. Automatic verbosity handling and logging 
-   4. Simple mutex free concurrency 
+   4. Simple, headache free, mutex free concurrency 
    5. Objects can be updated from source at runtime without pausing or stopping execution
-   6. Application state can be saved/loaded
-   7. A concurrent interactive shell that reduces/eliminates the need for a debugger
-   8. Simple, secure remote procedure calls with authenticated clients/servers. 
-      remote object access requires zero config, aside from username/password setup.
-   
+   6. Application state can be saved/loaded at arbitrary points of execution
+   7. Simple, secure remote procedure calls with authenticated clients/servers. 
+      Remote object access requires zero config, aside from basic security setup.
+      Client/server applications can be developed without regard to sockets and
+      network protocols with exclusive focus on application specific logic.
+   8. A secure, concurrent interactive shell that reduces the need for a debugger.
+      The secure rpc model mentioned above facilitates a python ssh-style command 
+      line that be used to interact with and manage remote machines.      
+      
 Q: Where can I learn more?
 
 A: Investigate https://github.com/erose1337/pride or jump straight into the documentation
@@ -27,6 +32,7 @@ A: Investigate https://github.com/erose1337/pride or jump straight into the docu
   
 Q: What are the dependencies?
     
-A: Python 2.7+ is required. optional modules require additional dependencies:
+A: Python 2.7+ is required. The "cryptography" python package and Openssl are required.
+   Optional packages require additional dependencies:
    1. Low level audio support requires pyalsaaudio on linux or pyaudio otherwise
    2. SDL support requires SDL2.0 and pysdl2

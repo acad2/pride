@@ -1,7 +1,5 @@
-import sqlite3
 import random
 import hashlib
-hashes = hashlib
 
 from pride import Instruction
 import pride.keynegotiation
@@ -252,7 +250,7 @@ class Authenticated_Service2(pride.base.Base):
                                                 retrieve_fields=("authentication_table",
                                                                  "session_key", "username"),
                                                 where=user_id)
-        except (sqlite3.Error, TypeError):
+        except TypeError:
             self.alert("Failed to find authentication_table_hash in database for login_stage_two",
                        level=0)        
         else:                
