@@ -26,7 +26,7 @@ class Database(pride.base.Wrapper):
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
         
-    defaults = {"database_name" : '', "connection" : None, "database_structure" : None,
+    defaults = {"database_name" : '', "connection" : None, 
                 "cursor" : None, "text_factory" : str, "auto_commit" : True,
                 "detect_types_flags" : sqlite3.PARSE_DECLTYPES,
                 "return_cursor" : False}
@@ -41,8 +41,12 @@ class Database(pride.base.Wrapper):
     
     mutable_defaults = {"from_memory" : dict}
     
+    database_structure = {}
+    primary_key = {}
+        
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
+        self.database_name = self.database_name or (self.instance_name.replace("->", '_') + ".db")
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)
@@ -51,6 +55,9 @@ class Database(pride.base.Wrapper):
         except KeyError:
             self.alert("Unable to queue finalizer callback", level=0)
         
+        for table, structure in self.database_structure.items():
+            self.create_table(table, structure)
+            
     def open_database(self, database_name, text_factory=None):
         """ Opens database_name and obtain a sqlite3 connection and cursor.
             Database objects call this implicitly when initializing.
@@ -76,7 +83,7 @@ class Database(pride.base.Wrapper):
         result = self.cursor.execute(query)
         self.from_memory[table_name] = {}
         if self.auto_commit:
-            self.commit()
+            self.commit()        
         return result
         
     def query(self, table_name, retrieve_fields=tuple(), where=None):
@@ -106,8 +113,14 @@ class Database(pride.base.Wrapper):
             result = self.cursor.execute(query)
         self.alert("Retrieved: {}".format(result), 
                    level=self.verbosity["query_result"])
-        return result if self.return_cursor else result.fetchone()
-                                        
+        if self.return_cursor:
+            return result
+        else:
+            result = result.fetchone()
+            if result and len(result) == 1:
+                result = result[0]
+            return result
+            
     def insert_into(self, table_name, values):
         """ Inserts values into the specified table. The values must
             be the correct type and the correct amount. Value types

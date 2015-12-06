@@ -66,7 +66,7 @@ class User(pride.base.Base):
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
         
         encryption_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
-        encryption_key = encryption_kdf.derive(master_key)
+        encryption_key = self.encryption_key = encryption_kdf.derive(master_key)
         
         with open("{}_password_verifier.bin".format(self.username), "a+b") as _file:
             verifier_size = self._password_verifier_size
@@ -85,6 +85,7 @@ class User(pride.base.Base):
                 self.decrypt(ciphertext, iv, tag)
             except pride.security.InvalidTag:
                 self.alert("Password failed to match password verifier", level=0)
+                self.encryption_key = None
                 raise pride.security.InvalidPassword()
        
         hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        

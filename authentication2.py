@@ -206,8 +206,6 @@ class Authenticated_Service2(pride.base.Base):
         self.database = self.create(self.database_type, database_name=name,
                                     database_structure=self.database_structure,
                                     **self.database_flags)
-        for table, structure in self.database_structure.items():
-            self.database.create_table(table, structure)
             
     def register(self, username=''):
         self.alert("Registering new user", level=self.verbosity["register"])

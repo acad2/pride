@@ -236,10 +236,10 @@ class Python(base.Base):
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep],
                 "startup_components" : ("pride.interpreter.Finalizer",
+                                        "pride.fileio.File_System",
                                         "pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.shell.Command_Line",
-                                        "pride.srp.Secure_Remote_Password",
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Server"),
                 "startup_definitions" : '',
