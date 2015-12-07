@@ -52,7 +52,7 @@ class User(pride.base.Base):
         
     def login(self):
         if not self.salt:
-            with self.create(self.salt_filetype, # a Database_File by default
+            with self.create(self.salt_filetype, # uses Database_Files by default
                              "{}_salt.bin".format(self.username), 
                              "a+b") as _file:
                 _file.seek(0)

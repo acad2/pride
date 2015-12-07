@@ -190,10 +190,20 @@ class Database(pride.base.Wrapper):
         if self.auto_commit:
             self.commit()
      
-    def alter_table(self, table_name, new_column):
-        """ Adds a column to the specified table. """
-        self.alert("Altering table: {}".format(table_name), level=0)
-        self.cursor.execute("ALTER TABLE {} ADD COLUMN {}".format(table_name, new_column))
+    def alter_table(self, table_name, mode, argument):
+        """ Alters the specified table. Available modes are
+            "ADD" and "RENAME", while argument should be 
+            an additional field definition or new name. Added
+            columns are appended. """
+        if mode == "ADD":
+            insert = "ADD COLUMN"            
+        elif mode == "RENAME":
+            insert = "RENAME TO"
+        else:
+            raise ValueError("alter_table mode '{}' not supported".format(mode))
+        command = "ALTER TABLE {} {} {}".format(table_name, insert, argument)
+        self.alert("Altering table: {}".format(command), level=0)
+        self.cursor.execute(command)
         if self.auto_commit:
             self.commit()
         

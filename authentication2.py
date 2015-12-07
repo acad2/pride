@@ -385,8 +385,8 @@ class Authenticated_Client2(pride.base.Base):
     def register(self): pass
     
     def _store_auth_table(self, new_table):
-        with self.create(self.token_file_type, 
-                         self.authentication_table_file, 'wb') as _file:
+        with self.create(self.token_file_type, self.authentication_table_file, 
+                         'wb', encrypted=True) as _file:
             _file.write(new_table + ("\x00" * 32))
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])        
         if self.auto_login:
@@ -398,8 +398,8 @@ class Authenticated_Client2(pride.base.Base):
         return hasher.finalize()
         
     def _get_auth_table_hash(self):
-        with self.create(self.token_file_type,
-                         self.authentication_table_file, 'rb') as _file:
+        with self.create(self.token_file_type, self.authentication_table_file, 
+                         'rb', encrypted=True) as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
         self.session.id = self._hash_auth_table(auth_table, shared_key)
@@ -418,8 +418,8 @@ class Authenticated_Client2(pride.base.Base):
         hashed_answer, challenge = response
         if hashed_answer != self._answer:
             raise SecurityError("Server responded with incorrect response to challenge")
-        with self.create(self.token_file_type,
-                         self.authentication_table_file, 'rb') as _file:
+        with self.create(self.token_file_type, self.authentication_table_file, 
+                         'rb', encrypted=True) as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
@@ -433,8 +433,8 @@ class Authenticated_Client2(pride.base.Base):
     def login_stage_two(self, authenticated_table_hash, answer, challenge): pass
     
     def crack_session_secret(self, macd_challenge):
-        with self.create(self.token_file_type,
-                         self.authentication_table_file, 'r+b') as _file:
+        with self.create(self.token_file_type, self.authentication_table_file, 
+                         'r+b', encrypted=True) as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
             new_key, login_message = pride.keynegotiation.solve_challenge(shared_key, 

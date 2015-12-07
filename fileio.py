@@ -280,11 +280,17 @@ class File(base.Wrapper):
 
 class Database_File(File):
                                                     
-    defaults = {"_data" : '', "tags" : '', "file_type" : "StringIO.StringIO"}
+    defaults = {"_data" : '', "tags" : '', "file_type" : "StringIO.StringIO",
+                "encrypted" : False}
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
         data, self.tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode)
+        if self.encrypted and data:
+            try:
+                data = pride.objects["->User"].decrypt(data)
+            except KeyError:
+                self.alert("Unable to decrypt '{}'; User not logged in".format(filename))
         self.file.write(data)
         if self.mode[0] != 'a':
             self.file.seek(0)
@@ -304,7 +310,8 @@ class Database_File(File):
         file = self.file
         backup_position = file.tell()
         file.seek(0)
-        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), self.tags)                                                       
+        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
+                                                         self.tags, self.encrypted)                                                       
         file.seek(backup_position)
         
                                                          
@@ -321,13 +328,19 @@ class File_System(pride.database.Database):
      
     primary_key = {"Files" : "filename"}
     
-    def save_file(self, filename, data, tags=tuple()):
+    def save_file(self, filename, data, tags=tuple(), encrypt=False):
         now = time.time()
+        if encrypt:
+            try:
+                data = objects["->User"].encrypt(data)
+            except KeyError:
+                self.alert("Unable to encrypt data for file '{}'; User not logged in",
+                           (filename, ), level=0)
+                raise ValueError("Unable to encrypt '{}'; User not logged in".format(filename))                
         file_info = {"date_modified" : now, "data" : data,
                      "file_type" : os.path.splitext(filename)[-1]}
         if tags:
             file_info["tags"] = ' '.join(tags)  
-        _data = b''
         file_info["date_created"] = now            
         try:            
             self.insert_into("Files", (filename, data, now, now, now, 
