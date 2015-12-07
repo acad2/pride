@@ -71,18 +71,17 @@ class User(pride.base.Base):
         with open("{}_password_verifier.bin".format(self.username), "a+b") as _file:
             verifier_size = self._password_verifier_size
             salt_size = self.salt_size
-            verifier = _file.read(verifier_size + salt_size * 3)
+            verifier = _file.read()
             if not verifier:
                 verifier = random._urandom(verifier_size)
-                ciphertext, iv, tag = self.encrypt(verifier)
+                encrypted_verifier = self.encrypt(verifier)
                 _file.seek(0)
-                _file.write(ciphertext + iv + tag)
-            else:                
-                ciphertext = verifier[:verifier_size]
-                iv = verifier[verifier_size:verifier_size + salt_size]
-                tag = verifier[verifier_size + salt_size:verifier_size + (salt_size * 2)]
+                _file.write(str(len(encrypted_verifier)) + ' ' + encrypted_verifier)
+            else:
+                size, _verifier = verifier.split(' ', 1)
+                encrypted_verifier = _verifier[:int(size)]
             try:
-                self.decrypt(ciphertext, iv, tag)
+                self.decrypt(encrypted_verifier)
             except pride.security.InvalidTag:
                 self.alert("Password failed to match password verifier", level=0)
                 self.encryption_key = None
@@ -99,8 +98,8 @@ class User(pride.base.Base):
                                       extra_data=extra_data, algorithm=self.encryption_algorithm, 
                                       mode=self.encryption_mode)
                                       
-    def decrypt(self, ciphertext, iv, tag=None, extra_data=''):
-        return pride.security.decrypt(ciphertext, self.encryption_key, iv, tag, extra_data,
+    def decrypt(self, packed_encrypted_data):
+        return pride.security.decrypt(packed_encrypted_data, self.encryption_key, 
                                       self.encryption_algorithm, self.encryption_mode)
     
     def authenticate(self, data):
@@ -119,8 +118,8 @@ class User(pride.base.Base):
 def test_User():
     user = User()
     data = "This is some test data!"
-    ciphertext, iv, tag  = user.encrypt(data)
-    assert user.decrypt(ciphertext, iv, tag=tag) == data
+    packed_encrypted_data = user.encrypt(data)
+    assert user.decrypt(packed_encrypted_data) == data
     
 if __name__ == "__main__":
     test_User()
