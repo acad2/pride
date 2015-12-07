@@ -116,9 +116,11 @@ class Database(pride.base.Wrapper):
         if self.return_cursor:
             return result
         else:
-            result = result.fetchone()
+            result = result.fetchall()
             if result and len(result) == 1:
                 result = result[0]
+                if len(result) == 1:
+                    result = result[0]
             return result
             
     def insert_into(self, table_name, values):
@@ -187,7 +189,14 @@ class Database(pride.base.Wrapper):
         self.cursor.execute("DROP TABLE {}", (table_name, ))
         if self.auto_commit:
             self.commit()
-            
+     
+    def alter_table(self, table_name, new_column):
+        """ Adds a column to the specified table. """
+        self.alert("Altering table: {}".format(table_name), level=0)
+        self.cursor.execute("ALTER TABLE {} ADD COLUMN {}".format(table_name, new_column))
+        if self.auto_commit:
+            self.commit()
+        
     def table_info(self, table_name):
         """ Returns a generator which yields field information for the
             specified table. Entries consist of the field index, field name,

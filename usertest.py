@@ -13,12 +13,16 @@ class User(pride.base.Base):
                 "encryption_algorithm" : "AES",
                 "hkdf_mac_info_string" : "{} Message Authentication Code Key",
                 "hkdf_encryption_info_string" : "{} Encryption Key",
-                "password_prompt" : "{}: Please provide the pass phrase or word: "}
+                "password_prompt" : "{}: Please provide the pass phrase or word: ",
+                "salt_filetype" : "pride.fileio.Database_File",
+                "verifier_filetype" : "pride.fileio.Database_File"}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "password_prompt")
     
     flags = {"_password_verifier_size" : 32}.items()
+    
+    verbosity = {"password_verified" : 'v'}
     
     def _get_password(self):
         return self._password or getpass.getpass(self.password_prompt.format(self.instance_name))
@@ -48,7 +52,9 @@ class User(pride.base.Base):
         
     def login(self):
         if not self.salt:
-            with open("{}_salt.bin".format(self.username), "a+b") as _file:
+            with self.create(self.salt_filetype, # a Database_File by default
+                             "{}_salt.bin".format(self.username), 
+                             "a+b") as _file:
                 _file.seek(0)
                 salt = _file.read(self.salt_size)
                 if not salt:
@@ -68,7 +74,9 @@ class User(pride.base.Base):
         encryption_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
         encryption_key = self.encryption_key = encryption_kdf.derive(master_key)
         
-        with open("{}_password_verifier.bin".format(self.username), "a+b") as _file:
+        with self.create(self.verifier_filetype,
+                         "{}_password_verifier.bin".format(self.username), 
+                         "a+b") as _file:
             verifier_size = self._password_verifier_size
             salt_size = self.salt_size
             verifier = _file.read()
@@ -86,7 +94,8 @@ class User(pride.base.Base):
                 self.alert("Password failed to match password verifier", level=0)
                 self.encryption_key = None
                 raise pride.security.InvalidPassword()
-       
+            else:
+                self.alert("Password verified", level=self.verbosity["password_verified"])
         hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
         mac_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
         self.mac_key = mac_kdf.derive(master_key)
@@ -116,7 +125,9 @@ class User(pride.base.Base):
         environment.last_creator = None
         
 def test_User():
-    user = User()
+    import pride.interpreter
+    python = pride.interpreter.Python()
+    user = User(verbosity={"password_verified" : 0})
     data = "This is some test data!"
     packed_encrypted_data = user.encrypt(data)
     assert user.decrypt(packed_encrypted_data) == data

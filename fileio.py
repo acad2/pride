@@ -352,7 +352,7 @@ class File_System(pride.database.Database):
                             retrieve_fields=("data", "tags"))        
         if not result and mode[0] == 'r':
             raise IOError("File {} does not exist in {}".format(filename, self.instance_name))
-        return result
+        return result or ('', '')
         
     def open_file(self, filename, mode):
         return self.create(Database_File, filename, mode)

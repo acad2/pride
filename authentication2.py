@@ -356,10 +356,10 @@ class Authenticated_Client2(pride.base.Base):
     password = property(_get_password, _set_password)    
     
     def _get_username(self):
-        if not self._username:
-            username_prompt = "{}: please provide a username: ".format(self.instance_name)
-            self._username = pride.shell.get_user_input(username_prompt)
-        return self._username
+        #if not self._username:
+        #    username_prompt = "{}: please provide a username: ".format(self.instance_name)
+        #    self._username = pride.shell.get_user_input(username_prompt)
+        return self._username or pride.objects["->User"].username
     def _set_username(self, value):
         self._username = value
     username = property(_get_username, _set_username)
