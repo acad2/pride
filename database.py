@@ -99,14 +99,28 @@ class Database(pride.base.Wrapper):
             retrieve_fileds is an iterable containing string names of
             the fields that should be returned. The where argument
             is a dictionary of field name:value pairs. """
-        primary_key = self.primary_key[table_name]
+        try:
+            primary_key = self.primary_key[table_name]
+        except KeyError:
+            primary_key = ''
+        #    if not table_name not self.database_structure:
+        #        
+        #    for (index, field_name, field_type, _,
+        #         __, is_primary_key) in self.table_info(table_name):
+        #        if is_primary_key:
+        #            primary_key = self.primary_key[table_name] = field_name
+        #            break
+        #    else:
+        #        self.alert("Unable to determine primary key for: {}".format(table_name),
+        #                   level=0)
+                #raise ValueError()
         if primary_key in (where or {}) and not self.return_cursor:
             try:
                 return self.from_memory[table_name][where[primary_key]]
             except KeyError:
                 pass                  
         retrieve_fields = ", ".join(retrieve_fields or (field.split()[0] for
-                                    field in self.database_structure[table_name]))
+                                    field in self.database_structure.get(table_name, [])))
         if where:
             condition_string, values = create_where_string(where)
             query_format = (retrieve_fields, table_name, condition_string)
@@ -234,7 +248,13 @@ class Database(pride.base.Wrapper):
         del state["connection"]
         state["text_factory"] = state["text_factory"].__name__
         return state
-        
+    
+    def __contains__(self, table_name):
+        try:
+            return self.query(table_name)
+        except sqlite3.OperationalError:
+            return False
+            
     def on_load(self, state):
         super(Database, self).on_load(state)
         text_factory = self.text_factory

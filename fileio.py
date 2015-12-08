@@ -285,7 +285,12 @@ class Database_File(File):
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
-        data, self.tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode)
+        data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, self.tags)
+        filename = {"filename" : self.filename}
+        if tags != self.tags:
+            for old_tag in set(self.tags).difference(tags):
+                self.delete_from(old_tag, where=filename)
+        self.tags = self.tags or tags
         if self.encrypted and data:
             try:
                 data = pride.objects["->User"].decrypt(data)
@@ -324,10 +329,19 @@ class File_System(pride.database.Database):
     database_structure = {"Files" : ("filename TEXT PRIMARY KEY", "data BLOB",
                                      "date_created TIMESTAMP", "date_modified TIMESTAMP",
                                      "date_accessed TIMESTAMP", "file_type TEXT",
-                                     "tags TEXT")}
+                                     "tags TEXT"),
+                          "Tags" : ("tag TEXT PRIMARY_KEY", )}
      
-    primary_key = {"Files" : "filename"}
+    primary_key = {"Files" : "filename", "Tags" : "tag"}
     
+    def __init__(self, **kwargs):
+        super(File_System, self).__init__(**kwargs)
+        database_structure = self.database_structure
+        for tag in self.query("Tags"):
+            tag = tag[0]
+            if tag not in database_structure:
+                self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
+        
     def save_file(self, filename, data, tags=tuple(), encrypt=False):
         now = time.time()
         if encrypt:
@@ -337,11 +351,15 @@ class File_System(pride.database.Database):
                 self.alert("Unable to encrypt data for file '{}'; User not logged in",
                            (filename, ), level=0)
                 raise ValueError("Unable to encrypt '{}'; User not logged in".format(filename))                
-        file_info = {"date_modified" : now, "data" : data,
+        file_info = {"date_modified" : now, "date_created" : now, "data" : data, 
                      "file_type" : os.path.splitext(filename)[-1]}
         if tags:
-            file_info["tags"] = ' '.join(tags)  
-        file_info["date_created"] = now            
+            file_info["tags"] = ' '.join(tags)
+            for tag in tags:
+                if tag not in self:
+                    self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
+                    self.insert_into("Tags", (tag, ))
+                self.insert_into(tag, (filename, ))   
         try:            
             self.insert_into("Files", (filename, data, now, now, now, 
                                        file_info["file_type"], 
@@ -349,18 +367,19 @@ class File_System(pride.database.Database):
         except sqlite3.IntegrityError:
             self.alert("Updating preexisting file: {}".format(filename), 
                        level=self.verbosity["file_modified"])
+            del file_info["date_created"]
             self.update_table("Files", where={"filename" : filename}, arguments=file_info)
         else:
             self.alert("Saving new file: {}".format(filename), 
                        level=self.verbosity["file_created"])
-            
-    def _open_file(self, filename, mode):
+        
+    def _open_file(self, filename, mode, tags):
         if mode[0] == 'w':
             try:
                 self.delete_from("Files", where={"filename" : filename})
             except sqlite3.Error:
                 pass
-            self.save_file(filename, '')    
+            self.save_file(filename, '', tags)    
         result = self.query("Files", where={"filename" : filename},
                             retrieve_fields=("data", "tags"))        
         if not result and mode[0] == 'r':
