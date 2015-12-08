@@ -1,5 +1,6 @@
 """ Provides a Database object for working with sqlite3 databases """
 import sqlite3
+import contextlib
 
 import pride
 import pride.base
@@ -19,7 +20,7 @@ def create_where_string(where):
     condition_string = "WHERE " + "AND ".join("{} = ?".format(key) for 
                                               key in keys)
     return condition_string, values
-    
+         
 class Database(pride.base.Wrapper):
     """ An object with methods for dispatching sqlite3 commands. 
         Database objects may be simpler and safer then directly
@@ -39,8 +40,8 @@ class Database(pride.base.Wrapper):
                  "drop_table" : "v", "table_info" : "vvv",
                  "update_table" : "vv"}
     
-    mutable_defaults = {"from_memory" : dict}
-    
+    mutable_defaults = {"from_memory" : dict, "_batch_operations" : list}
+    flags = {"_batch_operation" : False, "_batch_table" : ''}.items()
     database_structure = {}
     primary_key = {}
         
@@ -81,9 +82,16 @@ class Database(pride.base.Wrapper):
         self.alert("Creating table: {}".format(query), 
                    level=self.verbosity["create_table"])        
         result = self.cursor.execute(query)
+        
         self.from_memory[table_name] = {}
         if self.auto_commit:
             self.commit()        
+        if table_name not in self.database_structure:
+            self.database_structure[table_name] = fields
+            for field in fields:
+                if "PRIMARY_KEY" in field.upper():
+                    self.primary_key[table_name] = field.split()[0]
+                    break
         return result
         
     def query(self, table_name, retrieve_fields=tuple(), where=None):
@@ -96,9 +104,9 @@ class Database(pride.base.Wrapper):
             try:
                 return self.from_memory[table_name][where[primary_key]]
             except KeyError:
-                pass
-                  
-        retrieve_fields = ", ".join(retrieve_fields)
+                pass                  
+        retrieve_fields = ", ".join(retrieve_fields or (field.split()[0] for
+                                    field in self.database_structure[table_name]))
         if where:
             condition_string, values = create_where_string(where)
             query_format = (retrieve_fields, table_name, condition_string)
@@ -123,16 +131,20 @@ class Database(pride.base.Wrapper):
                     result = result[0]
             return result
             
-    def insert_into(self, table_name, values):
+    def insert_into(self, table_name, values, batch=False):
         """ Inserts values into the specified table. The values must
             be the correct type and the correct amount. Value types
             and quantity can be introspected via the table_info method."""
-        insert_format = (table_name, 
-                         ", ".join('?' for count in range(len(values))))
-        query = "INSERT INTO {} VALUES({})".format(*insert_format)
+        # range is len(values[0]) if batch is True, else range is len(values)
+        query = "INSERT INTO {} VALUES({})".format(table_name,  ", ".join('?' for count in 
+                                                                 range(len(values[0 if batch 
+                                                                                  else slice(len(values))]))))
         self.alert("Inserting data into table {}; {}, {}",
-                   (table_name, query, values), level=self.verbosity["insert_into"])
-        cursor = self.cursor.execute(query, values)
+                  (table_name, query, values), level=self.verbosity["insert_into"])
+        if batch:
+            cursor = self.cursor.executemany(query, values)
+        else:
+            cursor = self.cursor.execute(query, values)
         #primary_key = values[[value for value in values if "primary_key" in value.lower()][0].split()[0]
         #self.from_memory[table_name][primary_key] = values
         if self.auto_commit:
@@ -240,3 +252,19 @@ class Database(pride.base.Wrapper):
         self.close()
         super(Database, self).delete()
         
+def test_db():
+    class Test_Database(Database):
+        
+        defaults = {"database_name" : "test_database.db"}
+        database_structure = {"Test" : ("test1 TEXT PRIMARY_KEY", "test2 BLOB")}
+        primary_key = {"Test" : "test1"}
+        
+    test = Test_Database()
+    insert_string = "INSERT INTO Test VALUES (?, ?)"
+    entry = ("first_entry", "\x00" * 10)
+    test.insert_into("Test", entry)
+    test.insert_into("Test", [entry, entry, entry], batch=True)
+    test.query("Test")
+        
+if __name__ == "__main__":
+    test_db()
