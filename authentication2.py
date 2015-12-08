@@ -245,8 +245,8 @@ class Authenticated_Service2(pride.base.Base):
         authentication_table_hash, ip = self.current_session           
         user_id = {"authentication_table_hash" : authentication_table_hash}
         self.alert("{} attempting to log in".format(authentication_table_hash),
-                   level=self.verbosity["login_stage_two"])
-        macd_challenge = random._urandom(32 + (32 * 32)) # a random mac and random "hashes"
+                   level=self.verbosity["login_stage_two"])       
+        encrypted_key = pride.security.random_bytes(32 + 48 + 32) # a fake key, iv, tag, and response for failed attempts
         try:
             (saved_table,
              session_key,
@@ -256,7 +256,7 @@ class Authenticated_Service2(pride.base.Base):
                                                 where=user_id)
         except TypeError:
             self.alert("Failed to find authentication_table_hash in database for login_stage_two",
-                       level=0)        
+                       level=0)             
         else:                
             if Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer):
                 del self._challenge_answer[authentication_table_hash]
@@ -265,9 +265,7 @@ class Authenticated_Service2(pride.base.Base):
                            level=self.verbosity["authentication_success"])
                 login_message = self.on_login(username)
                 new_key = pride.security.random_bytes(32)
-                macd_challenge = pride.security.encrypt(new_key, session_key, extra_data=login_message)
-                #new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key, 
-                #                                                             unencrypted_data=login_message)
+                encrypted_key = pride.security.encrypt(new_key, session_key, extra_data=login_message)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
@@ -281,7 +279,7 @@ class Authenticated_Service2(pride.base.Base):
                 self.alert("Authentication Failure: {} '{}'",
                            (authentication_table_hash, username), 
                            level=self.verbosity["authentication_failure"])
-        return macd_challenge
+        return encrypted_key
         
     def on_login(self, user_id):
         pass
@@ -439,15 +437,15 @@ class Authenticated_Client2(pride.base.Base):
         return (self, hasher.finalize(), challenge), {}
         
     @with_arguments(_answer_challenge)
-    @remote_procedure_call(callback_name="crack_session_secret")
+    @remote_procedure_call(callback_name="decrypt_new_secret")
     def login_stage_two(self, authenticated_table_hash, answer, challenge): pass
     
-    def crack_session_secret(self, macd_challenge):
+    def decrypt_new_secret(self, encrypted_key):
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'r+b', encrypted=True) as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
-            new_key, login_message = pride.security.decrypt(macd_challenge, shared_key)
+            new_key, login_message = pride.security.decrypt(encrypted_key, shared_key)
             self.shared_key = new_key
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)
