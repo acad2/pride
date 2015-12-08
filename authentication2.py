@@ -2,7 +2,7 @@ import random
 import hashlib
 
 from pride import Instruction
-import pride.keynegotiation
+import pride.security
 from pride.security import hash_function, SecurityError
                 
 def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
@@ -218,22 +218,28 @@ class Authenticated_Service2(pride.base.Base):
         
     def login(self, challenge):
         authentication_table_hash, ip = self.current_session
-        (saved_table,
-         session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
-                                                                      "session_key"),
-                                            where={"authentication_table_hash" : authentication_table_hash})
-        table = Authentication_Table.load(saved_table)
-        response = table.get_passcode(*challenge)
-        hasher = hash_function(self.hash_function)
-        hasher.update(response + ':' + session_key)
-        
         client_challenge = Authentication_Table.generate_challenge()
-        correct_answer = table.get_passcode(*client_challenge)
-        _answer_hasher = hash_function(self.hash_function)
-        _answer_hasher.update(correct_answer + ':' + session_key)
-        self._challenge_answer[authentication_table_hash] = _answer_hasher.finalize()
-        self.alert("Issuing authentication challenge", level=self.verbosity["login"])
-        return hasher.finalize(), client_challenge
+        try:
+            (saved_table,
+            session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
+                                                                        "session_key"),
+                                                where={"authentication_table_hash" : authentication_table_hash})
+        except ValueError:
+            response = pride.security.random_bytes(32)
+        else:
+            table = Authentication_Table.load(saved_table)
+            response = table.get_passcode(*challenge)
+            hasher = hash_function(self.hash_function)
+            hasher.update(response + ':' + session_key)
+            
+            
+            correct_answer = table.get_passcode(*client_challenge)
+            _answer_hasher = hash_function(self.hash_function)
+            _answer_hasher.update(correct_answer + ':' + session_key)
+            self._challenge_answer[authentication_table_hash] = _answer_hasher.finalize()
+            self.alert("Issuing authentication challenge", level=self.verbosity["login"])
+            response = hasher.finalize()
+        return response, client_challenge
         
     def login_stage_two(self, hashed_answer, original_challenge):
         authentication_table_hash, ip = self.current_session           
@@ -258,8 +264,10 @@ class Authenticated_Service2(pride.base.Base):
                            (authentication_table_hash, username), 
                            level=self.verbosity["authentication_success"])
                 login_message = self.on_login(username)
-                new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key, 
-                                                                             unencrypted_data=login_message)
+                new_key = pride.security.random_bytes(32)
+                macd_challenge = pride.security.encrypt(new_key, session_key, extra_data=login_message)
+                #new_key, macd_challenge = pride.keynegotiation.get_challenge(session_key, 
+                #                                                             unencrypted_data=login_message)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
@@ -268,8 +276,7 @@ class Authenticated_Service2(pride.base.Base):
                                            arguments={"authentication_table_hash" : new_table_hash,
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
-                self.session_id[new_table_hash] = username or new_table_hash
-                #self.on_login(username)
+                self.session_id[new_table_hash] = username or new_table_hash                
             else:
                 self.alert("Authentication Failure: {} '{}'",
                            (authentication_table_hash, username), 
@@ -340,7 +347,7 @@ class Authenticated_Client2(pride.base.Base):
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 "ip" : "localhost", "port" : 40022, "session_id_size" : 256,
                 "auto_login" : True, "logged_in" : False, "history_file" : '',
-                "authentication_table_file" : '', 
+                "authentication_table_file" : '', "_register_results" : None,
                 "token_file_type" : "pride.fileio.Database_File"}
 
     def _get_host_info(self):
@@ -391,7 +398,10 @@ class Authenticated_Client2(pride.base.Base):
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])        
         if self.auto_login:
             self.login()
-    
+        else:
+            if self._register_results:
+                self._register_results()
+                
     def _hash_auth_table(self, auth_table, shared_key):
         hasher = hash_function(self.hash_function)
         hasher.update(auth_table + ':' + shared_key)
@@ -437,8 +447,7 @@ class Authenticated_Client2(pride.base.Base):
                          'r+b', encrypted=True) as _file:
             auth_table = _file.read(256)
             shared_key = _file.read(32)
-            new_key, login_message = pride.keynegotiation.solve_challenge(shared_key, 
-                                                                          macd_challenge)
+            new_key, login_message = pride.security.decrypt(macd_challenge, shared_key)
             self.shared_key = new_key
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)

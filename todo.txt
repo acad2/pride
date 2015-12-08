@@ -21,12 +21,14 @@ an app for drawing/designing themes!
 
 in memory encryption?
 stream cipher, authenticated encryption with associated data for bytecode interpreter?
-2 byte wide bytecode operators. Same number of instructions, ~65300 are errors
-history from storing hashes of shared secrets
-# cryptographically secure rate limiting based on session calculated from proof of work cracking hashes
+2 byte wide bytecode operators. Same number of instructions, ~65300 are errors?
+history from storing hashes of shared secrets?
+# cryptographically secure rate limiting based on session calculated from proof of work cracking hashes?
 
 recently done:
     print_level and log_level ranges. 0+v+vv+vvv+vvvv
+    database upgrades
+    new authentication scheme that doesn't use public key crypto
     
 known bugs:
     fix z layer issue with multiple objects on the same space
@@ -53,7 +55,7 @@ things that could be done:
 things other people could do:
 -------------------------
 security related:
-    - penetration testing and security auditing of srp/rpc/authention
+    - penetration testing and security auditing of rpc/authention
         - try to break your way in!
     
     - secure serialization format

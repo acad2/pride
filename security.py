@@ -12,6 +12,9 @@ class SecurityError(Exception): pass
 
 class InvalidPassword(SecurityError): pass
 
+def random_bytes(count):
+    return random._urandom(count)
+    
 def hash_function(algorithm_name):
     return hashes.Hash(getattr(hashes, algorithm_name)(), backend=BACKEND)
     
@@ -35,7 +38,7 @@ def verify_mac(key, data, mac, algorithm="SHA256"):
 def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
             mode="GCM", backend=BACKEND, iv_size=16):
     assert data and key
-    iv = iv or random._urandom(iv_size)
+    iv = iv or random_bytes(iv_size)
     encryptor = Cipher(getattr(algorithms, algorithm)(key), 
                        getattr(modes, mode)(iv), 
                        backend=BACKEND).encryptor()
@@ -59,7 +62,12 @@ def decrypt(packed_encrypted_data, key, algorithm="AES",
                        backend=BACKEND).decryptor()
     if mode == "GCM":
         decryptor.authenticate_additional_data(extra_data)
-    return decryptor.update(ciphertext) + decryptor.finalize()         
+        # remove implicitly/automatically authenticated iv from extra_data
+        extra_data = extra_data[len(iv):]
+    if extra_data:
+        return (decryptor.update(ciphertext) + decryptor.finalize(), extra_data)     
+    else:
+        return decryptor.update(ciphertext) + decryptor.finalize()      
 
 def pack_encrypted_data(ciphertext, iv, tag='', extra_data=''):
     # ciphertext_size = str(len(ciphertext))
@@ -91,9 +99,8 @@ def unpack(packed_bytes):
             packed_bytes[end_of_iv:end_of_tag], packed_bytes[end_of_tag:end_of_extra_data])
             
 def test_packed_encrypted_data():
-    import random
     data = "This is some fantastic test data"
-    key = random._urandom(32)
+    key = random_bytes(32)
     packed_encrypted_data = encrypt(data, key)
     plaintext = decrypt(packed_encrypted_data, key)
     assert plaintext == data
