@@ -10,6 +10,7 @@ except ImportError:
     import StringIO
     
 import pride.utilities
+import pride.importers
 
 def printable_hash(object, output_size=20):
     """ Returns a hash of an object where the output characters are members
@@ -23,11 +24,12 @@ def printable_hash(object, output_size=20):
     return ''.join(result[:output_size])
     
 def get_arg_count(function):
-    try:
-        func_code = function.im_func.func_code
-    except AttributeError:
-        func_code = function.func_code
-    return len(inspect.getargs(func_code).args)    
+    return len(inspect.getargspec(function).args)
+  #  try:
+  #      func_code = function.im_func.func_code
+  #  except AttributeError:
+  #      func_code = function.func_code
+  #  return len(inspect.getargs(func_code).args)    
     
 def run_functions(function_arguments): # just a test function
 
@@ -45,27 +47,34 @@ def run_functions(function_arguments): # just a test function
 def indent_lines(string, amount=1, spacing="    "):
     return '\n'.join(spacing * amount + line for line in string.split('\n'))     
            
-def inline_function_source(method, method_name, component=''):
+def inline_function_source(method, method_name, component='',
+                           return_string="pride.objects['->Preemptive_Multiprocessor']._return['{}'] ="):
     full_name = ''.join((component, '_', method_name))
-    method_source = inspect.getsource(method)
-    end_of_def = method_source.index(":")
-    start_of_source = method_source[end_of_def:].index("\n")
-    
+#    method_source = inspect.getsource(method)
+#    end_of_def = method_source.index(":")
+#    start_of_source = method_source[end_of_def:].index("\n")
+    method_source = pride.importers.Parser.extract_code(inspect.getsource(method))
     # ensure source begins indented by one block
-    method_source = textwrap.dedent(method_source[end_of_def +
-                                    start_of_source:]).strip()
+    #print method_name, method_source
+    method_source = textwrap.dedent(method_source)#[end_of_def +
+                                    #start_of_source:]).strip()
+    #print '\n', method_name, method_source
     method_source = indent_lines(method_source)
-            
+    #print '\n', method_name, method_source        
     argument_names = method.__code__.co_varnames
     
     for name in argument_names:
         new_name = full_name + '_' + name
         declaration = "{} = {}_namespace.{}".format(new_name, full_name, name)
         #print "Replacing {} with {}".format(name, new_name)
-        method_source = pride.importers.Parser.replace_symbol(name, method_source, new_name)               
- 
-    method_source = pride.importers.Parser.replace_symbol('return', method_source, 
-                          "$Preemptive_Multiprocessor._return['{}'] =".format(full_name)) 
+        method_source = pride.importers.Parser.replace_symbol(name, method_source, 
+                                                              new_name, True, True)
+    if return_string:
+        method_source = pride.importers.Parser.replace_symbol('return', 
+                                                              method_source, 
+                                                              return_string.format(full_name)) 
+   # print "Inlined: ", method_name
+   # print method_source
     return method_source            
             
             
@@ -119,6 +128,8 @@ class Preemptive_Multiprocessor(pride.base.Base):
     #    print function, pride.utilities.function_header(function)
     #    print arguments
         self.threads = []
+      #  print "Calling: ", header
+      #  print "args   : ", arguments
         return function(*arguments)        
         
     
@@ -126,18 +137,9 @@ class Thread(pride.base.Base):
         
     defaults = {"component_name" : '', "method_name" : '', "callback" : None,
                 "source" : ''}
-    
-  # def __new__(cls, *args, **kwargs):
-  #     try:
-  #         method = kwargs["method"]
-  #     except:
-  #         method_name = kwargs["method_name"]
-  #         component = pride.objects[kwargs["component_name"]]
-  #         method = getattr(component, method_name)
-  #     header = pride.utilities.function_header(method)
-  #     _source = "def " + method.__name__ + header + ':'
-        
+            
     def __init__(self, **kwargs):
+        self.use_varargs = self.use_keywords = False
         super(Thread, self).__init__(**kwargs)
         component_name, method_name = self.component_name, self.method_name
         if not self.method:            
@@ -145,29 +147,40 @@ class Thread(pride.base.Base):
         else:
             if not method_name:
                 method_name = self.method_name = self.method.__name__
+        method = self.method
+        try:
+            self._self = method.im_self
+        except AttributeError:
+            self._self = None
             
-        self.source = inline_function_source(self.method, method_name, component_name)
-        self.arg_count = get_arg_count(self.method)
+        self.source = inline_function_source(method, method_name, component_name)
+        arguments = inspect.getargspec(method)
+        arg_count = len(arguments.args)
+        if arguments.varargs:
+            self.use_varargs = True
+        if arguments.keywords:
+            self.use_keywords = True
+        self.arg_count = arg_count
         
     def __call__(self, *args, **kwargs):
         _arguments, _args = args[:self.arg_count], args[self.arg_count:]
-        if _args:
-            if kwargs:
+        if self.use_varargs:
+            if self.use_keywords:
                 packed_args = _arguments + (_args, kwargs)
             else:
                 packed_args = _arguments + (_args, )
-        elif _arguments:
-            if kwargs:
-                packed_args = _arguments + (kwargs, )
-            else:
-                packed_args = _arguments
-        elif kwargs:
-            packed_args = (kwargs, )
+        elif self.use_keywords:
+            packed_args = _arguments + (kwargs, )
         else:
-            packed_args = tuple()        
-        pride.objects["Preemptive_Multiprocessor"].threads.append((self, packed_args))
+            packed_args = _arguments 
+        if self._self:
+            packed_args = (self._self, ) + packed_args
+        pride.objects["->Preemptive_Multiprocessor"].threads.append((self, packed_args))    
         
 if __name__ == "__main__":
+    import pride.base
+    import pride
+    b = pride.base.Base()
     def test(testing, idek=True, *args, **test_kwargs):
         print "Inside test :)", testing, idek, args, test_kwargs
         print test
@@ -179,12 +192,16 @@ if __name__ == "__main__":
     thread = Thread(method=test)
     thread2 = Thread(method=run_functions)
     thread3 = Thread(method=_spawn_thread)
-    p = Preemptive_Multiprocessor()
+    thread4 = Thread(method=b.create)
+    p = Preemptive_Multiprocessor()    
     thread(1, False, 2, 3, 4, 5, woo="hooray")
     thread2([(1, 2, 3)])
     thread3(method=_test_function)
-    print "Locals: ", p.run()
-    print "Return values: ", p._return
+    thread4("pride.base.Base", success=True)
+    print "Pre run"
+    _locals = p.run()
+    print "\nLocals: ", _locals
+    print "\nReturn values: ", p._return
     #thread(11, True, 2, 3, 4, 5, woo="yeaaaahhhhhhhhhhh!")
     #thread2([(1, 2, 3)])   
     #p.run()

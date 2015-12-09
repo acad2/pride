@@ -5,7 +5,6 @@ import contextlib
 import pride
 import pride.base as base
 import pride.audio.audiolibrary as audiolibrary
-objects = pride.objects
 
 # to install alsaaudio, use pride.audio.utilities.install_pyalsaaudio
 import alsaaudio

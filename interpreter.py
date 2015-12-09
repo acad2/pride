@@ -14,35 +14,35 @@ except ImportError:
 import pride
 import pride.base as base
 import pride.vmlibrary as vmlibrary
-import pride.authentication as authentication
+import pride.authentication2 as authentication2
 import pride.utilities as utilities
 import pride.fileio as fileio
 import pride.shell
 objects = pride.objects
 Instruction = pride.Instruction            
 
+@contextlib.contextmanager
+def main_as_name():
+    backup = globals()["__name__"]        
+    globals()["__name__"] = "__main__"
+    try:
+        yield
+    finally:
+        globals()["__name__"] = backup        
     
-class Shell(authentication.Authenticated_Client):
+class Shell(authentication2.Authenticated_Client2):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
-    defaults = {"username" : "",
-                "password" : "",
-                "prompt" : ">>> ",
-                "startup_definitions" : '',
-                "target_service" : "Interpreter"}
+    defaults = {"username" : "", "password" : "", "prompt" : ">>> ",
+                "startup_definitions" : '', "target_service" : "->Python->Interpreter",
+                "lines" : '', "user_is_entering_definition" : False}
     
-    parser_ignore = (authentication.Authenticated_Client.parser_ignore + 
-                     ("prompt", "auto_login", "target_service"))
+    parser_ignore = ("prompt", "lines", "user_is_entering_definition")
     
-    verbosity = {"logging_in" : ''}
-    
-    def __init__(self, **kwargs):
-        super(Shell, self).__init__(**kwargs)
-        self.lines = ''
-        self.user_is_entering_definition = False     
+    verbosity = {"logging_in" : 0}
                 
     def on_login(self, message):
-        self.alert("{}", [message], level='')
+        self.alert("{}", [message], level=0)
         sys.stdout.write(">>> ")
         self.logged_in = True
         if self.startup_definitions:
@@ -92,14 +92,14 @@ class Shell(authentication.Authenticated_Client):
                     self.prompt = "... "
         else:
             self.lines = ''
-        objects["Command_Line"].set_prompt(self.prompt)
+        objects["->Python->Command_Line"].set_prompt(self.prompt)
         
     def execute_source(self, source):
         if not self.logged_in:
             self.alert("Not logged in. Unable to process {}".format(source))
             self.login()            
         else:
-            self.session.execute(Instruction(self.target_service, "exec_code",
+            self.session.execute(Instruction(self.target_service, "handle_input",
                                              source), callback=self.result)
                                     
     def result(self, packet):
@@ -108,38 +108,34 @@ class Shell(authentication.Authenticated_Client):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write('\b' * 4 + packet)
+            sys.stdout.write('\b' * 4 + packet + self.prompt)
         
 
-class Interpreter(authentication.Authenticated_Service):
+class Interpreter(authentication2.Authenticated_Service2):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     
-    defaults = {"copyright" : 'Type "help", "copyright", "credits" or "license" for more information.',
+    defaults = {"help_string" : 'Type "help", "copyright", "credits" or "license" for more information.',
                 "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"}
     
+    mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
+    
+    remotely_available_procedures = ("handle_input", "execute_instruction")
+    
     def __init__(self, **kwargs):
-        self.user_namespaces = {}
-        self.user_session = {}
         super(Interpreter, self).__init__(**kwargs)
+        filename = '_'.join(word for word in self.instance_name.split("->") if word)
         self.log = self.create("fileio.File", 
-                               "{}.log".format(self.instance_name), 'a+',
+                               "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
                 
-    def login(self, username, credentials):
-        response = super(Interpreter, self).login(username, credentials)
-        session_id, sender = self.current_session
-        if response[0] == self.login_message:
-           # self.user_namespaces[username] = {"__name__" : "__main__",
-           #                                   "__doc__" : '',
-           #                                   "Instruction" : Instruction}
-            self.user_session[username] = ''
-            string_info = (username, sender, sys.version, sys.platform, 
-                           self.copyright)    
-            response = (self.login_message.format(*string_info), response[1])
-        return response
-
-    def exec_code(self, source):
+    def on_login(self, username):
+        sessionid, sender = self.current_session
+        self.user_session[username] = ''
+        string_info = (username, sender, sys.version, sys.platform, self.help_string)
+        return self.login_message.format(*string_info)
+        
+    def handle_input(self, source):
         log = pride.objects[self.log]
         session_id, sender = self.current_session
                 
@@ -185,7 +181,49 @@ class Interpreter(authentication.Authenticated_Service):
                 sys.stdout = backup           
         log.flush()        
         return result
-                             
+        
+    def _exec_command(self, source):
+        """ Executes the supplied source as the __main__ module"""
+        code = pride.compiler.compile(source, "__main__")
+        with main_as_name():
+            exec code in globals(), globals()
+            
+    def execute_instruction(self, instruction, priority, callback):
+        """ Executes the supplied instruction with the specified priority and callback """
+        instruction.execute(priority=priority, callback=callback)
+        
+        
+class Finalizer(base.Base):
+    
+    mutable_defaults = {"_callbacks" : list}
+        
+    def run(self):
+        for callback, args, kwargs in self._callbacks:
+            try:
+                instance_name, method = callback
+            except ValueError:
+                pass
+            else:
+                try:
+                    callback = getattr(objects[instance_name], method)
+                except KeyError:
+                    self.alert("Unable to load object for callback: '{}'".format(instance_name), level=0)
+                except AttributeError:
+                    self.alert("Unable to call method: '{}.{}'".format(instance_name, method), level=0)
+            try:
+                callback(*args, **kwargs)
+            except Exception as error:
+                self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
+                           (instance_name, method, error), level=0)
+        self._callbacks = []    
+        
+    def add_callback(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+        
+    def remove_callback(self, callback, *args, **kwargs):
+        self._callbacks.remove((callback, args, kwargs))
+        
+        
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
@@ -197,56 +235,37 @@ class Python(base.Base):
                 "environment_setup" : ["PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep],
-                "startup_components" : ("pride.vmlibrary.Processor",
+                "startup_components" : ("pride.interpreter.Finalizer",
+                                        "pride.fileio.File_System",
+                                        "pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.shell.Command_Line",
-                                        "pride.srp.Secure_Remote_Password",
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Server"),
-                "interpreter_enabled" : True,
-                "rpc_enabled" : True,
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
-    parser_ignore = base.Base.parser_ignore + ("environment_setup",
-                                               "traceback", 
-                                               "startup_components", 
-                                               "startup_definitions")
+    parser_ignore = ("environment_setup", "startup_components", 
+                     "startup_definitions", "interpreter_type")
                      
     # make an optional "command" positional argument and allow 
     # both -h and --help flags
     parser_modifiers = {"command" : {"types" : ("positional", ),
                                      "nargs" : '?'},
                         "help" : {"types" : ("short", "long"),
-                                  "nargs" : '?'}
-                        }
-    exit_on_help = False
-
+                                  "nargs" : '?'},
+                        "exit_on_help" : False}
+    
     def __init__(self, **kwargs):
         super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
-        
+
         if self.startup_definitions:
-            self._exec_command(self.startup_definitions)           
+            self.interpreter._exec_command(self.startup_definitions)           
                         
         with open(self.command, 'r') as module_file:
             source = module_file.read()            
-        Instruction(self.instance_name, "_exec_command", source).execute()
-                
-    def _exec_command(self, source):
-        """ Executes the supplied source as the __main__ module"""
-        code = pride.compiler.compile(source, "__main__")
-        with self.main_as_name():
-            exec code in globals(), globals()
-            
-    @contextlib.contextmanager
-    def main_as_name(self):
-        backup = globals()["__name__"]        
-        globals()["__name__"] = "__main__"
-        try:
-            yield
-        finally:
-            globals()["__name__"] = backup
+        Instruction(self.interpreter, "_exec_command", source).execute()
              
     def setup_os_environ(self):
         """ This method is called automatically in Python.__init__; os.environ can
@@ -274,10 +293,9 @@ class Python(base.Base):
         processor.running = True
         processor.run()
         self.alert("Graceful shutdown initiated", level='v')
+        self.exit()
         
     def exit(self, exit_code=0):
-        pride.objects[self.processor].running = False
-        # cleanup/finalizers go here?
-        raise SystemExit
-        #sys.exit(exit_code)
+        pride.objects[self.finalizer].run()
+        sys.exit()
         

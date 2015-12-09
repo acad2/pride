@@ -13,6 +13,10 @@ import timeit
 
 timer_function = timeit.default_timer
     
+def print_in_place(_string):
+    sys.stdout.write(_string + '\r')
+    sys.stdout.flush()
+    
 @contextlib.contextmanager
 def sys_argv_swapped(new_argv):
     backup = sys.argv[:]
@@ -80,12 +84,14 @@ def resolve_string(module_name):
             module_name = module_name.split('.')
             attributes.append(module_name.pop())
             module_name = '.'.join(module_name)
+        except ValueError:
+            raise ValueError("Unable to load package or module: {}".format(_original))
     try:
         for attribute in reversed(attributes):
             result = getattr(result, attribute)
     except AttributeError:
-        error_message = "resolve_string unable to load {} from {}"
-        print error_message.format(attribute, _original)
+        error_message = "unable to load {} from {}; failed to resolve string '{}'"
+        print error_message.format(attribute, result, _original)
         raise
         #error_message = '\n'.join((error_message, traceback.format_exc()))
         #raise AttributeError(error_message)
@@ -240,38 +246,42 @@ class Latency(object):
     """ usage: Latency([name="component_name"], 
                        [size=20]) => latency_object
                        
-        Latency objects possess a latency attribute that marks
-        the average time between calls to latency.update()"""
+        Latency objects possess a start_measuring and )"""
      
     def _get_last_measurement(self):
-        return self.average.values[-1]
+        try:
+            return self._average.values[-1]
+        except IndexError:
+            return timer_function() - self.started_at
     last_measurement = property(_get_last_measurement, doc="Gets the last measurement")
     
     def _get_average_measurement(self):
-        return self.average.average
-    average_measurement = property(_get_average_measurement)
+        return self._average.average
+    average = property(_get_average_measurement)
     
     def _get_max_measurement(self):
-        return max(self.average.values)
+        return max(self._average.values)
     maximum = property(_get_max_measurement)
     
     def _get_min_measurement(self):
-        return min(self.average.values)
+        return min(self._average.values)
     minimum = property(_get_min_measurement)
     
-    def __init__(self, name=None, size=20):
+    def __init__(self, name='', size=20):
         super(Latency, self).__init__()
         self.name = name
-        self.average = Average(size=size)        
-
-    def start_measuring(self):
+        self._average = Average(size=size)
         self.started_at = timer_function()
         
-    def finish_measuring(self):
-        time_elapsed = timer_function() - self.started_at
-        self.average.add(time_elapsed)        
+    def mark(self):
+        now = timer_function()
+        self._average.add(now - self.started_at)        
+        self.started_at = now
         
-
+    def __str__(self):
+        return "{} Latency".format(self.name, self.average)
+        
+        
 class Average(object):
     """ usage: Average([name=''], [size=20], 
                        [values=tuple()], [meta_average=False]) => average_object

@@ -10,46 +10,38 @@ import sdl2
 
 class Attribute_Modifier_Button(gui.Button):
 
-    defaults = {"amount" : 0,
-                "method" : "",
-                "target" : None}
-                     
+    defaults = {"amount" : 0, "operation" : "",  "target" : None}
+                
+    verbosity = {"left_click" : 0}
+    
     def left_click(self, mouse):        
         instance_name, attribute = self.target
         instance = pride.objects[instance_name]        
         old_value = getattr(instance, attribute)
-        new_value = getattr(old_value, self.method)(self.amount)
+        new_value = getattr(old_value, self.operation)(self.amount)
         setattr(instance, attribute, new_value)
         self.alert("Modified {}.{}; {}.{}({}) = {}",
                    (instance_name, attribute, old_value, 
-                    self.method, self.amount, getattr(instance, attribute)),
-                   level='vv')  
+                    self.operation, self.amount, getattr(instance, attribute)),
+                   level=self.verbosity["left_click"])  
                     
  
 class Instruction_Button(gui.Button):
     
-    defaults = {"args" : tuple(),
-                "kwargs" : None,
-                "method" : '',
-                "instance_name" : '',
-                "priority" : 0.0,
-                "host_info" : tuple(),
-                "callback" : None}
+    defaults = {"args" : tuple(), "kwargs" : None, "method" : '',
+                "instance_name" : '', "priority" : 0.0, "callback" : None}
                      
     def left_click(self, mouse):
         Instruction(self.instance_name, self.method, 
                     *self.args, **self.kwargs or {}).execute(priority=self.priority, 
-                                                             host_info=self.host_info,
                                                              callback=self.callback)
                                              
     
 class Method_Button(gui.Button):
         
-    defaults = {"args" : tuple(),
-                "kwargs" : None,
-                "method" : '',
-                "target" : ''}
-                     
+    defaults = {"args" : tuple(), "kwargs" : None, "method" : '', "target" : ''}
+    flags = {"scale_to_text" : True}.items()
+    
     def left_click(self, mouse):
         try:
             instance = self.target()
@@ -60,10 +52,9 @@ class Method_Button(gui.Button):
 
 class Delete_Button(Method_Button):
     
-    defaults = {"pack_mode" : "horizontal",
-                "text" : "delete",
-                "method" : "delete"}
-        
+    defaults = {"pack_mode" : "right", "text" : "x", "method" : "delete"}
+    flags = {"scale_to_text" : True}.items()
+    
         
 class Exit_Button(Delete_Button):
         
@@ -72,8 +63,8 @@ class Exit_Button(Delete_Button):
 
 class Popup_Button(gui.Button):
         
-    defaults = {"popup_type" : '', "_popup" : None}
-
+    defaults = {"popup_type" : '', "_popup" : None}    
+        
     def left_click(self, mouse):
         if self._popup:
             self._popup.delete()
@@ -93,12 +84,11 @@ class Homescreen(gui.Window):
 
 class Task_Bar(gui.Container):
 
-    defaults = {"pack_mode" : "menu_bar",
-                "bound" : (0, 20)}
+    defaults = {"pack_mode" : "top", "bound" : (0, 20)}
     
     def _set_pack_mode(self, value):
         super(Task_Bar, self)._set_pack_mode(value)
-        if self.pack_mode in ("right", "left", "horizontal"):
+        if self.pack_mode in ("right", "left", "left"):
             self._backup_w_range = self.w_range
             self.w_range = self.bound
             self.h_range = self._backup_h_range
@@ -112,8 +102,8 @@ class Task_Bar(gui.Container):
     pack_mode = property(gui.Container._get_pack_mode, _set_pack_mode)
     
     def __init__(self, **kwargs):  
-        parent_name = self.parent_name
         super(Task_Bar, self).__init__(**kwargs)        
+        parent_name = self.parent_name
         self.create(Indicator, text=parent_name)
         self.create(Delete_Button, target=parent_name)
              
@@ -124,10 +114,8 @@ class Task_Bar(gui.Container):
         
 class Text_Box(gui.Container):
     
-    defaults = {"h" : 16,
-                "pack_mode" : "horizontal",
-                "allow_text_edit" : True,
-                "editing" : False}
+    defaults = {"h" : 16, "pack_mode" : "left",
+                "allow_text_edit" : True,  "editing" : False}
     
     def _get_editing(self):
         return self._editing
@@ -140,31 +128,24 @@ class Text_Box(gui.Container):
             self.alert("Disabling text input", level='vv')
             sdl2.SDL_StopTextInput()
     editing = property(_get_editing, _set_editing) 
-    
-    def __init__(self, **kwargs):
-        super(Text_Box, self).__init__(**kwargs)
-        text_box_name = self.instance_name
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_x"),
-                    pack_mode="bottom")         
-        self.create(Scroll_Bar, target=(text_box_name, "texture_window_y"),
-                    pack_mode="right")
-                        
+         
     def left_click(self, event):
         self.alert("Left click: {}".format(self.editing), level='vvv')
         self.editing = not self.editing
         
     def draw_texture(self):
-        area = self.texture.area
+        width, height = pride.gui.SCREEN_SIZE#self.texture.area
+        area = (0, 0, width, height)
         self.draw("fill", area, color=self.background_color)
         self.draw("rect", area, color=self.color)
         if self.text:
             self.draw("text", self.area, self.text, 
                       bg_color=self.background_color, color=self.text_color)
         
-        
+                
 class Date_Time_Button(gui.Button):
 
-    defaults = {"pack_mode" : "horizontal"}
+    defaults = {"pack_mode" : "left"}
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
@@ -180,8 +161,8 @@ class Color_Palette(gui.Window):
             
     def __init__(self, **kwargs):
         super(Color_Palette, self).__init__(**kwargs)
-        color_button = self.create("pride.gui.gui.Button", pack_mode="horizontal")
-        slider_container = self.create("pride.gui.gui.Container", pack_mode="horizontal")
+        color_button = self.create("pride.gui.gui.Button", pack_mode="left")
+        slider_container = self.create("pride.gui.gui.Container", pack_mode="left")
         
         button_name = color_button.instance_name
         for color in ('r', 'g', 'b'):
@@ -195,37 +176,36 @@ class Scroll_Bar(gui.Container):
     
     def __init__(self, **kwargs):
         super(Scroll_Bar, self).__init__(**kwargs)
-        if self.pack_mode in ("right", "horizontal"): # horizontal packs on the left side
-            self.w_range = (0, 10)
-            pack_mode = "vertical"
+        _target = self.target
+        if self.pack_mode in ("right", "left"): # horizontal packs on the left side
+            self.w_range = (0, 8)  
+            pack_mode = "top"
+            #crement_pack_mode = "bottom"
         else:
-            self.h_range = (0, 20)
-            pack_mode = "horizontal"
-        options = {"target" : self.target, "pack_mode" : pack_mode}
-        self.create(Decrement_Button, **options)
-     #   self.create(Scroll_Indicator, **options)
-        self.create(Increment_Button, **options)
+            self.h_range = (0, 8)
+            pack_mode = "left"
+            #increment_pack_mode = "right"
+        self.create(Decrement_Button, target=_target, pack_mode=pack_mode)
+     #   self.create(Sc+roll_Indicator, **options)
+        self.create(Increment_Button, target=_target, pack_mode=pack_mode)
         
         
 class Decrement_Button(Attribute_Modifier_Button):
       
-    defaults = {"amount" : 10,
-                "method" : "__sub__"}
+    defaults = {"amount" : 10, "operation" : "__sub__", "h_range" : (0, 8), "w_range" : (0, 8)}
         
         
 class Increment_Button(Attribute_Modifier_Button):
                 
-    defaults = {"amount" : 10,
-                "method" : "__add__"}
+    defaults = {"amount" : 10, "operation" : "__add__", "h_range" : (0, 8), "w_range" : (0, 8)}
                     
                     
 class Scroll_Indicator(gui.Button):
             
-    defaults = {"movable" : True,
-                "text" : ''}
+    defaults = {"movable" : True, "text" : ''}
                 
     def pack(self, modifiers=None):
-        if self.pack_mode in ("right", "horizontal"):
+        if self.pack_mode in ("right", "left"):
             width = int(self.parent.w * .8)
             self.w_range = (width, width)
         else:
@@ -241,14 +221,14 @@ class Scroll_Indicator(gui.Button):
         
 class Indicator(gui.Button):  
     
-    defaults = {"pack_mode" : "horizontal",
+    defaults = {"pack_mode" : "left",
                 "h" : 16,
                 "line_color" : (255, 235, 155),
                 "text" : ''}
     
     def __init__(self, **kwargs):
         super(Indicator, self).__init__(**kwargs)        
-        text = self.text = self.text or self.parent_name
+        self.text = self.text or self.parent_name
         
     def draw_texture(self):
         super(Indicator, self).draw_texture()
@@ -260,23 +240,42 @@ class Indicator(gui.Button):
 class Done_Button(gui.Button):
         
     def left_click(self, mouse):
-        getattr(pride.objects[self.callback_owner], self.callback)()        
+        callback_owner, method = self.callback
+        getattr(pride.objects[callback_owner], method)()        
+        
+      
+class Prompt(Text_Box):
+    
+    defaults = {"use_done_button" : False, }
+    
+    def __init__(self, **kwargs):
+        super(Prompt, self).__init__(**kwargs)
+        if self.use_done_button:
+            self.create("pride.gui.widgetlibrary.Done_Button", 
+                        callback=self._done_callback)
+                        
+    def text_entry(self, value):
+        self._text = value
+        if value and value[-1] == '\n':
+            callback_owner, method = self.callback
+            getattr(pride.objects[callback_owner], method)(self.text)
+            
+    def _done_callback(self):
+        self.text += '\n'
         
         
-class Prompt(gui.Application):
+class Dialog_Box(gui.Application):
         
-    defaults = {"callback_owner" : '',
-                "callback" : ''}
+    defaults = {"callback_owner" : '', "callback" : ''}
                      
     def __init__(self, **kwargs):
         super(Application, self).__init__(**kwargs)
         self.create("pride.gui.widgetlibrary.Text_Box", text=self.text,
                     allow_text_edit=False)
-        self.user_text = self.create("pride.gui.widgetlibrary.Text_Box")
-        self.create("pride.gui.widgetlibrary.Done_Button")
+        self.user_text = self.create("pride.gui.widgetlibrary.Prompt",
+                                     use_done_button=True,
+                                     callback=(self.instance_name, "handle_input"))
    
     def handle_input(self, user_input):
-        getattr(pride.objects[self.callback_owner], self.callback)(user_input)
-        
-        
+        getattr(pride.objects[self.callback_owner], self.callback)(user_input)       
         

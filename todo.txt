@@ -2,7 +2,7 @@
 # an instance would take on the properties of it's parents as well as it's
 # base classes. It's like attribute inheritance at an instance level
 
-# just because you can doesn't mean you should
+# just because you can doesn't mean you should!
 
 #The style dictated by the modules design lends itself to a well pronounced
 #entry point when developing new components. 
@@ -12,13 +12,26 @@
 #current ones 
 #be used 
 
-rotation descriptor on window objects. modify area based upon the given
-degrees of rotation about the center of the instance.
+# find patterns similar to a given name that may be typos of it
 
 branch removal based on arguments. based on whatever arguments are provided
 to the call, create new source with branches based on the condition removed.
     
+an app for drawing/designing themes!
+
+in memory encryption?
+stream cipher, authenticated encryption with associated data for bytecode interpreter?
+2 byte wide bytecode operators. Same number of instructions, ~65300 are errors?
+history from storing hashes of shared secrets?
+# cryptographically secure rate limiting based on session calculated from proof of work cracking hashes?
+
+recently done:
+    print_level and log_level ranges. 0+v+vv+vvv+vvvv
+    database upgrades
+    new authentication scheme that doesn't use public key crypto
+    
 known bugs:
+    fix z layer issue with multiple objects on the same space
     fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
     memory leak in Network/sockets - sockets have no referrers??
     usage of startup_components and accessing parent_name in __init__ after super will return self as parent
@@ -33,8 +46,57 @@ things that could be done:
     integrate ssl contexts into networkssl    
     pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    
     class update feature
-    --optimized flag that comments out alerts that are above a threshold
+    --optimized flag that comments out alerts that are above a threshold. __debug__ flag
+    persistent objects
+    rotation descriptor on window objects. modify area based upon the given degrees of rotation about the center of the instance.
+    branch pruning based on runtime analysis of arguments
+    store name pruning? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
+   
+things other people could do:
+-------------------------
+security related:
+    - penetration testing and security auditing of rpc/authention
+        - try to break your way in!
     
+    - secure serialization format
+        - json implementation already started
+        - struct implementation?        
+        
+gui design:
+    - need cool looking themes!
+        - very simple low level drawing api 
+        - calls take the form of draw(shape, coordinates, color)
+        - Opengl supported by sdl2 but not implemented anywhere yet
+        
+    - need graphical applications
+        - need more widgets
+        - assemble applications out of generic windows and containers and buttons        
+        - customize mouse ui interaction via the click methods
+        - customize keyboard interaction via the hotkeys dictionary
+        
+source code manipulation:        
+    - source code optimization?
+        - function inlining, constant folding, branch pruning, etc
+        - remove "store name" operations for constants and pass names in as arguments?
+            - i.e.:
+                def math_stuff(a):
+                    pi = 3.14
+                    return pi * a
+                    
+                # change the above to:
+                def math_stuff(a, pi):
+                    return pi * a
+                    
+            - results in fewer bytecode operations in the function call?
+            
+    - source code obfuscation?
+        - could maybe use compiler hook to obfuscate names across entire process instead of
+          limited to one module like current best known tool
+        - modify + - / *... etc to use magic method calls instead of operator expressions. 
+          The magic method name could be obfuscated?
+
+scratch space
+------------------          
 class System_Restore(mpre.vmlibrary.Process):
     defaults = defaults.Process.copy()
     System_Restore.update({"priority" : 300,
@@ -204,3 +266,60 @@ class Time_Adapter(mpre.base.Adapter):
                    "minute" : "tm_min", "second" : "tm_sec", 
                    "day_of_week" : "tm_wday", "day_of_year" : "tm_yday",
                    "daylight_savings_time" : "tm_isdst"}                                                
+                   
+                   
+def xor(input_one, input_two):
+    return (input_one or input_two) and not (input_one and input_two)
+    
+def preprocess_file(filename='', _file=None, output_filename='', 
+                    output_file=None, output_file_mode='w'):
+    
+    assert xor(filename, _file)
+    if filename:
+        with open(filename, 'r') as _file:
+            source = _file.read()
+    else:
+        source = _file.read()
+    source = pride.compiler.preprocess(source)
+    if output_filename:
+        with open(output_filename, 'w') as output_file:
+            output_file.write(source)
+            output_file.flush()
+    elif output_file:
+        output_file.write(source)
+        output_file.flush()
+    else:
+        return source
+        
+def preprocess_package(package_name='', package=None):
+    assert xor(package_name, package)
+    if package_name:
+        package = importlib.import_module(package_name)
+    
+    
+crypto_hash = hashlib.sha1
+_hashes = {}
+
+class HashFailure(Exception):
+    meaning = "The calculated hash did not match the hash on record"
+    
+def hash_function(function):
+    try:
+        _function = function.im_func
+    except AttributeError:
+        pass
+    try:
+        _hash = crypto_hash(_function.func_code.co_code).digest()
+    except AttributeError:
+        _hash = hash(function)
+    return _hash
+    
+def cryptographic_id(function):
+    _hashes[function] = hash_function(function)
+    def _hash_test(*args, **kwargs):
+        if hash_function(function) == _hashes[function]:
+            return function(*args, **kwargs)
+        else:
+            raise HashFailure(function)
+    return _hash_test    
+    

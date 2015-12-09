@@ -41,10 +41,9 @@ class Process(pride.base.Base):
         object presumes the desire for some kind of explicitly timed
         or periodic event."""
 
-    defaults = {"priority" : .04,
-                "running" : True,
-                "run_callback" : None}
-    parser_ignore = pride.base.Base.parser_ignore + ("priority", "run_callback", )
+    defaults = {"priority" : .04, "context_managed" : False, "running" : True,
+                "run_callback" : None, "_run_queued" : False}
+    parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued")
 
     def __init__(self, **kwargs):
         self.args = tuple()
@@ -58,20 +57,29 @@ class Process(pride.base.Base):
     def start(self):
         self.run_instruction.execute(priority=self.priority,
                                      callback=self.run_callback)
-
+        self._run_queued = True
+        
     def _run(self):
-        result = self.run()
+        self._run_queued = False
+        if self.context_managed:
+            with self:
+                result = self.run()
+        else:
+            result = self.run()
         if self.running:
             self.run_instruction.execute(priority=self.priority, 
                                          callback=self.run_callback)
+            self._run_queued = True
         return result
         
     def run(self):
         if self.target:
             return self.target(*self.args, **self.kwargs)
-            
+                        
     def delete(self):
         self.running = False
+        if self._run_queued:
+            pride.objects["->Python->Processor"]._recently_deleted.add(self.instance_name)
         super(Process, self).delete()
         
     def __getstate__(self):
@@ -85,7 +93,15 @@ class Process(pride.base.Base):
         if self.running:
             Instruction(self.instance_name, "start").execute()
             
-            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        if traceback:
+            raise
+        return value
+        
+    
 class Processor(Process):
     """ Removes enqueued Instructions via heapq.heappop, then
         performs the specified method call while handling the
@@ -93,15 +109,15 @@ class Processor(Process):
         and any exception that could be raised inside the method call
         itself."""
         
-    defaults = {"running" : False,
-                "execution_verbosity" : 'vvvv',
+    defaults = {"running" : False, "execution_verbosity" : 'vvvv',
                 "parse_args" : True}
 
-    parser_ignore = Process.parser_ignore + ("running", )
-    exit_on_help = False
+    parser_ignore = ("running", )
+    parser_modifiers = {"exit_on_help" : False}
             
     def run(self):
         self._return = {}
+        recently_deleted = self._recently_deleted = set()
         instructions = pride.environment.Instructions
         objects = pride.objects
                 
@@ -125,6 +141,10 @@ class Processor(Process):
                 call = _getattr(objects[instruction.component_name],
                                 instruction.method)
             except component_errors as error:
+                component = instruction.component_name
+                if component in recently_deleted:
+                    recently_deleted.remove(component)
+                    continue
                 if isinstance(error, KeyError):
                     error = "'{}' component does not exist".format(instruction.component_name)                        
                 component_alert((str(instruction), error)) 

@@ -8,7 +8,7 @@
           of name:value pairs. These pairs will be assigned as attributes
           to new instances; Any attribute specified via keyword argument
           will override a default
-          
+        
         - An instance name, which provides a reference to the component from any context. 
           Instance names are mapped to instance objects in pride.objects.
           
@@ -60,9 +60,8 @@
     This is equal to type(instance).__name__ + str(instance_count). There
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
-    This name associates the instance to the instance_name in the
-    pride.environment.objects. The instance_name can be used to reference
-    the object from any scope, as long as the component exists at runtime."""
+    The instance_name can be used to reference the object from any scope, 
+    as long as the component exists at runtime."""
 import operator
        
 import pride
@@ -106,14 +105,42 @@ class Base(object):
 
     __metaclass__ = pride.metaclass.Metaclass
                 
-    # the default attributes new instances will initialize with
-    # mutable datatypes (i.e. lists) should not be used inside the
-    # defaults dictionary and should be set inside the call to __init__   
-    defaults = {"_deleted" : False,
+    # certain container type class attributes are "inherited" from base classes
+    # these include defaults, required_attributes, mutable_defaults, verbosity
+    # parser_ignore, and flags (all of which are explained below)
+    # when subclassing, creating new class defaults will automatically merge the
+    # newly specified defaults with the base class defaults, and similarly so for each 
+    # attribute inherited this way.
+    
+    # the defaults attribute sets what attributes new instances will initialize with
+    # they can be overridden when initialized an object via keyword arguments
+    # PITFALL: do not use mutable objects as a default. use mutable_defaults instead
+    defaults = {"_deleted" : False, "dont_save" : False,
                 "replace_reference_on_load" : True,
-                "dont_save" : False,
                 "startup_components" : tuple()}   
-                
+    
+    # if certain attributes must be passed explicitly, including them in the
+    # required_attributes class attribute will automatically raise an 
+    # ArgumentError when they are not supplied.
+    required_attributes = tuple()
+    
+    # mutable objects should not be included as defaults attributes
+    # for the same reason they should not be used as default arguments
+    # the type associated with the attribute name will be instantiated with 
+    # no arguments when the object initializes
+    mutable_defaults = {} # {attribute_name : mutable_type}, i.e {'defaults' : dict}
+    
+    # verbosity is an inherited class attribute used to store the verbosity
+    # level of a particular message.
+    verbosity = {"delete" : 'vv', "initialized" : "vv"}
+            
+    # defaults have a pitfall that can be a problem in certain cases
+    # because dictionaries are unordered, the order in which defaults
+    # are assigned cannot be guaranteed. 
+    # flags are guaranteed to be assigned before defaults, and in the order specified
+    # flags should be a container of 2-tuples, which are attribute value pairs
+    flags = {}.items() 
+    
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
     # class defaults dictionary. Specific attributes can be modified
@@ -128,31 +155,31 @@ class Base(object):
     # or --long long style flags. nargs indicates the number of expected
     # arguments for the flag in question. Note that attributes default to 
     # using --long style flags.
-    parser_modifiers = {}    
+    # exit_on_help determines whether or not to quit when the --help flag
+    # is specified as a command line argument    
+    parser_modifiers = {"exit_on_help" : True}    
     
     # names in parser_ignore will not be available as command line arguments
-    parser_ignore = ("objects", "replace_reference_on_load", "_deleted",
-                     "parse_args", "dont_save")
-    # exit_on_help determines whether or not to quit when the --help flag
-    # is specified as a command line argument
-    exit_on_help = True
+    parser_ignore = ("replace_reference_on_load", "_deleted",
+                     "parse_args", "dont_save", "startup_components")    
     
     # an objects parent is the object that .create'd it.
     def _get_parent_name(self):
         return pride.environment.parents.get(self, 
-                                            pride.environment.last_creator)     
+                                             pride.environment.last_creator)     
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
+        assert self.parent_name != self.instance_name
         return objects[self.parent_name]
     parent = property(_get_parent)
-            
-    verbosity = {"delete" : "vv"}
-                 
+    
     def __init__(self, **kwargs):
-        super(Base, self).__init__() # facilitates complicated inheritance
+        super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
         
-        pride.environment.add(self) # acquire instance_name
+        pride.environment.register(self) # acquire instance_name
+        pride.environment.parents[self] = pride.environment.last_creator
+        
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
@@ -165,15 +192,29 @@ class Base(object):
             attributes.update(dict((key, value) for key, value in 
                                     command_line_args.items() if 
                                     value != defaults[key]))  
-                                    
-        [setattr(self, attribute, value) for 
-         attribute, value in attributes.items()]            
+        if self.flags:
+            [setattr(self, attribute, value) for attribute, value in self.flags]
+        if self.mutable_defaults:
+            [setattr(self, attribute, value()) for attribute, value in self.mutable_defaults.items()]            
+        [setattr(self, attribute, value) for attribute, value in attributes.items()]
 
         if self.startup_components:
             for component_type in self.startup_components:
-                component_name = self.create(component_type).instance_name
-                setattr(self, component_name.lower(), component_name) 
-                
+                component = self.create(component_type)
+                setattr(self, component.__class__.__name__.lower(), 
+                        component.instance_name) 
+        if self.required_attributes:
+            for attribute in self.required_attributes:
+                try:
+                    if getattr(self, attribute) == self.defaults[attribute]:
+                        raise ArgumentError("Required argument {} not supplied".format(attribute))
+                except AttributeError:
+                    raise ArgumentError("Required argument {} not supplied".format(attribute))
+        try:
+            self.alert("Initialized", level=self.verbosity["initialized"])
+        except KeyError:
+            pass
+            
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
                                 args, kwargs) => instance
@@ -194,6 +235,7 @@ class Base(object):
             obtained via the pride.environment.instance_name dictionary, 
             using the instance as the key."""
         self_name = self.instance_name
+        backup = pride.environment.last_creator
         pride.environment.last_creator = self_name
         try:
             instance = instance_type(*args, **kwargs)
@@ -202,10 +244,11 @@ class Base(object):
                 raise
             instance = pride.utilities.resolve_string(instance_type)(*args, **kwargs)        
 
-        if instance not in pride.environment.instance_name:
-            pride.environment.add(instance)
-        self.add(instance)
         pride.environment.parents[instance] = self_name
+        if instance not in pride.environment.instance_name:
+            pride.environment.register(instance)
+        self.add(instance)
+        pride.environment.last_creator = backup
         return instance
 
     def delete(self):
@@ -228,7 +271,7 @@ class Base(object):
         #self.alert("Removing {}", [instance], level=0)
         try:
             self.objects[instance.__class__.__name__].remove(instance)
-        except:
+        except ValueError:
             print self, "Failed to remove: ", instance
             raise
         pride.environment.references_to[instance.instance_name].remove(self.instance_name)
@@ -255,7 +298,7 @@ class Base(object):
         except KeyError:
             pride.environment.references_to[instance_name] = set((self.instance_name, ))      
             
-    def alert(self, message, format_args=tuple(), level=''):
+    def alert(self, message, format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 
@@ -273,9 +316,9 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        return objects["Alert_Handler"]._alert(self.instance_name + 
-                                               ": " + message, 
-                                               level, format_args)     
+        return objects["->Alert_Handler"]._alert(self.instance_name + 
+                                                 ": " + message, 
+                                                 level, format_args)     
     def __getstate__(self):
         return self.__dict__.copy()
         
@@ -394,10 +437,12 @@ class Wrapper(Base):
             setattr(self, self.wrapped_object_name, self.wrapped_object)
             
     def __getattr__(self, attribute):
+     #   print repr(self), "Getting ", attribute, "From ", self.wrapped_object
         return getattr(self.wrapped_object, attribute)        
                         
     def wraps(self, _object):
         """ Sets the specified object as the object wrapped by this object. """
+        assert _object is not self
         self.wrapped_object = _object
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)
@@ -465,6 +510,8 @@ class Adapter(Base):
     def __init__(self, **kwargs):
         if "wrapped_object" in kwargs:
             self.wraps(kwargs.pop("wrapped_object"))
+        else:
+            self.wrapped_object = None
         super(Adapter, self).__init__(**kwargs)
             
     def wraps(self, _object):
@@ -489,3 +536,37 @@ class Adapter(Base):
         else:
             super(Adapter, self).__setattr__(attribute, value)
         
+        
+class Static_Wrapper(pride.base.Base):
+    """ Wrapper that statically wraps attributes upon initialization. This
+        differs from the default Wrapper in that changes made to the data of
+        the wrapped object on a Wrapper will be reflected in the wrapper object
+        itself. 
+        
+        With a Static_Wrapper, changes made to the wrapped objects attributes 
+        will not be reflected in the Static_Wrapper object, unless the object
+        is explicitly wrapped again using the wraps method.
+        
+        Attribute access on a static wrapper is faster then a dynamic wrapper. """
+    wrapped_attributes = tuple()
+    wrapped_object_name = ''
+    
+    defaults = {"wrapped_object" : None}
+    
+    def __init__(self, **kwargs):
+        super(Static_Wrapper, self).__init__(**kwargs)
+        if self.wrapped_object:
+            self.wraps(self.wrapped_object)
+            
+    def wraps(self, _object):
+        if self.wrapped_attributes:
+            for attribute in self.wrapped_attributes:
+                setattr(self, attribute, getattr(_object, attribute))
+        else:
+            for attribute in dir(_object):
+                if "__" != attribute[:2] and "__" != attribute[:-2]:
+                    setattr(self, attribute, getattr(_object, attribute))
+                
+        self.wrapped_object = _object
+        if self.wrapped_object_name:
+            setattr(self, self.wrapped_object_name, _object)        

@@ -93,7 +93,7 @@ class File_Menu(pride.gui.gui.Container):
         
 class File_Button(pride.gui.gui.Button):
     
-    defaults = {"text" : "File", "pack_mode" : "horizontal", 
+    defaults = {"text" : "File", "pack_mode" : "left", 
                 "_file_menu" : None}
     
     verbosity = {"file_menu_create" : 'vv', "file_menu_delete" : 'vv'}
@@ -119,9 +119,10 @@ class Cyvasse(pride.gui.gui.Application):
     defaults = {"startup_components" : tuple()}
     
     def _get_current_game(self):
+        reference = "->Python->SDL_Window->Cyvasse->Cyvasse_Gameboard"
         return (self._current_game or
-                self.objects["Cyvasse_Gameboard"][0].instance_name if
-                self.objects["Cyvasse_Gameboard"] else None)
+                self.objects[reference][0].instance_name if
+                self.objects[reference] else None)
     def _set_current_game(self, value):
         self._current_game = value
     current_game = property(_get_current_game, _set_current_game)

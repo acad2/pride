@@ -131,11 +131,10 @@ class Parser_Metaclass(type):
     
     def __new__(cls, name, bases, attributes):
         new_class = super(Parser_Metaclass, cls).__new__(cls, name, bases, attributes)
-        exit_on_help = attributes.get("exit_on_help", True)
-        
+                
         base_class = bases[0]
         modifiers = getattr(base_class, "parser_modifiers", {}).copy()
-
+        exit_on_help = attributes.get("parser_modifiers", {}).get("exit_on_help", True)
         parser_ignore = set()
         new_parser_ignore = attributes.get("parser_ignore", tuple())
         old_parser_ignore = getattr(base_class, "parser_ignore", tuple())
@@ -222,9 +221,8 @@ class Parser(object):
         try:
             arguments, unused = parser.parse_known_args()
         except SystemExit as error:
-            print
             if self.exit_on_help:
-                raise
+                raise SystemExit()
             try:
                 index = new_argv.index("-h")
             except ValueError:
@@ -282,23 +280,44 @@ class Parser(object):
        
 class Inherited_Attributes(type):
         
-    inherited_attributes = tuple()
+    inherited_attributes = {}
     
     def __new__(cls, name, bases, attributes):
-        for attribute_name in cls.inherited_attributes:
-            _attribute = {}
-            for _class in bases:
-                _attribute.update(getattr(_class, attribute_name, {}))
-            _attribute.update(attributes.get(attribute_name, 
-                                             getattr(_class, attribute_name, {}).copy()))
+        inherited_attributes = cls.inherited_attributes
+        if "inherited_attributes" in attributes:
+            inherited_attributes.update(attributes["inherited_attributes"])
+        attributes["inherited_attributes"] = inherited_attributes
+            
+        for attribute_name, attribute_type in inherited_attributes.items():
+            if issubclass(attribute_type, dict):
+                _attribute = {}
+                for _class in bases:
+                    _attribute.update(getattr(_class, attribute_name, {}))
+                _attribute.update(attributes.get(attribute_name, 
+                                                 getattr(_class, attribute_name, {}).copy()))
+            elif issubclass(attribute_type, tuple):
+                empty_tuple = tuple()
+                _attribute = empty_tuple
+                for _class in bases:
+                    _attribute += getattr(_class, attribute_name, empty_tuple)
+                _attribute += attributes.get(attribute_name, empty_tuple)
+            elif issubclass(attribute_type, list):
+                _attribute = []
+                for _class in bases:
+                    _attribute += getattr(_class, attribute_name, [])
+                _attribute += attributes.get(attribute_name, [])
+                
             attributes[attribute_name] = _attribute
+                
         return super(Inherited_Attributes, cls).__new__(cls, name, bases,
                                                         attributes)
         
         
 class Defaults(Inherited_Attributes):
 
-    inherited_attributes = ("defaults", "verbosity")
+    inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
+                            "parser_ignore" : tuple, "flags" : list,
+                            "mutable_defaults" : dict, "required_attributes" : tuple}
 
     
 class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):

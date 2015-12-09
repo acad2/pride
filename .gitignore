@@ -54,3 +54,4 @@ Temporary Items
 /site/
 /game/
 *.yml
+*.pyo

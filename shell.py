@@ -1,3 +1,4 @@
+import random
 import pprint
 import sys
 import os
@@ -6,12 +7,15 @@ import threading
 import pride
 import pride.vmlibrary
 import pride.utilities
+import pride._termsize
 objects = pride.objects
 
 try:
     from msvcrt import getwch, kbhit
     input_waiting = kbhit
+    PLATFORM = "Windows"
 except:
+    PLATFORM = "POSIX"
     import select
     def input_waiting():
         return select.select([sys.stdin], [], [], 0.0)[0]
@@ -80,24 +84,23 @@ class Command_Line(pride.vmlibrary.Process):
     
         Available programs can be modified via the add_program, remove_program,
         set_default_program, and get_program methods."""
-    defaults = {"thread_started" : False,
-                "write_prompt" : True,
-                "prompt" : ">>> ",
-                "programs" : None,
+    defaults = {"thread_started" : False, "write_prompt" : True,
+                "prompt" : ">>> ", "programs" : None,
                 "default_programs" : ("pride.shell.Shell_Program", 
                                       "pride.shell.Switch_Program",
                                       "pride.shell.File_Explorer",
                                       "pride.programs.register.Registration"),
-                "idle_threshold" : 10000}
+                "idle_threshold" : 10000, 
+                "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):
-        self.set_default_program(("Shell", "handle_input"), set_backup=True)
         self._idle = True
         self.screensaver = None
         super(Command_Line, self).__init__(**kwargs)       
         
         self._new_thread()  
         self.programs = self.programs or {}
+        self.set_default_program("python", ("->Python->Shell", "handle_input"), set_backup=True)
         
         for program in self.default_programs:
             self.create(program)
@@ -116,7 +119,9 @@ class Command_Line(pride.vmlibrary.Process):
     def remove_program(self, program_name):
         del self.programs[program_name]
         
-    def set_default_program(self, callback_info, set_backup=False):
+    def set_default_program(self, name, callback_info, set_backup=False):
+        if name not in self.programs:
+            self.programs[name] = callback_info
         self.default_program = callback_info
         if set_backup:
             self.__default_program = callback_info
@@ -131,10 +136,14 @@ class Command_Line(pride.vmlibrary.Process):
         return result
         
     def run(self):
-        if input_waiting():
+        if input_waiting():                                
             if self.screensaver is not None:
                 pride.objects[self.screensaver].delete()
-                self.screensaver = None           
+                self.screensaver = None
+                self.clear()
+                #line_width, line_count = pride._termsize.getTerminalSize()
+                sys.stdout.write(sys.stdout_log[:self._position])
+               # sys.stdout.write(self.prompt)
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -186,16 +195,23 @@ class Command_Line(pride.vmlibrary.Process):
                 
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
-            self.screensaver = self.create("pride.shell.Terminal_Screensaver").instance_name
+            self._position = sys.stdout_log.tell()
+            self.screensaver = self.create(self.screensaver_type).instance_name            
         self._idle = True        
         priority = self.idle_threshold * self.priority
         pride.Instruction(self.instance_name, "handle_idle").execute(priority=priority)
         
+    def clear(self):
+        if PLATFORM == "Windows":
+            command = "CLS"
+        else:
+            command = "CLEAR"
+        os.system(command)
+        
         
 class Program(pride.base.Base):
             
-    defaults = {"set_as_default" : False,
-                "name" : ''}
+    defaults = {"set_as_default" : False, "name" : ''}
 
     def _get_name(self):
         return self._name or self.instance_name
@@ -205,10 +221,10 @@ class Program(pride.base.Base):
   
     def __init__(self, **kwargs):
         super(Program, self).__init__(**kwargs)
-        command_line = objects["Command_Line"]
+        command_line = objects["->Python->Command_Line"]
         
         if self.set_as_default:
-            command_line.set_default((self.name, "handle_input"))
+            command_line.set_default(self.name, (self.instance_name, "handle_input"))
         else:
             command_line.add_program(self.name, (self.instance_name, "handle_input"))       
         
@@ -227,8 +243,7 @@ class Program(pride.base.Base):
         
 class Shell_Program(Program):
             
-    defaults = {"use_shell" : True,
-                "name" : "shell"}
+    defaults = {"use_shell" : True, "name" : "shell"}
                      
     def handle_input(self, input):
         pride.utilities.shell(input, shell=self.use_shell)
@@ -239,10 +254,11 @@ class Switch_Program(Program):
     defaults = {"name" : "switch"}
             
     def handle_input(self, input):
-        command_line = pride.objects["Command_Line"]
+        command_line = pride.objects["->Python->Command_Line"]
         if not input:
             input = "__default"
-        command_line.set_default_program(command_line.get_program(input.strip()))
+        _input = input.strip()
+        command_line.set_default_program(_input, command_line.get_program(_input))
         
         
 class File_Explorer(Program):
@@ -270,9 +286,7 @@ class File_Explorer(Program):
             
 class Terminal_Screensaver(pride.vmlibrary.Process):
     
-    defaults = {"rate" : 3,
-                "priority" : .08,
-                "newline_scalar" : 1.5,
+    defaults = {"rate" : 3, "priority" : .08, "newline_scalar" : 1.5,
                 "file_text" : ''}
     
     def __init__(self, **kwargs):
@@ -291,4 +305,131 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
         else:
             self.priority = self._priority
             
-        self.file_text = self.file_text[self.rate:]            
+        self.file_text = self.file_text[self.rate:]
+        
+        
+class Matrix_Screensaver(Terminal_Screensaver):
+    
+    defaults = {"priority" : .08}
+    
+    def __init__(self, **kwargs):
+        super(Matrix_Screensaver, self).__init__(**kwargs)
+        self.characters = []
+        self.width, self.height = pride._termsize.getTerminalSize()
+        self.row = None
+        for x in xrange(self.height):
+            self.characters.append(bytearray(self.width))            
+            
+    def run(self):
+        if not self.row: # pick a new row at random to go down
+            row_number = 0
+            used_numbers = set()
+            while self.characters[0][row_number]:
+                row_number = random.randint(0, self.width - 1)
+                used_numbers.add(row_number)
+                if len(used_numbers) == self.width:
+                    self.characters = []
+                    for x in xrange(self.height):
+                        self.characters.append(bytearray(self.width))
+                    break
+            self.row = row_number
+            self.column = 0
+        self.characters[self.column][self.row] = chr(random.randint(0, 255))
+        sys.stdout.write(str(self.characters[self.column]))
+        sys.stdout.flush()        
+        self.column += 1
+        if self.column >= self.height:
+            self.row = None            
+            objects["->Python->Command_Line"].clear()
+            
+            
+class CA_Screensaver(Terminal_Screensaver):
+                
+    defaults = {"storage_size" : 1024}
+    
+    next_state = {(1, 1, 1) : 1, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
+                  (0, 1, 1) : 0, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
+ 
+    rule_30 = {(1, 1, 1) : 0, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
+               (0, 1, 1) : 1, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
+           
+    def __init__(self, **kwargs):
+        super(CA_Screensaver, self).__init__(**kwargs)
+        self.bytearray = bytearray(1024)
+        self.bytearray[sum(ord(random._urandom(1)) for x in xrange(4))] = 1
+        self._state = CA_Screensaver.rule_30 if random._urandom(1) < 128 else CA_Screensaver.next_state
+        
+    def run(self):
+        _bytearray = self.bytearray
+        size = self.storage_size
+        new_bytearray = bytearray(size)
+        _state = self._state
+        for index, byte in enumerate(_bytearray):
+            current_state = (_bytearray[index - 1], byte, _bytearray[(index + 1) % size])
+            new_bytearray[index] = _state[current_state]
+        self.bytearray = new_bytearray
+        objects["->Python->Command_Line"].clear()
+        sys.stdout.write(new_bytearray)            
+        
+        
+class Wave_CAtest(Terminal_Screensaver):
+    
+    def __init__(self, **kwargs):
+        super(Wave_CAtest, self).__init__(**kwargs)
+        self.rows = [[(0, 0) for y in xrange(16)] for x in xrange(16)]
+        random_coordinate = format(ord(random._urandom(1)), 'b').zfill(8)
+        x = int(random_coordinate[:4], 2)
+        y = int(random_coordinate[4:], 2)
+        self.rows[x][y] = (ord(random._urandom(1)), ord(random._urandom(1)))
+        
+    def run(self):
+        new_rows = [[(0, 0) for y in xrange(16)] for x in xrange(16)]
+        
+        last_row = False
+        for row_index, row in enumerate(self.rows):
+            new_row = [(0, 0) for x in range(16)]
+            if row_index == 15:
+                last_row = True
+            for point_index, magnitudes in enumerate(row):
+                x_magnitude, y_magnitude = magnitudes
+                if point_index == 15:
+                    x_magnitude = -x_magnitude  
+                if x_magnitude > 0:
+                    x_magnitude -= 1
+                    new_x_coord = point_index + 1
+                elif x_magnitude < 0:
+                    x_magnitude += 1
+                    new_x_coord = point_index - 1
+                else:
+                    new_x_coord = point_index
+                    
+                if last_row:
+                    y_magnitude = -y_magnitude
+                if y_magnitude > 0:
+                    y_magnitude -= 1
+                    new_y_coord = row_index + 1
+                elif y_magnitude < 0:
+                    y_magnitude += 1
+                    new_y_coord = row_index - 1
+                else:
+                    new_y_coord = row_index
+                if new_y_coord > 15:
+                    new_y_coord = 15
+                elif new_y_coord < 0:
+                    new_y_coord = 0
+                    y_magnitude = -y_magnitude
+                if new_x_coord > 15:
+                    new_x_coord = 15
+                elif new_x_coord < 0:
+                    new_x_coord = 0
+                    x_magnitude = -x_magnitude
+                    
+                self.rows[new_y_coord][new_x_coord] = (x_magnitude, y_magnitude)
+                
+        objects["->Python->Command_Line"].clear()
+        def decide_symbol(number):
+            if number[0] or number[1]:
+                return str(number[0]) + str(number[1])
+            else:
+                return '*'
+        print '\n'.join((''.join(decide_symbol(number) for number in row) for row in self.rows))

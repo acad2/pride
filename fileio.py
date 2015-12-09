@@ -3,14 +3,14 @@ import sys
 import mmap
 import os
 import StringIO
-import pprint
-import binascii
 import contextlib
-import shutil
 import platform
 import time
+import datetime
+import sqlite3
 
 import pride    
+import pride.database
 import pride.vmlibrary as vmlibrary
 import pride.base as base
 import pride.utilities as utilities
@@ -157,7 +157,8 @@ class File_Attributes(pride.base.Adapter):
     
     def __init__(self, **kwargs):
         super(File_Attributes, self).__init__(**kwargs)
-        self.wraps(os.stat(self.filename))
+        if self.filename and not self.wrapped_object:
+            self.wraps(os.stat(self.filename))
 
         
 class File(base.Wrapper):
@@ -173,9 +174,7 @@ class File(base.Wrapper):
         attribute. The default is a regular file, which will require
         an appropriate path and mode to be specified when initializing. """
         
-    defaults = {"file" : None,
-                "file_type" : "file",
-                "mode" : "",
+    defaults = {"file" : None, "file_type" : "file", "mode" : "",
                 "persistent" : True}
     
     def __init__(self, path='', mode='', **kwargs):  
@@ -187,12 +186,17 @@ class File(base.Wrapper):
         self.mode = mode or self.mode
         if not self.file:
             if self.file_type == "file":      
-                self.file = open(path, self.mode)                
+                self.file = open(path, self.mode)    
+                self.properties = self.create("pride.fileio.File_Attributes",
+                                              filename=path)              
+                self.filesize = self.properties.file_size
             else:
-                self.file = utilities.resolve_string(self.file_type)()             
+                self.file = utilities.resolve_string(self.file_type)()
+                self.filesize = 0
+            #    self.properties = self.create("pride.filefio.File_Attributes",
+            #                                  wrapped_object=self.file, filename=path)
         self.wraps(self.file)        
-        self.properties = self.create("pride.fileio.File_Attributes",
-                                      filename=path)
+
                                       
     def __enter__(self):
         return self
@@ -200,13 +204,36 @@ class File(base.Wrapper):
     def __exit__(self, type, value, traceback):
         self.delete()
         return value
+    
+    def write(self, data):
+        self.file.write(data)
+        self.filesize += len(data)
+        
+    def truncate(self, size=None):
+        if size is None:
+            self.filesize -= self.filesize - self.file.tell()
+        else:
+            self.filesize -= self.filesize - size
+        self.file.truncate(size)
         
     def __getitem__(self, slice):
-        stop = slice.stop if slice.stop is not None else -1
-        start = slice.start if slice.start is not None else 0
         original = self.tell()
-        self.seek(start)        
-        data = self.file.read(stop)[::slice.step]
+        try:
+            stop = slice.stop if slice.stop is not None else -1
+        except AttributeError: 
+            if slice < 0:
+                slice = self.filesize + slice
+            self.seek(slice)
+            data = self.read(1)
+        else:    
+            start = slice.start if slice.start is not None else 0
+            stop = stop - start
+            if start < 0:
+                start = self.filesize + start            
+            self.seek(0)
+            size = len(self.read())
+            self.seek(start)        
+            data = self.read(stop)[::slice.step]
         self.seek(original)
         return data
         
@@ -250,6 +277,137 @@ class File(base.Wrapper):
         super(File, self).delete()
         self.wrapped_object.close()
                                                 
+
+class Database_File(File):
+    """ A file that persists in the ->Python->File_System when saved or flushed.
+        Standard read/write/seek operations take place with a file like object
+        of type file_type. Data is manipulated in memory and is only saved to the 
+        database when flush or save is called. 
+        
+        tags may be specified as an iterable of strings describing the 
+        contents or purpose of the file. Files in the file system can be
+        searched by tag. Tags may be modified whenever required by assigning
+        them when creating the file.
+        
+        The encrypted flag determines whether or not to encrypt file data
+        stored in the file system database. Only file data is encrypted, not
+        metadata or file name. Data is encrypted using pride.security.encrypt,
+        which defaults to AES-GCM with a 16 byte random salt. The encryption
+        key is that of the currently logged in User; If no User is logged in,
+        files cannot be encrypted or decrypted. The encrypt flag only applies
+        to memory saved onto the file system database; The contents of memory
+        are not encrypted. """
+    defaults = {"_data" : '', "tags" : '', "file_type" : "StringIO.StringIO",
+                "encrypted" : False}
+        
+    def __init__(self, filename='', mode='', **kwargs):
+        super(Database_File, self).__init__(filename, mode, **kwargs)
+        data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, self.tags)
+        filename = {"filename" : self.filename}
+        if tags != self.tags:
+            for old_tag in set(self.tags).difference(tags):
+                self.delete_from(old_tag, where=filename)
+        self.tags = self.tags or tags
+        if self.encrypted and data:
+            try:
+                data = pride.objects["->User"].decrypt(data)
+            except KeyError:
+                self.alert("Unable to decrypt '{}'; User not logged in".format(filename))
+        self.file.write(data)
+        if self.mode[0] != 'a':
+            self.file.seek(0)
+            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        self.save()
+        self.delete()
+        return value
+        
+    def flush(self): 
+        self.save()
+        self.file.flush()
+        
+    def save(self):
+        """ Saves file contents and metadata to ->Python-File_System. """
+        file = self.file
+        backup_position = file.tell()
+        file.seek(0)
+        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
+                                                         self.tags, self.encrypted)                                                       
+        file.seek(backup_position)
+        
+                                                         
+class File_System(pride.database.Database):
+    """ Database object for managing database file objects. """    
+    defaults = {"database_name" : ''}
+    
+    verbosity = {"file_modified" : "vv", "file_created" : "vv"}
+    
+    database_structure = {"Files" : ("filename TEXT PRIMARY KEY", "data BLOB",
+                                     "date_created TIMESTAMP", "date_modified TIMESTAMP",
+                                     "date_accessed TIMESTAMP", "file_type TEXT",
+                                     "tags TEXT"),
+                          "Tags" : ("tag TEXT PRIMARY_KEY", )}
+     
+    primary_key = {"Files" : "filename", "Tags" : "tag"}
+    
+    def __init__(self, **kwargs):
+        super(File_System, self).__init__(**kwargs)
+        database_structure = self.database_structure
+        for tag in self.query("Tags"):
+            tag = tag[0]
+            if tag not in database_structure:
+                self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
+        
+    def save_file(self, filename, data, tags=tuple(), encrypt=False):
+        now = time.time()
+        if encrypt:
+            try:
+                data = objects["->User"].encrypt(data)
+            except KeyError:
+                self.alert("Unable to encrypt data for file '{}'; User not logged in",
+                           (filename, ), level=0)
+                raise ValueError("Unable to encrypt '{}'; User not logged in".format(filename))                
+        file_info = {"date_modified" : now, "date_created" : now, "data" : data, 
+                     "file_type" : os.path.splitext(filename)[-1]}
+        if tags:
+            file_info["tags"] = ' '.join(tags)
+            for tag in tags:
+                if tag not in self:
+                    self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
+                    self.insert_into("Tags", (tag, ))
+                self.insert_into(tag, (filename, ))   
+        try:            
+            self.insert_into("Files", (filename, data, now, now, now, 
+                                       file_info["file_type"], 
+                                       file_info.get("tags", '')))
+        except sqlite3.IntegrityError:
+            self.alert("Updating preexisting file: {}".format(filename), 
+                       level=self.verbosity["file_modified"])
+            del file_info["date_created"]
+            self.update_table("Files", where={"filename" : filename}, arguments=file_info)
+        else:
+            self.alert("Saving new file: {}".format(filename), 
+                       level=self.verbosity["file_created"])
+        
+    def _open_file(self, filename, mode, tags):
+        if mode[0] == 'w':
+            try:
+                self.delete_from("Files", where={"filename" : filename})
+            except sqlite3.Error:
+                pass
+            self.save_file(filename, '', tags)    
+        result = self.query("Files", where={"filename" : filename},
+                            retrieve_fields=("data", "tags"))        
+        if not result and mode[0] == 'r':
+            raise IOError("File {} does not exist in {}".format(filename, self.instance_name))
+        return result or ('', '')
+        
+    def open_file(self, filename, mode):
+        return self.create(Database_File, filename, mode)
+        
         
 class Mmap(object):
     """Usage: mmap [offset] = fileio.Mmap(filename, 

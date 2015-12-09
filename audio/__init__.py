@@ -6,9 +6,8 @@ import pride
 def enable():
     """ Creates an instance of pride.audio.audiolibrary.Audio_Manager if
         one does not already exist. """
-    if "Audio_Manager" not in pride.environment.objects:
-        pride.Instruction("Python", "create", 
-                         "pride.audio.audiolibrary.Audio_Manager").execute()
+    if "->Python->Audio_Manager" not in pride.objects:
+        pride.objects["->Python"].create("pride.audio.audiolibrary.Audio_Manager")
                     
 if "Linux" == platform.system():
     def install_pyalsaaudio():

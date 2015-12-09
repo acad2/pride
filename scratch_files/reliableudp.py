@@ -74,8 +74,8 @@ class Reliable_Udp(pride.network.Udp_Socket):
         return data
         
 def test():
-    udp = objects["Python"].create(Reliable_Udp, port=1337)
-    udp2 = objects["Python"].create(Reliable_Udp, port=1338)
+    udp = objects["->Python"].create(Reliable_Udp, port=1337)
+    udp2 = objects["->Python"].create(Reliable_Udp, port=1338)
     udp2.sendto("This is a test message", ("localhost", 1337))
     Instruction("Reliable_Udp", "sendto", "Response to your test message!", 
                                           ("localhost", 1338)).execute(priority=.2)

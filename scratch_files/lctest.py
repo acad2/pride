@@ -8,7 +8,7 @@ def get_line_count(filename, ignore_comments=True):
             physical_count += 1
     return physical_count - (comments if ignore_comments else 0)
     
-def get_project_line_count(directory):
+#def get_project_line_count(directory):
     
     
        
