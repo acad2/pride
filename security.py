@@ -1,4 +1,4 @@
-import random
+import os
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -14,7 +14,7 @@ class InvalidPassword(SecurityError): pass
 
 def random_bytes(count):
     """ Generates count cryptographically secure random bytes """
-    return random._urandom(count)
+    return os.urandom(count)
     
 def hash_function(algorithm_name):
     """ Returns a Hash object of type algorithm_name from 

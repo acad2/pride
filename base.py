@@ -536,3 +536,37 @@ class Adapter(Base):
         else:
             super(Adapter, self).__setattr__(attribute, value)
         
+        
+class Static_Wrapper(pride.base.Base):
+    """ Wrapper that statically wraps attributes upon initialization. This
+        differs from the default Wrapper in that changes made to the data of
+        the wrapped object on a Wrapper will be reflected in the wrapper object
+        itself. 
+        
+        With a Static_Wrapper, changes made to the wrapped objects attributes 
+        will not be reflected in the Static_Wrapper object, unless the object
+        is explicitly wrapped again using the wraps method.
+        
+        Attribute access on a static wrapper is faster then a dynamic wrapper. """
+    wrapped_attributes = tuple()
+    wrapped_object_name = ''
+    
+    defaults = {"wrapped_object" : None}
+    
+    def __init__(self, **kwargs):
+        super(Static_Wrapper, self).__init__(**kwargs)
+        if self.wrapped_object:
+            self.wraps(self.wrapped_object)
+            
+    def wraps(self, _object):
+        if self.wrapped_attributes:
+            for attribute in self.wrapped_attributes:
+                setattr(self, attribute, getattr(_object, attribute))
+        else:
+            for attribute in dir(_object):
+                if "__" != attribute[:2] and "__" != attribute[:-2]:
+                    setattr(self, attribute, getattr(_object, attribute))
+                
+        self.wrapped_object = _object
+        if self.wrapped_object_name:
+            setattr(self, self.wrapped_object_name, _object)        

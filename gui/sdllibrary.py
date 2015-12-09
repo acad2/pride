@@ -1,4 +1,4 @@
-import contextlib
+import itertools
 import operator
 import os
 import sys
@@ -22,27 +22,6 @@ sdl2.ext.init()
 sdl2.sdlttf.TTF_Init()
 font_module = sdl2.sdlttf
 
-class Default_Ordered_Dict(pride.base.Wrapper):
-    
-    defaults = {"_dict" : None, "callback" : None}
-    required_attributes = ("callback", )
-    wrapped_object_name = "_dict"
-    
-    def __init__(self, dictionary=None, **kwargs):
-        super(Default_Ordered_Dict, self).__init__(**kwargs)
-        self.wraps(collections.OrderedDict(dictionary or {}, **kwargs))
-        
-    def __getitem__(self, item):
-        try:
-            return self._dict[item]
-        except KeyError:
-            result = self._dict[item] = self.callback()
-            return result
-
-    def __setitem__(self, item, value):
-        self._dict[item] = value
-        
-
 class SDL_Component(base.Proxy): pass
     
 
@@ -58,16 +37,17 @@ class SDL_Window(SDL_Component):
     
     mutable_defaults = {"children" : list}
     
-    flags = {"max_layer" : 1, "invalid_layer" : 1, "running" : False}.items()
+    flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}.items()
     
     def _get_size(self):
         return (self.w, self.h)
     def _set_size(self, size):
         self.w, self.h = size
     size = property(_get_size, _set_size)
-        
+    
     def __init__(self, **kwargs):
-        self.layers = Default_Ordered_Dict(callback=self._new_layer)#(x, (None, [])) for x in xrange(100))
+        self.layers = collections.OrderedDict((x, (None, [])) for 
+                                               x in xrange(100))
         self.latency = utilities.Latency(name="framerate")
                 
         super(SDL_Window, self).__init__(**kwargs)
@@ -76,26 +56,22 @@ class SDL_Window(SDL_Component):
         self.wraps(window)
         self.window_handler = self.create(Window_Handler)
         
-       # self._texture_cache = self.create("pride.gui.gui.
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
         self.organizer = self.create("pride.gui.gui.Organizer")
         self.run_instruction = Instruction(self.instance_name, "run")
-        
+               
         if self.showing:
             self.show()  
 
         objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
-    
-    def _new_layer(self):
-        return (pride.gui.gui.create_texture(self.size), [])
         
     def invalidate_layer(self, layer):
         self.invalid_layer = min(self.invalid_layer, layer)
         if not self.running:
             self.running = True
             self.run_instruction.execute(priority=self.priority)
-
+    
     def remove_from_layer(self, instance, z):
         self.layers[z][1].remove(instance)
         
@@ -123,85 +99,71 @@ class SDL_Window(SDL_Component):
     def run(self):
         renderer = self.renderer
         draw_instructions = renderer.instructions
-       # renderer.set_render_target(None)
-       # renderer.clear()
+        renderer.set_render_target(None)
+        renderer.clear()
                 
         user_input = self.user_input
-       # layers = self.layers
-      #  screen_width, screen_height = self.size
+        layers = self.layers
+        screen_width, screen_height = self.size
       #  print
-        window_object = self._redraw_object
-        window_object._draw_texture()
-        #renderer.copy(window_object.texture.texture, dstrect=window_object.area)
-
-        #print "Running: ", window_object, window_object.children
-        #for instance in itertools.chain((window_object, ), window_object.children):
-        #    user_input._update_coordinates(instance.instance_name, instance.area, instance.z)
-        #    self.alert("Drawing: {}", (instance, ), level=0)#self.verbosity["draw_instance"])
-        #    for operation, args, kwargs in instance._draw_operations:
-        #        if operation == "text" and not args[0]:
-        #            continue
-        #        self.alert("...Drawing shape: {} {} {}", (operation, args, kwargs), level=0)
-        #        draw_instructions[operation](*args, **kwargs)   
-        #    instance._texture_invalid = False      
-        #for layer_number in xrange(self.invalid_layer, self.max_layer + 1):
-        ##    self.alert("Drawing layer: {}", [layer_number], level=0)
-        #    layer_texture, layer_components = layers[layer_number]
-        #    
-        #    if layer_texture is None:
-        #        layer_texture = pride.gui.gui.create_texture(self.size)
-        #        layers[layer_number] = (layer_texture, layer_components)
-        #    renderer.set_render_target(layer_texture.texture)
-        #    renderer.clear()
-        #    
-        #    if layer_number:
-        #        # copy previous layer as background
-        #        renderer.copy(layers[layer_number - 1][0])            
-
-            #for instance in layer_components:
-            #    if instance.hidden:
-            #        continue
-            #    x, y, w, h = instance.area
-            #    user_input._update_coordinates(instance.instance_name, 
-            #                                   (x, y, w, h), instance.z)
-            #    source_rect = [x + instance.texture_window_x,
-            #                   y + instance.texture_window_y, w, h]    
-            #    texture_width, texture_height = instance.texture.size
-            #    if x + w > screen_width:
-            #        w = screen_width - x
-            #    if y + h > screen_height:
-            #        h = screen_height - y
-            #   # if source_rect[0] + w > screen_width:
-            #   #     source_rect[0] = x
-            #   # if source_rect[1] + h > screen_height:
-            #   #     source_rect[1] = y
-            #    area = (x, y, w, h)
-            #    
-            #   # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
-            #   #            w, h)
-            #    if instance.texture_invalid:
-            #     #   self.alert("Redrawing {} texture", [instance], level=0)
-            #        _texture = instance.texture.texture
-            #        instance.draw_texture()
-            #        renderer.set_render_target(_texture)
-            #        for operation, args, kwargs in instance._draw_operations:
-            #            if operation == "text":
-            #                if not args[0]:
-            #                    continue
-            #            draw_instructions[operation](*args, **kwargs)
-            #            
-            #        instance._draw_operations = []
-            #        renderer.set_render_target(layer_texture.texture)
-            #        instance.texture_invalid = False
-           ##     self.alert("Copying {} texture from {} to {}", [instance, source_rect, area], level=0)
-           ##     if instance.rotation:
-           ##         renderer.copyex(instance.texture.texture, srcrect=
-            #    renderer.copy(instance.texture.texture, 
-            #                  srcrect=source_rect, dstrect=area)
+        for layer_number in xrange(self.invalid_layer, self.max_layer + 1):
+        #    self.alert("Drawing layer: {}", [layer_number], level=0)
+            layer_texture, layer_components = layers[layer_number]
+            
+            if layer_texture is None:
+                layer_texture = pride.gui.gui.create_texture(self.size)
+                layers[layer_number] = (layer_texture, layer_components)
+            renderer.set_render_target(layer_texture.texture)
+            renderer.clear()
+            
+            if layer_number:
+                # copy previous layer as background
+                renderer.copy(layers[layer_number - 1][0])
+        
+            for instance in layer_components:
+                if instance.hidden:
+                    continue
+                x, y, w, h = instance.area
+                user_input._update_coordinates(instance.instance_name, 
+                                               (x, y, w, h), instance.z)
+                source_rect = [x + instance.texture_window_x,
+                               y + instance.texture_window_y, w, h]    
+                texture_width, texture_height = instance.texture.size
+                if x + w > screen_width:
+                    w = screen_width - x
+                if y + h > screen_height:
+                    h = screen_height - y
+               # if source_rect[0] + w > screen_width:
+               #     source_rect[0] = x
+               # if source_rect[1] + h > screen_height:
+               #     source_rect[1] = y
+                area = (x, y, w, h)
+                
+               # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
+               #            w, h)
+                if instance.texture_invalid:
+                 #   self.alert("Redrawing {} texture", [instance], level=0)
+                    _texture = instance.texture.texture
+                    instance.draw_texture()
+                    renderer.set_render_target(_texture)
+                    for operation, args, kwargs in instance._draw_operations:
+                        if operation == "text":
+                            if not args[0]:
+                                continue
+                        draw_instructions[operation](*args, **kwargs)
+                        
+                    instance._draw_operations = []
+                    renderer.set_render_target(layer_texture.texture)
+                    instance.texture_invalid = False
+           #     self.alert("Copying {} texture from {} to {}", [instance, source_rect, area], level=0)
+           #     if instance.rotation:
+           #         renderer.copyex(instance.texture.texture, srcrect=
+                renderer.copy(instance.texture.texture, 
+                              srcrect=source_rect, dstrect=area)
                 
         self.invalid_layer = self.max_layer
-       # renderer.set_render_target(None)
-       # renderer.copy(layer_texture)
+        renderer.set_render_target(None)
+        renderer.copy(layer_texture)
         renderer.present()
         self.running = False
         
@@ -572,31 +534,22 @@ class Renderer(SDL_Component):
             self.copy(texture)
         return self.sprite_factory.from_surface(self.rendertarget.get_surface())
     
-    @contextlib.contextmanager
-    def target_set_to(self, texture):
-        self.set_render_target(texture)
-        try:
-            yield
-        finally:
-            self.set_render_target(None)
-            
     def set_render_target(self, texture):            
         code = sdl2.SDL_SetRenderTarget(self.wrapped_object.renderer, texture)
         if code < 0:
             raise ValueError("error code {}. Could not set render target of renderer {} to texture {}".format(code, self.wrapped_object.renderer, texture))
             
     def draw(self, texture, draw_instructions, background=None, clear=True):
-        #self.set_render_target(texture)
-        with self.target_set_to(texture):
-            if clear:
-                self.clear()
-            if background:
-                self.copy(background)               
-    
-            instructions = self.instructions
-            for shape, args, kwargs in draw_instructions:
-                instructions[shape](*args, **kwargs)     
-        #self.set_render_target(None)
+        self.set_render_target(texture)
+        if clear:
+            self.clear()
+        if background:
+            self.copy(background)               
+
+        instructions = self.instructions
+        for shape, args, kwargs in draw_instructions:
+            instructions[shape](*args, **kwargs)     
+        self.set_render_target(None)
         return texture
         
         
