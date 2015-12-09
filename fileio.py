@@ -279,7 +279,24 @@ class File(base.Wrapper):
                                                 
 
 class Database_File(File):
-                                                    
+    """ A file that persists in the ->Python->File_System when saved or flushed.
+        Standard read/write/seek operations take place with a file like object
+        of type file_type. Data is manipulated in memory and is only saved to the 
+        database when flush or save is called. 
+        
+        tags may be specified as an iterable of strings describing the 
+        contents or purpose of the file. Files in the file system can be
+        searched by tag. Tags may be modified whenever required by assigning
+        them when creating the file.
+        
+        The encrypted flag determines whether or not to encrypt file data
+        stored in the file system database. Only file data is encrypted, not
+        metadata or file name. Data is encrypted using pride.security.encrypt,
+        which defaults to AES-GCM with a 16 byte random salt. The encryption
+        key is that of the currently logged in User; If no User is logged in,
+        files cannot be encrypted or decrypted. The encrypt flag only applies
+        to memory saved onto the file system database; The contents of memory
+        are not encrypted. """
     defaults = {"_data" : '', "tags" : '', "file_type" : "StringIO.StringIO",
                 "encrypted" : False}
         
@@ -310,8 +327,10 @@ class Database_File(File):
         
     def flush(self): 
         self.save()
+        self.file.flush()
         
     def save(self):
+        """ Saves file contents and metadata to ->Python-File_System. """
         file = self.file
         backup_position = file.tell()
         file.seek(0)
@@ -321,7 +340,7 @@ class Database_File(File):
         
                                                          
 class File_System(pride.database.Database):
-        
+    """ Database object for managing database file objects. """    
     defaults = {"database_name" : ''}
     
     verbosity = {"file_modified" : "vv", "file_created" : "vv"}

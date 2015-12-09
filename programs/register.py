@@ -7,7 +7,9 @@ import pride.errors
 import pride.utilities
         
 class Registration(pride.shell.Program):
-    
+    """ Launcher program for registering a new user with an 
+        Authenticated_Service. Dispatches the appropriate 
+        authenticated client to start registration. """
     defaults = pride.shell.Program.defaults.copy()
     defaults.update({"name" : "registration",
                      "ip" : "localhost",

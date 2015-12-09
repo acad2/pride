@@ -163,7 +163,8 @@ class Authentication_Table(object):
 class Authenticated_Service2(pride.base.Base):
    
     defaults = {"hkdf_table_update_info_string" : "Authentication Table Update",
-                "hash_function" : "SHA256", "database_name" : '', 
+                "hash_function" : "SHA256", "database_name" : '', "shared_key_size" : 32,
+                "authentication_table_size" : 256, "challenge_size" : 9,
                 "database_type" : "pride.database.Database",
                 "validation_failure_string" :\
                    ".validate: Authorization Failure:\n   ip_blacklisted: {}" +
@@ -195,7 +196,8 @@ class Authenticated_Service2(pride.base.Base):
         super(Authenticated_Service2, self).__init__(**kwargs)
         self._load_database()    
         self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
-                                length=256, info=self.hkdf_table_update_info_string)     
+                                length=self.authentication_table_size,
+                                info=self.hkdf_table_update_info_string)     
         
     def _load_database(self):
         if not self.database_name:
@@ -209,16 +211,17 @@ class Authenticated_Service2(pride.base.Base):
             
     def register(self, username=''):
         self.alert("Registering new user", level=self.verbosity["register"])
-        authentication_table = random._urandom(256)
+        authentication_table = pride.security.random_bytes(self.authentication_table_size)
         hasher = hash_function(self.hash_function)
-        hasher.update(authentication_table + ':' + "\x00" * 32)
+        hasher.update(authentication_table + ':' + "\x00" * self.shared_key_size)
         table_hash = hasher.finalize()
-        self.database.insert_into("Users", (table_hash, authentication_table, "\x00" * 32, username))
+        self.database.insert_into("Users", (table_hash, authentication_table, 
+                                            "\x00" * self.shared_key_size, username))
         return authentication_table
         
     def login(self, challenge):
         authentication_table_hash, ip = self.current_session
-        client_challenge = Authentication_Table.generate_challenge()
+        client_challenge = Authentication_Table.generate_challenge(self.challenge_size)
         try:
             (saved_table,
             session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
@@ -230,8 +233,7 @@ class Authenticated_Service2(pride.base.Base):
             table = Authentication_Table.load(saved_table)
             response = table.get_passcode(*challenge)
             hasher = hash_function(self.hash_function)
-            hasher.update(response + ':' + session_key)
-            
+            hasher.update(response + ':' + session_key)            
             
             correct_answer = table.get_passcode(*client_challenge)
             _answer_hasher = hash_function(self.hash_function)
@@ -246,7 +248,7 @@ class Authenticated_Service2(pride.base.Base):
         user_id = {"authentication_table_hash" : authentication_table_hash}
         self.alert("{} attempting to log in".format(authentication_table_hash),
                    level=self.verbosity["login_stage_two"])       
-        encrypted_key = pride.security.random_bytes(32 + 48 + 32) # a fake key, iv, tag, and response for failed attempts
+        encrypted_key = pride.security.random_bytes(self.shared_key_size + 48 + 32) # a fake key, iv, tag, and response for failed attempts
         try:
             (saved_table,
              session_key,
@@ -264,7 +266,7 @@ class Authenticated_Service2(pride.base.Base):
                            (authentication_table_hash, username), 
                            level=self.verbosity["authentication_success"])
                 login_message = self.on_login(username)
-                new_key = pride.security.random_bytes(32)
+                new_key = pride.security.random_bytes(self.shared_key_size)
                 encrypted_key = pride.security.encrypt(new_key, session_key, extra_data=login_message)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
@@ -340,10 +342,11 @@ class Authenticated_Client2(pride.base.Base):
                  "auto_login" : 'v'}
                  
     defaults = {"target_service" : "->Python->Authenticated_Service2",
-                "hash_function" : "SHA256", "challenge_size" : 9,
+                "hash_function" : "SHA256", "authentication_table_size" : 256,
+                "shared_key_size" : 32, "challenge_size" : 9,
                 "hkdf_table_update_info_string" : "Authentication Table Update",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
-                "ip" : "localhost", "port" : 40022, "session_id_size" : 256,
+                "ip" : "localhost", "port" : 40022, 
                 "auto_login" : True, "logged_in" : False, "history_file" : '',
                 "authentication_table_file" : '', "_register_results" : None,
                 "token_file_type" : "pride.fileio.Database_File"}
@@ -361,9 +364,6 @@ class Authenticated_Client2(pride.base.Base):
     password = property(_get_password, _set_password)    
     
     def _get_username(self):
-        #if not self._username:
-        #    username_prompt = "{}: please provide a username: ".format(self.instance_name)
-        #    self._username = pride.shell.get_user_input(username_prompt)
         return self._username or pride.objects["->User"].username
     def _set_username(self, value):
         self._username = value
@@ -378,7 +378,8 @@ class Authenticated_Client2(pride.base.Base):
         self.history_file = self.history_file or "{}_history.key".format(name)
         
         self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
-                                length=256, info=self.hkdf_table_update_info_string)                        
+                                length=self.authentication_table_size,
+                                info=self.hkdf_table_update_info_string)                        
         if self.auto_login:
             self.alert("Auto logging in", level=self.verbosity["auto_login"])
             self.login()        
@@ -392,7 +393,7 @@ class Authenticated_Client2(pride.base.Base):
     def _store_auth_table(self, new_table):
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'wb', encrypted=True) as _file:
-            _file.write(new_table + ("\x00" * 32))
+            _file.write(new_table + ("\x00" * self.shared_key_size))
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])        
         if self.auto_login:
             self.login()
@@ -408,8 +409,8 @@ class Authenticated_Client2(pride.base.Base):
     def _get_auth_table_hash(self):
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'rb', encrypted=True) as _file:
-            auth_table = _file.read(256)
-            shared_key = _file.read(32)
+            auth_table = _file.read(self.authentication_table_size)
+            shared_key = _file.read(self.shared_key_size)
         self.session.id = self._hash_auth_table(auth_table, shared_key)
         challenge = Authentication_Table.generate_challenge(self.challenge_size)
         table = Authentication_Table.load(auth_table)
@@ -428,8 +429,8 @@ class Authenticated_Client2(pride.base.Base):
             raise SecurityError("Server responded with incorrect response to challenge")
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'rb', encrypted=True) as _file:
-            auth_table = _file.read(256)
-            shared_key = _file.read(32)
+            auth_table = _file.read(self.authentication_table_size)
+            shared_key = _file.read(self.shared_key_size)
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
         hasher = hash_function(self.hash_function)
         hasher.update(answer + ':' + shared_key)
@@ -443,8 +444,8 @@ class Authenticated_Client2(pride.base.Base):
     def decrypt_new_secret(self, encrypted_key):
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'r+b', encrypted=True) as _file:
-            auth_table = _file.read(256)
-            shared_key = _file.read(32)
+            auth_table = _file.read(self.authentication_table_size)
+            shared_key = _file.read(self.shared_key_size)
             new_key, login_message = pride.security.decrypt(encrypted_key, shared_key)
             self.shared_key = new_key
             new_table = self.hkdf.derive(auth_table + ':' + new_key)            
