@@ -115,6 +115,9 @@ class Processor(Process):
     parser_ignore = ("running", )
     parser_modifiers = {"exit_on_help" : False}
             
+    verbosity = {"instruction_execution" : "instruction_execution", "component_alert" : 0,
+                 "exception_alert" : 0}
+    
     def run(self):
         self._return = {}
         recently_deleted = self._recently_deleted = set()
@@ -128,10 +131,10 @@ class Processor(Process):
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
-        component_alert = partial(alert, "{0}: {1}", level=0)
+        component_alert = partial(alert, "{0}: {1}", level=self.verbosity["component_alert"])
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
-                                  level=0)
+                                  level=self.verbosity["exception_alert"])
         execution_alert = partial(alert, "executing instruction {}")
         format_traceback = traceback.format_exc
                
@@ -154,7 +157,7 @@ class Processor(Process):
             if time_until:
                 sleep(time_until)
                                 
-            execution_alert([instruction], level=self.execution_verbosity)           
+            execution_alert([instruction], level=self.verbosity["instruction_execution"])
             try:
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:

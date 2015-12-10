@@ -86,7 +86,7 @@ class User(pride.base.Base):
         kdf = self.create("pride.security.key_derivation_function", 
                           algorithm=self.hash_function, length=key_length, 
                           salt=salt, iterations=self.kdf_iteration_count)
-        master_key = kdf.derive(self.password)
+        master_key = kdf.derive(self.username + ':' + self.password)
         
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      

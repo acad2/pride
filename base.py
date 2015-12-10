@@ -537,7 +537,7 @@ class Adapter(Base):
             super(Adapter, self).__setattr__(attribute, value)
         
         
-class Static_Wrapper(pride.base.Base):
+class Static_Wrapper(Base):
     """ Wrapper that statically wraps attributes upon initialization. This
         differs from the default Wrapper in that changes made to the data of
         the wrapped object on a Wrapper will be reflected in the wrapper object
