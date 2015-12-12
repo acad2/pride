@@ -6,6 +6,7 @@ import struct
 import traceback
 import json
 import pickle
+import itertools
 
 import pride
 import pride.base
@@ -200,55 +201,67 @@ class Rpc_Client(Packet_Client):
         
         
 class Rpc_Socket(Packet_Socket):
-    """ Packetized tcp socket for handling and performing rpc requests """
-    
-    verbosity = {"request_exception" : 'v', "request_denied" : 'v',
-                 "request_result" : "vvv"}
-                 
+    """ Packetized tcp socket for receiving and delegating rpc requests """
+                     
+    def __init__(self, **kwargs):
+        super(Rpc_Socket, self).__init__(**kwargs)
+        self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])
+        
     def recv(self, packet_count=0):
         peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
-            session_id_size = struct.unpack('l', packet[:4])[0]
-            end_session_id = 4 + session_id_size
+            result = next(self.rpc_workers).handle_request(packet, peername)
+            self.send(result)
             
-            session_id = packet[4:end_session_id]
-            (component_name, method, 
-             serialized_arguments) = packet[end_session_id + 1:].split(' ', 2)
+        
+class Rpc_Worker(pride.base.Base):
+    """ Performs remote procedure call requests """
+    verbosity = {"request_exception" : 'v', "request_denied" : 'v',
+                 "request_result" : "vvv"}
+                 
+    def handle_request(self, packet, peername):
+        session_id_size = struct.unpack('l', packet[:4])[0]
+        end_session_id = 4 + session_id_size
+        
+        session_id = packet[4:end_session_id]
+        (component_name, method, 
+         serialized_arguments) = packet[end_session_id + 1:].split(' ', 2)
 
-            try:
-                instance = pride.objects[component_name]
-            except KeyError as result:
-                pass
+        try:
+            instance = pride.objects[component_name]
+        except KeyError as result:
+            pass
+        else:
+            permission = False
+            if session_id == '0' and method in ("register", "login"):
+                permission = True        
+                
+            if not hasattr(instance, "validate"):
+                result = pride.authentication.UnauthorizedError()
+            elif permission or instance.validate(session_id, 
+                                                 peername, method):
+                try:
+                    args, kwargs = self.deserealize(serialized_arguments)
+                    result = getattr(instance, method)(*args, **kwargs)
+                except BaseException as result:
+                    stack_trace = traceback.format_exc()
+                    self.alert("Exception processing request {}.{}: \n{}",
+                               [component_name, method, stack_trace],
+                               level=self.verbosity["request_exception"])
+                    if isinstance(result, SystemExit):
+                        raise                                   
+                    result.traceback = stack_trace
             else:
-                permission = False
-                if session_id == '0' and method in ("register", "login"):
-                    permission = True        
-                    
-                if not hasattr(instance, "validate"):
-                    result = pride.authentication.UnauthorizedError()
-                elif permission or instance.validate(session_id, 
-                                                     peername, method):
-                    try:
-                        args, kwargs = self.deserealize(serialized_arguments)
-                        result = getattr(instance, method)(*args, **kwargs)
-                    except BaseException as result:
-                        stack_trace = traceback.format_exc()
-                        self.alert("Exception processing request {}.{}: \n{}",
-                                   [component_name, method, stack_trace],
-                                   level=self.verbosity["request_exception"])
-                        if isinstance(result, SystemExit):
-                            raise                                   
-                        result.traceback = stack_trace
-                else:
-                    self.alert("Denying unauthorized request: {}",
-                               (packet, ), level=self.verbosity["request_denied"])
-                    result = pride.authentication.UnauthorizedError()
-            self.alert("Sending result of {}.{}: {}",
-                       (component_name, method, result), level=self.verbosity["request_result"])
-            self.send(self.serealize(result))
-            
+                self.alert("Denying unauthorized request: {}",
+                           (packet, ), level=self.verbosity["request_denied"])
+                result = pride.authentication.UnauthorizedError()
+        self.alert("Sending result of {}.{}: {}",
+                   (component_name, method, result), level=self.verbosity["request_result"])
+        return self.serealize(result)    
+        
     def deserealize(self, serialized_arguments):
         return default_serializer.loads(serialized_arguments)
         
     def serealize(self, result):
-        return default_serializer.dumps(result)
+        return default_serializer.dumps(result)        
+        

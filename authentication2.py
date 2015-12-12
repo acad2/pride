@@ -1,3 +1,4 @@
+import sys
 import random
 import hashlib
 
@@ -162,9 +163,14 @@ class Authentication_Table(object):
         
 class Authenticated_Service2(pride.base.Base):
    
-    defaults = {"hkdf_table_update_info_string" : "Authentication Table Update",
+    defaults = {# security related configuration options
                 "hash_function" : "SHA256", "database_name" : '', "shared_key_size" : 32,
                 "authentication_table_size" : 256, "challenge_size" : 9,
+                
+                # specific applications may wish to modify this
+                "hkdf_table_update_info_string" : "Authentication Table Update",
+                
+                # non security related configuration options
                 "database_type" : "pride.database.Database",
                 "validation_failure_string" :\
                    ".validate: Authorization Failure:\n   ip_blacklisted: {}" +
@@ -265,7 +271,8 @@ class Authenticated_Service2(pride.base.Base):
                 self.alert("Authentication success: {} '{}'",
                            (authentication_table_hash, username), 
                            level=self.verbosity["authentication_success"])
-                login_message = self.on_login(username)
+                self.session_id[authentication_table_hash] = username
+                login_message = self.on_login()
                 new_key = pride.security.random_bytes(self.shared_key_size)
                 encrypted_key = pride.security.encrypt(new_key, session_key, extra_data=login_message)
                 new_table = self.hkdf.derive(saved_table + ':' + new_key)
@@ -283,7 +290,7 @@ class Authenticated_Service2(pride.base.Base):
                            level=self.verbosity["authentication_failure"])
         return encrypted_key
         
-    def on_login(self, user_id):
+    def on_login(self):
         pass
         
     def validate(self, session_id, peername, method_name):
@@ -341,15 +348,31 @@ class Authenticated_Client2(pride.base.Base):
                  "login_stage_two" : 'vv', "register_sucess" : 0,
                  "auto_login" : 'v'}
                  
-    defaults = {"target_service" : "->Python->Authenticated_Service2",
+    defaults = {# security related configuration options
                 "hash_function" : "SHA256", "authentication_table_size" : 256,
                 "shared_key_size" : 32, "challenge_size" : 9,
+                
+                # note: while token file type may be changed to an alternative
+                # file object, that file object must support the 'encrypted' flag
+                # being passed to its constructor, and __enter__ and __exit__
+                "token_file_type" : "pride.fileio.Database_File",
+                
+                # these may be passed explicitly when required
+                "authentication_table_file" : '', "history_file" : '',
+                
+                # application specific needs may configure this when necessary
                 "hkdf_table_update_info_string" : "Authentication Table Update",
+                
+                # non security related options
+                "target_service" : "->Python->Authenticated_Service2",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 "ip" : "localhost", "port" : 40022, 
-                "auto_login" : True, "logged_in" : False, "history_file" : '',
-                "authentication_table_file" : '', "_register_results" : None,
-                "token_file_type" : "pride.fileio.Database_File"}
+                "auto_login" : True, "logged_in" : False,
+
+                # a callback function may be passed to the constructor to handle
+                # successful registration without defining/extending a class
+                 "_register_results" : None,
+                }
 
     def _get_host_info(self):
         return (self.ip, self.port)
@@ -364,7 +387,9 @@ class Authenticated_Client2(pride.base.Base):
     password = property(_get_password, _set_password)    
     
     def _get_username(self):
-        return self._username or pride.objects["->User"].username
+        if not self._username:
+            self._username = pride.objects["->User"].username
+        return self._username
     def _set_username(self, value):
         self._username = value
     username = property(_get_username, _set_username)
@@ -373,7 +398,8 @@ class Authenticated_Client2(pride.base.Base):
         super(Authenticated_Client2, self).__init__(**kwargs)
         self.password_prompt = self.password_prompt.format(self.instance_name)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
-        name = self.instance_name.replace("->", '_')
+        module = self.__module__
+        name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
         
@@ -477,9 +503,40 @@ class Authenticated_Client2(pride.base.Base):
             self.logout()
         super(Authenticated_Client, self).delete()
         
-if __name__ == "__main__":
+        
+class Authenticated_Peer(Authenticated_Service2):
+    
+    defaults = {"authenticated_client_type" : "pride.authentication2.Authenticated_Client2",
+                "peer_ip" : "localhost", "peer_port" : 40022, "username" : '',
+                "target_service" : ''}
+                            
+    remotely_available_procedures = ("test_method", )
+        
+  #  def __init__(self, **kwargs):
+  #      super(Authenticated_Peer, self).__init__(**kwargs)
+  #      self.create(self.authenticated_client_type, ip=self.peer_ip, port=self.peer_port,
+  #                  username=self.username, target_service=self.target_service)
+        
+    def on_login(self):
+        session_id, peername = self.current_session
+        client_config = self.client_configuration
+        client_config["ip"] = peername[0]
+        self.create(self.authenticated_client_type, **client_config)
+        
+    def test_method(self, *args):
+        self.alert("Test method has been called {}".format(args), level=0)
+        
+def test_Authenticated_Service2():
     service = objects["->Python"].create(Authenticated_Service2)
     client = objects["->Python"].create(Authenticated_Client2, auto_login=False)
     client.register()
     Instruction(client.instance_name, "login").execute(priority=2.5)
     
+if __name__ == "__main__":
+    peer = objects["->Python"].create(Authenticated_Peer, target_service="->Python->Peer1")
+    peer1 = objects["->Python"].create(Authenticated_Peer, target_service="->Python->Peer")
+    client = peer.create(Authenticated_Client2, target_service="->Python->Peer1", auto_login=False)
+    client.register()
+    #peer1.current_session = ("localhost", 40022)
+    #peer1.on_login()
+    #peer1.current_session = None

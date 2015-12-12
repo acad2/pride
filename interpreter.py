@@ -129,8 +129,9 @@ class Interpreter(authentication2.Authenticated_Service2):
                                "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
                 
-    def on_login(self, username):
-        sessionid, sender = self.current_session
+    def on_login(self):
+        session_id, sender = self.current_session
+        username = self.session_id[session_id]
         self.user_session[username] = ''
         string_info = (username, sender, sys.version, sys.platform, self.help_string)
         return self.login_message.format(*string_info)
@@ -241,7 +242,8 @@ class Python(base.Base):
                                         "pride.network.Network", 
                                         "pride.shell.Command_Line",
                                         "pride.interpreter.Interpreter",
-                                        "pride.rpc.Rpc_Server"),
+                                        "pride.rpc.Rpc_Server",
+                                        "pride.rpc.Rpc_Worker"),
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
