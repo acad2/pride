@@ -62,16 +62,17 @@ def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
         encryptor.authenticate_additional_data(extra_data)
     ciphertext = encryptor.update(data) + encryptor.finalize()
     try:
-        return pack_encrypted_data(ciphertext, iv, encryptor.tag, extra_data)
+        return pack_data(ciphertext, iv, encryptor.tag, extra_data)
     except AttributeError:
-        return pack_encrypted_data(ciphertext, iv)
+        return pack_data(ciphertext, iv)
     
 def decrypt(packed_encrypted_data, key, algorithm="AES",
             mode="GCM", backend=BACKEND):
     """ Decrypts packed encrypted data as returned by encrypt with the same key. 
         If extra data is present, returns plaintext, extra_data. If not,
         returns plaintext."""
-    ciphertext, iv, tag, extra_data = unpack(packed_encrypted_data)
+    ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data,
+                                                  4 if mode == "GCM" else 2)
     if mode == "GCM" and not tag:
         raise ValueError("Tag not supplied for GCM mode")
     mode_args = (iv, tag) if mode == "GCM" else (iv, )
@@ -87,39 +88,28 @@ def decrypt(packed_encrypted_data, key, algorithm="AES",
     else:
         return decryptor.update(ciphertext) + decryptor.finalize()      
 
-def pack_encrypted_data(ciphertext, iv, tag='', extra_data=''):
-    """ Pack ciphertext, iv, tag, and extra_data into a contiguous block of data
-        The header is: ciphertext_size, iv_size, tag_size, extra_data_size, separated
-        by spaces; followed by the concatenated data. """
-    # ciphertext_size = str(len(ciphertext))
-    # iv_size = str(len(iv))
-    # tag_size = str(len(tag))
-    # extra_data_size = str(len(extra_data))
-    # return (ciphertext_size + ' ' + iv_size + ' ' + tag_size + ' ' + 
-    #         extra_data_size + ' ' + ciphertext + iv + tag + extra_data)
-    # the below does the above without assigning a bunch of unused names
-    return ' '.join((str(len(ciphertext)), str(len(iv)), 
-                     str(len(tag)), str(len(extra_data)), ciphertext)) + iv + tag + extra_data
-                     
-def unpack(packed_bytes):
-    """ Unpacks packed encrypted bytes as returned by pack_encrypted_bytes. 
-        Returns ciphertext, iv, tag, extra_data; some values may be '' """
-    ciphertext_size, iv_size, tag_size, extra_data_size, packed_bytes = packed_bytes.split(' ', 4)
-    ciphertext_size = int(ciphertext_size)
-    iv_size = int(iv_size)
-    tag_size = int(tag_size)
-    extra_data_size = int(extra_data_size)
-    end_of_iv = ciphertext_size + iv_size
-    end_of_tag = end_of_iv + tag_size
-    end_of_extra_data = end_of_tag + extra_data_size
-    # ciphertext = packed_bytes[:ciphertext_size]        
-    # iv = packed_bytes[ciphertext_size:end_of_iv]
-    # tag = packed_bytes[end_of_iv:end_of_tag]
-    # extra_data = packed_bytes[end_of_tag:end_of_extra_data]
-    # return ciphertext, iv, tag, extra_data
-    # the below returns the same as above without assigning a bunch of otherwise unused names
-    return (packed_bytes[:ciphertext_size], packed_bytes[ciphertext_size:end_of_iv],
-            packed_bytes[end_of_iv:end_of_tag], packed_bytes[end_of_tag:end_of_extra_data])
+def pack_data(*args): # copied from pride.utilities 
+    """ Pack arguments into a stream, prefixed by size headers.
+        Resulting bytestream takes the form:
+            
+            size1 size2 size3 ... sizeN data1data2data3...dataN
+            
+        The returned bytestream can be unpacked via unpack_data to
+        return the original contents, in order. """
+    sizes = []
+    for arg in args:
+        sizes.append(str(len(arg)))
+    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
+    
+def unpack_data(packed_bytes, size_count):
+    """ Unpack a stream according to its size header """
+    sizes = packed_bytes.split(' ', size_count)
+    packed_bytes = sizes.pop(-1)
+    data = []
+    for size in (int(size) for size in sizes):
+        data.append(packed_bytes[:size])
+        packed_bytes = packed_bytes[size:]
+    return data
             
 def test_packed_encrypted_data():
     data = "This is some fantastic test data"

@@ -11,8 +11,31 @@ import pprint
 import traceback
 import timeit
 
-timer_function = timeit.default_timer
+timer_function = timeit.default_timer    
+              
+def pack_data(*args):
+    """ Pack arguments into a stream, prefixed by size headers.
+        Resulting bytestream takes the form:
+            
+            size1 size2 size3 ... sizeN data1data2data3...dataN
+            
+        The returned bytestream can be unpacked via unpack_data to
+        return the original contents, in order. """
+    sizes = []
+    for arg in args:
+        sizes.append(str(len(arg)))
+    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
     
+def unpack_data(packed_bytes, size_count):
+    """ Unpack a stream according to its size header """
+    sizes = packed_bytes.split(' ', size_count)
+    packed_bytes = sizes.pop(-1)
+    data = []
+    for size in (int(size) for size in sizes):
+        data.append(packed_bytes[:size])
+        packed_bytes = packed_bytes[size:]
+    return data
+            
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')
     sys.stdout.flush()
@@ -455,3 +478,16 @@ class Reversible_Mapping(object):
     def __str__(self):
         return str(dict((zip(self.keys, self.values))))
              
+             
+def test_pack_unpack():
+    ciphertext = "as;flkjasdf;lkjasfd"
+    iv = "21209348afdso"
+    tag = "zpx98yvzclkj"
+    extra_data = "1x897=a[19njkS"
+    
+    packed = pack_data(ciphertext, iv, tag, extra_data)
+    _ciphertext, _iv, _tag, _extra_data = unpack_data(packed, 4)
+    assert _ciphertext == ciphertext
+    assert _iv == iv
+    assert _tag == tag
+    assert _extra_data == extra_data             
