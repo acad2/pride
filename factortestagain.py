@@ -1,7 +1,7 @@
 import itertools
 from math import ceil, sqrt
 
-from pride.decorators import Timed
+from decorators import Timed
 
 def factor(number):
     # n = factor(x) * factor(y)
@@ -78,6 +78,51 @@ def factor2(number):
     return factors
     
     
-#print Timed(factor, 1)(2 ** 64)
+#print Timed(factor2, 1)(2 ** 4096)
 #print Timed(factor2, 1)(182364123876)
       
+def factor3(number):
+    factors = []
+    original_number = number
+    prime = prime_scalar = 1
+    while True:
+        prime += prime_scalar
+        _number, remainder = divmod(number, prime)
+        prime_scalar *= 2
+        if _number == 1:
+            prime += remainder
+            _number, remainder = 1, 0
+            prime_scalar = 1
+        if not remainder:
+            number = _number
+            prime_exponent = 1
+            
+            # do an exponential search for the exponent for this prime
+            exponent_scaler = 2
+            while not number % prime:
+                prime_exponent *= exponent_scaler
+      #          print "Testing exponent: ", prime, prime_exponent
+                number, remainder = divmod(number, (prime ** prime_exponent))
+                if not number:
+                    break
+                if remainder:
+                    number = (number * (prime ** prime_exponent)) + remainder
+         #           print "Went too far, reset number: ", number
+                    # do a linear search now 
+                    while not number % prime:
+                        prime_exponent += 1
+                        number, remainder = divmod(number, prime)
+                    break
+                    
+            factors.append((prime, prime_exponent))
+        if prime >= original_number or not number:
+            break        
+    return factors      
+    
+if __name__ == "__main__":
+    N = int(''.join(str(ord(char)) for char in 
+        """MIGHAoGBAN01lQw6DEtRySBBm+Sxl2ivcYmNB6UHovD1m4JOzZKXdHSg/V2S8j5q
+        8nb42Up17iYluPqTBxJH49JzoRqc3lGN4QtiSgQYI0DK9dkYlUIJcqdlYtcefhHH
+        w7hXtOHOTDx6ffAZaIx8j2BlmtQAZHqSBXRp0Uy4xPyfXMHdbP0DAgEC"""))
+    print Timed(factor3, 1)(N)
+    print Timed(factor3, 1)((2 ** 4096) - 1024)

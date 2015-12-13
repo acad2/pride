@@ -33,7 +33,9 @@ history from storing hashes of shared secrets?
     #return getattr(structure, attribute)
     return getattr(unpack_structure(get_attribute("memory")[:get_attribute("size")]), 
                 attribute)
-                           
+  
+backport annotations ?
+  
 recently done:
 
 known bugs:

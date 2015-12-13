@@ -19,15 +19,22 @@ format_character = {ctypes.c_longlong : 'q', ctypes.c_longdouble : 'd',
 format_to_type = dict((value, key) for key, value in format_character.items())
              
 def new_struct_type(struct_name, *_fields, **fields):
-  #  print "Making new struct with fields: ", [(attribute, value) for attribute, value in _fields or fields.items()]
-    return type(struct_name, (ctypes.Structure, ), 
-                {"_fields_" : [(attribute, type_conversion[value]) for
-                                attribute, value in _fields or fields.items()]})
+    print "Making new struct with fields: ", _fields, fields.items()
+    if not (_fields or fields):
+        return type(struct_name, (ctypes.Structure, ), {"_fields_" : []})
+    else:
+        return type(struct_name, (ctypes.Structure, ), 
+                    {"_fields_" : [(attribute, type_conversion[value]) for
+                                    attribute, value in _fields or fields.items()]})
                                 
 def new_struct_type_from_ctypes(struct_name, *_fields, **fields):
-    return type(struct_name, (ctypes.Structure, ), 
-                {"_fields_" : [(attribute, value) for
-                                attribute, value in _fields or fields.items()]})                                
+    if not (_fields or fields):
+        return type(struct_name, (ctypes.Structure, ), {"_fields_" : []})
+    else:
+        return type(struct_name, (ctypes.Structure, ), 
+                    {"_fields_" : [(attribute, value) for
+                                    attribute, value in _fields or fields.items()]})                                
+                                    
 def test_new_struct():                
     struct_type = new_struct_type("test_structure", test_int=int, test_float=float,
                                   test_None=type(None), test_bool=bool, test_str=str, 
@@ -46,6 +53,10 @@ def get_structure_bytestream(structure):
     
 def pack_structure(structure):
     name = structure.__class__.__name__
+    fields = []
+    for name, _type in structure._fields_:
+        if _type == ctypes.c_char_p:
+            f
     fields = str([(name, format_character[_type]) for name, _type in structure._fields_])
     packed_bytes = get_structure_bytestream(structure)
     return utilities.pack_data(name, fields, packed_bytes)
@@ -86,7 +97,7 @@ class Persistent_Object(pride.base.Base):
     
     store_in_dict = ("memory", "size", "defaults", "flags", "mutable_defaults", "verbosity",
                      "startup_components", "required_attributes", "alert", "instance_name",
-                     "store_in_dict", "objects")
+                     "store_in_dict", "objects", "struct_size")
     
     def __init__(self, **kwargs):
         super(Persistent_Object, self).__init__(**kwargs)
@@ -107,10 +118,12 @@ class Persistent_Object(pride.base.Base):
                 structure = unpack_structure(packed_struct)
             if attribute not in (name for name, _type in structure._fields_):
                 print "Setting new attribute: ", attribute, value
-                struct_type = new_struct_type(self.instance_name, 
-                                              structure._fields_ + [(attribute, type_conversion[type(value)])])
+                struct_type = new_struct_type_from_ctypes(self.instance_name, 
+                                                          *structure._fields_ + 
+                                                           [(attribute, type_conversion[type(value)])])
                 _fields = struct_type._fields_
-                structure = struct_type(*[getattr(structure, attribute) for attribute, _type in _fields[:-1]] + [_fields[-1]])
+                print "Instantiating structure: ", [(attribute, getattr(structure, attribute)) for attribute, _type in _fields[:-1]] + [value]
+                structure = struct_type(*[getattr(structure, attribute) for attribute, _type in _fields[:-1]] + [value])
                 print "Made new structure"
             else:
                 print "Set field attribute: ", attribute, value
