@@ -122,7 +122,7 @@ def factor3(number):
         if prime >= original_number or not number:
             break      
         if remainder > last_remainder and (last_remainder and remainder): # skipped a factor
-     #       print "Skipped a factor; remainder: {}; last remainder: {}".format(remainder, last_remainder)
+    #        print "Skipped a factor; remainder: {}; last remainder: {}".format(remainder, last_remainder)
             prime -= prime_scalar / 2
             prime_scalar = 1
     #        print "Skipped a factor, rolling back", prime, prime_scalar
@@ -146,11 +146,9 @@ if __name__ == "__main__":
         8nb42Up17iYluPqTBxJH49JzoRqc3lGN4QtiSgQYI0DK9dkYlUIJcqdlYtcefhHH
         w7hXtOHOTDx6ffAZaIx8j2BlmtQAZHqSBXRp0Uy4xPyfXMHdbP0DAgEC"""))
     #print factor3(N)#Timed(factor3, 1)(N)
-    #answer = factor3(2 ** 4096 - 1024)#Timed(factor3, 1)((2 ** 4096) - 1024)
-    #calculated = 1
-    #for prime, exponent in answer:
-    #    calculated *= pow(prime, exponent)
-    #assert calculated == (2 ** 4096 - 1024), (calculated, "\n\n", (2 ** 4096 - 1024))
+    
+    print Timed(factor3, 1)((2 ** 4096) - 1024)
+    test_factor(factor3)((2 ** 4096) - 1024)
   #  print factor2(100)
-    test_factor(factor3, 1012308971230)
-    print Timed(factor3, 1)(1012308971230)
+    #test_factor(factor3, 1012308971230)
+    #print Timed(factor3, 1)(1012308971230)

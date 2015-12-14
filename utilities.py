@@ -23,7 +23,7 @@ def pack_data(*args):
         return the original contents, in order. """
     sizes = []
     for arg in args:
-        sizes.append(str(len(arg)))
+        sizes.append(str(len(str(arg))))
     return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
     
 def unpack_data(packed_bytes, size_count):

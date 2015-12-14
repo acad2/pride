@@ -25,7 +25,11 @@ stream cipher, authenticated encryption with associated data for bytecode interp
 history from storing hashes of shared secrets?
 # cryptographically secure rate limiting based on session calculated from proof of work cracking hashes?
 
-# unused names that are returned can be optimized, i.e.:
+# no "magic expressions" in source code, i.e. expressions that unnamed/unassigned
+# put a named version in the comments
+
+# unused names that are returned can be optimized into magic expressions
+# by the compiler, i.e.:
     #memory = get_attribute("memory")
     #size = get_attribute("struct_size")
     #packed_structure = memory[:size]
