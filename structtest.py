@@ -120,32 +120,7 @@ def unpack_structure(packed_data):
         else:
             _values.append(value)
     struct_type = new_struct_type_from_ctypes(name, *fields)
-    return struct_type(*values)
-    
-def test_pack_unpack():    
-    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
-    structure = struct_type(test_int=128, test_float=10000.0)
-    packed_struct = get_structure_bytestream(structure)    
-    fields = struct_type._fields_
-    _struct = unpack_structure("Test_Structure", fields, 
-                               ''.join(format_character[_type] for name, _type in fields),
-                               packed_struct)
-    assert _struct.test_int == 128
-    assert _struct.test_float == 10000.0
-   
-#test_pack_unpack()    
-
-def test_pack_structure():
-    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
-    structure = struct_type(test_int=128, test_float=10000.0)
-    saved_structure = pack_structure(structure)
-   # print "Saved structure: ", saved_structure
-   # print utilities.unpack_data(saved_structure, 3)
-    loaded_structure = unpack_structure(saved_structure)
-    assert loaded_structure.test_int == 128
-    assert loaded_structure.test_float == 10000.0
-    
-test_pack_structure()        
+    return struct_type(*values)   
     
 class Persistent_Object(pride.base.Base):
     
@@ -172,9 +147,20 @@ class Persistent_Object(pride.base.Base):
                 structure = unpack_structure(packed_struct)
             if attribute not in (name for name, _type in structure._fields_):
     #            print "Setting new attribute: ", attribute, value
-                struct_type = new_struct_type_from_ctypes(self.instance_name, 
-                                                          *structure._fields_ + 
-                                                           [(attribute, type_conversion[type(value)])])
+                try:
+                    struct_type = new_struct_type_from_ctypes(self.instance_name, 
+                                                              *structure._fields_ + 
+                                                              [(attribute, type_conversion[type(value)])])
+                except KeyError:
+                    try:
+                        iterator = iter(value)
+                    except TypeError:
+                        # save an object
+                        pass
+                    else:
+                        try:
+                            
+                    
                 _fields = struct_type._fields_
     #            print "Instantiating structure: ", [(attribute, getattr(structure, attribute)) for attribute, _type in _fields[:-1]] + [value]
                 structure = struct_type(*[getattr(structure, attribute) for attribute, _type in _fields[:-1]] + [value])
@@ -200,11 +186,37 @@ class Persistent_Object(pride.base.Base):
             return getattr(unpack_structure(get_attribute("memory")[:get_attribute("struct_size")]), 
                            attribute)      
     
+  
+def test_pack_unpack():    
+    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
+    structure = struct_type(test_int=128, test_float=10000.0)
+    packed_struct = get_structure_bytestream(structure)    
+    fields = struct_type._fields_
+    _struct = unpack_structure("Test_Structure", fields, 
+                               ''.join(format_character[_type] for name, _type in fields),
+                               packed_struct)
+    assert _struct.test_int == 128
+    assert _struct.test_float == 10000.0
+   
+#test_pack_unpack()    
+
+def test_pack_structure():
+    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
+    structure = struct_type(test_int=128, test_float=10000.0)
+    saved_structure = pack_structure(structure)
+   # print "Saved structure: ", saved_structure
+   # print utilities.unpack_data(saved_structure, 3)
+    loaded_structure = unpack_structure(saved_structure)
+    assert loaded_structure.test_int == 128
+    assert loaded_structure.test_float == 10000.0
+    
+#test_pack_structure()  
+
 def test_Persistent_Object():
     persistent_object = Persistent_Object()
     for attribute, value in {"test_string" : "test!", "test_int" : 1,
                              "test_float" : 1000.0, "test_bool" : True,
-                             "test_none" : None}.items():
+                             "test_none" : None, "test_tuple" : (1, 'test', None)}.items():
         setattr(persistent_object, attribute, value)
         assert getattr(persistent_object, attribute) == value
-test_Persistent_Object()    
+test_Persistent_Object()  
