@@ -143,7 +143,7 @@ def factor4(number):
             break
         prime += 1
         
-        print "{} / {} = {}".format(number, prime, divmod(number, prime))
+    #    print "{} / {} = {}".format(number, prime, divmod(number, prime))
         quotient, remainder = divmod(number, prime)
         remainders.append(remainder)
         
@@ -155,7 +155,7 @@ def factor4(number):
         if not remainder:
             number = quotient
             prime_scalar = prime_exponent = 1
-            remainders = []
+            remainders = [0]
             # do an exponential search for the exponent for this prime
             exponent_scaler = 2
             while not number % prime:
@@ -173,13 +173,84 @@ def factor4(number):
                         prime_exponent += 1
                         number, remainder = divmod(number, prime)
                     break
-                    
+            print "Found factor: ", prime, prime_exponent        
             factors.append((prime, prime_exponent))
         
         elif remainder >= quotient: # skip forward
             increment, increment_again = divmod(remainder, quotient)
             prime += increment + 1 if increment_again else 0
+
+        if prime >= original_number or not number:
+            break      
+        
+    return factors
+    
+def factor5(number):
+    factors = []
+    original_number = number
+    prime = 1
+    last_remainder = 0
+    remainders = [0]
+    while True:
+        if number == 1:
+            break
+        prime += 1
+        
+    #    print "{} / {} = {}".format(number, prime, divmod(number, prime))
+        quotient, remainder = divmod(number, prime)
+        remainders.append(remainder)
+        
+        if quotient == 1:
+    #        print "Skipping forward to last prime ", prime + remainder
+            prime += remainder
+            quotient, remainder = 1, 0
+        elif not quotient:
+            factors.append((number, 1))
+            break
             
+        if not remainder:
+            # y is divisible by x. how many powers of x are in y
+            exponent = 1
+            while True:
+                exponent *= 2
+           #     print "Checking", prime, exponent
+                quotient, remainder = divmod(number, prime ** exponent)
+                # number can be 0, 1, or > 1
+                if remainder:
+                 #   assert quotient > remainder
+           #         print "Went too far; going back"
+                    # went too far; go back
+                    exponent /= 2
+                    scalar = 1
+                    while True:
+                        exponent += scalar
+                        quotient, remainder = divmod(number, prime ** exponent)
+                        if remainder:
+                            exponent -= scalar
+                            
+                            while True:
+                                exponent += 1
+                                quotient, remainder = divmod(number, prime ** exponent)
+                                if remainder:
+                                    exponent -= 1
+                                    break                            
+                            break
+                            
+                        scalar *= 2
+                    break
+                    
+       #     print "Found factor: ", prime, exponent, number        
+            factors.append((prime, exponent))
+            number, remainder = divmod(number, prime ** exponent)
+        elif remainders[-2] > remainders[-1] and (remainders[-2] and remainders[-1]):
+  #          print "Cycle detected, jumping forward 2x"
+            prime *= 2
+            remainders = [0]            
+        elif remainder >= quotient: # skip forward
+      #      print "Skipping forward", remainder, quotient
+            increment, increment_again = divmod(remainder, quotient)
+            prime += increment + 1 if increment_again else 0
+
         if prime >= original_number or not number:
             break      
         
@@ -221,11 +292,17 @@ if __name__ == "__main__":
     #print factor4(210931203)
     #test_factor(factor4, 210931203)
     #print Timed(factor4, 1)((2 ** 1024) - 1024)
-    print factor4(102)
+    #print factor4(102)
+    for x in xrange(2, 100000):
+   #     print "Testing: ", x
+        #print factor5(x)
+        test_factor(factor5, x)
+    #print Timed(factor5, 1)(210931203)
     #test = "I Love you Amber"
     #binary_test = ''.join(format(ord(character), 'b').zfill(8) for character in test)
-    #print len(binary_test), binary_test
+    #
     #integer_form = int(binary_test, 2)
+    #print len(binary_test), integer_form
     #factors = factor4(integer_form)
     #decompressed = calculate(factors)
     #_binary = format(decompressed, 'b')
