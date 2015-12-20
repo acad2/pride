@@ -5,24 +5,33 @@ import random
 import itertools
 import hashlib
 import operator
+try:
+    import hmac  
+except ImportError:
+    try:
+        from pride.security import apply_mac, verify_mac
+    except ImportError:
+        raise
+else:
+    def generate_mac(key, data, algorithm="SHA256"):
+        return hmac.new(key, data, getattr(hashlib, algorithm.lower())).digest()
+    
+    def verify_mac(key, data, mac, algorithm="SHA256"):
+        return hmac.compare_digest(hmac.new(key, data, 
+                                            getattr(hashlib, algorithm.lower())).digest(),
+                                   mac)
 
 def _xor(input_one, input_two):
     return ''.join(chr(ord(character) ^ ord(input_two[index])) for 
                    index, character in enumerate(input_one))
     
-# generate and establish an initial secret, for example via:
-_initial_value = random._urandom(32)
-# ... skipping how the exchange actually occurs, for brevity
-# the initial_value MUST be transmitted securely (i.e. via tls or similar) or out of band!
-
-# assuming both client and server have knowledge of the secret initial_value
-def get_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sha256",
-                  unencrypted_data=''):
+def get_challenge(secret, mac_key, key_size=32, bytes_per_hash=1, 
+                  hash_function="sha256", unencrypted_data=''):
     """ Usage: get_challenge(secret, key_size=32, 
                                    bytes_per_hash=1, 
                                    hash_function="sha256") => key, challenge, new_secret
         Create a challenge that only the holder of the shared secret (i.e. the client) can
-        answer. Returns a randomly generated shared secret of key_size, and the challenge 
+        answer. Returns a randomly generated secret answer of key_size, and the challenge 
         with a message authentication code prefixed.
         
         Increasing the bytes_per_hash will increase the time required to
@@ -30,45 +39,34 @@ def get_challenge(secret, key_size=32, bytes_per_hash=1, hash_function="sha256",
         
         Increasing key_size will increase the time required to complete the
         challenge by a multiple of how long it takes to crack a single hash"""          
-    # on login:
-    #    generate x random bytes and append the secret + the previous hash (or len(digest) null bytes for the first hash)
-    #    hash the resultant string of length x + len(secret), buffer the bytes
-    #    repeat the above, appending new hashes to the buffer while
-    #    ensuring to hash the secret at each iteration
-    #    send hashes to client
-    challenge = key = ''
-    hash_function = getattr(hashlib, hash_function)
-    hash_output = '\x00' * hash_function().digestsize
+    challenge = answer = ''
+    hasher = getattr(hashlib, hash_function)
+    hash_output = '\x00' * hasher().digestsize
     
-    # below is just for simplicity sake; DO NOT use the secret as the mac key directly
-    # use hkdf to derive a mac key from the secret
     mac_key = secret 
     first_hash = True
-    while len(key) < key_size:
+    while len(answer) < key_size:
         random_bytes = random._urandom(bytes_per_hash)        
-        key += random_bytes
-        hash_input = key + secret + hash_function(hash_output + ':' + secret).digest()
-        hash_output = hash_function(hash_input).digest()
+        answer += random_bytes
+        hash_input = answer + secret + hasher(hash_output + ':' + secret).digest()
+        hash_output = hasher(hash_input).digest()
         challenge += hash_output
         if first_hash:
             first_hash = False
-            challenge = _xor(challenge, secret)
-   #     print "Created challenge: ", hash_function(hash_input).digest()
-        secret = hash_function(secret).digest()    
+            challenge = _xor(challenge, secret)   
+        secret = hasher(secret).digest()    
     data_prefix_size = len(unencrypted_data)
     package = str(data_prefix_size) + ' ' + unencrypted_data + challenge
-    mac = hash_function(package + mac_key).digest()
-    return key, mac + package#, secret
+    mac = generate_mac(mac_key, package, hash_function)
+    return answer, mac + package, secret
     
-def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_function="sha256"):
-    # client begins cracking hashes:
-    #    number of unknown bytes: x; number of known bytes len(secret)
-    #    x bytes are cracked in trivial amount of time and returned as part of the key
-    #    repeat until all hashes are cracked, ensuring to hash the secret each round
-    #    hashes must be cracked in order
+def solve_challenge(secret, challenge, mac_key, key_size=32, bytes_per_hash=1, 
+                    hash_function="sha256"):
     hash_function = getattr(hashlib, hash_function)
     hash_size = hash_function().digestsize
-    assert hash_function(challenge[hash_size:] + secret).digest() == challenge[:hash_size], "Message Authentication Code Invalid"
+    
+    assert verify_mac(mac_key, challenge[hash_size:], 
+                      generate_mac(mac_key, challenge[hash_size:])), "Message Authentication Code Invalid"
     challenge = challenge[32:] # remove the mac
     data_size, challenge = challenge.split(' ', 1)
     data_size = int(data_size)
@@ -82,10 +80,8 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_funct
     challenge = _xor(challenge[:hash_size], secret)  + challenge[hash_size:]#first_hash = challenge[:hash_size]
     while challenge:
         current_hash = challenge[:hash_size]
-    #    print "Cracking challenge: ", current_hash
         for permutation in itertools.permutations(range_256, bytes_per_hash):
             key_guess = ''.join(permutation)
-            #print "Guessing: ", key_guess
             hash_output = hash_function(key + key_guess + secret + previous_hash).digest()
             if hash_output == current_hash:
                 key += key_guess
@@ -97,24 +93,18 @@ def solve_challenge(secret, challenge, key_size=32, bytes_per_hash=1, hash_funct
             raise ValueError("Unable to recover bytes from hash")        
         
         challenge = challenge[hash_size:]
-    #print "Recovered key ", len(key)
-    return key, unencrypted_data#, secret
+    return key, unencrypted_data, secret
     
-# assume attacker receives hashes also...
-# attacker begins cracking hash:
-#    number of unknown bytes: x + len(secret) per hash
-#    theoretically cannot crack a single hash, assuming the security of the 
-#    underlying hash function holds true
-#    UNLESS the attacker observed or obtained the secret value!
-#    the hashes must be cracked in order
     
 if __name__ == "__main__":
-    key, mac_challenge, server_secret = get_challenge(_initial_value, 
+    _initial_value = random._urandom(32)
+    mac_key = random._urandom(32)
+    key, mac_challenge, server_secret = get_challenge(_initial_value, mac_key,
                                                       unencrypted_data="Authentication and Integrity guaranteed!")
-    _key, extra_data, client_secret = solve_challenge(_initial_value, mac_challenge)
+    _key, extra_data, client_secret = solve_challenge(_initial_value, mac_challenge, mac_key)
     assert extra_data == "Authentication and Integrity guaranteed!", extra_data
     assert key == _key
     assert server_secret == client_secret    
     from pride.decorators import Timed
-    print Timed(solve_challenge, 1)(_initial_value, mac_challenge)
+    print Timed(solve_challenge, 1)(_initial_value, mac_challenge, mac_key)
     

@@ -22,9 +22,12 @@ def pack_data(*args):
         The returned bytestream can be unpacked via unpack_data to
         return the original contents, in order. """
     sizes = []
+    arg_strings = []
     for arg in args:
-        sizes.append(str(len(str(arg))))
-    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
+        arg_string = str(arg)
+        arg_strings.append(arg_string)
+        sizes.append(str(len(arg_string)))
+    return ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
     
 def unpack_data(packed_bytes, size_count):
     """ Unpack a stream according to its size header """

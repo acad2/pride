@@ -30,15 +30,17 @@ class User(pride.base.Base):
                 "hkdf_mac_info_string" : "{} Message Authentication Code Key",
                 "hkdf_encryption_info_string" : "{} Encryption Key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
+                
                 "salt_filetype" : "pride.fileio.Database_File",
-                "verifier_filetype" : "pride.fileio.Database_File"}
+                "verifier_filetype" : "pride.fileio.Database_File",
+                "salt_indexable" : False, "verifier_indexable" : False}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "password_prompt")
     
     flags = {"_password_verifier_size" : 32}.items()
     
-    verbosity = {"password_verified" : 'v'}
+    verbosity = {"password_verified" : 'v', "invalid_password" : 0}
     
     def _get_password(self):
         return self._password or getpass.getpass(self.password_prompt.format(self.instance_name))
@@ -63,6 +65,8 @@ class User(pride.base.Base):
                 self.login()
             except pride.security.InvalidPassword:
                 self.username = self.password = None
+                print 'Trying again!' * 10
+                self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
                 login_success = True
@@ -74,7 +78,7 @@ class User(pride.base.Base):
         if not self.salt:
             with self.create(self.salt_filetype, # uses Database_Files by default
                              "{}_salt.bin".format(self.username), 
-                             "a+b") as _file:
+                             "a+b", indexable=self.salt_indexable) as _file:
                 _file.seek(0)
                 salt = _file.read(self.salt_size)
                 if not salt:
@@ -96,7 +100,7 @@ class User(pride.base.Base):
         
         with self.create(self.verifier_filetype,
                          "{}_password_verifier.bin".format(self.username), 
-                         "a+b") as _file:
+                         "a+b", indexable=self.verifier_indexable) as _file:
             verifier_size = self._password_verifier_size
             salt_size = self.salt_size
             verifier = _file.read()
@@ -108,9 +112,10 @@ class User(pride.base.Base):
             else:
                 size, _verifier = verifier.split(' ', 1)
                 encrypted_verifier = _verifier[:int(size)]
+            
             try:
-                self.decrypt(encrypted_verifier)
-            except pride.security.InvalidTag:
+                result = self.decrypt(encrypted_verifier)
+            except:
                 self.alert("Password failed to match password verifier", level=0)
                 self.encryption_key = None
                 raise pride.security.InvalidPassword()

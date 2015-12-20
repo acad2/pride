@@ -185,21 +185,21 @@ def factor4(number):
         
     return factors
     
-def factor5(number):
+def factor5(number, prime=1):
     factors = []
     original_number = number
-    prime = 1
     last_remainder = 0
     remainders = [0]
+    quotients = [0]
     while True:
         if number == 1:
             break
-        prime += 1
+        prime += 1       
         
-    #    print "{} / {} = {}".format(number, prime, divmod(number, prime))
         quotient, remainder = divmod(number, prime)
+    #    print "{} / {} = ({}, {}) {}".format(number, prime, quotient, remainder, float(quotient) / (remainder or quotient))
         remainders.append(remainder)
-        
+        quotients.append(quotient)
         if quotient == 1:
     #        print "Skipping forward to last prime ", prime + remainder
             prime += remainder
@@ -209,16 +209,18 @@ def factor5(number):
             break
             
         if not remainder:
+            remainders = [0]
+            quotients = [0]
             # y is divisible by x. how many powers of x are in y
             exponent = 1
             while True:
                 exponent *= 2
-           #     print "Checking", prime, exponent
+    #            print "Checking", prime, exponent
                 quotient, remainder = divmod(number, prime ** exponent)
                 # number can be 0, 1, or > 1
                 if remainder:
                  #   assert quotient > remainder
-           #         print "Went too far; going back"
+    #                print "Went too far; going back"
                     # went too far; go back
                     exponent /= 2
                     scalar = 1
@@ -239,18 +241,24 @@ def factor5(number):
                         scalar *= 2
                     break
                     
-       #     print "Found factor: ", prime, exponent, number        
+    #        print "Found factor: ", prime, exponent, number        
             factors.append((prime, exponent))
             number, remainder = divmod(number, prime ** exponent)
-        elif remainders[-2] > remainders[-1] and (remainders[-2] and remainders[-1]):
-  #          print "Cycle detected, jumping forward 2x"
-            prime *= 2
-            remainders = [0]            
         elif remainder >= quotient: # skip forward
-      #      print "Skipping forward", remainder, quotient
             increment, increment_again = divmod(remainder, quotient)
-            prime += increment + 1 if increment_again else 0
-
+            print "Skipping forward by", increment + 1 if increment_again else 0
+            prime += increment + 1 if increment_again else 0            
+        elif remainders[-2] > remainders[-1] and (remainders[-2] and remainders[-1]):
+            print "Cycle detected"
+    #    #        prime *= 2
+    #            #, jumping forward 2x to", prime 
+    #    #        remainders = [0]            
+            if factors and quotients[-2] - quotients[-1] == 1:
+                quotients = [0]
+                print "Closed to skip distance!"#, factors, remainders
+    #            raw_input()  
+        print remainders
+        print
         if prime >= original_number or not number:
             break      
         
@@ -277,33 +285,41 @@ def is_prime(number):
     else:
         return True
         
+def factor_product_of_primes(number):
+    return factor5(number, int(ceil(sqrt(number))))
+        
 if __name__ == "__main__":
     N = int(''.join(str(ord(char)) for char in 
         """MIGHAoGBAN01lQw6DEtRySBBm+Sxl2ivcYmNB6UHovD1m4JOzZKXdHSg/V2S8j5q
         8nb42Up17iYluPqTBxJH49JzoRqc3lGN4QtiSgQYI0DK9dkYlUIJcqdlYtcefhHH
         w7hXtOHOTDx6ffAZaIx8j2BlmtQAZHqSBXRp0Uy4xPyfXMHdbP0DAgEC"""))
-    #print factor3(N)#Timed(factor3, 1)(N)
-    
-    #print Timed(factor3, 1)((2 ** 4096) - 1024)
-    #test_factor(factor3)((2 ** 4096) - 1024)
-  #  print factor2(100)
-    #test_factor(factor3, 1012308971230)
-    #print Timed(factor3, 1)(1012308971230)
-    #print factor4(210931203)
-    #test_factor(factor4, 210931203)
-    #print Timed(factor4, 1)((2 ** 1024) - 1024)
-    #print factor4(102)
-    for x in xrange(2, 100000):
-   #     print "Testing: ", x
-        #print factor5(x)
-        test_factor(factor5, x)
+    #for x in xrange(2, 10000):
+   ##     print "Testing: ", x
+   #     #print factor5(x)
+  #      test_factor(factor5, x)
+    prime1_256 = int("C2438A6117389B2AF0F49DD196765171E1B69B5C3901E3C1FB97BE4C0C636477", 16)
+    prime2_256 = int("C165FB8156BB11CBFA5A21F1C120067F1D90EB30EA36036C94811BE4F191E66F", 16)
+   # print prime1_256
+    #prime1_512 = int("E1CC1A0E2998299BD0AB8EA3DE5D10C306876208C3EAF0BF0E027B492A8B902B7076660557017FAD917570E2636E5E87B7CA5312EF7C99A70FA89938EE654209", 16)
+    #prime2_512 = int("E57409113719FA85A70C698968E57349B98C67914B668D39C8C341DFBCDFEEB7210A12F41093B3786893CB8910ADEEBB2E97A7196F3605D11E1858BC986A96D9", 16)
+    #prime1_1024 = int("D854833D2A5919E9A6D57F171B8E5698E0AFC40FABE9F1128C776B8808577D2D10EBAC9DC6C4E80C57AE706FEB7E7A82855E3F365636F55E34FD1BFBD29903A72FA9A0C1B0E5DFB6B4E90468C01DE3A54EBF51756706F074645B6B79A882608614CE35FF554B5CA7D7A79D0A3107F1C803A679F008105F98982E83F4FF37F061", 16)
+    #prime2_1024 = int("C5AB5D43555C23706172459E937C54E7643D062D74F8218C80052216DE85BA9F76BB2717BE97D92C537D49A65ACAC54720F5E2716C6BE4CB50FD3C5E864E2E96CDFA8BD03AA76C7E59BD1045AD11ED5FE98D1CE56FECB0C7998D1B1BA44345074D559534656C3CB93F4B6AD3C5477482F65C3D80E124D95A485976B59D3EC95B", 16)
+    #test_factor(factor5, prime1_256 * prime2_256)
+#    print factor5(N)
+#    print Timed(factor5, 1)(N)
+#    print test_factor(factor5, N)
+    #print factor5(11 * 2333)
+    print factor_product_of_primes(prime1_256 * prime2_256)
+    print "Test Success"
     #print Timed(factor5, 1)(210931203)
-    #test = "I Love you Amber"
+    #test = "I Love you Amburrrr :) " * 100
     #binary_test = ''.join(format(ord(character), 'b').zfill(8) for character in test)
     #
     #integer_form = int(binary_test, 2)
-    #print len(binary_test), integer_form
-    #factors = factor4(integer_form)
+   ## print len(binary_test), integer_form
+    #factors = factor5(integer_form)
+ #  # print len(test), len(str(factors))#, str(factors)
     #decompressed = calculate(factors)
-    #_binary = format(decompressed, 'b')
-    #print len(_binary), _binary
+    #_binary = format(decompressed, 'b').zfill(len(binary_test))
+    #assert _binary == binary_test
+    

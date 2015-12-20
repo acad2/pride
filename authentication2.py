@@ -355,7 +355,10 @@ class Authenticated_Client2(pride.base.Base):
                 # note: while token file type may be changed to an alternative
                 # file object, that file object must support the 'encrypted' flag
                 # being passed to its constructor, and __enter__ and __exit__
+                # token files are encrypted by default and non indexable,
+                # meaning only a hash of the filename is stored
                 "token_file_type" : "pride.fileio.Database_File",
+                "token_file_encrypted" : True, "token_file_indexable" : False,
                 
                 # these may be passed explicitly when required
                 "authentication_table_file" : '', "history_file" : '',
@@ -418,7 +421,8 @@ class Authenticated_Client2(pride.base.Base):
     
     def _store_auth_table(self, new_table):
         with self.create(self.token_file_type, self.authentication_table_file, 
-                         'wb', encrypted=True) as _file:
+                         'wb', encrypted=self.token_file_encrypted,
+                         indexable=self.token_file_indexable) as _file:
             _file.write(new_table + ("\x00" * self.shared_key_size))
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])        
         if self.auto_login:
@@ -434,7 +438,8 @@ class Authenticated_Client2(pride.base.Base):
         
     def _get_auth_table_hash(self):
         with self.create(self.token_file_type, self.authentication_table_file, 
-                         'rb', encrypted=True) as _file:
+                         'rb', encrypted=self.token_file_encrypted,
+                         indexable=self.token_file_indexable) as _file:
             auth_table = _file.read(self.authentication_table_size)
             shared_key = _file.read(self.shared_key_size)
         self.session.id = self._hash_auth_table(auth_table, shared_key)
@@ -454,7 +459,8 @@ class Authenticated_Client2(pride.base.Base):
         if hashed_answer != self._answer:
             raise SecurityError("Server responded with incorrect response to challenge")
         with self.create(self.token_file_type, self.authentication_table_file, 
-                         'rb', encrypted=True) as _file:
+                         'rb', encrypted=self.token_file_encrypted,
+                         indexable=self.token_file_indexable) as _file:
             auth_table = _file.read(self.authentication_table_size)
             shared_key = _file.read(self.shared_key_size)
         answer = Authentication_Table.load(auth_table).get_passcode(*challenge)
@@ -469,7 +475,8 @@ class Authenticated_Client2(pride.base.Base):
     
     def decrypt_new_secret(self, encrypted_key):
         with self.create(self.token_file_type, self.authentication_table_file, 
-                         'r+b', encrypted=True) as _file:
+                         'r+b', encrypted=self.token_file_encrypted,
+                         indexable=self.token_file_indexable) as _file:
             auth_table = _file.read(self.authentication_table_size)
             shared_key = _file.read(self.shared_key_size)
             new_key, login_message = pride.security.decrypt(encrypted_key, shared_key)

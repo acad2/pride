@@ -1,3 +1,4 @@
+import collections
 import mmap
 import ast
 import struct
@@ -34,29 +35,44 @@ def new_struct_type_from_ctypes(struct_name, *_fields, **fields):
         return type(struct_name, (ctypes.Structure, ), 
                     {"_fields_" : [(attribute, value) for
                                     attribute, value in _fields or fields.items()]})                                
-                                    
-def test_new_struct():                
-    struct_type = new_struct_type("test_structure", test_int=int, test_float=float,
-                                  test_None=type(None), test_bool=bool, test_str=str, 
-                                  test_unicode=unicode)
-    structure = struct_type(test_int=1, test_float=10.0, test_None=None, test_bool=True, 
-                         test_str="Test_string!", test_unicode="Test_unicode!")
-    assert structure.test_int == 1, structure.test_int
-    assert structure.test_float == 10.0, structure.test_float
-    assert structure.test_None == None, structure.test_None
-    assert structure.test_bool == True, structure.test_bool
-    assert structure.test_str == "Test_string!"
-    assert structure.test_unicode == "Test_unicode!"
-                 
+                                                     
 def get_structure_bytestream(structure):
-    format_string = ''.join(character for name, character in get_fields_format(structure))
+    format_string = ''
+    fields_format = []
     values = []
+    _values = [] # do nested structs in a second pass afterwards
     for attribute, _type in structure._fields_:
+        if _type == ctypes.c_char_p:
+            character = str(len(getattr(structure, attribute))) + 's'
+        else:
+            try:
+                character = format_character[_type]
+            except KeyError:
+                if issubclass(_type, ctypes.Structure):
+                    _values.append((attribute, _type))
+                    continue
+                else:
+                    raise
+        format_string += character
+        fields_format.append((attribute, character))
         value = getattr(structure, attribute)
         if value is None:
             value = 0
-        values.append(value)    
-    return struct.pack(format_string, *values)
+        values.append(value)  
+    
+    # this is a potentially more readable form of the code that follows
+    #packed_data = utilities.pack_data(format_string) + struct.pack(format_string, *values)
+    #for attribute, _type in _values:
+    #    packed_data += get_structure_bytestream(getattr(structure, attribute))
+    #return packed_data
+
+    name = "{}_{}".format(type(structure).__name__, len(structure._fields_))
+    print "Packing values: ", ([name, fields_format, struct.pack(format_string, *values)] + 
+                               [get_structure_bytestream(getattr(structure, attribute)) for 
+                                attribute, _type in _values])
+    return utilities.pack_data(*[name, fields_format, struct.pack(format_string, *values)] + 
+                                [get_structure_bytestream(getattr(structure, attribute)) for 
+                                 attribute, _type in _values])
         
 def get_fields_format(structure):
     fields = []
@@ -65,7 +81,11 @@ def get_fields_format(structure):
             #_string = getattr(structure, name)
             character = str(len(getattr(structure, name))) + 's'
         else:
-            character = format_character[_type]
+            try:
+                character = format_character[_type]
+            except KeyError:
+                if issubclass(_type, ctypes.Structure):
+                    character = "S"
         yield (name, character)    
     
 def get_ctypes_from_format(format_characters):
@@ -94,23 +114,25 @@ def get_ctypes_from_format(format_characters):
     return c_types
     
 def pack_structure(structure):
-    name = structure.__class__.__name__
-    fields = [(name, character) for name, character in get_fields_format(structure)]
-    #fields = str([(name, format_character[_type]) for name, _type in structure._fields_])
-    packed_bytes = get_structure_bytestream(structure)
-    #print "Packed bytes: ", fields, packed_bytes
-    return utilities.pack_data(name, fields, packed_bytes)
-                            
+    #name = structure.__class__.__name__
+    #fields = [(name, character) for name, character in get_fields_format(structure)]
+    #packed_bytes = get_structure_bytestream(structure)
+    #return utilities.pack_data(name, fields, packed_bytes)
+    return get_structure_bytestream(structure)
+                               
 def unpack_structure(packed_data):
     name, fields, packed_bytes = utilities.unpack_data(packed_data, 3)
+    print "\nUnpacking structure"
+    print "Name: ", name
+    print "Fields: ", fields
+    print "Packed data: ", packed_bytes
     fields = ast.literal_eval(fields)
-   # print "Fields: ", fields
     format_characters = ''.join(_type for name, _type in fields)
-  #  print "Extracting c types from format characters: ", format_characters
+    print "Extracting c types from format characters: ", format_characters
     c_types = get_ctypes_from_format(format_characters)
-  #  print "Got c types: ", c_types
+    print "Got c types: ", c_types
     fields = [(field_info[0], c_types[index]) for index, field_info in enumerate(fields)]
-  #  print "Unpacking fields: ", format_characters, fields
+    print "Unpacking fields: ", format_characters, len(packed_bytes), packed_bytes
     #fields = [(name, format_to_type[character]) for name, character in fields]
     values = struct.unpack(format_characters, packed_bytes)
     _values = []
@@ -133,8 +155,8 @@ class Persistent_Object(pride.base.Base):
                 
         
     def __setattr__(self, attribute, value):
+   #     print "Setting attribute: ", attribute, value
         if attribute[:2] == "__" or attribute in self.store_in_dict:
-    #        print "Setting attribute: ", attribute, value
             super(Persistent_Object, self).__setattr__(attribute, value)
         else:
             try:
@@ -156,18 +178,40 @@ class Persistent_Object(pride.base.Base):
                         iterator = iter(value)
                     except TypeError:
                         # save an object
-                        pass
+                        _struct_type = new_struct_type(value.__module__ + type(value).__name__,
+                                                       *[(key, _value) for key, _value in
+                                                          value.__dict__.items()])
                     else:
                         try:
-                            
-                    
+                            iterator = iter(value.items())
+                        except AttributeError:
+                            # save a tuple/list/set
+                            if isinstance(value, tuple):
+                                name = "Tuple{}".format(len(value))
+                            elif isinstance(value, list):
+                                name = "List{}".format(len(value))
+                            elif isinstance(value, set):
+                                name = "Set{}".format(len(value))
+                            else:
+                                raise TypeError("Unable to serialize iterable of type '{}'".format(type(value)))
+                            _struct_type = new_struct_type(name, *[(str(index), type(_value)) for index, _value in
+                                                                   enumerate(value)])
+                        else:
+                            # save a dictionary
+                            if not isinstance(value, dict):
+                                raise Type_Error("Unable to serialize mapping of type '{}'".format(type(value)))
+                            _struct_type = new_struct_type("Dict{}".format(len(value)), 
+                                                           *[(key, _value) for key, _value in iterator])
+                    struct_type = new_struct_type_from_ctypes(self.instance_name, 
+                                                              *structure._fields_ + [(attribute, _struct_type)])
                 _fields = struct_type._fields_
-    #            print "Instantiating structure: ", [(attribute, getattr(structure, attribute)) for attribute, _type in _fields[:-1]] + [value]
-                structure = struct_type(*[getattr(structure, attribute) for attribute, _type in _fields[:-1]] + [value])
-     #           print "Made new structure"
+                #print "Instantiating structure: ", [(name, getattr(structure, name)) for name, _type in _fields[:-1]] + [value]
+                structure = struct_type(*[getattr(structure, name) for name, _type in _fields[:-1]] + [value])
+                #print "Made new structure", structure
             else:
     #            print "Set field attribute: ", attribute, value
                 setattr(structure, attribute, value)
+    #        print "packing and saving new structure... ", attribute, dir(structure)
             repacked_struct = pack_structure(structure)
             size = self.struct_size = len(repacked_struct)
             self.memory[:size] = repacked_struct
@@ -186,37 +230,58 @@ class Persistent_Object(pride.base.Base):
             return getattr(unpack_structure(get_attribute("memory")[:get_attribute("struct_size")]), 
                            attribute)      
     
-  
-def test_pack_unpack():    
-    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
-    structure = struct_type(test_int=128, test_float=10000.0)
-    packed_struct = get_structure_bytestream(structure)    
-    fields = struct_type._fields_
-    _struct = unpack_structure("Test_Structure", fields, 
-                               ''.join(format_character[_type] for name, _type in fields),
-                               packed_struct)
-    assert _struct.test_int == 128
-    assert _struct.test_float == 10000.0
-   
-#test_pack_unpack()    
-
-def test_pack_structure():
-    struct_type = new_struct_type("Test_Structure", test_int=int, test_float=float)
-    structure = struct_type(test_int=128, test_float=10000.0)
-    saved_structure = pack_structure(structure)
-   # print "Saved structure: ", saved_structure
-   # print utilities.unpack_data(saved_structure, 3)
-    loaded_structure = unpack_structure(saved_structure)
-    assert loaded_structure.test_int == 128
-    assert loaded_structure.test_float == 10000.0
+def test_new_struct():                
+    struct_type = new_struct_type("test_structure", test_int=int, test_float=float,
+                                  test_None=type(None), test_bool=bool, test_str=str, 
+                                  test_unicode=unicode)
+    structure = struct_type(test_int=1, test_float=10.0, test_None=None, test_bool=True, 
+                         test_str="Test_string!", test_unicode="Test_unicode!")
+    assert structure.test_int == 1, structure.test_int
+    assert structure.test_float == 10.0, structure.test_float
+    assert structure.test_None == None, structure.test_None
+    assert structure.test_bool == True, structure.test_bool
+    assert structure.test_str == "Test_string!"
+    assert structure.test_unicode == "Test_unicode!"
     
-#test_pack_structure()  
-
+def test_pack_structure():
+    test_fields = collections.OrderedDict()
+    for test_type in (int, float, str, bool):
+        test_fields["test_{}".format(test_type.__name__)] = test_type
+  #  print test_fields.items()        
+    struct_type = new_struct_type("Test_Structure", *test_fields.items())
+    
+    attributes = {"test_int" : 128, "test_float" : 10000.0,
+                  "test_str" : "This is an *awesome* test string.",
+                  "test_bool" : True}#, "test_NoneType" : None}
+    test_attributes = collections.OrderedDict()
+    field_names = test_fields.keys()
+    for name in field_names:
+        test_attributes[name] = attributes[name]
+    
+   # print [attributes[field_name] for field_name in field_names]
+    
+    structure = struct_type(*(attributes[field_name] for field_name in field_names))
+    saved_structure = pack_structure(structure)
+    print "Saved structure: "#, saved_structure
+    print utilities.unpack_data(saved_structure, 3)
+    loaded_structure = unpack_structure(saved_structure)
+    for name, value in attributes.items():
+        assert getattr(loaded_structure, name) == value
+            
 def test_Persistent_Object():
     persistent_object = Persistent_Object()
     for attribute, value in {"test_string" : "test!", "test_int" : 1,
                              "test_float" : 1000.0, "test_bool" : True,
                              "test_none" : None, "test_tuple" : (1, 'test', None)}.items():
+        print "Setting: ", attribute, value
         setattr(persistent_object, attribute, value)
+        print "Testing: ", attribute
         assert getattr(persistent_object, attribute) == value
-test_Persistent_Object()  
+
+if __name__ == "__main__":
+    test_new_struct()
+    print "\n\nPassed new struct test\n\n"
+    test_pack_structure()  
+    print "\n\nPassed pack_structure test\n\n"
+    test_Persistent_Object()  
+    print "\n\nPassed Persistent_Object test\n\n"

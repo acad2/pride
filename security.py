@@ -1,6 +1,7 @@
 import os
 
-from cryptography.exceptions import InvalidTag
+from cryptography.exceptions import InvalidTag, InvalidSignature
+from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF, HKDFExpand
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -16,10 +17,10 @@ def random_bytes(count):
     """ Generates count cryptographically secure random bytes """
     return os.urandom(count)
     
-def hash_function(algorithm_name):
+def hash_function(algorithm_name, backend=BACKEND):
     """ Returns a Hash object of type algorithm_name from 
         cryptography.hazmat.primitives.hashes """
-    return hashes.Hash(getattr(hashes, algorithm_name)(), backend=BACKEND)
+    return hashes.Hash(getattr(hashes, algorithm_name)(), backend=backend)
     
 def key_derivation_function(salt, algorithm="SHA256", length=32, 
                             iterations=100000, backend=BACKEND):
@@ -35,17 +36,25 @@ def hkdf_expand(algorithm="SHA256", length=256, info='', backend=BACKEND):
     return HKDFExpand(algorithm=getattr(hashes, algorithm)(),
                       length=length, info=info, backend=BACKEND)
 
-def apply_mac(key, data, algorithm="SHA256"):
+def apply_mac(key, data, algorithm="SHA256", backend=BACKEND):
     """ Returns a message authentication code for verifying the integrity and
         authenticity of data by entities that possess the key. """
-    return hmac.new(key, data, getattr(hashes, algorithm)).digest()  
+    hasher = HMAC(key, hash_function(algorithm), backend=backend)
+    hasher.update(data)
+    return hasher.finalize()
                     
-def verify_mac(key, data, mac, algorithm="SHA256"):
+def verify_mac(key, data, mac, algorithm="SHA256", backend=BACKEND):
     """ Verifies a message authentication code as obtained by apply_mac.
         Successful comparison indicates integrity and authenticity of the data. """
-    return hmac.compare_digests(mac, hmac.new(key, data,
-                                getattr(hashes, algorithm)).digest())
-                                                  
+    hasher = HMAC(key, hash_function(algorithm), backend=backend)
+    hasher.update(data)
+    try:
+        hasher.verify(mac)
+    except InvalidSignature:
+        return False
+    else:
+        return True
+                            
 def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
             mode="GCM", backend=BACKEND, iv_size=16):
     """ Encrypts data with the specified key. Returns packed encrypted bytes.
