@@ -37,16 +37,36 @@ def hkdf_expand(algorithm="SHA256", length=256, info='', backend=BACKEND):
                       length=length, info=info, backend=BACKEND)
 
 def apply_mac(key, data, algorithm="SHA256", backend=BACKEND):
+    """ Generates a message authentication code and prepends it to data.
+        Mac and data are packed via pride.utilities.pack_data. 
+        
+        Applying a message authentication code facilitates the goals
+        of authenticity and integrity. Note it does not protect
+        confidentiality (i.e. encryption).
+        
+        Combining a mac with encryption is NOT straightforward;
+        Authenticating/providing integrity of confidential data
+        should preferably be accomplished via an appropriate
+        block cipher mode of operation, such as GCM. If this is
+        not possible, encrypt-then-mac is most secure solution in
+        general. """
+    return pack_data(generate_mac(key, data, algorithm, backend), data)
+            
+def generate_mac(key, data, algorithm="SHA256", backend=BACKEND):
     """ Returns a message authentication code for verifying the integrity and
-        authenticity of data by entities that possess the key. """
-    hasher = HMAC(key, hash_function(algorithm), backend=backend)
+        authenticity of data by entities that possess the key. 
+        
+        Note this is a lower level function then apply_mac and
+        only returns the mac itself. """
+    hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
     hasher.update(data)
     return hasher.finalize()
                     
-def verify_mac(key, data, mac, algorithm="SHA256", backend=BACKEND):
+def verify_mac(key, packed_data, algorithm="SHA256", backend=BACKEND):
     """ Verifies a message authentication code as obtained by apply_mac.
         Successful comparison indicates integrity and authenticity of the data. """
-    hasher = HMAC(key, hash_function(algorithm), backend=backend)
+    mac, data = unpack_data(packed_data, 2)
+    hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
     hasher.update(data)
     try:
         hasher.verify(mac)

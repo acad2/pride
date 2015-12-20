@@ -65,7 +65,6 @@ class User(pride.base.Base):
                 self.login()
             except pride.security.InvalidPassword:
                 self.username = self.password = None
-                print 'Trying again!' * 10
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
@@ -94,39 +93,40 @@ class User(pride.base.Base):
         
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
-        
-        encryption_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
-        encryption_key = self.encryption_key = encryption_kdf.derive(master_key)
+                
+        hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
+        mac_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
+        self.mac_key = mac_kdf.derive(master_key)
         
         with self.create(self.verifier_filetype,
                          "{}_password_verifier.bin".format(self.username), 
                          "a+b", indexable=self.verifier_indexable) as _file:
             verifier_size = self._password_verifier_size
             salt_size = self.salt_size
+            _file.seek(0)
             verifier = _file.read()
-            if not verifier:
-                verifier = random._urandom(verifier_size)
-                encrypted_verifier = self.encrypt(verifier)
-                _file.seek(0)
-                _file.write(str(len(encrypted_verifier)) + ' ' + encrypted_verifier)
-            else:
-                size, _verifier = verifier.split(' ', 1)
-                encrypted_verifier = _verifier[:int(size)]
             
-            try:
-                result = self.decrypt(encrypted_verifier)
-            except:
-                self.alert("Password failed to match password verifier", level=0)
-                self.encryption_key = None
-                raise pride.security.InvalidPassword()
-            else:
-                self.alert("Password verified", level=self.verbosity["password_verified"])
-        hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
-        mac_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
-        self.mac_key = mac_kdf.derive(master_key)
-        self.encryption_key = encryption_key
-        self.salt = salt
-        
+        if not verifier:
+            verifier = random._urandom(verifier_size)
+            macd_verifier = self.authenticate(verifier)
+            with self.create(self.verifier_filetype,
+                             "{}_password_verifier.bin".format(self.username), 
+                             "wb", indexable=self.verifier_indexable) as _file:                            
+                _file.write(str(len(macd_verifier)) + ' ' + macd_verifier)            
+        else:
+            size, _verifier = verifier.split(' ', 1)
+            macd_verifier = _verifier[:int(size)]
+            
+        if not self.verify(macd_verifier):
+            self.alert("Password failed to match password verifier", level=0)
+            self.mac_key = None
+            raise pride.security.InvalidPassword()
+        else:
+            self.alert("Password verified", level=self.verbosity["password_verified"])
+
+        encryption_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
+        self.encryption_key = encryption_kdf.derive(master_key)                
+                
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data and authenticates, but 
             does not encrypt, any extra_data. The data is encrypted using the 
@@ -154,12 +154,12 @@ class User(pride.base.Base):
             you are certain you know what you are doing. """
         return pride.security.apply_mac(self.mac_key, data, self.hash_function)
         
-    def verify(self, mac, data):
+    def verify(self, macd_data):
         """ Verifies data with the mac returned by authenticate. Data that is 
             verified has two extremely probable guarantees: that it did indeed
-            come from who it was supposed to have come from, and that it was
-            not manipulated by unauthorized parties in transit. """
-        return pride.security.verify_mac(self.mac_key, data, mac, self.hash_function)
+            come from who an authorized party, and that it was not manipulated 
+            by unauthorized parties in transit. """
+        return pride.security.verify_mac(self.mac_key, macd_data, self.hash_function)
         
     def reset_environment(self):
         environment = pride.environment
