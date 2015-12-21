@@ -251,6 +251,13 @@ class Base(object):
         pride.environment.last_creator = backup
         return instance
 
+    def invoke(self, callable_string, *args, **kwargs):
+        """ Calls the method specified in callable_string with args and kwargs.
+            Objects that do not require any form of Base object functionality
+            (such as an instance name) can be created via invoke instead of 
+            the create method. """
+        return pride.utilities.resolve_string(callable_string)(*args, **kwargs)
+        
     def delete(self):
         """usage: object.delete()
             
