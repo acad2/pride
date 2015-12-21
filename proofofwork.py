@@ -89,6 +89,10 @@ def encrypt(plaintext, key, bytes_per_hash=1, hash_function="sha256"):
     block_size = len(key)
     first_hash = True
     counter = 1
+    
+    # pad plaintext to multiple of bytes_per_hash
+    plaintext += "\x00" * (bytes_per_hash - (len(plaintext) % bytes_per_hash))
+    
     while plaintext:
         progress += plaintext[:bytes_per_hash]
         # making the hash input include the cumulative progress aims to ensure that
@@ -96,17 +100,15 @@ def encrypt(plaintext, key, bytes_per_hash=1, hash_function="sha256"):
         hash_input = progress + key + hasher(hash_output + ':' + key).digest()
         hash_output = hasher(hash_input).digest()
         ciphertext += hash_output
-    #    print "Generated next hash: ", counter, len(hash_output), plaintext[:bytes_per_hash]
-    #    print
-    #    print hash_output
+        
         if first_hash:
             first_hash = False
             # the goal here is to make it to where you cannot begin to crack
-            # any hashes unless you have the key
+            # the first hash unless you have the key
             ciphertext = _xor(ciphertext, key)
         counter += 1
         key = hasher(key).digest()    
-        plaintext = plaintext[bytes_per_hash:]      
+        plaintext = plaintext[bytes_per_hash:]
     return ciphertext
     
 def decrypt(ciphertext, key, bytes_per_hash=1, hash_function="sha256", answer=''):
@@ -115,7 +117,7 @@ def decrypt(ciphertext, key, bytes_per_hash=1, hash_function="sha256", answer=''
         dramatically as bytes_per_hash is incremented. The bytes_per_hash
         argument must be set to the same value used by the server or the
         decryption will fail. """
-    range_256 = RANGE_256
+    test_bytes = [RANGE_256 for count in range(bytes_per_hash)]
     hash_function = getattr(hashlib, hash_function)
     hash_size = hash_function().digestsize
     plaintext = ''
@@ -123,10 +125,10 @@ def decrypt(ciphertext, key, bytes_per_hash=1, hash_function="sha256", answer=''
     previous_hash = hash_function(("\x00" * hash_function().digestsize) + ':' + key).digest()
     
     # remove the key to reveal the first hash
-    ciphertext = _xor(ciphertext[:hash_size], key)  + ciphertext[hash_size:]    
+    ciphertext = _xor(ciphertext[:hash_size], key)  + ciphertext[hash_size:]  
     while ciphertext:
         current_hash = ciphertext[:hash_size]
-        for permutation in itertools.product(*(range_256 for count in range(bytes_per_hash))):
+        for permutation in itertools.product(*test_bytes):
             key_guess = ''.join(permutation)
             hash_output = hash_function(plaintext + key_guess + key + previous_hash).digest()            
             if hash_output == current_hash:        
@@ -177,14 +179,13 @@ def test_validity():
     unencrypted_data = "This is some awesome unencrypted data"
     for x in xrange(100):
         challenge, answer = generate_challenge(key, mac_key, unencrypted_data=unencrypted_data,
-                                               bytes_per_hash=2)
-        _answer, data = solve_challenge(challenge, key, mac_key, bytes_per_hash=2, answer=answer)
+                                               bytes_per_hash=3)
+        _answer, data = solve_challenge(challenge, key, mac_key, bytes_per_hash=3, answer=answer)
         assert _answer == answer
         
 if __name__ == "__main__":
-    test_encrypt_decrypt()    
-    test_challenge()
+   # test_encrypt_decrypt()    
+   # test_challenge()
     test_time()
-    test_validity()
-   
+    #test_validity()
     
