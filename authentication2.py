@@ -83,11 +83,11 @@ def _split_byte(byte):
     a, b = int(bits[:4], 2), int(bits[4:], 2)
     return a, b
     
-def _x_bytes_at_a_time(string, x=16):
-    """ Yields x bytes at a time from string """
-    while string:
-        yield string[:x]
-        string = string[x:]
+#def slide(iterable, x=16):
+#    """ Yields x bytes at a time from iterable """
+#    slice_count, remainder = divmod(len(iterable), x)
+#    for position in range((slice_count + 1 if remainder else slice_count)):
+#        yield iterable[position * x:x * (position + 1)]        
         
 class Authentication_Table(object):
     """ Provides an additional factor of authentication. During account
@@ -158,7 +158,7 @@ class Authentication_Table(object):
     def load(cls, text):
         """ Load a bytestream as returned by Authenticated_Table.save and 
             return an authenticated table object. """
-        return cls(rows=[row for row in _x_bytes_at_a_time(text)])
+        return cls(rows=[row for row in slide(text, 16)])
 
         
 class Authenticated_Service2(pride.base.Base):

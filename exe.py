@@ -37,10 +37,10 @@ class Loader(pride.base.Base):
             source += "import " + module_name + "\n"
         
         for attribute, value in self.variables.items():
-            source += attribute + " = " + repr(utilities.resolve_string(value)) + "\n"
+            source += attribute + " = " + repr(resolve_string(value)) + "\n"
             
         for attribute_path in self.definitions:
-            _object = utilities.resolve_string(attribute_path)
+            _object = resolve_string(attribute_path)
             source += inspect.getsource(_object)
             if isinstance(_object, type):
                 source += "\n\n"
@@ -48,7 +48,7 @@ class Loader(pride.base.Base):
                 source += "\n"
                 
         if self.importer:
-            source += inspect.getsource(utilities.resolve_string(self.importer)) + "\n\n"
+            source += inspect.getsource(resolve_string(self.importer)) + "\n\n"
             source += "_importer = " + self.importer.split(".")[-1] + "\n"
             source += "sys.meta_path = [_importer]"
         return source 

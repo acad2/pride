@@ -12,7 +12,7 @@ import traceback
 import timeit
 
 timer_function = timeit.default_timer    
-              
+        
 def pack_data(*args):
     """ Pack arguments into a stream, prefixed by size headers.
         Resulting bytestream takes the form:
@@ -95,33 +95,7 @@ def convert(old_value, old_base, new_base):
             decimal_value, digit = divmod(decimal_value, new_base_size)
             new_value += new_base[digit]
 
-    return ''.join(reversed(new_value))
-                
-def resolve_string(module_name):
-    """Given an attribute string of a.b...z, return the object z"""
-    result = None
-    _original = module_name
-    attributes = []
-    while not result:
-        try:
-            result = (sys.modules[module_name] if module_name in 
-                      sys.modules else importlib.import_module(module_name))
-        except ImportError:
-            module_name = module_name.split('.')
-            attributes.append(module_name.pop())
-            module_name = '.'.join(module_name)
-        except ValueError:
-            raise ValueError("Unable to load package or module: {}".format(_original))
-    try:
-        for attribute in reversed(attributes):
-            result = getattr(result, attribute)
-    except AttributeError:
-        error_message = "unable to load {} from {}; failed to resolve string '{}'"
-        print error_message.format(attribute, result, _original)
-        raise
-        #error_message = '\n'.join((error_message, traceback.format_exc()))
-        #raise AttributeError(error_message)
-    return result    
+    return ''.join(reversed(new_value))  
     
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 

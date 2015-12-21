@@ -191,7 +191,7 @@ class File(base.Wrapper):
                                               filename=path)              
                 self.filesize = self.properties.file_size
             else:
-                self.file = utilities.resolve_string(self.file_type)()
+                self.file = resolve_string(self.file_type)()
                 self.filesize = 0
             #    self.properties = self.create("pride.filefio.File_Attributes",
             #                                  wrapped_object=self.file, filename=path)
@@ -269,7 +269,7 @@ class File(base.Wrapper):
         if self.file_type == "file":
             self.file = _file = open(self.filename, self.mode)
         else:
-            self.file = _file = utilities.resolve_string(self.file_type)()
+            self.file = _file = resolve_string(self.file_type)()
         self.wraps(_file)
         self.truncate(0)
         self.write(self.__dict__.pop("_file_data"))        

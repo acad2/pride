@@ -59,7 +59,7 @@ def base_decoder(loaded_json):
         loaded_objects[_instance_type] = [base_decoder(serialized_instance) for
                                           serialized_instance in values]
     attributes["objects"] = loaded_objects
-    instance_type = pride.utilities.resolve_string(type_name)
+    instance_type = resolve_string(type_name)
     instance = instance_type.__new__(instance_type)
     
     instance.on_load(attributes)

@@ -242,7 +242,7 @@ class Base(object):
         except TypeError:
             if isinstance(instance_type, type):
                 raise
-            instance = pride.utilities.resolve_string(instance_type)(*args, **kwargs)        
+            instance = resolve_string(instance_type)(*args, **kwargs)        
 
         pride.environment.parents[instance] = self_name
         if instance not in pride.environment.instance_name:
@@ -256,7 +256,7 @@ class Base(object):
             Objects that do not require any form of Base object functionality
             (such as an instance name) can be created via invoke instead of 
             the create method. """
-        return pride.utilities.resolve_string(callable_string)(*args, **kwargs)
+        return resolve_string(callable_string)(*args, **kwargs)
         
     def delete(self):
         """usage: object.delete()

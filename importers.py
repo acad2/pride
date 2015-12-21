@@ -1,4 +1,8 @@
 """ Contains import related functions and objects, including the compiler """
+try:
+    import __builtin__
+except ImportError:
+    import builtins as __builtin__
 import os
 import inspect
 import sys
@@ -15,6 +19,9 @@ try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
+  
+import additional_builtins
+resolve_string = additional_builtins.resolve_string
   
 OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
              '~', '<', '>', '<=', '>=', '==', '!=', '<>')
@@ -289,12 +296,19 @@ class Parser(object):
 class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
-        sys.meta_path as the first entry. """
-    def __init__(self, preprocessors=tuple(), patches=None):
+        sys.meta_path as the first entry when pride is imported. """
+    def __init__(self, preprocessors=tuple(), patches=None, modify_builtins=None):
         self.preprocessors = preprocessors
         self.patches = patches or {}
+        modify_builtins = self.additional_builtins = modify_builtins or {}
         self.path_loader, self.module_source = {}, {}
-                            
+        
+        for name in additional_builtins.__all__:
+            setattr(__builtin__, name, getattr(additional_builtins, name))
+            
+        for name, package_path in modify_builtins.items():
+            setattr(__builtin__, name, resolve_string(package_path))
+            
     def find_module(self, module_name, path):
         modules = module_name.split('.')
         loader = None
@@ -319,15 +333,13 @@ class Compiler(object):
     def load_module(self, module_name):
         if module_name in self.patches:
             print "Loading patch: ", module_name
-            utilities.resolve_string(self.patches.pop(module_name))()
+            resolve_string(self.patches.pop(module_name))()
              
         elif module_name not in sys.modules:
             source, path = self.module_source[module_name]
             module_code = self.compile(source, path)
             self.compile_module(module_name, module_code, path)
 
-
- #       print "Loading: ", module_name
         return sys.modules[module_name]
                     
     def compile_module(self, module_name, module_code, path):

@@ -86,7 +86,7 @@ class Runtime_Decorator(object):
     """def _handle_context_manager(self, context_manager):
         raise NotImplementedError
         if isinstance(context_manager, str):
-            context_manager = utilities.resolve_string(context_manager)
+            context_manager = resolve_string(context_manager)
         return context_manager   
 
         with context_manager():
@@ -95,7 +95,7 @@ class Runtime_Decorator(object):
 
     def _handle_monkey_patch(self, monkey_patch):
         if isinstance(monkey_patch, str):
-            monkey_patch = utilities.resolve_string(monkey_patch)
+            monkey_patch = resolve_string(monkey_patch)
         try:
             monkey_patch = functools.partial(monkey_patch, self.function.im_self)
         finally: # function has no attribute im_self (not a method)
@@ -103,14 +103,14 @@ class Runtime_Decorator(object):
 
     def _handle_decorator(self, decorator_type):
         if isinstance(decorator_type, unicode) or isinstance(decorator_type, str):
-            decorator_type = utilities.resolve_string(decorator_type)
+            decorator_type = resolve_string(decorator_type)
         return decorator_type(self.function)
 
     def _handle_decorators(self, decorator_info):
         decorators = []
         for decorator in decorator_info:
             if isinstance(decorator, str):
-                decorator = utilities.resolve_string(decorator)
+                decorator = resolve_string(decorator)
 
             decorators.append(decorator)
 
