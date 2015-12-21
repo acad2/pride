@@ -9,7 +9,7 @@ class User(pride.base.Base):
         A user is capable of performing manipulation of secure data,
         including encryption and decryption. The user object is responsible
         for deriving and holding keys required for such manipulation. """
-    defaults = {# encryption configuration options    
+    defaults = {# security configuration options    
                 # these may need to update with time
                 "hash_function" : "SHA256", "kdf_iteration_count" : 100000, 
                 "salt_size" : 16, "key_length" : 32, "iv_size" : 16,
@@ -19,11 +19,10 @@ class User(pride.base.Base):
                 
                 # login/key derivation can be bypassed by supplying keys directly
                 # note that encryption key, salt, and mac key must be supplied to
-                # skip the login/key derivation process. This is not recommended!
+                # skip the login/key derivation process
                 "encryption_key" : None, "salt" : None, "mac_key" : None,
                 
                 # similarly, username and password may be assigned instead of prompted. 
-                # Not recommended!
                 "password" : '', "username" : '', 
                 
                 # These may be changed for specific application needs
@@ -31,6 +30,8 @@ class User(pride.base.Base):
                 "hkdf_encryption_info_string" : "{} Encryption Key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 
+                # the salt and verifier file are stored in the ->Python->File_System
+                # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
                 "salt_indexable" : False, "verifier_indexable" : False}
@@ -86,18 +87,27 @@ class User(pride.base.Base):
         else:
             salt = self.salt            
         key_length = self.key_length
-        kdf = self.create("pride.security.key_derivation_function", 
+        kdf = self.invoke("pride.security.key_derivation_function", 
                           algorithm=self.hash_function, length=key_length, 
                           salt=salt, iterations=self.kdf_iteration_count)
         master_key = kdf.derive(self.username + ':' + self.password)
         
+        # in case password was passed in
+        self.password = ''
+        
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
                 
-        hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
-        mac_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
-        self.mac_key = mac_kdf.derive(master_key)
-        
+        if not self.mac_key:
+            hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
+            mac_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            self.mac_key = mac_kdf.derive(master_key)
+            reset_mac_on_failure = True
+        else:
+            reset_mac_on_failure = False
+            
+        # Create a password verifier by attaching a mac to some random data
+        # On login, if the mac verifies, then the password was correct
         with self.create(self.verifier_filetype,
                          "{}_password_verifier.bin".format(self.username), 
                          "a+b", indexable=self.verifier_indexable) as _file:
@@ -106,25 +116,22 @@ class User(pride.base.Base):
             _file.seek(0)
             verifier = _file.read()
             
-        if not verifier:
-            verifier = random._urandom(verifier_size)
-            macd_verifier = self.authenticate(verifier)
-            with self.create(self.verifier_filetype,
-                             "{}_password_verifier.bin".format(self.username), 
-                             "wb", indexable=self.verifier_indexable) as _file:                            
+            if not verifier:
+                verifier = random._urandom(verifier_size)
+                macd_verifier = self.authenticate(verifier)                         
                 _file.write(str(len(macd_verifier)) + ' ' + macd_verifier)            
-        else:
-            size, _verifier = verifier.split(' ', 1)
-            macd_verifier = _verifier[:int(size)]
+            else:
+                size, _verifier = verifier.split(' ', 1)
+                macd_verifier = _verifier[:int(size)]
             
         if not self.verify(macd_verifier):
             self.alert("Password failed to match password verifier", level=0)
-            self.mac_key = None
+            self.mac_key = None if reset_mac_on_failure else self.mac_key
             raise pride.security.InvalidPassword()
         else:
             self.alert("Password verified", level=self.verbosity["password_verified"])
 
-        encryption_kdf = self.create("pride.security.hkdf_expand", **hkdf_options)
+        encryption_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
         self.encryption_key = encryption_kdf.derive(master_key)                
                 
     def encrypt(self, data, extra_data=''):
@@ -160,14 +167,7 @@ class User(pride.base.Base):
             come from who an authorized party, and that it was not manipulated 
             by unauthorized parties in transit. """
         return pride.security.verify_mac(self.mac_key, macd_data, self.hash_function)
-        
-    def reset_environment(self):
-        environment = pride.environment
-        for field in pride.environment.fields:
-            setattr(environment, field, [])
-        environment.Instructions = []
-        environment.last_creator = None
-        
+                
 def test_User():
     import pride.interpreter
     python = pride.interpreter.Python()
