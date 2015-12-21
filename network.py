@@ -564,35 +564,17 @@ class Network(vmlibrary.Process):
         readability/writability of sockets. Also responsible for non blocking connect logic. 
         This component is created by default upon application startup, and in most cases will
         not require user interaction."""
-    defaults = {"number_of_sockets" : 0,
-                "priority" : .01,
-                "update_priority" : 5,
-                "_updating" : False,
-                "running" : False}
+    defaults = {"priority" : .01, "run_condition" : "sockets"}
    
-    error_handler = Socket_Error_Handler()
+    mutable_defaults = {"connecting" : set, "sockets" : list}
     
-    def __init__(self, **kwargs):
-        # minor optimization; pre allocated slices and ranges for
-        # sliding through the socket list to sidestep the 500 
-        # file descriptor limit that select has. Produces slice objects
-        # for ranges 0-500, 500-1000, 1000-1500, etc, up to 50000.
-        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(100))                        
-        self.connecting = set()
-        self.sockets = []
-        super(Network, self).__init__(**kwargs)       
+    error_handler = Socket_Error_Handler()      
                 
     def add(self, sock):
-    #    print "adding sock: ", hex(id(sock))
         super(Network, self).add(sock)
         self.sockets.append(sock)
-        if not self.running:
-            self.running = True        
-            self.start()
                 
     def remove(self, sock):   
-    #    print "\nremoving sock: ", hex(id(sock)), '\n'
         super(Network, self).remove(sock)
         self.sockets.remove(sock)
             
@@ -602,51 +584,46 @@ class Network(vmlibrary.Process):
         del self.connecting
         
     def run(self):
-        sockets = self.sockets
-        if not sockets:
-            self.running = False
-        else:
-            error_handler = self.error_handler
-            readable, writable, empty_list = [], [], []
-            # select has a max # of file descriptors it can handle, which
-            # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
-            for socket_list in (sockets[self._slice_mapping[chunk_number]] for
-                                chunk_number in xrange((len(sockets) / 500) + 1)): 
-                (readable_sockets, 
-                 writable_sockets, _) = select.select(socket_list, socket_list, 
-                                                      empty_list, 0.0)
-                if readable_sockets:
-                    readable.extend(readable_sockets)                
-                if writable_sockets:
-                    writable.extend(writable_sockets)
+        error_handler = self.error_handler
+        readable, writable, empty_list = [], [], []
+        # select has a max # of file descriptors it can handle, which
+        # is about 500 (at least on windows). step through in slices (0, 500), (500, 100), ...           
+        for socket_list in slide(self.sockets, 500): 
+            (readable_sockets, 
+             writable_sockets, _) = select.select(socket_list, socket_list, 
+                                                  empty_list, 0.0)
+            if readable_sockets:
+                readable.extend(readable_sockets)                
+            if writable_sockets:
+                writable.extend(writable_sockets)
+                
+        if readable:
+            for _socket in readable:
+                try:
+                    _socket.on_select()
+                except socket.error as error:
+                    self.alert("socket.error when reading on select: {}", error, level=0)
+                    error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower()) 
                     
-            if readable:
-                for _socket in readable:
+        connecting = self.connecting
+        self.connecting = set()    
+        if connecting and writable:                            
+            # if a connecting tcp client is now writable, it's connected   
+            for accepted in connecting.intersection(writable):
+                accepted.on_connect()
+                
+            # if not, then it's still waiting or the connection timed out
+            still_connecting = connecting.difference(writable)
+            for connection in still_connecting:
+                connection.connection_attempts -= 1
+                if not connection.connection_attempts:
                     try:
-                        _socket.on_select()
-                    except socket.error as error:
-                        self.alert("socket.error when reading on select: {}", error, level=0)
-                        error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower()) 
-                        
-            connecting = self.connecting
-            self.connecting = set()    
-            if connecting and writable:                            
-                # if a connecting tcp client is now writable, it's connected   
-                for accepted in connecting.intersection(writable):
-                    accepted.on_connect()
-                    
-                # if not, then it's still waiting or the connection timed out
-                still_connecting = connecting.difference(writable)
-                for connection in still_connecting:
-                    connection.connection_attempts -= 1
-                    if not connection.connection_attempts:
-                        try:
-                            connection.connect(connection.host_info)
-                        except socket.error as error:                           
-                            error_handler.dispatch(connection, error, 
-                                                   ERROR_CODES[error.errno].lower())           
-                    else:
-                        self.connecting.add(connection)                   
+                        connection.connect(connection.host_info)
+                    except socket.error as error:                           
+                        error_handler.dispatch(connection, error, 
+                                               ERROR_CODES[error.errno].lower())           
+                else:
+                    self.connecting.add(connection)                   
                 
     def __getstate__(self):
         state = super(Network, self).__getstate__()

@@ -42,9 +42,12 @@ class Process(pride.base.Base):
         or periodic event."""
 
     defaults = {"priority" : .04, "context_managed" : False, "running" : True,
-                "run_callback" : None, "_run_queued" : False}
+                "run_callback" : None, "run_condition" : '', "_run_queued" : False}
+    
     parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued")
-
+    
+    verbosity = {"run_condition_false" : "vvv"}
+    
     def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
@@ -67,9 +70,13 @@ class Process(pride.base.Base):
         else:
             result = self.run()
         if self.running:
-            self.run_instruction.execute(priority=self.priority, 
-                                         callback=self.run_callback)
-            self._run_queued = True
+            if self.run_condition and not getattr(self, self.run_condition):
+                self.alert("Run condition False; Not running", 
+                           level=self.verbosity["run_condition_false"])
+            else:
+                self.run_instruction.execute(priority=self.priority, 
+                                             callback=self.run_callback)
+                self._run_queued = True
         return result
         
     def run(self):

@@ -81,13 +81,7 @@ def _split_byte(byte):
         Returns two integers between 0-15 """
     bits = format(byte, 'b').zfill(8)
     a, b = int(bits[:4], 2), int(bits[4:], 2)
-    return a, b
-    
-#def slide(iterable, x=16):
-#    """ Yields x bytes at a time from iterable """
-#    slice_count, remainder = divmod(len(iterable), x)
-#    for position in range((slice_count + 1 if remainder else slice_count)):
-#        yield iterable[position * x:x * (position + 1)]        
+    return a, b     
         
 class Authentication_Table(object):
     """ Provides an additional factor of authentication. During account

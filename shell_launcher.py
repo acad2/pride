@@ -97,7 +97,7 @@ def update(instance_name):
 import pride.gui
 pride.gui.enable()
 #$SDL_Window.create("pride.gui.cyvasse.Cyvasse")
-objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
+#objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #objects["SDL_Window"].create("pride.gui.widgetlibrary.Homescreen")
 #objects["->Python->SDL_Window"].create("pride.gui.text_editor.Text_Editor")
 #objects["->Python->SDL_Window"].create("pride.gui.terminal.Terminal")
