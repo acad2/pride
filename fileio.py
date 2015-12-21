@@ -203,6 +203,8 @@ class File(base.Wrapper):
         
     def __exit__(self, type, value, traceback):
         self.delete()
+        if traceback:
+            raise
         return value
     
     def write(self, data):
@@ -324,6 +326,8 @@ class Database_File(File):
     def __exit__(self, type, value, traceback):
         self.save()
         self.delete()
+        if traceback:
+            raise
         return value
         
     def flush(self): 
@@ -407,7 +411,7 @@ class File_System(pride.database.Database):
             hasher = pride.security.hash_function(self.hash_function)
             hasher.update(filename + self.nonindexable_filename_pepper)
             filename = hasher.finalize()
-            #filename = self.nonindexable_filename_pepper + filename
+            
         if mode[0] == 'w':
             try:
                 self.delete_from("Files", where={"filename" : filename})
