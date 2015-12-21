@@ -147,7 +147,7 @@ def test_encrypt_decrypt():
     key = random._urandom(32)
     message = random._urandom(32)
     ciphertext = encrypt(message, key)
-    assert decrypt(ciphertext, key) == message, decrypt(ciphertext, key)
+    assert decrypt(ciphertext, key)[:32] == message, decrypt(ciphertext, key)
     
 def test_challenge():
     key = random._urandom(32)
@@ -165,7 +165,7 @@ def test_time():
     unencrypted_data = "This is some awesome unencrypted data"
     from pride.decorators import Timed
     for bytes_per_hash in (1, 2, 3):
-        print ("Time to generate challenge with {:<1} bytes per hash: ".format(bytes_per_hash), 
+        print ("Time to generate challenge with {} bytes per hash: ".format(bytes_per_hash), 
                Timed(generate_challenge, 1)(key, mac_key, unencrypted_data=unencrypted_data,
                                              bytes_per_hash=bytes_per_hash))
         challenge, answer = generate_challenge(key, mac_key, bytes_per_hash=bytes_per_hash,
@@ -184,8 +184,8 @@ def test_validity():
         assert _answer == answer
         
 if __name__ == "__main__":
-   # test_encrypt_decrypt()    
+    test_encrypt_decrypt()    
    # test_challenge()
-    test_time()
-    #test_validity()
+   # test_time()
+   # test_validity()
     
