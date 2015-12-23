@@ -1,5 +1,5 @@
-import pride.authentication
-Authentication_Table = pride.authentication.Authentication_Table
+import pride.authentication2
+Authentication_Table = pride.authentication2.Authentication_Table
 
 def test_authentication_table():
     table = Authentication_Table()

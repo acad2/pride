@@ -28,6 +28,8 @@ history from storing hashes of shared secrets?
 # no "magic expressions" in source code, i.e. expressions that unnamed/unassigned
 # put a named version in the comments
 
+# obfuscation: enumerate for loop that don't require enumeration
+
 # unused names that are returned can be optimized into magic expressions
 # by the compiler, i.e.:
     #memory = get_attribute("memory")

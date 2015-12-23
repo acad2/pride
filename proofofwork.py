@@ -33,6 +33,12 @@ def unpack_data(packed_bytes, size_count):
         packed_bytes = packed_bytes[size:]
     return data
     
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        yield iterable[position * x:x * (position + 1)]  
+        
 def generate_mac(key, data, algorithm="SHA256"):
     return hmac.new(key, data, getattr(hashlib, algorithm.lower())).digest()
 
@@ -49,21 +55,54 @@ def generate_challenge(key, mac_key, challenge_size=32, bytes_per_hash=1,
                        hash_function="sha256", unencrypted_data='',
                        answer=bytes()):
     answer = answer or random._urandom(challenge_size)
-    challenge = encrypt(answer, key, bytes_per_hash, hash_function)
+    challenge = encrypt(answer, key, getattr(hashlib, hash_function), bytes_per_hash)
     package = pack_data(challenge, unencrypted_data)
     return (pack_data(generate_mac(mac_key, package, hash_function), package), 
             answer)
     
 def solve_challenge(packed_challenge, key, mac_key, key_size=32, bytes_per_hash=1, 
-                    hash_function="sha256", answer=''):
+                    hash_function="sha256"):
     mac, package = unpack_data(packed_challenge, 2)
     if verify_mac(mac_key, package, mac, hash_function):
         challenge, unencrypted_data = unpack_data(package, 2)
-        return decrypt(challenge, key, bytes_per_hash, hash_function, answer=answer), unencrypted_data
+        hasher = getattr(hashlib, hash_function)
+        return decrypt(challenge, key, hasher, hasher().digestsize, bytes_per_hash), unencrypted_data
     else:
         raise InvalidSignature("Message authentication code mismatch")
         
-def encrypt(plaintext, key, bytes_per_hash=1, hash_function="sha256"): 
+def generate_padding(key, hash_size, hasher):
+    key_padding = ''
+    key_size = len(key)
+    while key_size + len(key_padding) < hash_size:
+        key_padding += hasher(key_padding + ':' + key).digest()
+    return key_padding
+    
+def crack_round(key, current_hash, hasher, test_bytes):       
+    for permutation in itertools.product(*test_bytes):
+        plaintext_guess = ''.join(permutation)
+        hash_output = hasher(plaintext_guess + key).digest()            
+        if hash_output == current_hash:
+            return plaintext_guess
+            #plaintext += key_guess
+            #previous_hash = hasher(hash_output + ':' + key).digest()                
+            #break
+    else:           
+        raise ValueError("Unable to recover bytes from hash")      
+
+def mode_of_operation(plaintext_block, ciphertext_block, key, hasher):    
+    # make it to where the previous plaintext block is required to recover the next block. 
+    return plaintext_block, ciphertext_block, hasher(plaintext_block + ':' + key).digest(), hasher
+
+def idek_yet():    
+    # the goal here is to make it to where you cannot begin to crack
+    # the first hash unless you have the key. If the key is not long
+    # enough to xor with the ciphertext, then it is padded with additional
+    # bytes generated from the key
+    padded_key = key + generate_padding(key, hash_size, hasher)        
+    progress, plaintext, ciphertext = _next_round()
+    ciphertext = _xor(ciphertext, padded_key[:hash_size]) 
+    
+def encrypt(plaintext, key, hasher, bytes_per_hash=1): 
     """ An encryption function with an associated work factor. Returns a
         ciphertext encrypted under key. 
         
@@ -83,71 +122,37 @@ def encrypt(plaintext, key, bytes_per_hash=1, hash_function="sha256"):
         Note that the ciphertext is necessarily significantly larger then the 
         plaintext. This limits practicality of this form of encryption mostly
         to proof of work/time released schemes."""
-    ciphertext = progress = ''
-    hasher = getattr(hashlib, hash_function)
-    hash_output = '\x00' * hasher().digestsize
-    block_size = len(key)
-    first_hash = True
-    counter = 1
-    
-    # pad plaintext to multiple of bytes_per_hash
-    plaintext += "\x00" * (bytes_per_hash - (len(plaintext) % bytes_per_hash))
-    
-    while plaintext:
-        progress += plaintext[:bytes_per_hash]
-        # making the hash input include the cumulative progress aims to ensure that
-        # hashes must be cracked in order. 
-        hash_input = progress + key + hasher(hash_output + ':' + key).digest()
-        hash_output = hasher(hash_input).digest()
-        ciphertext += hash_output
-        
-        if first_hash:
-            first_hash = False
-            # the goal here is to make it to where you cannot begin to crack
-            # the first hash unless you have the key
-            ciphertext = _xor(ciphertext, key)
-        counter += 1
-        key = hasher(key).digest()    
-        plaintext = plaintext[bytes_per_hash:]
+    if len(plaintext) % bytes_per_hash:
+        raise ValueError("Plaintext length not a multiple of bytes_per_hash")
+    ciphertext = ''
+             
+    for plaintext_block in slide(plaintext, bytes_per_hash):
+        ciphertext_block = hasher(plaintext_block + key).digest()   
+        plaintext_block, ciphertext_block, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)
+        ciphertext += ciphertext_block
     return ciphertext
     
-def decrypt(ciphertext, key, bytes_per_hash=1, hash_function="sha256", answer=''):
+def decrypt(ciphertext, key, hasher, block_size, bytes_per_hash=1):
     """ Decrypt the ciphertext hash chain as produced by encrypt. The amount
         of work and therefore time taken to recover the plaintext increases
         dramatically as bytes_per_hash is incremented. The bytes_per_hash
         argument must be set to the same value used by the server or the
         decryption will fail. """
     test_bytes = [RANGE_256 for count in range(bytes_per_hash)]
-    hash_function = getattr(hashlib, hash_function)
-    hash_size = hash_function().digestsize
     plaintext = ''
-    
-    previous_hash = hash_function(("\x00" * hash_function().digestsize) + ':' + key).digest()
-    
-    # remove the key to reveal the first hash
-    ciphertext = _xor(ciphertext[:hash_size], key)  + ciphertext[hash_size:]  
-    while ciphertext:
-        current_hash = ciphertext[:hash_size]
-        for permutation in itertools.product(*test_bytes):
-            key_guess = ''.join(permutation)
-            hash_output = hash_function(plaintext + key_guess + key + previous_hash).digest()            
-            if hash_output == current_hash:        
-                plaintext += key_guess
-                new_key_length = len(plaintext)
-                key = hash_function(key).digest()
-                previous_hash = hash_function(hash_output + ':' + key).digest()                
-                break
-        else:           
-            raise ValueError("Unable to recover bytes from hash")        
-        
-        ciphertext = ciphertext[hash_size:]
+
+    for ciphertext_block in slide(ciphertext, block_size):
+        plaintext_block = crack_round(key, ciphertext_block, hasher, test_bytes)
+        plaintext_block, ciphertext, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)             
+        plaintext += plaintext_block
     return plaintext
     
 def test_encrypt_decrypt():
     key = random._urandom(32)
-    message = random._urandom(32)
-    ciphertext = encrypt(message, key)
-    assert decrypt(ciphertext, key)[:32] == message, decrypt(ciphertext, key)
+    message = random._urandom(32)    
+    ciphertext = encrypt(message, key, hashlib.sha256)
+    plaintext = decrypt(ciphertext, key, hashlib.sha256, 32)
+    assert plaintext == message, plaintext
     
 def test_challenge():
     key = random._urandom(32)
@@ -160,16 +165,24 @@ def test_challenge():
     assert _unencrypted_data == unencrypted_data
     
 def test_time():
-    key = random._urandom(32)
+    key = random._urandom(15)
     mac_key = random._urandom(32)
     unencrypted_data = "This is some awesome unencrypted data"
     from pride.decorators import Timed
     for bytes_per_hash in (1, 2, 3):
+        if bytes_per_hash == 3:
+            challenge_size = 33
+        else:
+            challenge_size = 32
+            
         print ("Time to generate challenge with {} bytes per hash: ".format(bytes_per_hash), 
                Timed(generate_challenge, 1)(key, mac_key, unencrypted_data=unencrypted_data,
-                                             bytes_per_hash=bytes_per_hash))
+                                             bytes_per_hash=bytes_per_hash, 
+                                             challenge_size=challenge_size))
+                                             
         challenge, answer = generate_challenge(key, mac_key, bytes_per_hash=bytes_per_hash,
-                                               unencrypted_data=unencrypted_data)
+                                               unencrypted_data=unencrypted_data,
+                                               challenge_size=challenge_size)
         print ("Time to solve challenge with {} bytes per hash: ".format(bytes_per_hash),
                Timed(solve_challenge, 1)(challenge, key, mac_key, bytes_per_hash=bytes_per_hash))
         
@@ -185,7 +198,7 @@ def test_validity():
         
 if __name__ == "__main__":
     test_encrypt_decrypt()    
-   # test_challenge()
-   # test_time()
+    test_challenge()
+    test_time()
    # test_validity()
     
