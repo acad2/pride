@@ -55,7 +55,7 @@ def generate_challenge(key, mac_key, challenge_size=32, bytes_per_hash=1,
                        hash_function="sha256", unencrypted_data='',
                        answer=bytes()):
     answer = answer or random._urandom(challenge_size)
-    challenge = encrypt(answer, key, getattr(hashlib, hash_function), bytes_per_hash)
+    challenge = encrypt(answer, key, getattr(hashlib, hash_function), bytes_per_hash=bytes_per_hash)
     package = pack_data(challenge, unencrypted_data)
     return (pack_data(generate_mac(mac_key, package, hash_function), package), 
             answer)
@@ -66,7 +66,7 @@ def solve_challenge(packed_challenge, key, mac_key, key_size=32, bytes_per_hash=
     if verify_mac(mac_key, package, mac, hash_function):
         challenge, unencrypted_data = unpack_data(package, 2)
         hasher = getattr(hashlib, hash_function)
-        return decrypt(challenge, key, hasher, hasher().digestsize, bytes_per_hash), unencrypted_data
+        return decrypt(challenge, key, hasher, hasher().digestsize, bytes_per_hash=bytes_per_hash), unencrypted_data
     else:
         raise InvalidSignature("Message authentication code mismatch")
         
@@ -89,20 +89,20 @@ def crack_round(key, current_hash, hasher, test_bytes):
     else:           
         raise ValueError("Unable to recover bytes from hash")      
 
-def mode_of_operation(plaintext_block, ciphertext_block, key, hasher):    
+def all_or_nothing(plaintext_block, ciphertext_block, key, hasher):    
     # make it to where the previous plaintext block is required to recover the next block. 
+    # aims to resist parallel decryption
     return plaintext_block, ciphertext_block, hasher(plaintext_block + ':' + key).digest(), hasher
 
 def idek_yet():    
-    # the goal here is to make it to where you cannot begin to crack
-    # the first hash unless you have the key. If the key is not long
-    # enough to xor with the ciphertext, then it is padded with additional
-    # bytes generated from the key
+    # xor key with "ciphertext", which in this case is hash output
+    # If the key is not long enough to xor with the ciphertext,
+    # then it is padded with additional bytes generated from the key
     padded_key = key + generate_padding(key, hash_size, hasher)        
     progress, plaintext, ciphertext = _next_round()
     ciphertext = _xor(ciphertext, padded_key[:hash_size]) 
     
-def encrypt(plaintext, key, hasher, bytes_per_hash=1): 
+def encrypt(plaintext, key, hasher, mode_of_operation=all_or_nothing, bytes_per_hash=1): 
     """ An encryption function with an associated work factor. Returns a
         ciphertext encrypted under key. 
         
@@ -126,13 +126,18 @@ def encrypt(plaintext, key, hasher, bytes_per_hash=1):
         raise ValueError("Plaintext length not a multiple of bytes_per_hash")
     ciphertext = ''
              
-    for plaintext_block in slide(plaintext, bytes_per_hash):
-        ciphertext_block = hasher(plaintext_block + key).digest()   
-        plaintext_block, ciphertext_block, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)
-        ciphertext += ciphertext_block
-    return ciphertext
+    if mode_of_operation:
+        for plaintext_block in slide(plaintext, bytes_per_hash):
+            ciphertext_block = hasher(plaintext_block + key).digest()   
+            plaintext_block, ciphertext_block, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)
+            ciphertext += ciphertext_block
+        return ciphertext
+    else:
+        return ''.join(hasher(plaintext_block + key).digest() for 
+                       plaintext_block in slide(plaintext, bytes_per_hash))
     
-def decrypt(ciphertext, key, hasher, block_size, bytes_per_hash=1):
+def decrypt(ciphertext, key, hasher, block_size, 
+            mode_of_operation=all_or_nothing, bytes_per_hash=1):
     """ Decrypt the ciphertext hash chain as produced by encrypt. The amount
         of work and therefore time taken to recover the plaintext increases
         dramatically as bytes_per_hash is incremented. The bytes_per_hash
@@ -141,11 +146,34 @@ def decrypt(ciphertext, key, hasher, block_size, bytes_per_hash=1):
     test_bytes = [RANGE_256 for count in range(bytes_per_hash)]
     plaintext = ''
 
-    for ciphertext_block in slide(ciphertext, block_size):
-        plaintext_block = crack_round(key, ciphertext_block, hasher, test_bytes)
-        plaintext_block, ciphertext, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)             
-        plaintext += plaintext_block
-    return plaintext
+    if mode_of_operation:
+        for ciphertext_block in slide(ciphertext, block_size):
+            plaintext_block = crack_round(key, ciphertext_block, hasher, test_bytes)
+            plaintext_block, ciphertext, key, hasher = mode_of_operation(plaintext_block, ciphertext_block, key, hasher)             
+            plaintext += plaintext_block
+        return plaintext
+    else:
+        return ''.join(crack_round(key, ciphertext_block, hasher, test_bytes) for 
+                       ciphertext_block in slide(ciphertext, block_size))    
+    
+def split_secret(secret, piece_count, hasher):
+    piece_size, remainder = divmod(len(secret), piece_count)
+    if remainder:
+        piece_size += 1
+    pieces = []
+    for index, piece in enumerate(slide(secret, piece_size)):
+        challenge_iv = random._urandom(16)
+        hash_output = hasher(piece + challenge_iv).digest()
+        pieces.append((index, hash_output, challenge_iv))
+    return pieces, piece_size
+
+def test_split_secret():
+    secret = random._urandom(32)
+    pieces, piece_size = split_secret(secret, 16, hashlib.sha256)
+    _secret = ''
+    for index, _hash, iv in pieces:
+        _secret += crack_round(iv, _hash, hashlib.sha256, [RANGE_256 for x in xrange(piece_size)])    
+    assert _secret == secret
     
 def test_encrypt_decrypt():
     key = random._urandom(32)
@@ -197,6 +225,7 @@ def test_validity():
         assert _answer == answer
         
 if __name__ == "__main__":
+    test_split_secret()
     test_encrypt_decrypt()    
     test_challenge()
     test_time()
