@@ -84,17 +84,35 @@ def generate_padding(key, hash_size, function):
         key_padding += function(key_padding + ':' + key)
     return key_padding
     
-def brute_force(output, function, test_bytes, key=''):
+def brute_force(output, function, test_bytes, pre_key='', post_key=''):
+    """ Attempt to find the input to function that produced output.
+        
+        test_bytes is an iterable of iterables; Each iterable contains the
+        characters to be tested at the correlated index; characters may
+        be byte strings of arbitrary length.
+        
+        pre_key and post_key are what information, if any, is already known 
+        of the input that produced output. 
+        
+        Test guesses are formed by taking the next successive cartesian product
+        from test_bytes. 
+        
+        Test function input is a concatenation of (pre_key | guess | post_key).
+        
+        Returns bytes of the permutation that produced output; Only the cracked
+        bytes are returned, not the concatenation of the keys with the guess."""        
     for permutation in itertools.product(*test_bytes):
-  #      print "Guessing: ", ''.join(permutation)
-        if function(''.join(permutation) + key) == output:
+        #print "Guessing: ", ''.join(permutation)
+        if function(pre_key + ''.join(permutation) + post_key) == output:
             return ''.join(permutation)
     else:           
         raise ValueError("Unable to recover bytes from hash")      
 
 def identity_mode(plaintext_block, ciphertext_block, key, function):
     """ A do-nothing mode of operation/key rotation function.
-        Returns inputs unmodified. """
+        Returns inputs unmodified. 
+        
+        Net effect(s): None """
     return plaintext_block, ciphertext_block, key, function
     
 def xor_with_key(plaintext_block, ciphertext_block, key, function):
@@ -102,9 +120,10 @@ def xor_with_key(plaintext_block, ciphertext_block, key, function):
         If the key is not long enough to xor with the ciphertext,
         then it is padded with additional bytes generated from the key
         
-        Net effect(s): The round key must known to begin to decrypt the block.
-                       Combined with the all or nothing key rotation, parallel
-                       decryption becomes impossible instead of inefficient. """
+        Net effect(s): 
+        
+            - The round key must known to begin to decrypt the block.
+            - Ciphering is more effective in serial then in parallel. """
     ciphertext_size = len(ciphertext_block)
     if ciphertext_size > len(key):
         padded_key = key + generate_padding(key, ciphertext_size, function)
@@ -117,15 +136,19 @@ def all_or_nothing(plaintext_block, ciphertext_block, key, function):
     """ Update the key with the previous plaintext. In order to derive the key
         for the next round, the previous plaintext must be obtained. 
         
-        Net effect(s): In order to decrypt block N, block N-1 must first be decrypted.
-                       Ciphering can be done efficiently in serial but not in parallel.
+        Net effect(s): 
+            
+            - In order to efficiently decrypt block N, block N-1 must first be decrypted.
+            - Encryption cannot be done in serial
+            - Decryption can be done more efficiently in serial then in parallel.
                      
-        Note the above presumes that the decryptor wishes to use the informational
-        advantage gained by decrypting cumulative plaintexts. A decryptor can still
-        attempt to decrypt block N without block N-1 by brute force, without the 
-        trapdoor information. Thus parallel decryption is technically possible, but
-        ineffecient; decrypting N-1 first then N next with the trapdoor information
-        takes far less time then attempting to decrypt N directly via brute force."""
+        Note the effects presume that the decryptor wishes to use the informational
+        advantage gained by decrypting cumulative plaintexts. A decryptor with the
+        key can still attempt to decrypt block N1 without decrypting block N0 first
+        by sheer brute force, without the trapdoor information. Doing so would
+        require guessing the first plaintext bytes and the second at the same time,
+        resulting in increased complexity and therefore time slowdown, potentially
+        defeating any benefits of parallelism. """
     return plaintext_block, ciphertext_block, function(plaintext_block + ':' + key), function
     
 def encrypt(plaintext, key, function, mode_of_operation=xor_with_key, 
@@ -179,7 +202,7 @@ def decrypt(ciphertext, key, function, block_size, mode_of_operation=xor_with_ke
          key, function) = mode_of_operation(plaintext_block, ciphertext_block, 
                                             key, function)
                                           
-        plaintext_block = brute_force(ciphertext_block, function, test_bytes, key)
+        plaintext_block = brute_force(ciphertext_block, function, test_bytes, post_key=key)
         plaintext += plaintext_block
         
         (plaintext_block, ciphertext_block,
@@ -200,7 +223,7 @@ def split_secret(secret, piece_count, function):
     return pieces, function(secret), piece_size
 
 def recover_secret_fragment(_hash, iv, piece_size, function=SHA256):
-    return brute_force(_hash, function, [RANGE_256 for x in xrange(piece_size)], iv) 
+    return brute_force(_hash, function, [RANGE_256 for x in xrange(piece_size)], post_key=iv) 
 
 def recover_secret_from_fragments(master_secret, available_pieces, shares, 
                                   last_share_size, function=SHA256):
@@ -214,7 +237,7 @@ def recover_secret_from_fragments(master_secret, available_pieces, shares,
     if fragment_index != shares:
         guesses.extend((RANGE_256 for count in range(last_share_size)))
   #  print "Recovering secret from fragments with guesses: ", guesses
-    return brute_force(master_secret, function, guesses, '')
+    return brute_force(master_secret, function, guesses)
     
 def create_password_recovery(function, trapdoor_information_size=16, password='',
                              password_prompt="Please enter the password to create a recovery hash: "):
@@ -239,7 +262,7 @@ def recover_password(recovery_hash, trapdoor_information, function=SHA256,
         else:
             test_characters.append([character])
     
-    return brute_force(recovery_hash, function, test_characters, trapdoor_information)
+    return brute_force(recovery_hash, function, test_characters, post_key=trapdoor_information)
                       
 def test_password_recovery():
     test_password = "This is a test"
@@ -249,7 +272,7 @@ def test_password_recovery():
         
 def test_split_secret():
     secret = "This is a test. " * 2    
-    shares = 16
+    shares = 31
     pieces, master_secret, piece_size = split_secret(secret, shares, SHA256)
     
     recovered_pieces = []
@@ -259,9 +282,9 @@ def test_split_secret():
     _secret = ''.join((item[1] for item in recovered_pieces))
     
     last_share_size = len(secret) % (shares - 1)
-    #last_index, last_hash, last_iv = pieces[shares - 1]
-    #_secret += recover_secret_fragment(last_hash, last_iv, len(secret) % (shares - 1))
-    #assert _secret == secret 
+    last_index, last_hash, last_iv = pieces[shares - 1]
+    _secret += recover_secret_fragment(last_hash, last_iv, len(secret) % (shares - 1))
+    assert _secret == secret 
     
     # attempt to recover secret without last block
     recovered_secret = recover_secret_from_fragments(master_secret, recovered_pieces, 
@@ -320,8 +343,8 @@ def test_validity():
 if __name__ == "__main__":
     #test_password_recovery()
     test_split_secret()
-    #test_encrypt_decrypt()    
-    #test_challenge()
+    test_encrypt_decrypt()    
+    test_challenge()
     #test_time()
    # test_validity()
     
