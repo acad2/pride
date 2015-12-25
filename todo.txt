@@ -29,6 +29,7 @@ history from storing hashes of shared secrets?
 # put a named version in the comments
 
 # obfuscation: enumerate for loop that don't require enumeration
+# obfuscation: load names that are not used for anything
 
 # unused names that are returned can be optimized into magic expressions
 # by the compiler, i.e.:

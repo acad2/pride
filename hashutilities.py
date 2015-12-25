@@ -58,31 +58,57 @@ def _xor(input_one, input_two):
 def generate_challenge(key, mac_key, challenge_size=32, bytes_per_hash=1, 
                        hash_function="sha256", unencrypted_data='',
                        answer=bytes()):
+    """ Create a challenge that only the holder of key should be able to solve.
+        
+        mac_key is required to assure integrity and authenticity of the 
+        challenge to the client. 
+        
+        challenge_size is the total amount of data the client must crack.
+        A random challenge of challenge_size is generated, and separated into
+        challenge_size / bytes_per_hash subchallenges. The time taken to crack 
+        a single subchallenge is O(2**n) (? not sure!), where n is the number 
+        of bytes_per_hash. 
+        
+        hash_function is a string name of an algorithm available in the hashlib module
+        
+        unencrypted_data is an optional string of data to be packaged with the challenge.
+        The data is not kept confidential, but possesses integrity and authenticity
+        because of the message authentication code over the entire package.
+        
+        answer is an optional string, that when supplied, is used instead of a
+        random challenge. If supplied, the challenge_size argument has no effect. """        
     answer = answer or random._urandom(challenge_size)
     _hasher = getattr(hashlib, hash_function)
     function = lambda hash_input: _hasher(hash_input).digest()
-    challenge = encrypt(answer, key, function, bytes_per_hash=bytes_per_hash)
-    package = pack_data(challenge, unencrypted_data)
-    return (pack_data(generate_mac(mac_key, package, hash_function), package), 
+    challenge = encrypt(answer, key, function, input_block_size=bytes_per_hash)
+    package = pack_data(challenge, bytes_per_hash, unencrypted_data)
+    return (pack_data(generate_mac(mac_key, package, hash_function), hash_function, package), 
             answer)
     
-def solve_challenge(packed_challenge, key, mac_key, key_size=32, bytes_per_hash=1, 
-                    hash_function="sha256"):
-    mac, package = unpack_data(packed_challenge, 2)
+def solve_challenge(packed_challenge, key, mac_key):
+    """ Solve a challenge that was produced by generate_challenge with the
+        given key and mac_key. 
+        
+        Raises InvalidSignature in the event of a message authentication 
+        code mismatch. """
+    mac, hash_function, package = unpack_data(packed_challenge, 3)
     if verify_mac(mac_key, package, mac, hash_function):
-        challenge, unencrypted_data = unpack_data(package, 2)
+        challenge, bytes_per_hash, unencrypted_data = unpack_data(package, 3)
         _hasher = getattr(hashlib, hash_function)
         function = lambda hash_input: _hasher(hash_input).digest()
-        return decrypt(challenge, key, function, _hasher().digestsize, bytes_per_hash=bytes_per_hash), unencrypted_data
+        return (decrypt(challenge, key, function, _hasher().digestsize, 
+                        output_block_size=int(bytes_per_hash)), 
+                unencrypted_data)
     else:
         raise InvalidSignature("Message authentication code mismatch")
         
-def generate_padding(key, hash_size, function):
+def generate_padding(key, byte_length, function):
+    """ Return padding of byte_length, generated from function and key """    
     key_padding = ''
     key_size = len(key)
-    while key_size + len(key_padding) < hash_size:
+    while key_size + len(key_padding) < byte_length:
         key_padding += function(key_padding + ':' + key)
-    return key_padding
+    return key_padding[:byte_length]
     
 def brute_force(output, function, test_bytes, pre_key='', post_key=''):
     """ Attempt to find the input to function that produced output.
@@ -100,13 +126,17 @@ def brute_force(output, function, test_bytes, pre_key='', post_key=''):
         Test function input is a concatenation of (pre_key | guess | post_key).
         
         Returns bytes of the permutation that produced output; Only the cracked
-        bytes are returned, not the concatenation of the keys with the guess."""        
+        bytes are returned, not the concatenation of the keys with the guess.
+        
+        Raises ValueError if no combination of input products results in the correct
+        output; This can be caused by incorrect pre_key/post_key information, or 
+        incorrectly configured test_bytes. """        
     for permutation in itertools.product(*test_bytes):
         #print "Guessing: ", ''.join(permutation)
         if function(pre_key + ''.join(permutation) + post_key) == output:
             return ''.join(permutation)
     else:           
-        raise ValueError("Unable to recover bytes from hash")      
+        raise ValueError("Unable to recover input for given output with supplied arguments")      
 
 def identity_mode(plaintext_block, ciphertext_block, key, function):
     """ A do-nothing mode of operation/key rotation function.
@@ -116,9 +146,9 @@ def identity_mode(plaintext_block, ciphertext_block, key, function):
     return plaintext_block, ciphertext_block, key, function
     
 def xor_with_key(plaintext_block, ciphertext_block, key, function):
-    """ Xor the key with "ciphertext" (which in this case is hash output)
-        If the key is not long enough to xor with the ciphertext,
-        then it is padded with additional bytes generated from the key
+    """ Xors key with ciphertext_block. If the key is not long enough 
+        to xor with the ciphertext, then it is padded with additional
+        bytes generated from the key.
         
         Net effect(s): 
         
@@ -129,12 +159,12 @@ def xor_with_key(plaintext_block, ciphertext_block, key, function):
         padded_key = key + generate_padding(key, ciphertext_size, function)
     else:
         padded_key = key
-    ciphertext_block = _xor(ciphertext_block, padded_key[:ciphertext_size])
+    ciphertext_block = _xor(ciphertext_block, padded_key)
     return plaintext_block, ciphertext_block, key, function
     
 def all_or_nothing(plaintext_block, ciphertext_block, key, function):
-    """ Update the key with the previous plaintext. In order to derive the key
-        for the next round, the previous plaintext must be obtained. 
+    """ Update the key with the previous plaintext_block. In order to derive 
+        the key for the next round, the previous plaintext must be obtained. 
         
         Net effect(s): 
             
@@ -152,13 +182,13 @@ def all_or_nothing(plaintext_block, ciphertext_block, key, function):
     return plaintext_block, ciphertext_block, function(plaintext_block + ':' + key), function
     
 def encrypt(plaintext, key, function, mode_of_operation=xor_with_key, 
-            key_rotation=all_or_nothing, bytes_per_hash=1): 
+            key_rotation=all_or_nothing, input_block_size=1): 
     """ An encryption function with an associated work factor. Returns a
         ciphertext encrypted under key. 
         
-        The bytes_per_hash function adjusts two factors: First, by a smaller
-        amount, as bytes_per_hash increases, generating the challenge tends
-        to take less time. Second, as bytes_per_hash increases, solving the
+        The input_block_size adjusts two factors: First, by a smaller
+        amount, as input_block_size increases, generating the challenge tends
+        to take less time. Second, as input_block_size increases, solving the
         challenge tends to take significantly more time.
         
         As an example, consider a server that requires proof of work with
@@ -169,14 +199,16 @@ def encrypt(plaintext, key, function, mode_of_operation=xor_with_key,
         an actual reduction in traffic, as clients cannot effectively make
         additional requests until the current challenge is solved.
 
-        Note that the ciphertext is necessarily significantly larger then the 
-        plaintext. This limits practicality of this form of encryption mostly
-        to proof of work/time released schemes."""
-    if len(plaintext) % bytes_per_hash:
-        raise ValueError("Plaintext length not a multiple of bytes_per_hash")
+        Note that output block size is determined implicitly by the function used,
+        and is not otherwise configurable.
+        
+        As a result, when used with hash functions, ciphertext is necessarily
+        significantly larger then the input plaintext."""
+    if len(plaintext) % input_block_size:
+        raise ValueError("Plaintext length not a multiple of input_block_size")
     ciphertext = ''           
     
-    for plaintext_block in slide(plaintext, bytes_per_hash):
+    for plaintext_block in slide(plaintext, input_block_size):
         ciphertext_block = function(plaintext_block + key) 
         (plaintext_block, ciphertext_block, 
          key, function) = mode_of_operation(plaintext_block, ciphertext_block, key, function)
@@ -187,17 +219,18 @@ def encrypt(plaintext, key, function, mode_of_operation=xor_with_key,
          key, function) = key_rotation(plaintext_block, ciphertext_block, key, function)
     return ciphertext
     
-def decrypt(ciphertext, key, function, block_size, mode_of_operation=xor_with_key, 
-            key_rotation=all_or_nothing, bytes_per_hash=1):
+def decrypt(ciphertext, key, function, input_block_size, 
+            mode_of_operation=xor_with_key, key_rotation=all_or_nothing, 
+            output_block_size=1):
     """ Decrypt the ciphertext hash chain as produced by encrypt. The amount
         of work and therefore time taken to recover the plaintext increases
-        dramatically as bytes_per_hash is incremented. The bytes_per_hash
+        dramatically as output_block_size is incremented. The output_block_size
         argument must be set to the same value used by the server or the
         decryption will fail. """
-    test_bytes = [RANGE_256 for count in range(bytes_per_hash)]
+    test_bytes = [RANGE_256 for count in range(output_block_size)]
     plaintext = plaintext_block = ''
 
-    for ciphertext_block in slide(ciphertext, block_size):
+    for ciphertext_block in slide(ciphertext, input_block_size):
         (plaintext_block, ciphertext_block, 
          key, function) = mode_of_operation(plaintext_block, ciphertext_block, 
                                             key, function)
@@ -209,7 +242,19 @@ def decrypt(ciphertext, key, function, block_size, mode_of_operation=xor_with_ke
          key, function) = key_rotation(plaintext_block, ciphertext_block, key, function)            
     return plaintext   
     
-def split_secret(secret, piece_count, function):    
+def split_secret(secret, piece_count, function):
+    """ Splits secret into piece_count separate challenges, based on cracking a
+        given output function from function.
+        
+        The secret can be recovered by a threshold quantity of pieces, which is
+        determined by the size of the secret and the number/weight of pieces. 
+        
+        Challenge weight is calculated as:
+            
+            piece_size, last_challenge_size = divmod(len(secret), piece_count - 1)
+            
+        Note that if the length of secret is not evenly divisible by piece_count,
+        then the last challenge will be of weight len(secret) % (piece_count - 1). """
     piece_size, remainder = divmod(len(secret), piece_count - 1)    
     pieces = []
     for index in range(piece_count - 1):
@@ -223,30 +268,51 @@ def split_secret(secret, piece_count, function):
     return pieces, function(secret), piece_size
 
 def recover_secret_fragment(_hash, iv, piece_size, function=SHA256):
+    """ Recovers a fragment produced by split_secret """
     return brute_force(_hash, function, [RANGE_256 for x in xrange(piece_size)], post_key=iv) 
 
-def recover_secret_from_fragments(master_secret, available_pieces, shares, 
-                                  last_share_size, function=SHA256):
-    guesses = [RANGE_256 for count in range(shares - 1)]
+def recover_secret_from_fragments(master_challenge, available_pieces, share_count, 
+                                  secret_size, function=SHA256):
+    """ Recover the secret that was split into share_count shares by split_secret.
+        master_challenge is the function output of the secret to be recovered.
+        available_pieces is an iterable of (fragment_index, fragment) pairs.
+        secret_size is the length of the secret to be recovered.
+        function is the function used to create the shares. """
+    guesses = [RANGE_256 for count in range(share_count - 1)]
     
-    #_secret += recover_secret_fragment(last_hash, last_iv, len(secret) % (shares - 1))
-    guesses.append
     for fragment_index, fragment in sorted(available_pieces, key=operator.itemgetter(0)):
         guesses[fragment_index] = [fragment]
-    
-    if fragment_index != shares:
-        guesses.extend((RANGE_256 for count in range(last_share_size)))
-  #  print "Recovering secret from fragments with guesses: ", guesses
-    return brute_force(master_secret, function, guesses)
+        
+    if fragment_index != share_count:
+        guesses.extend((RANGE_256 for count in range(secret_size % (share_count - 1))))
+        
+    return brute_force(master_challenge, function, guesses)
     
 def create_password_recovery(function, trapdoor_information_size=16, password='',
                              password_prompt="Please enter the password to create a recovery hash: "):
+    """ Create a password recovery hash. 
+        Returns: function(password + trapdoor_information)
+        
+        Presuming the user remembers enough of the password hashed this way, 
+        they should be able to recover the password given the hash and the
+        trapdoor information. """
     trapdoor_information = random._urandom(trapdoor_information_size)
     return (function((password or getpass.getpass(password_prompt)) + trapdoor_information), 
             trapdoor_information)
             
 def recover_password(recovery_hash, trapdoor_information, function=SHA256,
                      character_set=PRINTABLE_ASCII):
+    """ Attempt to recover a password from the hash and information created
+        by create_password_recovery. 
+        
+        function must be the same function used to create the hash
+        character_set defaults to printable ascii characters only, but can
+        be modified as needed to support arbitrary characters. character_set 
+        determines what characters are guessed when brute forcing unknown characters.
+        
+        Returns the recovered password on success. Recovery time scales with the number
+        of correctly remembered characters. Note that if enough characters
+        are not remembered accurately, recovery may take a (prohibitively) long time. """
     print "Welcome to the password recovery program"
     print "First, please enter your password, as best as you can remember."
     print "If you cannot remember a character, supply your best guess"
@@ -288,7 +354,7 @@ def test_split_secret():
     
     # attempt to recover secret without last block
     recovered_secret = recover_secret_from_fragments(master_secret, recovered_pieces, 
-                                                     shares, last_share_size)
+                                                     shares, len(secret))
     assert recovered_secret == secret
     
 def test_encrypt_decrypt():
