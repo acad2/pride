@@ -149,41 +149,41 @@ class Parser(object):
         #print "# Trying to find: {} ".format(symbol), start_index, len(source)#, source[source_index:]
         while symbol in source[source_index:] and quantity > 0:  
             start = source.index(symbol, source_index)
-        #    print "Found start of symbol: ", start
+    #        print "Found start of symbol: ", start
             for string_range in strings:
                 if start in string_range:
-        #            print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
+     #               print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
                     source_index += string_range[-1]
                     break
             else: # did not break, symbol is not inside a quote
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
-        #        print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
+     #           print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
                 is_back_delimited = (start - 1 >= 0 and source[start-1] in delimiters or start == 0)
                 is_forward_delimited = (end == source_length or source[end] in delimiters)
                 if back_delimit:
                     if is_back_delimited:
                         if forward_delimit:
                             if is_forward_delimited:
-        #                        print "Found forward/back delimited ", symbol, (start, end)
+    #                            print "Found forward/back delimited ", symbol, (start, end)
                                 quantity -= 1
                                 indices.append((start, end))
                         else:
-        #                    print "Found back delimited {}".format(symbol), (start, end)
+    #                        print "Found back delimited {}".format(symbol), (start, end)
                             quantity -= 1
                             indices.append((start, end))                
                 elif forward_delimit:
                     if is_forward_delimited:
-        #                print "Found forward delimited ", symbol, (start, end)
+    #                    print "Found forward delimited ", symbol, (start, end)
                         quantity -= 1
                         indices.append((start, end))
                 elif not (back_delimit or forward_delimit):
-        #            print "Found non delimited ", symbol, (start, end)
+    #                print "Found non delimited ", symbol, (start, end)
                     quantity -= 1
                     indices.append((start, end))
-        #        else:
-        #            print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
-        #            print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
+    #            else:
+    #                print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
+    #                print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
                 source_index = end
     #        print "Incrementing index by {} to {}".format(end, source_index)
         return indices
@@ -408,9 +408,64 @@ class Preprocess_Decorator(Preprocessor):
             
         return source
             
+  
+class Export_Statement(Preprocessor):
+    """ Enables the keyword syntax:
+        
+        export module_name to fully.qualified.domain.name [as name]
+        
+        Executes the module specified by module name on the remote host running
+        at the address obtained by socket.gethostbyname(fully.qualified.domain.name).
+        The remote host must be running pride, the network must be configured
+        appropriately, and a Shell connection must be made beforehand. 
+        
+        If the optional as clause is included, the module will be saved 
+        under the name specified instead of ran. """
+        
+    def handle_source(self, source):
+        export_length = len("export")        
+        while "export" in source:
+            index = Parser.find_symbol("export", source, True, True)
+            if not index:
+                break
+            start, end = index[0]            
+            try:
+                if source[start-1] == "_":
+                    break
+            except IndexError:
+                pass
                 
+            for end_of_line, character in enumerate(source[start:]):
+                if character == "\n":
+                    has_newline = True
+                    break
+            else:
+                has_newline = False
+                
+            # transforms export module_name to fully.qualified.domain.name as name to:
+            # export module_name, fully.qualified.domain.name, name \n
+            # _export(module_name, fully.qualified.domain.name, name)\n
+            line = source[start:start + end_of_line + 1]
+           # print line
+            if has_newline:
+                newline_location = line.index("\n")
+            else:
+                newline_location = None
+                
+            arguments = line[export_length + 1:newline_location].replace(' to', '').replace(' as', '').strip().split()
+            arguments = ", ".join("'" + symbol + "'" for symbol in arguments)
+            new_line = ('_' + line[:export_length] + '(' + arguments + ")" + 
+                        ("\n" if has_newline else ''))
+            #print "Resolved keyword: ", source[:-1]
+            source = source[:start] + new_line + source[start + end_of_line + 1:]
+            print "Created new source: ", source
+        return source
+        
+        
 class Dollar_Sign_Directive(Preprocessor):
-    """ Replaces '$' directive with pride.objects lookup. This
+    """ Currently NOT used. May become deprcated.
+    
+        Replaces '$' directive with pride.objects lookup. This
         facilitates the syntatic sugar $Component, which is
         translated to pride.objects['Component']. """
         
@@ -419,7 +474,9 @@ class Dollar_Sign_Directive(Preprocessor):
         
 
 class Dereference_Macro(Preprocessor):
-    """ Facilitates the macro for dereferencing instance names. Source
+    """ Currently NOT used. May become deprecated.
+    
+        Facilitates the macro for dereferencing instance names. Source
         handled by this object will have '->' lookup chains resolved to
         a name resolution function with the instance names as arguments.
         Example:

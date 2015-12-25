@@ -24,7 +24,7 @@ class Environment(object):
     """ Stores global state for the process. This includes reference
         reference information, most importantly the objects dictionary. """
     fields = ("objects", "instance_count", "instance_name",
-              "parents", "references_to", "creation_count")
+              "parents", "references_to", "creation_count", "caller")
 
     def __init__(self):
         super(Environment, self).__init__()
@@ -190,8 +190,12 @@ class Instruction(object):
             The instruction will be executed in priority seconds.
             An optional callback function can be provided if the return value
             of the instruction is needed. """
-        heapq.heappush(environment.Instructions,
-                      (timer_function() + priority, self, callback))
+        key = (timer_function() + priority, self, callback)
+        try:
+            environment.caller[self.component_name].append(key)
+        except KeyError:
+            environment.caller[self.component_name] = [key]
+        heapq.heappush(environment.Instructions, key)
 
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,

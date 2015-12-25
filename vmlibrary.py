@@ -85,9 +85,9 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        pride.environment.Instructions = [(time, instance, callback) for time, instance, callback in
-                                          pride.environment.Instructions if instance is not self]
-        pride.environment.Instructions.sort()                    
+        for entry in pride.environment.caller.pop(self.instance_name):
+            pride.environment.Instructions.remove(entry)
+        pride.environment.Instructions.sort()
         super(Process, self).delete()
         
     def __getstate__(self):
@@ -129,6 +129,7 @@ class Processor(Process):
     def run(self):
         self._return = {}
         instructions = pride.environment.Instructions
+        caller = pride.environment.caller
         objects = pride.objects
                 
         sleep = time.sleep
@@ -146,12 +147,13 @@ class Processor(Process):
         format_traceback = traceback.format_exc
                
         while instructions and self.running:            
-            execute_at, instruction, callback = heappop(instructions)
+            key = execute_at, instruction, callback = heappop(instructions)
+            component_name = instruction.component_name
+            caller[component_name].remove(key)                  
             try:
-                call = _getattr(objects[instruction.component_name],
-                                instruction.method)
+                call = _getattr(objects[component_name], instruction.method)
             except KeyError:
-                error = "'{}' component does not exist".format(instruction.component_name)                        
+                error = "'{}' component does not exist".format(component_name)                        
                 component_alert((str(instruction), error)) 
                 continue
             except AttributeError as error:
@@ -168,9 +170,7 @@ class Processor(Process):
             except BaseException as result:
                 if type(result) in reraise_exceptions:
                     self.running = False
-                exception_alert((instruction.component_name,
-                                 instruction.method,
-                                 format_traceback()))
+                exception_alert((component_name, instruction.method, format_traceback()))
             else:
                 if callback:
                     callback(result)

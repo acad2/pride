@@ -81,14 +81,14 @@ def update(instance_name):
 #pride.gui.enable()
 #life = create("pride.Life.Game_Of_Life")
 
-#for x in xrange(1000): 
-#    rtt = create("pride.networkutilities.RTT_Test", host_info=("192.168.1.254", 80))   
-#
+for x in xrange(1000): 
+    rtt = create("pride.networkutilities.RTT_Test", host_info=("192.168.1.254", 80))   
+
 #Instruction("->Python->Shell", "handle_input", "import gc, pprint\nfor item in gc.get_referrers(rtt):\n\tprint\n\tpprint.pprint(item)").execute(priority=5)
     
-for x in xrange(10000): 
-    x = create("pride.shell.Command_Line")
-    x.delete()
+#for x in xrange(1000): 
+#    x = create("pride.shell.Command_Line")
+#    x.delete()
     
 #import pride.interpreter
 #m = pride.interpreter.Python()
