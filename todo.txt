@@ -2,7 +2,7 @@
 # an instance would take on the properties of it's parents as well as it's
 # base classes. It's like attribute inheritance at an instance level
 
-# just because you can doesn't mean you should!
+# ^ just because you can doesn't mean you should!
 
 #The style dictated by the modules design lends itself to a well pronounced
 #entry point when developing new components. 
@@ -10,7 +10,6 @@
 #It helps to view all problems as the different variations of the same problem.
 #Some of the strategies from the understood problems may overlap with the
 #current ones 
-#be used 
 
 # find patterns similar to a given name that may be typos of it
 
@@ -26,11 +25,7 @@ history from storing hashes of shared secrets?
 # cryptographically secure rate limiting based on session calculated from proof of work cracking hashes?
 
 # no "magic expressions" in source code, i.e. expressions that unnamed/unassigned
-# put a named version in the comments
-
-# obfuscation: enumerate for loop that don't require enumeration
-# obfuscation: load names that are not used for anything
-
+# put a named version in the comments -or-
 # unused names that are returned can be optimized into magic expressions
 # by the compiler, i.e.:
     #memory = get_attribute("memory")
@@ -52,12 +47,11 @@ known bugs:
     usage of startup_components and accessing parent_name in __init__ after super will return self as parent
     
 things that could be done:
-    improve json serialization
+    improve struct serialization
     preemptive multiprocessing?
     develop the gui
-    improve executable; compiling broken - stuck at libpython27_a
-    improve authentication service - scrutiny for design pitfalls and errors
-    system restore   
+    improve executable
+    improve authentication2 - scrutiny for design pitfalls and errors
     integrate ssl contexts into networkssl    
     pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    
     class update feature
@@ -75,7 +69,7 @@ security related:
     
     - secure serialization format
         - json implementation already started
-        - struct implementation?        
+        - struct implementation already started        
         
 gui design:
     - need cool looking themes!
@@ -109,7 +103,10 @@ source code manipulation:
           limited to one module like current best known tool
         - modify + - / *... etc to use magic method calls instead of operator expressions. 
           The magic method name could be obfuscated?
-
+        - enumerate for loop that don't require enumeration
+        - store/load names that are not used for anything
+        
+        
 scratch space
 ------------------          
 class System_Restore(mpre.vmlibrary.Process):

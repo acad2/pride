@@ -56,8 +56,7 @@ def packetize_recv(recv):
         
 class Session(pride.base.Base):
     """ Maintains session id information and prepares outgoing requests """
-    defaults = {"id" : '0', "host_info" : tuple(), 
-                "requester_type" : "pride.rpc.Rpc_Client"}
+    defaults = {"requester_type" : "pride.rpc.Rpc_Client"}
     
     def _get_id(self):
         return self._id
@@ -75,7 +74,7 @@ class Session(pride.base.Base):
         super(Session, self).__init__(**kwargs)
         self.id = session_id
         self.host_info = host_info
-            
+                
     def execute(self, instruction, callback):
         """ Prepare instruction as a request to be sent by an Rpc_Client. A 
             request consists of session id information (size and id#), 
@@ -135,8 +134,7 @@ class Rpc_Server(pride.networkssl.SSL_Server):
     """ Creates Rpc_Sockets for handling rpc requests. By default, this
         server runs on the localhost only, meaning it is not accessible 
         from the network. """
-    defaults = {"port" : 40022,
-                "interface" : "localhost",
+    defaults = {"port" : 40022, "interface" : "localhost",
                 "Tcp_Socket_type" : "pride.rpc.Rpc_Socket"}
     
     

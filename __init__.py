@@ -24,7 +24,7 @@ class Environment(object):
     """ Stores global state for the process. This includes reference
         reference information, most importantly the objects dictionary. """
     fields = ("objects", "instance_count", "instance_name",
-              "instance_count", "parents", "references_to", "creation_count")
+              "parents", "references_to", "creation_count")
 
     def __init__(self):
         super(Environment, self).__init__()

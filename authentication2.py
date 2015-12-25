@@ -195,7 +195,7 @@ class Authenticated_Service2(pride.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Service2, self).__init__(**kwargs)
         self._load_database()    
-        self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
+        self.hkdf = self.invoke("pride.security.hkdf_expand", self.hash_function,
                                 length=self.authentication_table_size,
                                 info=self.hkdf_table_update_info_string)     
         
@@ -399,10 +399,7 @@ class Authenticated_Client2(pride.base.Base):
         name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
-        
-        self.hkdf = self.create("pride.security.hkdf_expand", self.hash_function,
-                                length=self.authentication_table_size,
-                                info=self.hkdf_table_update_info_string)                        
+                                       
         if self.auto_login:
             self.alert("Auto logging in", level=self.verbosity["auto_login"])
             self.login()        
@@ -475,7 +472,11 @@ class Authenticated_Client2(pride.base.Base):
             shared_key = _file.read(self.shared_key_size)
             new_key, login_message = pride.security.decrypt(encrypted_key, shared_key)
             self.shared_key = new_key
-            new_table = self.hkdf.derive(auth_table + ':' + new_key)            
+            hkdf = self.invoke("pride.security.hkdf_expand", self.hash_function,
+                                length=self.authentication_table_size,
+                                info=self.hkdf_table_update_info_string) 
+                                
+            new_table = hkdf.derive(auth_table + ':' + new_key)            
             _file.truncate(0)
             _file.seek(0)
             _file.write(new_table)

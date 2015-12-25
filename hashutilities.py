@@ -4,13 +4,24 @@ import hmac
 import itertools
 import random
 import hashlib
+import functools
 
 RANGE_256 = tuple([chr(x) for x in range(256)])
 PRINTABLE_ASCII = tuple(chr(x) for x in xrange(32, 127))
-SHA256 = lambda hash_input: hashlib.sha256(hash_input).digest()
 
 class InvalidSignature(BaseException): pass
 
+def function(key, data): pass
+
+def HMAC(key, data, algorithm="sha256"):
+    return hmac.new(key, data, getattr(hashlib, algorithm)).digest()
+    
+def hmac_factory(algorithm):
+    return functools.partial(HMAC, algorithm=algorithm)
+    
+HMAC_SHA256 = hmac_factory("sha256")    
+HMAC_SHA512 = hmac_factory("sha512")
+    
 def pack_data(*args):
     """ Pack arguments into a stream, prefixed by size headers.
         Resulting bytestream takes the form:
@@ -78,9 +89,7 @@ def generate_challenge(key, mac_key, challenge_size=32, bytes_per_hash=1,
         answer is an optional string, that when supplied, is used instead of a
         random challenge. If supplied, the challenge_size argument has no effect. """        
     answer = answer or random._urandom(challenge_size)
-    _hasher = getattr(hashlib, hash_function)
-    function = lambda hash_input: _hasher(hash_input).digest()
-    challenge = encrypt(answer, key, function, input_block_size=bytes_per_hash)
+    challenge = encrypt(answer, key, hmac_factory(hash_function), input_block_size=bytes_per_hash)
     package = pack_data(challenge, bytes_per_hash, unencrypted_data)
     return (pack_data(generate_mac(mac_key, package, hash_function), hash_function, package), 
             answer)
@@ -94,9 +103,9 @@ def solve_challenge(packed_challenge, key, mac_key):
     mac, hash_function, package = unpack_data(packed_challenge, 3)
     if verify_mac(mac_key, package, mac, hash_function):
         challenge, bytes_per_hash, unencrypted_data = unpack_data(package, 3)
-        _hasher = getattr(hashlib, hash_function)
-        function = lambda hash_input: _hasher(hash_input).digest()
-        return (decrypt(challenge, key, function, _hasher().digestsize, 
+        
+        return (decrypt(challenge, key, hmac_factory(hash_function),
+                        getattr(hashlib, hash_function)().digestsize, 
                         output_block_size=int(bytes_per_hash)), 
                 unencrypted_data)
     else:
@@ -107,10 +116,10 @@ def generate_padding(key, byte_length, function):
     key_padding = ''
     key_size = len(key)
     while key_size + len(key_padding) < byte_length:
-        key_padding += function(key_padding + ':' + key)
+        key_padding += function(key, key_padding)
     return key_padding[:byte_length]
     
-def brute_force(output, function, test_bytes, pre_key='', post_key=''):
+def brute_force(output, function, test_bytes, key, pre_key='', post_key=''):
     """ Attempt to find the input to function that produced output.
         
         test_bytes is an iterable of iterables; Each iterable contains the
@@ -133,7 +142,7 @@ def brute_force(output, function, test_bytes, pre_key='', post_key=''):
         incorrectly configured test_bytes. """        
     for permutation in itertools.product(*test_bytes):
         #print "Guessing: ", ''.join(permutation)
-        if function(pre_key + ''.join(permutation) + post_key) == output:
+        if function(key, pre_key + ''.join(permutation) + post_key) == output:
             return ''.join(permutation)
     else:           
         raise ValueError("Unable to recover input for given output with supplied arguments")      
@@ -179,7 +188,7 @@ def all_or_nothing(plaintext_block, ciphertext_block, key, function):
         require guessing the first plaintext bytes and the second at the same time,
         resulting in increased complexity and therefore time slowdown, potentially
         defeating any benefits of parallelism. """
-    return plaintext_block, ciphertext_block, function(plaintext_block + ':' + key), function
+    return plaintext_block, ciphertext_block, function(key, plaintext_block), function
     
 def encrypt(plaintext, key, function, mode_of_operation=xor_with_key, 
             key_rotation=all_or_nothing, input_block_size=1): 
@@ -209,7 +218,7 @@ def encrypt(plaintext, key, function, mode_of_operation=xor_with_key,
     ciphertext = ''           
     
     for plaintext_block in slide(plaintext, input_block_size):
-        ciphertext_block = function(plaintext_block + key) 
+        ciphertext_block = function(key, plaintext_block) 
         (plaintext_block, ciphertext_block, 
          key, function) = mode_of_operation(plaintext_block, ciphertext_block, key, function)
         
@@ -235,7 +244,7 @@ def decrypt(ciphertext, key, function, input_block_size,
          key, function) = mode_of_operation(plaintext_block, ciphertext_block, 
                                             key, function)
                                           
-        plaintext_block = brute_force(ciphertext_block, function, test_bytes, post_key=key)
+        plaintext_block = brute_force(ciphertext_block, function, test_bytes, key)
         plaintext += plaintext_block
         
         (plaintext_block, ciphertext_block,
@@ -260,19 +269,19 @@ def split_secret(secret, piece_count, function):
     for index in range(piece_count - 1):
         piece = secret[index * piece_size:(index + 1) * piece_size]
         challenge_iv = random._urandom(16)
-        hash_output = function(piece + challenge_iv)
+        hash_output = function(challenge_iv, piece)
         pieces.append((index, hash_output, challenge_iv))
     last_iv = random._urandom(16)
     #print "Creating last block: ", -remainder
-    pieces.append((index + 1, function(secret[-remainder:] + last_iv), last_iv))
-    return pieces, function(secret), piece_size
+    pieces.append((index + 1, function(last_iv, secret[-remainder:]), last_iv))
+    return pieces, function('', secret), piece_size
 
-def recover_secret_fragment(_hash, iv, piece_size, function=SHA256):
+def recover_secret_fragment(_hash, iv, piece_size, function=HMAC_SHA256):
     """ Recovers a fragment produced by split_secret """
-    return brute_force(_hash, function, [RANGE_256 for x in xrange(piece_size)], post_key=iv) 
+    return brute_force(_hash, function, [RANGE_256 for x in xrange(piece_size)], iv) 
 
 def recover_secret_from_fragments(master_challenge, available_pieces, share_count, 
-                                  secret_size, function=SHA256):
+                                  secret_size, function=HMAC_SHA256):
     """ Recover the secret that was split into share_count shares by split_secret.
         master_challenge is the function output of the secret to be recovered.
         available_pieces is an iterable of (fragment_index, fragment) pairs.
@@ -286,7 +295,7 @@ def recover_secret_from_fragments(master_challenge, available_pieces, share_coun
     if fragment_index != share_count:
         guesses.extend((RANGE_256 for count in range(secret_size % (share_count - 1))))
         
-    return brute_force(master_challenge, function, guesses)
+    return brute_force(master_challenge, function, guesses, '')
     
 def create_password_recovery(function, trapdoor_information_size=16, password='',
                              password_prompt="Please enter the password to create a recovery hash: "):
@@ -297,10 +306,11 @@ def create_password_recovery(function, trapdoor_information_size=16, password=''
         they should be able to recover the password given the hash and the
         trapdoor information. """
     trapdoor_information = random._urandom(trapdoor_information_size)
-    return (function((password or getpass.getpass(password_prompt)) + trapdoor_information), 
+    return (function(trapdoor_information, 
+                     password or getpass.getpass(password_prompt)), 
             trapdoor_information)
             
-def recover_password(recovery_hash, trapdoor_information, function=SHA256,
+def recover_password(recovery_hash, trapdoor_information, function=HMAC_SHA256,
                      character_set=PRINTABLE_ASCII):
     """ Attempt to recover a password from the hash and information created
         by create_password_recovery. 
@@ -332,14 +342,14 @@ def recover_password(recovery_hash, trapdoor_information, function=SHA256,
                       
 def test_password_recovery():
     test_password = "This is a test"
-    recovery_hash, iv = create_password_recovery(SHA256, password=test_password)
+    recovery_hash, iv = create_password_recovery(HMAC_SHA256, password=test_password)
     recovered_password = recover_password(recovery_hash, iv)
     assert recovered_password == test_password
         
 def test_split_secret():
     secret = "This is a test. " * 2    
     shares = 31
-    pieces, master_secret, piece_size = split_secret(secret, shares, SHA256)
+    pieces, master_secret, piece_size = split_secret(secret, shares, HMAC_SHA256)
     
     recovered_pieces = []
     for index, _hash, iv in pieces[:shares - 1]:
@@ -360,8 +370,8 @@ def test_split_secret():
 def test_encrypt_decrypt():
     key = random._urandom(32)
     message = random._urandom(32)    
-    ciphertext = encrypt(message, key, SHA256)
-    plaintext = decrypt(ciphertext, key, SHA256, 32)
+    ciphertext = encrypt(message, key, HMAC_SHA256)
+    plaintext = decrypt(ciphertext, key, HMAC_SHA256, 32)
     assert plaintext == message, plaintext
     
 def test_challenge():
@@ -394,7 +404,7 @@ def test_time():
                                                unencrypted_data=unencrypted_data,
                                                challenge_size=challenge_size)
         print ("Time to solve challenge with {} bytes per hash: ".format(bytes_per_hash),
-               Timed(solve_challenge, 1)(challenge, key, mac_key, bytes_per_hash=bytes_per_hash))
+               Timed(solve_challenge, 1)(challenge, key, mac_key))
         
 def test_validity():
     key = random._urandom(32)
@@ -403,7 +413,7 @@ def test_validity():
     for x in xrange(100):
         challenge, answer = generate_challenge(key, mac_key, unencrypted_data=unencrypted_data,
                                                bytes_per_hash=3)
-        _answer, data = solve_challenge(challenge, key, mac_key, bytes_per_hash=3, answer=answer)
+        _answer, data = solve_challenge(challenge, key, mac_key)
         assert _answer == answer
         
 if __name__ == "__main__":
@@ -411,6 +421,6 @@ if __name__ == "__main__":
     test_split_secret()
     test_encrypt_decrypt()    
     test_challenge()
-    #test_time()
+    test_time()
    # test_validity()
     

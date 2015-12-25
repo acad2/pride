@@ -82,11 +82,13 @@ def update(instance_name):
 #life = create("pride.Life.Game_Of_Life")
 
 #for x in xrange(1000): 
-#    rtt = create("pride.networkutilities.RTT_Test", target=("192.168.1.254", 80))   
-
-#for x in xrange(10000): 
-#    x = create("pride.shell.Command_Line")
-#    x.delete()
+#    rtt = create("pride.networkutilities.RTT_Test", host_info=("192.168.1.254", 80))   
+#
+#Instruction("->Python->Shell", "handle_input", "import gc, pprint\nfor item in gc.get_referrers(rtt):\n\tprint\n\tpprint.pprint(item)").execute(priority=5)
+    
+for x in xrange(10000): 
+    x = create("pride.shell.Command_Line")
+    x.delete()
     
 #import pride.interpreter
 #m = pride.interpreter.Python()
@@ -95,7 +97,7 @@ def update(instance_name):
 #l = pride.base.load(s) 
 
 import pride.gui
-pride.gui.enable()
+#pride.gui.enable()
 #$SDL_Window.create("pride.gui.cyvasse.Cyvasse")
 #objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #objects["SDL_Window"].create("pride.gui.widgetlibrary.Homescreen")
@@ -117,7 +119,7 @@ pride.gui.enable()
 #from rnltest import relative_name_lookup
 #server = relative_name_lookup("Python.Network.Rpc_Server")  
 #import objgraph
-#objgraph.show_refs([->"->Python"])
+#objgraph.show_refs(["->Python"])
 
 #ca = create("pride.catest.CA_Test")
 """

@@ -29,7 +29,7 @@ timer_function = timeit.default_timer
 class Process(pride.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
     
-        Create a logical process. Note that while Process objects
+        Create a virtual process. Note that while Process objects
         allow for the interface of target=function, the preferred usage
         is via subclassing.       
         
@@ -85,8 +85,9 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        if self._run_queued:
-            pride.objects["->Python->Processor"]._recently_deleted.add(self.instance_name)
+        pride.environment.Instructions = [(time, instance, callback) for time, instance, callback in
+                                          pride.environment.Instructions if instance is not self]
+        pride.environment.Instructions.sort()                    
         super(Process, self).delete()
         
     def __getstate__(self):
@@ -127,7 +128,6 @@ class Processor(Process):
     
     def run(self):
         self._return = {}
-        recently_deleted = self._recently_deleted = set()
         instructions = pride.environment.Instructions
         objects = pride.objects
                 
@@ -138,7 +138,7 @@ class Processor(Process):
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
-        component_alert = partial(alert, "{0}: {1}", level=self.verbosity["component_alert"])
+        component_alert = partial(alert, "{0}:\n    {1}", level=self.verbosity["component_alert"])
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
                                   level=self.verbosity["exception_alert"])
@@ -150,16 +150,14 @@ class Processor(Process):
             try:
                 call = _getattr(objects[instruction.component_name],
                                 instruction.method)
-            except component_errors as error:
-                component = instruction.component_name
-                if component in recently_deleted:
-                    recently_deleted.remove(component)
-                    continue
-                if isinstance(error, KeyError):
-                    error = "'{}' component does not exist".format(instruction.component_name)                        
+            except KeyError:
+                error = "'{}' component does not exist".format(instruction.component_name)                        
                 component_alert((str(instruction), error)) 
                 continue
-                    
+            except AttributeError as error:
+                component_alert((str(instruction), error))
+                continue
+                
             time_until = max(0, (execute_at - timer_function()))
             if time_until:
                 sleep(time_until)

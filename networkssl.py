@@ -60,10 +60,7 @@ class SSL_Client(pride.network.Tcp_Client):
         initiate data transfer; on_connect is used to start the
         ssl handshake"""
     defaults = SSL_DEFAULTS
-    
-    def __init__(self, **kwargs):        
-        super(SSL_Client, self).__init__(**kwargs)
-        
+
     def on_connect(self):
         super(SSL_Client, self).on_connect()
         try:
