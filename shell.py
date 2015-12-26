@@ -100,7 +100,7 @@ class Command_Line(pride.vmlibrary.Process):
         
         self._new_thread()  
         self.programs = self.programs or {}
-        self.set_default_program("python", ("->Python->Shell", "handle_input"), set_backup=True)
+        self.set_default_program("python", ("->User->Shell", "handle_input"), set_backup=True)
         
         for program in self.default_programs:
             self.create(program)
@@ -221,7 +221,7 @@ class Program(pride.base.Base):
   
     def __init__(self, **kwargs):
         super(Program, self).__init__(**kwargs)
-        command_line = objects["->Python->Command_Line"]
+        command_line = objects["->User->Command_Line"]
         
         if self.set_as_default:
             command_line.set_default(self.name, (self.instance_name, "handle_input"))
@@ -254,7 +254,7 @@ class Switch_Program(Program):
     defaults = {"name" : "switch"}
             
     def handle_input(self, input):
-        command_line = pride.objects["->Python->Command_Line"]
+        command_line = pride.objects["->User->Command_Line"]
         if not input:
             input = "__default"
         _input = input.strip()
@@ -340,7 +340,7 @@ class Matrix_Screensaver(Terminal_Screensaver):
         self.column += 1
         if self.column >= self.height:
             self.row = None            
-            objects["->Python->Command_Line"].clear()
+            objects["->User->Command_Line"].clear()
             
             
 class CA_Screensaver(Terminal_Screensaver):
@@ -368,7 +368,7 @@ class CA_Screensaver(Terminal_Screensaver):
             current_state = (_bytearray[index - 1], byte, _bytearray[(index + 1) % size])
             new_bytearray[index] = _state[current_state]
         self.bytearray = new_bytearray
-        objects["->Python->Command_Line"].clear()
+        objects["->User->Command_Line"].clear()
         sys.stdout.write(new_bytearray)            
         
         
@@ -426,7 +426,7 @@ class Wave_CAtest(Terminal_Screensaver):
                     
                 self.rows[new_y_coord][new_x_coord] = (x_magnitude, y_magnitude)
                 
-        objects["->Python->Command_Line"].clear()
+        objects["->User->Command_Line"].clear()
         def decide_symbol(number):
             if number[0] or number[1]:
                 return str(number[0]) + str(number[1])

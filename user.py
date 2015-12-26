@@ -34,7 +34,9 @@ class User(pride.base.Base):
                 # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
-                "salt_indexable" : False, "verifier_indexable" : False}
+                "salt_indexable" : False, "verifier_indexable" : False,
+                
+                "launcher_type" : "pride.interpreter.Python"}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "password_prompt")
@@ -58,8 +60,12 @@ class User(pride.base.Base):
         self._username = value
     username = property(_get_username, _set_username)
     
+    login_information = {("pride.interpreter.Shell", "localhost") : ("localhost", '')}
+    
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
+        python = self.invoke(self.launcher_type, parse_args=True)
+        
         login_success = self.encryption_key and self.mac_key and self.salt
         while not login_success:
             try:
@@ -70,6 +76,15 @@ class User(pride.base.Base):
                 continue
             else:
                 login_success = True
+                
+        #for host_info, credentials in self.login_information.items():
+        #    client_type, ip = host_info
+        #    username, password = credentials
+        #    self.create(client_type, ip=ip, username=username, password=password)
+        self.create("pride.shell.Command_Line")
+        python.start_machine()
+        self.alert("shutting down", level='v')
+        python.exit()
         
     def login(self):
         """ Attempt to login as username using a password. Upon success, the

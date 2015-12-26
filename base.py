@@ -63,6 +63,7 @@
     The instance_name can be used to reference the object from any scope, 
     as long as the component exists at runtime."""
 import operator
+import itertools
        
 import pride
 import pride.metaclass
@@ -191,18 +192,17 @@ class Base(object):
             defaults = self.defaults
             attributes.update(dict((key, value) for key, value in 
                                     command_line_args.items() if 
-                                    value != defaults[key]))  
-        if self.flags:
-            [setattr(self, attribute, value) for attribute, value in self.flags]
-        if self.mutable_defaults:
-            [setattr(self, attribute, value()) for attribute, value in self.mutable_defaults.items()]            
-        [setattr(self, attribute, value) for attribute, value in attributes.items()]
-
+                                    value != defaults[key]))        
+        for attribute, value in itertools.chain(self.flags, ((attribute, value()) for attribute, value in
+                                                              self.mutable_defaults.items()), attributes.items()):
+            setattr(self, attribute, value)
+            
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
                         component.instance_name) 
+            
         if self.required_attributes:
             for attribute in self.required_attributes:
                 try:

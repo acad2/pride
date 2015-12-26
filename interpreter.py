@@ -92,7 +92,7 @@ class Shell(authentication2.Authenticated_Client2):
                     self.prompt = "... "
         else:
             self.lines = ''
-        objects["->Python->Command_Line"].set_prompt(self.prompt)
+        objects["->User->Command_Line"].set_prompt(self.prompt)
         
     def execute_source(self, source):
         if not self.logged_in:
@@ -240,7 +240,6 @@ class Python(base.Base):
                                         "pride.fileio.File_System",
                                         "pride.vmlibrary.Processor",
                                         "pride.network.Network", 
-                                        "pride.shell.Command_Line",
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Server",
                                         "pride.rpc.Rpc_Worker"),

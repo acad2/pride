@@ -235,7 +235,7 @@ class Rpc_Worker(pride.base.Base):
                 permission = True        
                 
             if not hasattr(instance, "validate"):
-                result = pride.authentication.UnauthorizedError()
+                result = UnauthorizedError()
             elif permission or instance.validate(session_id, 
                                                  peername, method):
                 try:
@@ -252,7 +252,7 @@ class Rpc_Worker(pride.base.Base):
             else:
                 self.alert("Denying unauthorized request: {}",
                            (packet, ), level=self.verbosity["request_denied"])
-                result = pride.authentication.UnauthorizedError()
+                result = UnauthorizedError()
         self.alert("Sending result of {}.{}: {}",
                    (component_name, method, result), level=self.verbosity["request_result"])
         return self.serealize(result)    

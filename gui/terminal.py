@@ -3,7 +3,7 @@ import pride.gui.widgetlibrary
 
 class Prompt(pride.gui.widgetlibrary.Text_Box):
     
-    defaults = {"pack_mode" : "main", "prompt" : "\n>>> ", "target_shell" : "->Python->Shell",
+    defaults = {"pack_mode" : "main", "prompt" : "\n>>> ", "target_shell" : "->User->Shell",
                 "end_of_field" : 4, "text" : "\n>>> ", "scroll_bars_enabled" : True}
  
     def _set_text(self, value):

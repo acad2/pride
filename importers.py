@@ -410,23 +410,16 @@ class Preprocess_Decorator(Preprocessor):
         return source
             
   
-class Export_Keyword(Preprocessor):
-    """ Enables the keyword syntax:
-        
-        export module_name to fully.qualified.domain.name [as name]
-        
-        Executes the module specified by module name on the remote host running
-        at the address obtained by socket.gethostbyname(fully.qualified.domain.name).
-        The remote host must be running pride, the network must be configured
-        appropriately, and a Shell connection must be made beforehand. 
-        
-        If the optional as clause is included, the module will be saved 
-        under the name specified instead of ran. """
-        
-    def handle_source(self, source):
-        export_length = len("export")        
-        while "export" in source:
-            index = Parser.find_symbol("export", source, True, True)
+class Keyword(Preprocessor):
+    """ Base class for new keywords. Subclasses should specify a keyword_string
+        class attribute. Keyword functionality is defined in pride.keywords. """
+    
+    @classmethod
+    def handle_source(_class, source):
+        keyword_string = _class.keyword_string
+        string_length = len(keyword_string)        
+        while keyword_string in source:
+            index = Parser.find_symbol(keyword_string, source, True, True)
             if not index:
                 break
             start, end = index[0]            
@@ -456,7 +449,7 @@ class Export_Keyword(Preprocessor):
             for _keyword in keyword.kwlist:
         #        print "Replacing keyword: ", _keyword
                 line = line.replace(' ' + _keyword + ' ', " ('{}', ".format(_keyword))
-            arguments = line[export_length + 1:newline_location].strip().split()
+            arguments = line[string_length + 1:newline_location].strip().split()
             arguments[0] = arguments[0] + ','
        #     print "Extracted line: ", arguments
             _arguments = []
@@ -470,12 +463,10 @@ class Export_Keyword(Preprocessor):
                         symbol = "'{}'), ".format(symbol)
                 if "(" in symbol:
                     needs_close = True
-                    #_keyword, _string = symbol.split('=', 1)
-                    #symbol = '='.join((_keyword, '"' + _string + '"'))
                 _arguments.append(symbol)
             arguments = " ".join(_arguments)
        #     print "\nresolved to arguments: ", arguments
-            new_line = ('_' + line[:export_length] + '(' + arguments + ")" + 
+            new_line = ('_' + line[:string_length] + '(' + arguments + ")" + 
                         ("\n" if has_newline else ''))
             #print "Resolved keyword: ", source[:-1]
             source = source[:start] + new_line + source[start + end_of_line + 1:]
@@ -483,6 +474,22 @@ class Export_Keyword(Preprocessor):
         return source
         
         
+class Export_Keyword(Keyword): 
+    """ Enables the keyword syntax:
+        
+        export module_name to fully.qualified.domain.name [as name]
+        
+        Executes the module specified by module name on the remote host running
+        at the address obtained by socket.gethostbyname(fully.qualified.domain.name).
+        The remote host must be running pride, the network must be configured
+        appropriately, and a Shell connection must be made beforehand. 
+        
+        If the optional as clause is included, the module will be saved 
+        under the name specified instead of ran. """
+        
+    keyword_string = "export"
+    
+    
 class Dollar_Sign_Directive(Preprocessor):
     """ Currently NOT used. May become deprcated.
     
@@ -720,10 +727,10 @@ class Name_Enforcer(Preprocessor):
         return source                 
                     
 if __name__ == "__main__":  
-    export_keyword = Export_Keyword()
+    #export_keyword = Export_Keyword()
     import socket
     host_name = socket.getfqdn()
     test_source = "export payload for {} as some_other_name with dynamic_keywords if variable_1 is True and variable_2 is not 0".format(host_name)
     print test_source
     print 
-    print export_keyword.handle_source(test_source)
+    print Export_Keyword.handle_source(test_source)

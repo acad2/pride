@@ -299,24 +299,24 @@ class Authenticated_Service2(pride.base.Base):
                        method_name, self.allow_login, self.allow_registration),
                        level=self.verbosity["validate_failure"])
             return False            
-        if self.rate_limit and method_name in self.rate_limit:
-            _new_connection = False
-            try:
-                self._rate[session_id][method_name].mark()
-            except KeyError:
-                latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
-                try:
-                    self._rate[session_id][method_name] = latency
-                except KeyError:
-                    self._rate[session_id] = {method_name : latency}   
-                    _new_connection = True
-            if not _new_connection:
-                current_rate = self._rate[session_id][method_name].last_measurement                
-                if current_rate < self.rate_limit[method_name]:
-                    self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
-                            (method_name, self.rate_limit[method_name], current_rate),                           
-                            level=self.verbosity["validate_failure"])
-                    return False
+       # if self.rate_limit and method_name in self.rate_limit:
+       #     _new_connection = False
+       #     try:
+       #         self._rate[session_id][method_name].mark()
+       #     except KeyError:
+       #         latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
+       #         try:
+       #             self._rate[session_id][method_name] = latency
+       #         except KeyError:
+       #             self._rate[session_id] = {method_name : latency}   
+       #             _new_connection = True
+       #     if not _new_connection:
+       #         current_rate = self._rate[session_id][method_name].last_measurement                
+       #         if current_rate < self.rate_limit[method_name]:
+       #             self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
+       #                     (method_name, self.rate_limit[method_name], current_rate),                           
+       #                     level=self.verbosity["validate_failure"])
+       #             return False
         assert peername[0] not in self.ip_blacklist
         assert method_name in self.remotely_available_procedures
         assert session_id != 0 or method_name == "register"
@@ -362,7 +362,8 @@ class Authenticated_Client2(pride.base.Base):
                 
                 # non security related options
                 "target_service" : "->Python->Authenticated_Service2",
-                "password_prompt" : "{}: Please provide the pass phrase or word: ",
+                "username_prompt" : "{}: Please provide the user name for {}@{}: ",
+                "password_prompt" : "{}: Please provide the pass phrase or word for {}@{}: ",
                 "ip" : "localhost", "port" : 40022, 
                 "auto_login" : True, "logged_in" : False,
 
@@ -385,7 +386,9 @@ class Authenticated_Client2(pride.base.Base):
     
     def _get_username(self):
         if not self._username:
-            self._username = pride.objects["->User"].username
+            self._username = pride.shell.get_user_input(self.username_prompt.format(self.instance_name,
+                                                                                    self.target_service,
+                                                                                    self.ip))
         return self._username
     def _set_username(self, value):
         self._username = value
@@ -393,7 +396,7 @@ class Authenticated_Client2(pride.base.Base):
                 
     def __init__(self, **kwargs):
         super(Authenticated_Client2, self).__init__(**kwargs)
-        self.password_prompt = self.password_prompt.format(self.instance_name)
+        self.password_prompt = self.password_prompt.format(self.instance_name, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
         module = self.__module__
         name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')

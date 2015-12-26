@@ -32,7 +32,8 @@ def reload_module(module_name):
      
 @contextlib.contextmanager
 def modules_preserved(modules=tuple()):
-    """ Enter a context where the modules specified will be backed up + restored upon exit"""
+    """ Enter a context where the modules specified will be backed up + restored upon exit
+        If modules is not specified, all modules in sys.modules are backed up and resotred. """
     backup = {}
     if not modules:
         modules = [key for key in sys.modules if sys.modules[key]]
