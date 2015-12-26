@@ -38,6 +38,12 @@ history from storing hashes of shared secrets?
   
 backport annotations ?
   
+export module_name to fqdn
+
+module = load_module(module_name)
+cnc[socket.gethostbyname(fqdn)].execute(module)
+deter — detect — alarm — delay — respond
+
 recently done:
 
 known bugs:

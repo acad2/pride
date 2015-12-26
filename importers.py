@@ -15,6 +15,7 @@ import shlex
 import string
 import operator
 import textwrap
+import keyword
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -409,7 +410,7 @@ class Preprocess_Decorator(Preprocessor):
         return source
             
   
-class Export_Statement(Preprocessor):
+class Export_Keyword(Preprocessor):
     """ Enables the keyword syntax:
         
         export module_name to fully.qualified.domain.name [as name]
@@ -442,23 +443,43 @@ class Export_Statement(Preprocessor):
             else:
                 has_newline = False
                 
-            # transforms export module_name to fully.qualified.domain.name as name to:
-            # export module_name, fully.qualified.domain.name, name \n
-            # _export(module_name, fully.qualified.domain.name, name)\n
+            # transforms "export module_name for fully.qualified.domain.name as name" to:
+            # export module_name, for=fully.qualified.domain.name, as=name \n
+            # _export(module_name, for=fully.qualified.domain.name, as=name)\n
             line = source[start:start + end_of_line + 1]
            # print line
             if has_newline:
                 newline_location = line.index("\n")
             else:
                 newline_location = None
-                
-            arguments = line[export_length + 1:newline_location].replace(' to', '').replace(' as', '').strip().split()
-            arguments = ", ".join("'" + symbol + "'" for symbol in arguments)
+            
+            for _keyword in keyword.kwlist:
+        #        print "Replacing keyword: ", _keyword
+                line = line.replace(' ' + _keyword + ' ', " ('{}', ".format(_keyword))
+            arguments = line[export_length + 1:newline_location].strip().split()
+            arguments[0] = arguments[0] + ','
+       #     print "Extracted line: ", arguments
+            _arguments = []
+            needs_close = False
+            for symbol in arguments:
+                if needs_close:                    
+                    if '(' == symbol[0]:                        
+                        symbol = "'{} ".format(symbol[2:])
+                    else:
+                        needs_close = False
+                        symbol = "'{}'), ".format(symbol)
+                if "(" in symbol:
+                    needs_close = True
+                    #_keyword, _string = symbol.split('=', 1)
+                    #symbol = '='.join((_keyword, '"' + _string + '"'))
+                _arguments.append(symbol)
+            arguments = " ".join(_arguments)
+       #     print "\nresolved to arguments: ", arguments
             new_line = ('_' + line[:export_length] + '(' + arguments + ")" + 
                         ("\n" if has_newline else ''))
             #print "Resolved keyword: ", source[:-1]
             source = source[:start] + new_line + source[start + end_of_line + 1:]
-            print "Created new source: ", source
+            #print "Created new source: ", source
         return source
         
         
@@ -698,3 +719,11 @@ class Name_Enforcer(Preprocessor):
                     raise AntipatternError("Encountered variable name without vowels '{}'".format(name))                   
         return source                 
                     
+if __name__ == "__main__":  
+    export_keyword = Export_Keyword()
+    import socket
+    host_name = socket.getfqdn()
+    test_source = "export payload for {} as some_other_name with dynamic_keywords if variable_1 is True and variable_2 is not 0".format(host_name)
+    print test_source
+    print 
+    print export_keyword.handle_source(test_source)
