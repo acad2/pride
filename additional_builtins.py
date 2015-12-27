@@ -8,7 +8,7 @@ import importlib
 import platform
 is_version_two = platform.python_version_tuple()[0] == '2'
 
-__all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input")
+__all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input", "restart", "shutdown")
 
 # too generally applicable to have to import, only vaguely appropriate other module is utilities
 def slide(iterable, x=16):
@@ -84,3 +84,8 @@ else:
             reply = __input('')
         return reply    
     
+def restart():
+    raise SystemExit(-1)
+    
+def shutdown():
+    raise SystemExit(0)

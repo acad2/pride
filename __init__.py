@@ -97,6 +97,7 @@ class Environment(object):
     def register(self, instance):
         """ Registers an instance_name reference with the supplied instance. """
         instance_type = instance.__class__.__name__
+        instance_name = instance.instance_name
         if not self.last_creator: # instance was not create'd
             try:
                 count = self.instance_count[instance_type]
@@ -104,7 +105,7 @@ class Environment(object):
                 count = self.instance_count[instance_type] = 0
             finally:
                 self.instance_count[instance_type] += 1
-                instance_name = "->" + instance_type + (str(count) if count else '')
+      #          instance_name = "->" + instance_type + (str(count) if count else '')
         else:            
             parent_name = self.last_creator
             parent = self.objects[parent_name]
@@ -118,8 +119,8 @@ class Environment(object):
                     count = 0
             
             self.creation_count[parent_name][instance_type] += 1
-            instance_name = (parent_name + "->" + instance_type + 
-                            (str(count) if count else ''))
+   #         instance_name = (parent_name + "->" + instance_type + 
+   #                         (str(count) if count else ''))
         try:
             self.instance_name[instance] = instance.instance_name = instance_name
         except AttributeError:

@@ -1,3 +1,5 @@
+import sys
+import os
 import getpass
 import random
 
@@ -82,10 +84,18 @@ class User(pride.base.Base):
         self.create("pride.shell.Command_Line")
         
         while True:
-            python.start_machine()
-            pride.objects["->Finalizer"].run()
-            break
-        self.alert("shutdown initiated", level='v')
+            try:
+                python.start_machine()                
+            except SystemExit as error:
+                pride.objects["->Finalizer"].run()          
+                if error.code == -1:
+                    self.objects["Shell"][0].delete()
+                    self.create("pride.fileio.File_System")                
+                    python.delete()
+                    python = self.invoke(self.launcher_type, parse_args=True)
+                else:
+                    break                                    
+        self.alert("Shutdown initiated", level='v')
         raise SystemExit()
         
     def login(self):

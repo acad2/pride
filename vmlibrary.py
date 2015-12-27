@@ -85,8 +85,11 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        for entry in pride.environment.caller.pop(self.instance_name):
-            pride.environment.Instructions.remove(entry)
+        try:
+            for entry in pride.environment.caller.pop(self.instance_name):
+                pride.environment.Instructions.remove(entry)
+        except KeyError:
+            pass
         pride.environment.Instructions.sort()
         super(Process, self).delete()
         
@@ -169,8 +172,9 @@ class Processor(Process):
                 result = call(*instruction.args, **instruction.kwargs)
             except BaseException as result:
                 if type(result) in reraise_exceptions:
-                    self.running = False
-                exception_alert((component_name, instruction.method, format_traceback()))
+                    raise
+                else:
+                    exception_alert((component_name, instruction.method, format_traceback()))
             else:
                 if callback:
                     callback(result)

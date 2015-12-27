@@ -133,7 +133,7 @@ class Base(object):
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
-    verbosity = {"delete" : 'vv', "initialized" : "vv"}
+    verbosity = {"delete" : "deletion", "initialized" : "vv"}
             
     # defaults have a pitfall that can be a problem in certain cases
     # because dictionaries are unordered, the order in which defaults
@@ -171,14 +171,25 @@ class Base(object):
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
-        assert self.parent_name != self.instance_name
+      #  assert self.parent_name != self.instance_name
         return objects[self.parent_name]
     parent = property(_get_parent)
+
+    def _get_instance_name(self):
+        try:
+            count = self.parent.objects[self._instance_type].index(self)
+        except (KeyError, ValueError):
+            #print self.parent_name, self._instance_type
+            #assert self.parent_name not in objects
+            count = ''
+        return self._instance_name + (str(count) if count else '')
+    instance_name = property(_get_instance_name)
     
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
-        
-        pride.environment.register(self) # acquire instance_name
+        name = self._instance_type = self.__class__.__name__ # speeds up instance_name retrieval
+        self._instance_name = (self.parent_name or '') + "->" + name
+        pride.environment.register(self) 
         pride.environment.parents[self] = pride.environment.last_creator
         
         # the objects attribute keeps track of instances created by this self
@@ -255,7 +266,11 @@ class Base(object):
         """ Calls the method specified in callable_string with args and kwargs.
             Objects that do not require any form of Base object functionality
             (such as an instance name) can be created via invoke instead of 
-            the create method. """
+            the create method. 
+            
+            Base objects that are created via invoke instead of create will
+            exist as a root object in the objects dictionary instead of as a
+            child of self. """
         return resolve_string(callable_string)(*args, **kwargs)
         
     def delete(self):

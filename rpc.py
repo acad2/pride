@@ -189,15 +189,17 @@ class Rpc_Client(Packet_Client):
                 elif callback is not None:
                     callback(_response)                                
                                                 
-    def handle_exception(self, _call, callback, response):
-        self.alert("\n    Remote Traceback: Exception calling {}: {}: {}\n    Unable to proceed with callback {}",
-                   ('.'.join(_call), response.__class__.__name__, 
-                    getattr(response, "traceback", response), callback), 
-                   level=self.verbosity["handle_exception"])
+    def handle_exception(self, _call, callback, response):   
         if (isinstance(response, SystemExit) or 
             isinstance(response, KeyboardInterrupt)):
-            print "Reraising exception", type(response)()
-            raise type(response)()            
+        #    print "Reraising exception", type(response)()
+            raise response
+        else:
+            self.alert("\n    Remote Traceback: Exception calling {}: {}: {}\n    Unable to proceed with callback {}",
+                       ('.'.join(_call), response.__class__.__name__, 
+                        getattr(response, "traceback", response), callback), 
+                        level=self.verbosity["handle_exception"])
+            
             
     def deserealize(self, response):
         return default_serializer.loads(response)
@@ -247,10 +249,8 @@ class Rpc_Worker(pride.base.Base):
                     stack_trace = traceback.format_exc()
                     self.alert("Exception processing request {}.{}: \n{}",
                                [component_name, method, stack_trace],
-                               level=self.verbosity["request_exception"])
-                    if isinstance(result, SystemExit):
-                        raise                                   
-                    result.traceback = stack_trace
+                               level=self.verbosity["request_exception"])                                
+                    result.traceback = stack_trace                    
             else:
                 self.alert("Denying unauthorized request: {}",
                            (packet, ), level=self.verbosity["request_denied"])

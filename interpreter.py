@@ -163,12 +163,9 @@ class Interpreter(authentication2.Authenticated_Service2):
                     self.user_session[username] += source
                 finally:
                     sys.stdout.seek(0)
-
                     result = sys.stdout.read() + result
-                    log.write("{}\n".format(result))
-                    
-                    sys.stdout.truncate(0)
-                                                 
+                    log.write("{}\n".format(result))                    
+                    sys.stdout.truncate(0)                                                 
         log.flush()        
         return result
         
@@ -227,7 +224,8 @@ class Python(base.Base):
     def setup_os_environ(self):
         """ This method is called automatically in Python.__init__; os.environ can
             be customized on startup via modifying Python.defaults["environment_setup"].
-            This can be useful for modifying system path only for the duration of the applications run time."""
+            This can be useful for modifying system path only for the duration of the applications run time.
+            Currently this is only used to point to this files directory for SDL2 dll files. """
         modes = {"=" : "equals",
                  "+=" : "__add__", # append strings or add ints
                  "-=" : "__sub__", # integer values only

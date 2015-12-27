@@ -318,8 +318,8 @@ class Defaults(Inherited_Attributes):
     inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
                             "parser_ignore" : tuple, "flags" : list,
                             "mutable_defaults" : dict, "required_attributes" : tuple}
-
-    
+       
+        
 class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 

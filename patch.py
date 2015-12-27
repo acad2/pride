@@ -1,3 +1,6 @@
+""" pride.patch - utilities for patching python standard library modules
+    Patches named in pride.patch.patches will automatically be instantiated
+    when pride is imported. """
 import sys
 import importlib
 import contextlib

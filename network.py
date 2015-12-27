@@ -242,6 +242,8 @@ class Socket(base.Wrapper):
                 byte_count = self.socket.recv_into(_memoryview[self._byte_count:], 
                                                    buffer_size)                     
                 if not byte_count:
+                    if not self._byte_count:
+                        raise ConnectionClosed()
                     break
                 self._byte_count += byte_count                
         except (ValueError, socket.error) as error:        
@@ -272,7 +274,7 @@ class Socket(base.Wrapper):
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
-        assert not self.closed
+#        assert not self.closed
         if self.bypass_network_stack:
             if not self._endpoint_instance_name:
                 if self.sockname in _socket_names: # socket is the client
