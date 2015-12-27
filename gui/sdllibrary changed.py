@@ -85,7 +85,7 @@ class SDL_Window(SDL_Component):
         if self.showing:
             self.show()  
 
-        objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
+        objects["->Finalizer"].add_callback((self.instance_name, "delete"))
     
     def _new_layer(self):
         return (pride.gui.gui.create_texture(self.size), [])

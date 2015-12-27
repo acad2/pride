@@ -64,7 +64,7 @@ class SDL_Window(SDL_Component):
         if self.showing:
             self.show()  
 
-        objects["->Python->Finalizer"].add_callback((self.instance_name, "delete"))
+        objects["->Finalizer"].add_callback((self.instance_name, "delete"))
         
     def invalidate_layer(self, layer):
         self.invalid_layer = min(self.invalid_layer, layer)

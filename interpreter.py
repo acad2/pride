@@ -183,37 +183,6 @@ class Interpreter(authentication2.Authenticated_Service2):
         instruction.execute(priority=priority, callback=callback)
         
         
-class Finalizer(base.Base):
-    
-    mutable_defaults = {"_callbacks" : list}
-        
-    def run(self):
-        for callback, args, kwargs in self._callbacks:
-            try:
-                instance_name, method = callback
-            except ValueError:
-                pass
-            else:
-                try:
-                    callback = getattr(objects[instance_name], method)
-                except KeyError:
-                    self.alert("Unable to load object for callback: '{}'".format(instance_name), level=0)
-                except AttributeError:
-                    self.alert("Unable to call method: '{}.{}'".format(instance_name, method), level=0)
-            try:
-                callback(*args, **kwargs)
-            except Exception as error:
-                self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
-                           (instance_name, method, error), level=0)
-        self._callbacks = []    
-        
-    def add_callback(self, callback, *args, **kwargs):
-        self._callbacks.append((callback, args, kwargs))
-        
-    def remove_callback(self, callback, *args, **kwargs):
-        self._callbacks.remove((callback, args, kwargs))
-        
-        
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
@@ -225,9 +194,7 @@ class Python(base.Base):
                 "environment_setup" : ["PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep],
-                "startup_components" : ("pride.interpreter.Finalizer",
-                                        "pride.fileio.File_System",
-                                        "pride.vmlibrary.Processor",
+                "startup_components" : ("pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Server",
@@ -282,10 +249,8 @@ class Python(base.Base):
         processor = pride.objects[self.processor]
         processor.running = True
         processor.run()
-        self.alert("Graceful shutdown initiated", level='v')
-        self.exit()
         
     def exit(self, exit_code=0):
-        pride.objects[self.finalizer].run()
+        pride.objects["->Finalizer"].run()
         sys.exit()
         

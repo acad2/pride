@@ -4,6 +4,8 @@ import contextlib
 
 import pride.base
 
+patches = ("Sys", )
+
 class Patched_Module(pride.base.Wrapper):
     """ The base class for patching modules """
     
@@ -16,13 +18,13 @@ class Patched_Module(pride.base.Wrapper):
         globals()[self.module_name] = self
             
  
-class File_Logger(pride.base.Wrapper):
+class Stdout(pride.base.Wrapper):
     
     defaults = {"file" : None, "log_type" : "StringIO.StringIO"}
     wrapped_object_name = "file"
     
     def __init__(self, **kwargs):
-        super(File_Logger, self).__init__(**kwargs)
+        super(Stdout, self).__init__(**kwargs)
         self.log = self.create("pride.fileio.File", file_type=self.log_type)
         
     def write(self, data):
@@ -40,7 +42,7 @@ class File_Logger(pride.base.Wrapper):
             sys.stdout = backup        
         
         
-class Patched_sys(Patched_Module):
+class Sys(Patched_Module):
             
     defaults = {"module_name" : "sys"}
     
@@ -53,8 +55,8 @@ class Patched_sys(Patched_Module):
     stdout = property(_get_stdout, _set_stdout)               
     
     def __init__(self, **kwargs):
-        super(Patched_sys, self).__init__(**kwargs)
-        self._logger = File_Logger(file=sys.stdout)
-        sys.stdout_log = self._logger.log        
+        super(Sys, self).__init__(**kwargs)
+        self._logger = self.create(Stdout, file=sys.stdout)
+        Sys.stdout_log = self._logger.log        
         self.stdout = self.wrapped_object.stdout
         

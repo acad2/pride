@@ -23,6 +23,7 @@ except ImportError:
   
 import additional_builtins
 import additional_keywords
+
 resolve_string = additional_builtins.resolve_string
   
 OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
@@ -308,6 +309,7 @@ class Compiler(object):
         This object is automatically instantiated and inserted into
         sys.meta_path as the first entry when pride is imported. """
     def __init__(self, preprocessors=tuple(), patches=None, modify_builtins=None):
+        sys.meta_path.insert(0, self)
         self.preprocessors = preprocessors
         self.patches = patches or {}
         modify_builtins = self.additional_builtins = modify_builtins or {}
@@ -320,6 +322,7 @@ class Compiler(object):
         for name in additional_keywords.__all__:
             keyword_preprocessors.append(type(name, (Keyword, ), {"keyword_string" : name}))
             setattr(__builtin__, "_" + name, getattr(additional_keywords, name))
+                     
         self.preprocessors += tuple(keyword_preprocessors)
         
         for name, package_path in modify_builtins.items():

@@ -281,7 +281,7 @@ class File(base.Wrapper):
                                                 
 
 class Database_File(File):
-    """ A file that persists in the ->Python->File_System when saved or flushed.
+    """ A file that persists in the ->User->File_System when saved or flushed.
         Standard read/write/seek operations take place with a file like object
         of type file_type. Data is manipulated in memory and is only saved to the 
         database when flush or save is called. 
@@ -304,7 +304,7 @@ class Database_File(File):
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
-        data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, 
+        data, tags = pride.objects["->User->File_System"]._open_file(self.filename, self.mode, 
                                                                        self.tags, self.indexable)
         filename = {"filename" : self.filename}
         if tags != self.tags:
@@ -339,7 +339,7 @@ class Database_File(File):
         file = self.file
         backup_position = file.tell()
         file.seek(0)
-        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
+        pride.objects["->User->File_System"].save_file(self.filename, file.read(), 
                                                          self.tags, self.encrypted,
                                                          self.indexable)                                                       
         file.seek(backup_position)

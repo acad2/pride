@@ -3,7 +3,6 @@ import sys
 import pride.importers
 compiler = pride.importers.Compiler(preprocessors=(importers.Preprocess_Decorator,),
                                     modify_builtins=None)                                    
-sys.meta_path.insert(0, compiler)
 
 import heapq
 import inspect
@@ -208,9 +207,6 @@ objects = environment.objects
 # and reuse Base machinery, namely for argument parsing. 
 import pride.base
 
-import pride.patch
-sys = pride.patch.Patched_sys()
-
 class Alert_Handler(pride.base.Base):
     """ Provides the backend for the base.alert method. The print_level
         and log_level attributes act as global levels for alerts;
@@ -271,3 +267,39 @@ class Alert_Handler(pride.base.Base):
             self.log.write(severity + message + "\n")
 
 alert_handler = Alert_Handler()
+
+class Finalizer(base.Base):
+    
+    mutable_defaults = {"_callbacks" : list}
+        
+    def run(self):
+        for callback, args, kwargs in self._callbacks:
+            try:
+                instance_name, method = callback
+            except ValueError:
+                pass
+            else:
+                try:
+                    callback = getattr(objects[instance_name], method)
+                except KeyError:
+                    self.alert("Unable to load object for callback: '{}'".format(instance_name), level=0)
+                except AttributeError:
+                    self.alert("Unable to call method: '{}.{}'".format(instance_name, method), level=0)
+            try:
+                callback(*args, **kwargs)
+            except Exception as error:
+                self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
+                           (instance_name, method, error), level=0)
+        self._callbacks = []    
+        
+    def add_callback(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+        
+    def remove_callback(self, callback, *args, **kwargs):
+        self._callbacks.remove((callback, args, kwargs))
+        
+finalizer = Finalizer()        
+
+import pride.patch
+for name in pride.patch.patches:
+    getattr(pride.patch, name)()

@@ -30,7 +30,7 @@ class User(pride.base.Base):
                 "hkdf_encryption_info_string" : "{} Encryption Key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 
-                # the salt and verifier file are stored in the ->Python->File_System
+                # the salt and verifier file are stored in the ->User->File_System
                 # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
@@ -64,7 +64,8 @@ class User(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
-        python = self.invoke(self.launcher_type, parse_args=True)
+       
+        self.create("pride.fileio.File_System")
         
         login_success = self.encryption_key and self.mac_key and self.salt
         while not login_success:
@@ -76,15 +77,16 @@ class User(pride.base.Base):
                 continue
             else:
                 login_success = True
-                
-        #for host_info, credentials in self.login_information.items():
-        #    client_type, ip = host_info
-        #    username, password = credentials
-        #    self.create(client_type, ip=ip, username=username, password=password)
+        # invoke will create it as it's own root object, not a child of User
+        python = self.invoke(self.launcher_type, parse_args=True) 
         self.create("pride.shell.Command_Line")
-        python.start_machine()
-        self.alert("shutting down", level='v')
-        python.exit()
+        
+        while True:
+            python.start_machine()
+            pride.objects["->Finalizer"].run()
+            break
+        self.alert("shutdown initiated", level='v')
+        raise SystemExit()
         
     def login(self):
         """ Attempt to login as username using a password. Upon success, the
