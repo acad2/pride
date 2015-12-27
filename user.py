@@ -54,7 +54,7 @@ class User(pride.base.Base):
     def _get_username(self):
         if not self._username:
             username_prompt = "{}: please provide a username: ".format(self.instance_name)
-            self._username = pride.shell.get_user_input(username_prompt)
+            self._username = raw_input(username_prompt)
         return self._username
     def _set_username(self, value):
         self._username = value

@@ -36,7 +36,7 @@ else: # python 2.7.9+ will use SSLContext.wrap_socket
 def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and arguments
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
-    name = name or pride.shell.get_user_input("Please provide the name for the .key, .crt, and .csr files: ")
+    name = name or raw_input("Please provide the name for the .key, .crt, and .csr files: ")
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
     delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
     shell = pride.utilities.shell

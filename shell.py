@@ -21,23 +21,7 @@ except:
         return select.select([sys.stdin], [], [], 0.0)[0]
 
 __raw_input = raw_input # so the Interpreter can switch the __builtin__ one to the below
-        
-def get_user_input(prompt='', must_reply=False):
-    """ raw_input function that plays nicely when sys.stdout is swapped.
-        If must_reply equals True, then the prompt will be redisplayed
-        until a non empty string is returned."""
-    if must_reply:
-        reply = ''
-        while not reply:
-            sys.__stdout__.write(prompt)
-            sys.__stdout__.flush()        
-            reply = __raw_input('')
-    else:
-        sys.__stdout__.write(prompt)
-        sys.__stdout__.flush()       
-        reply = __raw_input('')
-    return reply
-    
+            
 def get_permission(prompt):
     """ Displays prompt to the user. Attempts to infer whether or not the supplied
         user input is affirmative or negative via shell.is_affirmative. """
@@ -49,7 +33,7 @@ def get_selection(prompt, answers):
         a True/False response. """
     selection = None
     while selection is None:
-        selection = get_user_input(prompt)
+        selection = raw_input(prompt)
         if answers == bool:
             selection = is_affirmative(selection)
         else:

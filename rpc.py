@@ -103,7 +103,12 @@ class Session(pride.base.Base):
     def next(self): # python 2   
         return self._callbacks.pop(0)
         
-            
+    def delete(self):
+        for requester in self.objects[self.requester_type.split('.')[-1]]:
+            del _hosts[requester.host_info]
+        super(Session, self).delete()
+        
+        
 class Packet_Client(pride.networkssl.SSL_Client):
     """ An SSL_Client that uses packetized send and recv (client side) """        
     defaults = {"_old_data" : bytes()}
@@ -228,16 +233,13 @@ class Rpc_Worker(pride.base.Base):
         try:
             instance = pride.objects[component_name]
         except KeyError as result:
-            pass
-        else:
-            permission = False
-            if session_id == '0' and method in ("register", "login"):
-                permission = True        
-                
+            # this could allow people to enumerate components that do not exist
+            # but raising UnauthorizedError could be a pain for development
+            raise UnauthorizedError()
+        else:                
             if not hasattr(instance, "validate"):
                 result = UnauthorizedError()
-            elif permission or instance.validate(session_id, 
-                                                 peername, method):
+            elif instance.validate(session_id, peername, method):
                 try:
                     args, kwargs = self.deserealize(serialized_arguments)
                     result = getattr(instance, method)(*args, **kwargs)

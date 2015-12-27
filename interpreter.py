@@ -151,17 +151,9 @@ class Interpreter(authentication2.Authenticated_Service2):
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
         else:               
-            with sys.stdout.switched(self._logger):            
-                namespace = globals()# if username == "root" else self.user_namespaces[username]
-                remove_builtins = False
-                if "__builtins__" not in namespace:
-                    remove_builtins = True
-                    namespace["__builtins__"] = __builtins__
-                
-                backup_raw_input = namespace["__builtins__"]["raw_input"]
-                namespace["__builtins__"]["raw_input"] = pride.shell.get_user_input
+            with sys.stdout.switched(self._logger):
                 try:
-                    exec code in namespace
+                    exec code in globals()
                 except Exception as error:
                     if type(error) == SystemExit:
                         raise
@@ -170,11 +162,6 @@ class Interpreter(authentication2.Authenticated_Service2):
                 else:
                     self.user_session[username] += source
                 finally:
-                    namespace["__builtins__"]["raw_input"] = backup_raw_input
-                    
-                    if remove_builtins:
-                        print "Removing builtins" * 10
-                        del namespace["__builtins__"]
                     sys.stdout.seek(0)
 
                     result = sys.stdout.read() + result

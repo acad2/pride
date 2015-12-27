@@ -182,7 +182,7 @@ class Authenticated_Service2(pride.base.Base):
                               
     database_flags = {"primary_key" : {"Users" : "authentication_table_hash"}}
     
-    remotely_available_procedures = ("register", "login", "login_stage_two")
+    remotely_available_procedures = ("register", "login", "login_stage_two", "logout")
     
     rate_limit = {"login" : 2, "register" : 2}       
     
@@ -287,13 +287,21 @@ class Authenticated_Service2(pride.base.Base):
         
     def on_login(self):
         pass
+    
+    def logout(self):
+        authentication_table_hash, ip = self.current_session
+        del self.session_id[authentication_table_hash]        
         
     def validate(self, session_id, peername, method_name):
         """ Determines whether or not the peer with the supplied
-            session id is allowed to call the requested method """
+            session id is allowed to call the requested method.
+
+            Sets current_session attribute to (session_id, peername) if validation
+            is successful. """
         if (method_name not in self.remotely_available_procedures or
             peername[0] in self.ip_blacklist or 
-            (session_id == '0' and method_name != "register")):
+            (session_id == '0' and method_name != "register") or
+            (session_id not in self.session_id and method_name not in ("login", "login_stage_two"))):
             
             self.alert(self.validation_failure_string,
                       (peername[0] in self.ip_blacklist, session_id in self.session_id,
@@ -318,9 +326,6 @@ class Authenticated_Service2(pride.base.Base):
        #                     (method_name, self.rate_limit[method_name], current_rate),                           
        #                     level=self.verbosity["validate_failure"])
        #             return False
-        assert peername[0] not in self.ip_blacklist
-        assert method_name in self.remotely_available_procedures
-        assert session_id != 0 or method_name == "register"
         self.current_session = (session_id, peername)
         self.alert("Authorizing: {} for {}", 
                   (peername, method_name), 
@@ -341,7 +346,7 @@ class Authenticated_Client2(pride.base.Base):
     
     verbosity = {"register" : 0, "login" : 'v', "answer_challenge" : 'vv',
                  "login_stage_two" : 'vv', "register_sucess" : 0,
-                 "auto_login" : 'v'}
+                 "auto_login" : 'v', "logout" : 'v'}
                  
     defaults = {# security related configuration options
                 "hash_function" : "SHA256", "authentication_table_size" : 256,
@@ -387,7 +392,7 @@ class Authenticated_Client2(pride.base.Base):
     
     def _get_username(self):
         if not self._username:
-            self._username = pride.shell.get_user_input(self.username_prompt.format(self.instance_name,
+            self._username = raw_input(self.username_prompt.format(self.instance_name,
                                                                                     self.target_service,
                                                                                     self.ip))
         return self._username
@@ -507,7 +512,7 @@ class Authenticated_Client2(pride.base.Base):
     def delete(self):
         if self.logged_in:
             self.logout()
-        super(Authenticated_Client, self).delete()
+        super(Authenticated_Client2, self).delete()
         
         
 class Authenticated_Peer(Authenticated_Service2):

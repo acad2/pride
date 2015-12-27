@@ -164,7 +164,7 @@ class Socket(base.Wrapper):
                 "connected" : False,
                 "added_to_network" : False,
                 "replace_reference_on_load" : False,
-                "bypass_network_stack" : True}
+                "bypass_network_stack" : False}
         
     additional_parser_ignores = defaults.keys()
     additional_parser_ignores.remove("interface")
@@ -272,7 +272,7 @@ class Socket(base.Wrapper):
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
-        
+        assert not self.closed
         if self.bypass_network_stack:
             if not self._endpoint_instance_name:
                 if self.sockname in _socket_names: # socket is the client
@@ -335,6 +335,8 @@ class Socket(base.Wrapper):
     def close(self):
         if self.added_to_network:
             objects["->Python->Network"].remove(self)
+        #if self.sock_name in _local_connections:
+            
         self.wrapped_object.close()
         self.closed = True
     
@@ -429,11 +431,12 @@ class Tcp_Socket(Socket):
         
     def on_connect(self):
         super(Tcp_Socket, self).on_connect()
-        _local_connections[self.peername] = self.instance_name
-        try:
-            self._endpoint_instance_name = _socket_names[self.peername]
-        except KeyError:
-            self._endpoint_instance_name = None
+        if self.peername[0] in ("127.0.0.1", "localhost"):
+            _local_connections[self.peername] = self.instance_name
+            try:
+                self._endpoint_instance_name = _socket_names[self.peername]
+            except KeyError:
+                self._endpoint_instance_name = None
             
         
 class Server(Tcp_Socket):
