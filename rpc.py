@@ -89,7 +89,7 @@ class Session(pride.base.Base):
             host = _hosts[self.host_info]
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
-                                                        host_info=self.host_info)                                                        
+                                                        host_info=self.host_info)              
         if host.bypass_network_stack and host._endpoint_instance_name:
             self._callbacks.insert(0, (_call, callback))
         else:

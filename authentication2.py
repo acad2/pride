@@ -195,10 +195,7 @@ class Authenticated_Service2(pride.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Service2, self).__init__(**kwargs)
         self._load_database()    
-        self.hkdf = self.invoke("pride.security.hkdf_expand", self.hash_function,
-                                length=self.authentication_table_size,
-                                info=self.hkdf_table_update_info_string)     
-        
+                
     def _load_database(self):
         if not self.database_name:
             _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
@@ -269,7 +266,11 @@ class Authenticated_Service2(pride.base.Base):
                 login_message = self.on_login()
                 new_key = pride.security.random_bytes(self.shared_key_size)
                 encrypted_key = pride.security.encrypt(new_key, session_key, extra_data=login_message)
-                new_table = self.hkdf.derive(saved_table + ':' + new_key)
+                
+                hkdf = self.invoke("pride.security.hkdf_expand", self.hash_function,
+                                   length=self.authentication_table_size,
+                                   info=self.hkdf_table_update_info_string) 
+                new_table = hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
                 new_table_hash = table_hasher.finalize()      

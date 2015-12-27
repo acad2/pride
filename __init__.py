@@ -1,7 +1,7 @@
 """ Stores global objects including instructions and the environment """
 import sys
 import pride.importers
-compiler = pride.importers.Compiler(preprocessors=(importers.Preprocess_Decorator(),),
+compiler = pride.importers.Compiler(preprocessors=(importers.Preprocess_Decorator,),
                                     modify_builtins=None)                                    
 sys.meta_path.insert(0, compiler)
 

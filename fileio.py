@@ -375,8 +375,7 @@ class File_System(pride.database.Database):
         if not indexable:
             hasher = pride.security.hash_function(self.hash_function)
             hasher.update(filename + self.nonindexable_filename_pepper)
-            filename = hasher.finalize()            
-            #filename = self.nonindexable_filename_pepper + filename
+            filename = hasher.finalize()                    
         if encrypt and data:
             try:
                 data = objects["->User"].encrypt(data)

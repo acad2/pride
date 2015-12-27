@@ -22,6 +22,7 @@ except ImportError:
     import StringIO
   
 import additional_builtins
+import additional_keywords
 resolve_string = additional_builtins.resolve_string
   
 OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
@@ -150,13 +151,21 @@ class Parser(object):
         #print "# Trying to find: {} ".format(symbol), start_index, len(source)#, source[source_index:]
         while symbol in source[source_index:] and quantity > 0:  
             start = source.index(symbol, source_index)
-    #        print "Found start of symbol: ", start
+           # print "Found start of symbol: ", start
             for string_range in strings:
                 if start in string_range:
      #               print "Ignoring potential match that is inside string: ", source[string_range[0]:string_range[-1]]
                     source_index += string_range[-1]
                     break
             else: # did not break, symbol is not inside a quote
+                # check to make sure it's not in a comment
+                back_track = ''.join(reversed(source[source_index:start]))
+                comment_index = back_track.find('#')
+                newline_index = back_track.find('\n')
+                if comment_index > -1 and comment_index < newline_index:
+                    source_index += start + 1
+                    continue
+                    
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
      #           print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
@@ -307,6 +316,12 @@ class Compiler(object):
         for name in additional_builtins.__all__:
             setattr(__builtin__, name, getattr(additional_builtins, name))
             
+        keyword_preprocessors = []
+        for name in additional_keywords.__all__:
+            keyword_preprocessors.append(type(name, (Keyword, ), {"keyword_string" : name}))
+            setattr(__builtin__, "_" + name, getattr(additional_keywords, name))
+        self.preprocessors += tuple(keyword_preprocessors)
+        
         for name, package_path in modify_builtins.items():
             setattr(__builtin__, name, resolve_string(package_path))
             
@@ -359,6 +374,7 @@ class Compiler(object):
         return new_module
     
     def preprocess(self, source):
+     #   print "Preprocessing... ", source[:20]
         for preprocessor in self.preprocessors:
             source = preprocessor.handle_source(source)
         return source
@@ -370,12 +386,14 @@ class Compiler(object):
 class Preprocessor(object):
     """ Base class for establishing interface of preprocessor objects """
     
-    def handle_source(self, source): pass
+    @classmethod
+    def handle_source(_class, source): pass
     
     
 class Preprocess_Decorator(Preprocessor):
-        
-    def handle_source(self, source):
+     
+    @classmethod
+    def handle_source(_class, source):
         while "@pride.preprocess" in source:
             index = Parser.find_symbol("@pride.preprocess", source, True, False, quantity=1)
             if not index:
@@ -428,7 +446,7 @@ class Keyword(Preprocessor):
                     break
             except IndexError:
                 pass
-                
+            #print "Found symbol: ", source[start:]    
             for end_of_line, character in enumerate(source[start:]):
                 if character == "\n":
                     has_newline = True
@@ -440,7 +458,6 @@ class Keyword(Preprocessor):
             # export module_name, for=fully.qualified.domain.name, as=name \n
             # _export(module_name, for=fully.qualified.domain.name, as=name)\n
             line = source[start:start + end_of_line + 1]
-           # print line
             if has_newline:
                 newline_location = line.index("\n")
             else:
@@ -449,9 +466,10 @@ class Keyword(Preprocessor):
             for _keyword in keyword.kwlist:
         #        print "Replacing keyword: ", _keyword
                 line = line.replace(' ' + _keyword + ' ', " ('{}', ".format(_keyword))
-            arguments = line[string_length + 1:newline_location].strip().split()
-            arguments[0] = arguments[0] + ','
-       #     print "Extracted line: ", arguments
+            #print "Line after keyword replacement: ", line, line[string_length + 1:string_length + 1 + newline_location]
+            arguments = line[string_length + 1:string_length + 1 + newline_location].strip().split()
+            arguments[0] = '"' + arguments[0] + '",'
+          #  print "Extracted line: ", arguments
             _arguments = []
             needs_close = False
             for symbol in arguments:
@@ -465,12 +483,12 @@ class Keyword(Preprocessor):
                     needs_close = True
                 _arguments.append(symbol)
             arguments = " ".join(_arguments)
-       #     print "\nresolved to arguments: ", arguments
+        #    print "\nresolved to arguments: ", arguments
             new_line = ('_' + line[:string_length] + '(' + arguments + ")" + 
                         ("\n" if has_newline else ''))
             #print "Resolved keyword: ", source[:-1]
-            source = source[:start] + new_line + source[start + end_of_line + 1:]
-            #print "Created new source: ", source
+            source = source[:start] + new_line + source[start + end_of_line + 1:]            
+            print "preprocessed to new line: ", new_line
         return source
         
         
@@ -730,7 +748,7 @@ if __name__ == "__main__":
     #export_keyword = Export_Keyword()
     import socket
     host_name = socket.getfqdn()
-    test_source = "export payload for {} as some_other_name with dynamic_keywords if variable_1 is True and variable_2 is not 0".format(host_name)
+    test_source = "export payload for {}\n".format(host_name)# as some_other_name".format(host_name)# with dynamic_keywords if variable_1 is True and variable_2 is not 0".format(host_name)
     print test_source
     print 
     print Export_Keyword.handle_source(test_source)

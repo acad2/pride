@@ -1,4 +1,4 @@
-#   mpf.network_library - Asynchronous socket operations
+#   pride.network - Asynchronous socket operations
 #
 #    Copyright (C) 2014  Ella Rose
 #

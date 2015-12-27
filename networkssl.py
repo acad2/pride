@@ -145,12 +145,11 @@ class SSL_Socket(pride.network.Tcp_Socket):
 class SSL_Server(pride.network.Server):
     
     defaults = SSL_DEFAULTS
-    defaults.update({"port" : 443,
-                     "Tcp_Socket_type" : "pride.networkssl.SSL_Socket",
-                     "dont_save" : False,
-                     "server_side" : True,
-                     "certfile" : "server.crt",
-                     "keyfile" : "server.key"})       
+    defaults.update({"port" : 443, "Tcp_Socket_type" : "pride.networkssl.SSL_Socket",
+                     "dont_save" : False, "server_side" : True,
+                     
+                     # configurable
+                     "certfile" : "server.crt", "keyfile" : "server.key"})       
                      
     def __init__(self, **kwargs):
         super(SSL_Server, self).__init__(**kwargs)

@@ -1,0 +1,12 @@
+import pride
+
+class Export_Service(pride.base.Base):
+        
+    defaults = {"client_type" : "pride.interpreter.Shell"}
+    mutable_defaults = {"connections" : dict}
+    
+    def export_to(self, ip, module_source, as_name):
+        if ip not in self.connections:
+            client = self.create(self.client_type, ip=ip)
+            self.connections[ip] = client
+        self.connections[ip].handle_input(module_source)

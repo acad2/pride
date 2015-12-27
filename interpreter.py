@@ -116,7 +116,8 @@ class Interpreter(authentication2.Authenticated_Service2):
         The source code and return value of all requests are logged. """
     
     defaults = {"help_string" : 'Type "help", "copyright", "credits" or "license" for more information.',
-                "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n"}
+                "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n",
+                "_logger_type" : "StringIO.StringIO"}
     
     mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
     
@@ -128,7 +129,8 @@ class Interpreter(authentication2.Authenticated_Service2):
         self.log = self.create("fileio.File", 
                                "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
-                
+        self._logger = self.invoke(self._logger_type)
+        
     def on_login(self):
         session_id, sender = self.current_session
         username = self.session_id[session_id]
@@ -148,38 +150,38 @@ class Interpreter(authentication2.Authenticated_Service2):
             code = pride.compiler.compile(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
-        else:                
-            backup = sys.stdout            
-            sys.stdout = StringIO.StringIO()
-            
-            namespace = globals()# if username == "root" else self.user_namespaces[username]
-            remove_builtins = False
-            if "__builtins__" not in namespace:
-                remove_builtins = True
-                namespace["__builtins__"] = __builtins__
-            
-            backup_raw_input = namespace["__builtins__"]["raw_input"]
-            namespace["__builtins__"]["raw_input"] = pride.shell.get_user_input
-            try:
-                exec code in namespace
-            except Exception as error:
-                if type(error) == SystemExit:
-                    raise
+        else:               
+            with sys.stdout.switched(self._logger):            
+                namespace = globals()# if username == "root" else self.user_namespaces[username]
+                remove_builtins = False
+                if "__builtins__" not in namespace:
+                    remove_builtins = True
+                    namespace["__builtins__"] = __builtins__
+                
+                backup_raw_input = namespace["__builtins__"]["raw_input"]
+                namespace["__builtins__"]["raw_input"] = pride.shell.get_user_input
+                try:
+                    exec code in namespace
+                except Exception as error:
+                    if type(error) == SystemExit:
+                        raise
+                    else:
+                        result = traceback.format_exc()
                 else:
-                    result = traceback.format_exc()
-            else:
-                self.user_session[username] += source
-            finally:
-                namespace["__builtins__"]["raw_input"] = backup_raw_input
-                
-                if remove_builtins:
-                    del namespace["__builtins__"]
-                sys.stdout.seek(0)
-                result = sys.stdout.read() + result
-                log.write("{}\n".format(result))
-                
-                sys.stdout.close()
-                sys.stdout = backup           
+                    self.user_session[username] += source
+                finally:
+                    namespace["__builtins__"]["raw_input"] = backup_raw_input
+                    
+                    if remove_builtins:
+                        print "Removing builtins" * 10
+                        del namespace["__builtins__"]
+                    sys.stdout.seek(0)
+
+                    result = sys.stdout.read() + result
+                    log.write("{}\n".format(result))
+                    
+                    sys.stdout.truncate(0)
+                                                 
         log.flush()        
         return result
         
