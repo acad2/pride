@@ -99,7 +99,8 @@ def decrypt(packed_encrypted_data, key, algorithm="AES",
             mode="GCM", backend=BACKEND):
     """ Decrypts packed encrypted data as returned by encrypt with the same key. 
         If extra data is present, returns plaintext, extra_data. If not,
-        returns plaintext."""
+        returns plaintext. Extra data returned this way will NOT include the IV
+        that is implicitly authenticated by encrypt with GCM mode. """
     ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data,
                                                   4 if mode == "GCM" else 2)
     if mode == "GCM" and not tag:

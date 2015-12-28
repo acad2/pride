@@ -18,7 +18,7 @@ import pride.authentication2 as authentication2
 import pride.utilities as utilities
 import pride.fileio as fileio
 import pride.shell
-objects = pride.objects
+#objects = pride.objects
 Instruction = pride.Instruction            
 
 @contextlib.contextmanager
@@ -197,7 +197,7 @@ class Python(base.Base):
                                         "pride.rpc.Rpc_Server",
                                         "pride.rpc.Rpc_Worker"),
                 "startup_definitions" : '',
-                "interpreter_type" : "pride.interpreter.Interpreter"}
+                "interpreter_type" : "pride.interpreter.Interpreter", "is_root_object" : True}
                      
     parser_ignore = ("environment_setup", "startup_components", 
                      "startup_definitions", "interpreter_type")

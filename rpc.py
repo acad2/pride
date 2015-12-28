@@ -11,7 +11,7 @@ import itertools
 import pride
 import pride.base
 import pride.networkssl
-objects = pride.objects
+#objects = pride.objects
 
 default_serializer = pickle
 _old_data, _hosts = {}, {}
@@ -94,13 +94,17 @@ class Session(pride.base.Base):
             self._callbacks.insert(0, (_call, callback))
         else:
             self._callbacks.append((_call, callback))
-      #  self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
+        #self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
+     #   import pprint
+     #   print self, "Storing callback: ", callback
+     #   pprint.pprint(self._callbacks)
         host.make_request(request, self.instance_name)
        
     def __next__(self): # python 3
         return self._callbacks.pop(0)
       
     def next(self): # python 2   
+   #     print "Inside next: ", self, self._callbacks
         return self._callbacks.pop(0)
         
     def delete(self):
@@ -177,6 +181,7 @@ class Rpc_Client(Packet_Client):
          #   print "Deserealizing: ", len(response), response
             _response = self.deserealize(response)
             callback_owner = self._callbacks.pop(0)
+     #       print "Getting callback from: ", callback_owner, pride.objects[callback_owner]._callbacks
             try:
                 _call, callback = next(pride.objects[callback_owner])
             except KeyError:

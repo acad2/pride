@@ -38,7 +38,7 @@ class User(pride.base.Base):
                 "verifier_filetype" : "pride.fileio.Database_File",
                 "salt_indexable" : False, "verifier_indexable" : False,
                 
-                "launcher_type" : "pride.interpreter.Python"}
+                "launcher_type" : "pride.interpreter.Python", "is_root_object" : True}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "password_prompt")
@@ -66,7 +66,6 @@ class User(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
-       
         self.create("pride.fileio.File_System")
         
         login_success = self.encryption_key and self.mac_key and self.salt
@@ -92,6 +91,10 @@ class User(pride.base.Base):
                     self.objects["Shell"][0].delete()
                     self.create("pride.fileio.File_System")                
                     python.delete()
+                    
+                    # to do: replace modules so restart means new objects are from new source
+                    #sys.modules.clear()
+                    #sys.modules["sys"] = sys
                     python = self.invoke(self.launcher_type, parse_args=True)
                 else:
                     break                                    
@@ -162,9 +165,11 @@ class User(pride.base.Base):
         self.encryption_key = encryption_kdf.derive(master_key)                
                 
     def encrypt(self, data, extra_data=''):
-        """ Encrypt and authenticates the supplied data and authenticates, but 
+        """ Encrypt and authenticates the supplied data; Authenticates, but 
             does not encrypt, any extra_data. The data is encrypted using the 
-            Users encryption key. Returns packed encrypted bytes. """
+            Users encryption key. Returns packed encrypted bytes. 
+            
+            Encryption is done via AES-256-GCM. """
         return pride.security.encrypt(data=data, key=self.encryption_key, iv=random._urandom(self.iv_size),
                                       extra_data=extra_data, algorithm=self.encryption_algorithm, 
                                       mode=self.encryption_mode)

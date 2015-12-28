@@ -13,7 +13,7 @@ import pride.vmlibrary as vmlibrary
 import pride.utilities as utilities
 import pride.gui
 Instruction = pride.Instruction
-objects = pride.objects
+#objects = pride.objects
 
 import sdl2
 import sdl2.ext

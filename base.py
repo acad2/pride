@@ -71,7 +71,7 @@ import pride.persistence
 import pride.utilities
 
 from pride.errors import *
-objects = pride.objects
+#objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
 
@@ -171,27 +171,24 @@ class Base(object):
     parent_name = property(_get_parent_name)
     
     def _get_parent(self):
-      #  assert self.parent_name != self.instance_name
-        return objects[self.parent_name]
+        #assert self.parent_name != self.instance_name
+        return objects[self.parent_name] if self.parent_name else None
     parent = property(_get_parent)
 
     def _get_instance_name(self):
-        try:
+     #   assert not self._deleted, pride.environment.display()
+    #    print "Retrieving instance name for: ", repr(self)
+        if self.is_root_object:
+            return self._instance_name
+        else:
             count = self.parent.objects[self._instance_type].index(self)
-        except (KeyError, ValueError):
-            #print self.parent_name, self._instance_type
-            #assert self.parent_name not in objects
-            count = ''
-        return self._instance_name + (str(count) if count else '')
+      #      print "Returning instance name: ", self._instance_name + (str(count) if count else '')
+            return self._instance_name + (str(count) if count else '')
     instance_name = property(_get_instance_name)
     
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
-        name = self._instance_type = self.__class__.__name__ # speeds up instance_name retrieval
-        self._instance_name = (self.parent_name or '') + "->" + name
-        pride.environment.register(self) 
-        pride.environment.parents[self] = pride.environment.last_creator
-        
+    
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
@@ -207,13 +204,7 @@ class Base(object):
         for attribute, value in itertools.chain(self.flags, ((attribute, value()) for attribute, value in
                                                               self.mutable_defaults.items()), attributes.items()):
             setattr(self, attribute, value)
-            
-        if self.startup_components:
-            for component_type in self.startup_components:
-                component = self.create(component_type)
-                setattr(self, component.__class__.__name__.lower(), 
-                        component.instance_name) 
-            
+                        
         if self.required_attributes:
             for attribute in self.required_attributes:
                 try:
@@ -221,6 +212,31 @@ class Base(object):
                         raise ArgumentError("Required argument {} not supplied".format(attribute))
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
+        
+        name = self._instance_type = self.__class__.__name__ # speeds up instance_name retrieval        
+     
+        pride.environment.parents[self] = pride.environment.last_creator            
+        if self.parent:
+            self._instance_name = (self.parent_name + "->" or '') + name
+            self.is_root_object = False
+            self.parent.add(self)
+        else:
+            instance_name = "->" + name
+            counter = 1
+            while instance_name in _root_objects:
+                instance_name = name + str(counter) 
+                counter += 1
+            self._instance_name = instance_name
+            _root_objects[instance_name] = self
+            self.is_root_object = True
+            
+        #pride.environment.register(self)         
+        if self.startup_components:
+            for component_type in self.startup_components:
+                component = self.create(component_type)
+                setattr(self, component.__class__.__name__.lower(), 
+                        component.instance_name) 
+                        
         try:
             self.alert("Initialized", level=self.verbosity["initialized"])
         except KeyError:
@@ -255,10 +271,11 @@ class Base(object):
                 raise
             instance = resolve_string(instance_type)(*args, **kwargs)        
 
-        pride.environment.parents[instance] = self_name
-        if instance not in pride.environment.instance_name:
-            pride.environment.register(instance)
-        self.add(instance)
+        #pride.environment.parents[instance] = self_name
+        
+        #if instance not in pride.environment.instance_name:
+        #    pride.environment.register(instance)
+        #self.add(instance)
         pride.environment.last_creator = backup
         return instance
 
@@ -282,7 +299,7 @@ class Base(object):
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        pride.environment.delete(self)
+        pride.environment.delete(self)        
         self._deleted = True
         
     def remove(self, instance):
@@ -290,14 +307,16 @@ class Base(object):
         
             Removes an instance from self.objects. Modifies object.objects
             and environment.references_to."""
+        print repr(self), "Removing: ", repr(instance), getattr(instance, "instance_name", "no instance name?")
         #self.alert("Removing {}", [instance], level=0)
+
+        pride.environment.references_to[instance.instance_name].remove(self.instance_name)        
         try:
             self.objects[instance.__class__.__name__].remove(instance)
         except ValueError:
             print self, "Failed to remove: ", instance
-            raise
-        pride.environment.references_to[instance.instance_name].remove(self.instance_name)
-        
+            raise        
+            
     def add(self, instance):
         """ usage: object.add(instance)
 
@@ -314,7 +333,8 @@ class Base(object):
         siblings.append(instance)
         objects[instance_class] = siblings      
                     
-        instance_name = pride.environment.instance_name[instance]
+        instance_name = instance.instance_name
+    #    print self, "Adding: ", instance_name
         try:
             pride.environment.references_to[instance_name].add(self.instance_name)
         except KeyError:
@@ -459,7 +479,7 @@ class Wrapper(Base):
             setattr(self, self.wrapped_object_name, self.wrapped_object)
             
     def __getattr__(self, attribute):
-     #   print repr(self), "Getting ", attribute, "From ", self.wrapped_object
+        #print repr(self), "Getting ", attribute, "From ", self.wrapped_object
         return getattr(self.wrapped_object, attribute)        
                         
     def wraps(self, _object):

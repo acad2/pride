@@ -8,7 +8,7 @@ import pride
 import pride.vmlibrary
 import pride.utilities
 import pride._termsize
-objects = pride.objects
+#objects = pride.objects
 
 try:
     from msvcrt import getwch, kbhit
@@ -85,7 +85,7 @@ class Command_Line(pride.vmlibrary.Process):
         self._new_thread()  
         self.programs = self.programs or {}
         self.set_default_program("python", ("->User->Shell", "handle_input"), set_backup=True)
-        
+                
         for program in self.default_programs:
             self.create(program)
         

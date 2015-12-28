@@ -17,7 +17,7 @@ import timeit
 timer_function = timeit.default_timer
     
 def preprocess(function):
-    raise ImportError("Failed to replace preprocess function with source")
+    raise ImportError("Failed to replace preprocess function with source")     
     
 class Environment(object):
     """ Stores global state for the process. This includes reference
@@ -27,18 +27,20 @@ class Environment(object):
 
     def __init__(self):
         super(Environment, self).__init__()
-        self.last_creator = None
+        self.last_creator = ''
         self.Instructions = []
         for field in self.fields:
             setattr(self, field, {})
-
+        
+        self.objects = objects
+        
     def display(self):
         """ Pretty prints environment attributes """
         print "\nInstructions: {}".format([(instruction[0],
                                             str(instruction[1])) for
                                            instruction in self.Instructions])
-
-        for attribute in self.fields:
+        print "\nObjects: ", str(objects)        
+        for attribute in self.fields[1:]:
             print "\n" + attribute
             pprint.pprint(getattr(self, attribute))
 
@@ -84,15 +86,16 @@ class Environment(object):
                 for children in objects.values():
                     [child.delete() for child in list(children)]
 
-        if instance in self.parents:
-            del self.parents[instance]
+       # if instance in self.parents:
+       #     print "Deleting from parents: ", instance
+       #     del self.parents[instance]
 
         if instance_name in self.references_to:
             for referrer in list(self.references_to[instance_name]):
                 self.objects[referrer].remove(instance)
             del self.references_to[instance_name]
-        del self.objects[instance_name]
-        del self.instance_name[instance]
+      #  del self.objects[instance_name]
+        #del self.instance_name[instance]
         
     def register(self, instance):
         """ Registers an instance_name reference with the supplied instance. """
@@ -202,7 +205,9 @@ class Instruction(object):
                                                    self.args, self.kwargs)
 
 environment = Environment()
-objects = environment.objects
+
+#compatability purposes
+objects = objects
 
 # Things must be done in this order for Alert_Handler to exist inside this file
 # and reuse Base machinery, namely for argument parsing. 
@@ -222,7 +227,7 @@ class Alert_Handler(pride.base.Base):
 
     defaults = {"log_level" : '0+v', "print_level" : '0',
                 "log_name" : "Alerts.log", "log_is_persistent" : False,
-                "parse_args" : True}
+                "parse_args" : True, "is_root_object" : True}
 
     parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
     parser_modifiers = {"exit_on_help" : False}
@@ -271,6 +276,7 @@ alert_handler = Alert_Handler()
 
 class Finalizer(base.Base):
     
+    defaults = {"is_root_object" : True}
     mutable_defaults = {"_callbacks" : list}
         
     def run(self):

@@ -15,7 +15,7 @@ import pride.vmlibrary as vmlibrary
 import pride.base as base
 import pride.utilities as utilities
 import pride.shell
-objects = pride.objects
+#objects = pride.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
     """usage: ensure_folder_exists(pathname)

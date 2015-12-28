@@ -27,7 +27,7 @@ import pride.vmlibrary as vmlibrary
 import pride.base as base
 from utilities import Latency, Average
 Instruction = pride.Instruction
-objects = pride.objects
+#objects = pride.objects
 
 _socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 

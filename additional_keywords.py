@@ -1,10 +1,10 @@
-__all__ = ["export"]
+__all__ = ["_export"]
 
 import socket
 
 import pride
 
-def export(*args):
+def _export(*args):
     try:
         module_name, for_fqdn, as_name = args
     except ValueError:

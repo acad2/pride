@@ -141,7 +141,9 @@ class Parser(object):
             a quote or behind a comment. """
         strings = [range(start, end + 1) 
                    for start, end in Parser.get_string_indices(source)]
-        delimiters = DELIMITERS + OPERATORS
+        back_delimit = DELIMITERS + OPERATORS if back_delimit is True else back_delimit
+        forward_delimit = DELIMITERS + OPERATORS if forward_delimit is True else forward_delimit
+        
         #print "Found strings: "
         #for _range in strings[:len(strings) / 2]:
         #    print source[_range[0]:_range[-1]], '...', " index: ", _range[0], _range[-1]
@@ -169,33 +171,36 @@ class Parser(object):
                     
                 end = start + symbol_size
                 #print start-1, end, end-start, len(source), symbol, source
-     #           print "->Found potential match: {} in ".format(symbol), source[start-1:end+1]
-                is_back_delimited = (start - 1 >= 0 and source[start-1] in delimiters or start == 0)
-                is_forward_delimited = (end == source_length or source[end] in delimiters)
+                
+                is_back_delimited = (start - 1 >= 0 and source[start - 1] in back_delimit or start == 0)
+                is_forward_delimited = (end == source_length or source[end + 1] in forward_delimit)
+                print "->Found potential match: {} in ".format(symbol), source[start-1:end+1], is_back_delimited, is_forward_delimited
                 if back_delimit:
                     if is_back_delimited:
                         if forward_delimit:
                             if is_forward_delimited:
-    #                            print "Found forward/back delimited ", symbol, (start, end)
+                                print "Found forward/back delimited ", symbol, (start, end), source[start-1:end], source[start], source[start-1] in delimiters
                                 quantity -= 1
                                 indices.append((start, end))
                         else:
-    #                        print "Found back delimited {}".format(symbol), (start, end)
+                            print "Found back delimited {}".format(symbol), (start, end)
                             quantity -= 1
-                            indices.append((start, end))                
+                            indices.append((start, end))
+                    else:
+                        print "Found non properly delimited symbol: {}".format(source[start-1:end])
                 elif forward_delimit:
                     if is_forward_delimited:
-    #                    print "Found forward delimited ", symbol, (start, end)
+                        print "Found forward delimited ", symbol, (start, end)
                         quantity -= 1
                         indices.append((start, end))
                 elif not (back_delimit or forward_delimit):
-    #                print "Found non delimited ", symbol, (start, end)
+                    print "Found non delimited ", symbol, (start, end)
                     quantity -= 1
                     indices.append((start, end))
-    #            else:
-    #                print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
+                else:
+                    print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
     #                print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
-                source_index = end
+                source_index = end     
     #        print "Incrementing index by {} to {}".format(end, source_index)
         return indices
         
@@ -320,8 +325,11 @@ class Compiler(object):
             
         keyword_preprocessors = []
         for name in additional_keywords.__all__:
+            # slice of the leading underscore which is there to prevent the method backend
+            # from being preprocessed
+            name = name[1:] 
             keyword_preprocessors.append(type(name, (Keyword, ), {"keyword_string" : name}))
-            setattr(__builtin__, "_" + name, getattr(additional_keywords, name))
+            setattr(__builtin__, "_" + name, getattr(additional_keywords, '_' + name))
                      
         self.preprocessors += tuple(keyword_preprocessors)
         
@@ -398,7 +406,7 @@ class Preprocess_Decorator(Preprocessor):
     @classmethod
     def handle_source(_class, source):
         while "@pride.preprocess" in source:
-            index = Parser.find_symbol("@pride.preprocess", source, True, False, quantity=1)
+            index = Parser.find_symbol("@pride.preprocess", source, ' ', " \n\t(", quantity=1)
             if not index:
                 break
             start, end = index[0]
@@ -438,12 +446,14 @@ class Keyword(Preprocessor):
     @classmethod
     def handle_source(_class, source):
         keyword_string = _class.keyword_string
-        string_length = len(keyword_string)        
+        string_length = len(keyword_string)   
+   #     print "Testing for: ", keyword_string
         while keyword_string in source:
-            index = Parser.find_symbol(keyword_string, source, True, True)
+            index = Parser.find_symbol(keyword_string, source, ' ', '')            
             if not index:
-                break
-            start, end = index[0]            
+                break            
+            start, end = index[0]
+            print "Found keyword", keyword_string, index[0]
             try:
                 if source[start-1] == "_":
                     break
@@ -464,7 +474,7 @@ class Keyword(Preprocessor):
             if has_newline:
                 newline_location = line.index("\n")
             else:
-                newline_location = None
+                newline_location = len(line) - (string_length + 1)
             
             for _keyword in keyword.kwlist:
         #        print "Replacing keyword: ", _keyword
@@ -753,5 +763,5 @@ if __name__ == "__main__":
     host_name = socket.getfqdn()
     test_source = "export payload for {}\n".format(host_name)# as some_other_name".format(host_name)# with dynamic_keywords if variable_1 is True and variable_2 is not 0".format(host_name)
     print test_source
-    print 
+    print "Testing test source in importers"
     print Export_Keyword.handle_source(test_source)

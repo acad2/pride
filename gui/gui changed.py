@@ -5,7 +5,7 @@ import pride.base as base
 import pride.gui
 import pride.gui.shapes
 Instruction = pride.Instruction
-objects = pride.objects
+#objects = pride.objects
 
 import sdl2
 import sdl2.ext

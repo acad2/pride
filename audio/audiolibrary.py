@@ -8,7 +8,7 @@ import pride.base as base
 import pride.vmlibrary as vmlibrary
 import pride.fileio as fileio
 from pride.utilities import Latency
-objects = pride.objects
+#objects = pride.objects
 Instruction = pride.Instruction
 
 # supports both pyalsaaudio (linux) and pyaudio (cross platform)

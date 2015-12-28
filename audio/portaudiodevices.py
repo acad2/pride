@@ -17,7 +17,7 @@ import pride.vmlibrary as vmlibrary
 import pride.audio.audiolibrary as audiolibrary
 from pride.utilities import Latency
 Instruction = pride.Instruction
-objects = pride.objects
+#objects = pride.objects
 
 @contextmanager
 def _alsa_errors_suppressed():

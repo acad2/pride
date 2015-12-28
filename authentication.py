@@ -11,7 +11,7 @@ import pride.database
 import pride.utilities
 import pride.shell
 Instruction = pride.Instruction
-objects = pride.objects
+#objects = pride.objects
 
 class UnauthorizedError(Warning): pass         
                  

@@ -12,7 +12,7 @@ patches = ("Sys", )
 class Patched_Module(pride.base.Wrapper):
     """ The base class for patching modules """
     
-    defaults = {"module_name" : ''}
+    defaults = {"module_name" : '', "is_root_object" : True}
     
     def __init__(self, **kwargs):
         super(Patched_Module, self).__init__(**kwargs)

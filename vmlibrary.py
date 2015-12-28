@@ -133,7 +133,7 @@ class Processor(Process):
         self._return = {}
         instructions = pride.environment.Instructions
         caller = pride.environment.caller
-        objects = pride.objects
+        #objects = pride.objects
                 
         sleep = time.sleep
         heappop = heapq.heappop

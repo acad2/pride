@@ -12,7 +12,7 @@ r"""import pride.base
 import pride
 
 environment = pride.environment
-objects = pride.objects
+#objects = pride.objects
 from pride.importers import From_Disk
 from pride.utilities import documentation
 
