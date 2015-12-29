@@ -86,22 +86,23 @@ class User(pride.base.Base):
         python = self.invoke(self.launcher_type, parse_args=True) 
         self.create("pride.shell.Command_Line")
         
-        #while True:
-        #    try:
-        #        python.start_machine()                
-        #    except SystemExit as error:
-        #        pride.objects["->Finalizer"].run()          
-        #        if error.code == -1:
-        #            self.objects["Shell"][0].delete()
-        #            self.create("pride.fileio.File_System")                
-        #            python.delete()
-        #            
-        #            # to do: replace modules so restart means new objects are from new source
-        #            #sys.modules.clear()
-        #            #sys.modules["sys"] = sys
-        #            python = self.invoke(self.launcher_type, parse_args=True)
-        #        else:
-        #            break                                    
+        while True:
+            try:
+                python.start_machine()                
+            except SystemExit as error:
+                pride.objects["->Finalizer"].run()          
+                if error.code == -1:
+                    self.objects["Shell"][0].delete()
+                    self.create("pride.fileio.File_System")                
+                    python.delete()
+                    
+                    # to do: replace modules so restart means new objects are from new source
+                    #sys.modules.clear()
+                    #sys.modules["sys"] = sys
+                    python = self.invoke(self.launcher_type, parse_args=True)
+                else:
+                    break    
+        
         self.alert("Shutdown initiated", level='v')
         raise SystemExit()
         
