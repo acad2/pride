@@ -22,8 +22,7 @@ def preprocess(function):
 class Environment(object):
     """ Stores global state for the process. This includes reference
         reference information, most importantly the objects dictionary. """
-    fields = ("objects", "instance_count", "instance_name",
-              "parents", "references_to", "creation_count", "caller")
+    fields = ("objects", "references_to")
 
     def __init__(self):
         super(Environment, self).__init__()
@@ -57,11 +56,8 @@ class Environment(object):
         self.objects[old_component_name] = self.objects.pop(new_component.instance_name, 
                                                             new_component)
 
-        self.instance_name[new_component] = self.instance_name.pop(component)
+       
         
-        parents = self.parents
-        if component in parents:
-            parents[new_component] = parents.pop(component)
 
         new_component.instance_name = old_component_name
         references = self.references_to.get(old_component_name, set()).copy()
@@ -74,21 +70,13 @@ class Environment(object):
     def delete(self, instance):
         """ Deletes an object from the environment. This is called by
             instance.delete. """
-        try:
-            objects = instance.objects
-        except AttributeError: # non base objects have no .objects dictionary
-            instance_name = self.instance_name[instance]
-            parent = self.objects[self.parents[instance]]
-            parent.objects[instance.__class__.__name__].remove(instance)
-        else:
-            instance_name = instance.instance_name
-            if objects:
-                for children in objects.values():
-                    [child.delete() for child in list(children)]
+        objects = instance.objects
+        
+        instance_name = instance.instance_name
+        if objects:
+            for children in objects.values():
+                [child.delete() for child in list(children)]
 
-       # if instance in self.parents:
-       #     print "Deleting from parents: ", instance
-       #     del self.parents[instance]
 
         if instance_name in self.references_to:
             for referrer in list(self.references_to[instance_name]):
@@ -96,41 +84,7 @@ class Environment(object):
             del self.references_to[instance_name]
       #  del self.objects[instance_name]
         #del self.instance_name[instance]
-        
-    def register(self, instance):
-        """ Registers an instance_name reference with the supplied instance. """
-        instance_type = instance.__class__.__name__
-        instance_name = instance.instance_name
-        if not self.last_creator: # instance was not create'd
-            try:
-                count = self.instance_count[instance_type]
-            except KeyError:
-                count = self.instance_count[instance_type] = 0
-            finally:
-                self.instance_count[instance_type] += 1
-      #          instance_name = "->" + instance_type + (str(count) if count else '')
-        else:            
-            parent_name = self.last_creator
-            parent = self.objects[parent_name]
-            try:
-                count = self.creation_count[parent_name][instance_type]
-            except KeyError: # instance_type not created yet
-                try:
-                    count = self.creation_count[parent_name][instance_type] = 0
-                except KeyError: # parent_name has not created anything yet
-                    self.creation_count[parent_name] = {instance_type : 0}
-                    count = 0
-            
-            self.creation_count[parent_name][instance_type] += 1
-   #         instance_name = (parent_name + "->" + instance_type + 
-   #                         (str(count) if count else ''))
-        try:
-            self.instance_name[instance] = instance.instance_name = instance_name
-        except AttributeError:
-            self.instance_name[instance] = instance_name
-        self.objects[instance_name] = instance
-    #    print "Registered instance: ", instance_name, instance
-        
+                
     def add(self, instance):
         try:
             self.objects[instance.__class__.__name__].append(instance)
@@ -149,10 +103,8 @@ class Environment(object):
             heapq.heappush(self.Instructions, instruction)
 
         self.objects.update(objects)
-        self.parents.update(environment.parents)
         self.references_to.update(environment.references_to)
-        self.instance_count.update(environment.instance_count)
-
+        
 
 class Instruction(object):
     """ usage: Instruction(component_name, method_name,
@@ -178,6 +130,9 @@ class Instruction(object):
         order to access the result of the executed function, a callback
         function can be provided."""
 
+    caller = {}
+    instructions = []
+    
     def __init__(self, component_name, method, *args, **kwargs):
         super(Instruction, self).__init__()
         self.created_at = timer_function()
@@ -195,17 +150,17 @@ class Instruction(object):
             of the instruction is needed. """
         key = (timer_function() + priority, self, callback)
         try:
-            environment.caller[self.component_name].append(key)
+            self.caller[self.component_name].append(key)
         except KeyError:
-            environment.caller[self.component_name] = [key]
-        heapq.heappush(environment.Instructions, key)
+            self.caller[self.component_name] = [key]
+        heapq.heappush(self.instructions, key)
 
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
                                                    self.args, self.kwargs)
 
-environment = Environment()
-
+#environment = Environment()
+_last_creator = ''
 #compatability purposes
 objects = objects
 

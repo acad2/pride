@@ -335,6 +335,7 @@ class Socket(base.Wrapper):
         super(Socket, self).delete()
     
     def close(self):
+        self.alert("Closing", level=0)
         if self.added_to_network:
             objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:

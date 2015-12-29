@@ -447,7 +447,7 @@ class Authenticated_Client2(pride.base.Base):
         table = Authentication_Table.load(auth_table)
         hasher = hash_function(self.hash_function)
         hasher.update(table.get_passcode(*challenge) + ':' + shared_key)
-        self._answer = hasher.finalize()
+        self._answer = hasher.finalize()        
         return (self, challenge), {}
         
     @with_arguments(_get_auth_table_hash)

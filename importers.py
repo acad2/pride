@@ -174,31 +174,31 @@ class Parser(object):
                 
                 is_back_delimited = (start - 1 >= 0 and source[start - 1] in back_delimit or start == 0)
                 is_forward_delimited = (end == source_length or source[end + 1] in forward_delimit)
-                print "->Found potential match: {} in ".format(symbol), source[start-1:end+1], is_back_delimited, is_forward_delimited
+    #            print "->Found potential match: {} in ".format(symbol), source[start-1:end+1], is_back_delimited, is_forward_delimited
                 if back_delimit:
                     if is_back_delimited:
                         if forward_delimit:
                             if is_forward_delimited:
-                                print "Found forward/back delimited ", symbol, (start, end), source[start-1:end], source[start], source[start-1] in delimiters
+    #                            print "Found forward/back delimited ", symbol, (start, end), source[start-1:end], source[start], source[start-1] in delimiters
                                 quantity -= 1
                                 indices.append((start, end))
                         else:
-                            print "Found back delimited {}".format(symbol), (start, end)
+    #                        print "Found back delimited {}".format(symbol), (start, end)
                             quantity -= 1
                             indices.append((start, end))
-                    else:
-                        print "Found non properly delimited symbol: {}".format(source[start-1:end])
+    #                else:
+   #                     print "Found non properly delimited symbol: {}".format(source[start-1:end])
                 elif forward_delimit:
                     if is_forward_delimited:
-                        print "Found forward delimited ", symbol, (start, end)
+   #                     print "Found forward delimited ", symbol, (start, end)
                         quantity -= 1
                         indices.append((start, end))
                 elif not (back_delimit or forward_delimit):
-                    print "Found non delimited ", symbol, (start, end)
+    #                print "Found non delimited ", symbol, (start, end)
                     quantity -= 1
                     indices.append((start, end))
-                else:
-                    print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
+    #            else:
+    #                print "Found non properly delimited symbol: {} at {}".format(symbol, (start, end))
     #                print source[start-20:end+20], (start - 1 >= 0 and source[start-1] in delimiters), start ==0
                 source_index = end     
     #        print "Incrementing index by {} to {}".format(end, source_index)
@@ -380,8 +380,8 @@ class Compiler(object):
             split = module_name.split('.', 1)
             if len(split) > 1:
                 new_module.__package__ = split[0]
-            else:
-                print "No package available for: ", module_name
+           # else:
+           #     print "No package available for: ", module_name
         return new_module
     
     def preprocess(self, source):
@@ -453,7 +453,7 @@ class Keyword(Preprocessor):
             if not index:
                 break            
             start, end = index[0]
-            print "Found keyword", keyword_string, index[0]
+            
             try:
                 if source[start-1] == "_":
                     break
@@ -501,7 +501,7 @@ class Keyword(Preprocessor):
                         ("\n" if has_newline else ''))
             #print "Resolved keyword: ", source[:-1]
             source = source[:start] + new_line + source[start + end_of_line + 1:]            
-            print "preprocessed to new line: ", new_line
+  #          print "preprocessed to new line: ", new_line
         return source
         
         

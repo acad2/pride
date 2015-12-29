@@ -119,7 +119,7 @@ def generate_padding(key, byte_length, function):
         key_padding += function(key, key_padding)
     return key_padding[:byte_length]
     
-def brute_force(output, function, test_bytes, key, pre_key='', post_key=''):
+def brute_force(output, function, test_bytes, key, pre_key='', post_key='', joiner=''):
     """ Attempt to find the input to function that produced output.
         
         test_bytes is an iterable of iterables; Each iterable contains the
@@ -141,9 +141,9 @@ def brute_force(output, function, test_bytes, key, pre_key='', post_key=''):
         output; This can be caused by incorrect pre_key/post_key information, or 
         incorrectly configured test_bytes. """        
     for permutation in itertools.product(*test_bytes):
-        #print "Guessing: ", ''.join(permutation)
-        if function(key, pre_key + ''.join(permutation) + post_key) == output:
-            return ''.join(permutation)
+  #      print "Guessing: ", joiner.join(permutation)
+        if function(key, pre_key + joiner.join(permutation) + post_key) == output:
+            return joiner.join(permutation)
     else:           
         raise ValueError("Unable to recover input for given output with supplied arguments")      
 

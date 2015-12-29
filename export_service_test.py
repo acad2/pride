@@ -7,6 +7,7 @@ class Export_Service(pride.base.Base):
     
     def export_to(self, ip, module_source, as_name):
         if ip not in self.connections:
+            print module_source
             client = self.create(self.client_type, ip=ip, startup_definitions=module_source)
             self.connections[ip] = client
         else:

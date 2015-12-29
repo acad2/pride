@@ -129,11 +129,11 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {} # {attribute_name : mutable_type}, i.e {'defaults' : dict}
+    mutable_defaults = {"references_to" : list} # {attribute_name : mutable_type}, i.e {'defaults' : dict}
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
-    verbosity = {"delete" : "deletion", "initialized" : "vv"}
+    verbosity = {"delete" : "deletion", "initialized" : "vv", "remove" : "vv"}
             
     # defaults have a pitfall that can be a problem in certain cases
     # because dictionaries are unordered, the order in which defaults
@@ -163,16 +163,12 @@ class Base(object):
     # names in parser_ignore will not be available as command line arguments
     parser_ignore = ("replace_reference_on_load", "_deleted",
                      "parse_args", "dont_save", "startup_components")    
-    
-    # an objects parent is the object that .create'd it.
-    def _get_parent_name(self):
-        return pride.environment.parents.get(self, 
-                                             pride.environment.last_creator)     
-    parent_name = property(_get_parent_name)
-    
+        
     def _get_parent(self):
-        #assert self.parent_name != self.instance_name
-        return objects[self.parent_name] if self.parent_name else None
+        if self.parent_name:
+            return objects[self.parent_name]
+        else:
+            return None
     parent = property(_get_parent)
 
     def _get_instance_name(self):
@@ -188,7 +184,7 @@ class Base(object):
     
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
-    
+        self.parent_name = pride._last_creator
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
        
@@ -215,8 +211,8 @@ class Base(object):
         
         name = self._instance_type = self.__class__.__name__ # speeds up instance_name retrieval        
      
-        pride.environment.parents[self] = pride.environment.last_creator            
-        if self.parent:
+      #  pride.environment.parents[self] = pride.environment.last_creator            
+        if self.parent:            
             self._instance_name = (self.parent_name + "->" or '') + name
             self.is_root_object = False
             self.parent.add(self)
@@ -262,8 +258,8 @@ class Base(object):
             obtained via the pride.environment.instance_name dictionary, 
             using the instance as the key."""
         self_name = self.instance_name
-        backup = pride.environment.last_creator
-        pride.environment.last_creator = self_name
+        backup = pride._last_creator
+        pride._last_creator = self_name
         try:
             instance = instance_type(*args, **kwargs)
         except TypeError:
@@ -271,20 +267,12 @@ class Base(object):
                 raise
             instance = resolve_string(instance_type)(*args, **kwargs)        
 
-        #pride.environment.parents[instance] = self_name
-        
-        #if instance not in pride.environment.instance_name:
-        #    pride.environment.register(instance)
-        #self.add(instance)
-        pride.environment.last_creator = backup
+        pride._last_creator = backup
         return instance
 
     def invoke(self, callable_string, *args, **kwargs):
         """ Calls the method specified in callable_string with args and kwargs.
-            Objects that do not require any form of Base object functionality
-            (such as an instance name) can be created via invoke instead of 
-            the create method. 
-            
+                        
             Base objects that are created via invoke instead of create will
             exist as a root object in the objects dictionary instead of as a
             child of self. """
@@ -299,46 +287,53 @@ class Base(object):
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        pride.environment.delete(self)        
-        self._deleted = True
-        
-    def remove(self, instance):
-        """ Usage: object.remove(instance)
-        
-            Removes an instance from self.objects. Modifies object.objects
-            and environment.references_to."""
-        print repr(self), "Removing: ", repr(instance), getattr(instance, "instance_name", "no instance name?")
-        #self.alert("Removing {}", [instance], level=0)
-
-        pride.environment.references_to[instance.instance_name].remove(self.instance_name)        
-        try:
-            self.objects[instance.__class__.__name__].remove(instance)
-        except ValueError:
-            print self, "Failed to remove: ", instance
-            raise        
+            
+        if self.references_to:
+            # make a copy, as remove will mutate self.references_to
+            references = self.references_to[:]
+            for name in references:
+                objects[name].remove(self)
+        self._deleted = True      
             
     def add(self, instance):
         """ usage: object.add(instance)
 
             Adds an object to caller.objects[instance.__class__.__name__] and
-            performs bookkeeping operations for the environment."""   
-        
+            notes the reference location."""           
         objects = self.objects
         instance_class = instance.__class__.__name__
-        siblings = objects.get(instance_class, [])#set())
-        if instance in siblings:
-            print self, instance, siblings
-            raise AddError
-        #siblings.add(instance)
-        siblings.append(instance)
-        objects[instance_class] = siblings      
-                    
-        instance_name = instance.instance_name
-    #    print self, "Adding: ", instance_name
+        
+   #     siblings = objects.get(instance_class, [])
+   #     if instance in siblings:
+   #         raise AddError
+   #     
+   #     siblings.append(instance)
+   #     objects[instance_class] = siblings                                  
+   #     instance.references_to.append(self.instance_name)     
+        
         try:
-            pride.environment.references_to[instance_name].add(self.instance_name)
+            siblings = objects[instance_class]
         except KeyError:
-            pride.environment.references_to[instance_name] = set((self.instance_name, ))      
+            siblings = [instance]
+        else:
+            if instance in siblings:
+                raise AddError
+            siblings.append(instance)
+        objects[instance_class] = siblings                                  
+        instance.references_to.append(self.instance_name)          
+        
+    def remove(self, instance):
+        """ Usage: object.remove(instance)
+        
+            Removes an instance from self.objects. Modifies object.objects
+            and environment.references_to."""    
+        self.alert("Removing {}", [instance], level=self.verbosity["remove"])         
+        try:
+            self.objects[instance.__class__.__name__].remove(instance)
+        except ValueError:
+            raise 
+        else:
+            instance.references_to.remove(self.instance_name)
             
     def alert(self, message, format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -360,7 +355,8 @@ class Base(object):
         length of the message and the length of the format arguments."""
         return objects["->Alert_Handler"]._alert(self.instance_name + 
                                                  ": " + message, 
-                                                 level, format_args)     
+                                                 level, format_args)   
+                                                 
     def __getstate__(self):
         return self.__dict__.copy()
         
@@ -385,6 +381,7 @@ class Base(object):
             If the calling object is one that has been created via the update
             method, the returned state will include any required source code
             to rebuild the object."""
+        raise NotImplementedError()
         self.alert("Saving")
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
@@ -417,10 +414,12 @@ class Base(object):
             This method may be extended by subclasses to customize 
             functionality for instances created by the load method. Often
             times this will implement similar functionality as the objects
-            __init__ method does (i.e. opening a file or database)."""     
+            __init__ method does (i.e. opening a file or database).
+            
+            NOTE: Currently not implemented while changing to localized data"""  
+        raise NotImplementedError()
         [setattr(self, key, value) for key, value in attributes.items()]
-        pride.environment.add(self)
-        
+                
         if (self.replace_reference_on_load and 
             self.instance_name != attributes["instance_name"]):
             print "Replacing instance"
@@ -440,7 +439,10 @@ class Base(object):
            
            Note that modules are preserved when update is called. Any
            modules used in the updated class will not necessarily be the
-           same as the modules in use in the current global scope."""
+           same as the modules in use in the current global scope.
+           
+           Note: Currently not implemented; changing over to localized data"""
+        raise NotImplementedError()
         self.alert("Updating", level='v') 
         
         class_base = pride.utilities.updated_class(type(self))
@@ -480,7 +482,10 @@ class Wrapper(Base):
             
     def __getattr__(self, attribute):
         #print repr(self), "Getting ", attribute, "From ", self.wrapped_object
-        return getattr(self.wrapped_object, attribute)        
+        try:
+            return getattr(self.wrapped_object, attribute)
+        except AttributeError:
+            raise AttributeError("'{}' object has no attribute '{}'".format(type(self).__name__, attribute))
                         
     def wraps(self, _object):
         """ Sets the specified object as the object wrapped by this object. """

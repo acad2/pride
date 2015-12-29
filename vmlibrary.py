@@ -86,11 +86,11 @@ class Process(pride.base.Base):
     def delete(self):
         self.running = False
         try:
-            for entry in pride.environment.caller.pop(self.instance_name):
-                pride.environment.Instructions.remove(entry)
+            for entry in pride.Instruction.caller.pop(self.instance_name):
+                pride.Instruction.instructions.remove(entry)
         except KeyError:
             pass
-        pride.environment.Instructions.sort()
+        pride.Instruction.instructions.sort()
         super(Process, self).delete()
         
     def __getstate__(self):
@@ -131,8 +131,8 @@ class Processor(Process):
     
     def run(self):
         self._return = {}
-        instructions = pride.environment.Instructions
-        caller = pride.environment.caller
+        instructions = pride.Instruction.instructions
+        caller = pride.Instruction.caller
         #objects = pride.objects
                 
         sleep = time.sleep

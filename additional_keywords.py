@@ -24,13 +24,6 @@ def _export(*args):
             shell.handle_input(module_source)
             break
     else:
-        pride.objects["->User"].create("pride.interpreter.Shell", ip=ip)
+        pride.objects["->User"].create("pride.interpreter.Shell", ip=ip, 
+                                       startup_definitions=module_source)
                   
-#    try:
-#        pride.objects["->Python->Export_Service"].export_to(ip, module_source, as_name)
-#    except KeyError:
-#        pride.objects["->Python"].create("pride.export_service_test.Export_Service")
-#        pride.objects["->Python->Export_Service"].export_to(ip, module_source, as_name)
-    
-
-        

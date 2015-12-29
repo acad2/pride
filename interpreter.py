@@ -39,12 +39,13 @@ class Shell(authentication2.Authenticated_Client2):
     
     parser_ignore = ("prompt", "lines", "user_is_entering_definition")
     
-    verbosity = {"logging_in" : 0}
+    verbosity = {"login" : 0}
                 
     def on_login(self, message):
         self.alert("{}", [message], level=0)
         sys.stdout.write(">>> ")
         self.logged_in = True
+      #  print self.startup_definitions
         if self.startup_definitions:
             self.handle_startup_definitions()                
              
@@ -57,6 +58,7 @@ class Shell(authentication2.Authenticated_Client2):
                     [traceback.format_exc()],
                     level=0)
         else:
+            self.startup_definitions = ''
             self.execute_source(source)
                     
     def handle_input(self, user_input):                
@@ -96,8 +98,10 @@ class Shell(authentication2.Authenticated_Client2):
         
     def execute_source(self, source):
         if not self.logged_in:
-            self.alert("Not logged in. Unable to process {}".format(source))
-            self.login()            
+            self.alert("Not logged in".format(source))
+            if self.auto_login or pride.shell.get_permission("Login now? :"):
+                self.startup_definitions = source
+                self.login()            
         else:
             self.session.execute(Instruction(self.target_service, "handle_input",
                                              source), callback=self.result)
