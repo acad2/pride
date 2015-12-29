@@ -116,7 +116,7 @@ class Base(object):
     # the defaults attribute sets what attributes new instances will initialize with
     # they can be overridden when initialized an object via keyword arguments
     # PITFALL: do not use mutable objects as a default. use mutable_defaults instead
-    defaults = {"_deleted" : False, "dont_save" : False,
+    defaults = {"_deleted" : False, "dont_save" : False, "parse_args" : False,
                 "replace_reference_on_load" : True,
                 "startup_components" : tuple()}   
     
@@ -190,7 +190,7 @@ class Base(object):
        
         attributes = self.defaults.copy()
         attributes.update(kwargs)
-        if attributes.get("parse_args"):
+        if attributes["parse_args"]:
             additional_attributes = {}
             command_line_args = self.parser.get_options()
             defaults = self.defaults
@@ -225,17 +225,15 @@ class Base(object):
             self._instance_name = instance_name
             _root_objects[instance_name] = self
             self.is_root_object = True
-            
-        #pride.environment.register(self)         
+                          
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
-                        component.instance_name) 
-                        
+                        component.instance_name)                         
         try:
             self.alert("Initialized", level=self.verbosity["initialized"])
-        except KeyError:
+        except KeyError: # Alert handler can not exist in some situations
             pass
             
     def create(self, instance_type, *args, **kwargs):

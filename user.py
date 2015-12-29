@@ -24,8 +24,8 @@ class User(pride.base.Base):
                 # skip the login/key derivation process
                 "encryption_key" : None, "salt" : None, "mac_key" : None,
                 
-                # similarly, username and password may be assigned instead of prompted. 
-                "password" : '', "username" : '', 
+                # similarly, username may be assigned instead of prompted. 
+                "username" : '', 
                 
                 # These may be changed for specific application needs
                 "hkdf_mac_info_string" : "{} Message Authentication Code Key",
@@ -38,20 +38,24 @@ class User(pride.base.Base):
                 "verifier_filetype" : "pride.fileio.Database_File",
                 "salt_indexable" : False, "verifier_indexable" : False,
                 
-                "launcher_type" : "pride.interpreter.Python", "is_root_object" : True}
+                "launcher_type" : "pride.interpreter.Python",
+                "username" : "localhost"}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
-                     "hkdf_encryption_info_string", "password_prompt")
+                     "hkdf_encryption_info_string", "password_prompt",
+                     "iv_size", "verifier_filetype",
+                     "salt_indexable", "kdf_iteration_count",
+                     "encryption_mode", "encryption_algorithm",
+                     "launcher_type", "verifier_indexable",
+                     "salt_size", "salt_filetype", "salt")
     
     flags = {"_password_verifier_size" : 32}.items()
     
     verbosity = {"password_verified" : 'v', "invalid_password" : 0}
     
     def _get_password(self):
-        return self._password or getpass.getpass(self.password_prompt.format(self.instance_name))
-    def _set_password(self, value):
-        self._password = value
-    password = property(_get_password, _set_password)
+        return getpass.getpass(self.password_prompt.format(self.instance_name))
+    password = property(_get_password)
     
     def _get_username(self):
         if not self._username:
@@ -82,22 +86,22 @@ class User(pride.base.Base):
         python = self.invoke(self.launcher_type, parse_args=True) 
         self.create("pride.shell.Command_Line")
         
-        while True:
-            try:
-                python.start_machine()                
-            except SystemExit as error:
-                pride.objects["->Finalizer"].run()          
-                if error.code == -1:
-                    self.objects["Shell"][0].delete()
-                    self.create("pride.fileio.File_System")                
-                    python.delete()
-                    
-                    # to do: replace modules so restart means new objects are from new source
-                    #sys.modules.clear()
-                    #sys.modules["sys"] = sys
-                    python = self.invoke(self.launcher_type, parse_args=True)
-                else:
-                    break                                    
+        #while True:
+        #    try:
+        #        python.start_machine()                
+        #    except SystemExit as error:
+        #        pride.objects["->Finalizer"].run()          
+        #        if error.code == -1:
+        #            self.objects["Shell"][0].delete()
+        #            self.create("pride.fileio.File_System")                
+        #            python.delete()
+        #            
+        #            # to do: replace modules so restart means new objects are from new source
+        #            #sys.modules.clear()
+        #            #sys.modules["sys"] = sys
+        #            python = self.invoke(self.launcher_type, parse_args=True)
+        #        else:
+        #            break                                    
         self.alert("Shutdown initiated", level='v')
         raise SystemExit()
         
@@ -117,13 +121,13 @@ class User(pride.base.Base):
         else:
             salt = self.salt            
         key_length = self.key_length
+        if key_length < 16:
+            raise ValueError("Invalid key length supplied ({})".format(key_length))
+            
         kdf = self.invoke("pride.security.key_derivation_function", 
                           algorithm=self.hash_function, length=key_length, 
                           salt=salt, iterations=self.kdf_iteration_count)
         master_key = kdf.derive(self.username + ':' + self.password)
-        
-        # in case password was passed in
-        self.password = ''
         
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      

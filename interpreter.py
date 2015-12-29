@@ -201,7 +201,7 @@ class Python(base.Base):
                                         "pride.rpc.Rpc_Server",
                                         "pride.rpc.Rpc_Worker"),
                 "startup_definitions" : '',
-                "interpreter_type" : "pride.interpreter.Interpreter", "is_root_object" : True}
+                "interpreter_type" : "pride.interpreter.Interpreter"}
                      
     parser_ignore = ("environment_setup", "startup_components", 
                      "startup_definitions", "interpreter_type")

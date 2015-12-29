@@ -1,8 +1,9 @@
 """ Stores global objects including instructions and the environment """
 import sys
-import pride.importers
-compiler = pride.importers.Compiler(preprocessors=(importers.Preprocess_Decorator,),
-                                    modify_builtins=None)                                    
+import pride.preprocessing
+        
+compiler = pride.preprocessing.Compiler(preprocessors=(pride.preprocessing.Preprocess_Decorator, ),
+                                        modify_builtins=None)                                    
 
 import heapq
 import inspect
@@ -18,93 +19,7 @@ timer_function = timeit.default_timer
     
 def preprocess(function):
     raise ImportError("Failed to replace preprocess function with source")     
-    
-class Environment(object):
-    """ Stores global state for the process. This includes reference
-        reference information, most importantly the objects dictionary. """
-    fields = ("objects", "references_to")
-
-    def __init__(self):
-        super(Environment, self).__init__()
-        self.last_creator = ''
-        self.Instructions = []
-        for field in self.fields:
-            setattr(self, field, {})
-        
-        self.objects = objects
-        
-    def display(self):
-        """ Pretty prints environment attributes """
-        print "\nInstructions: {}".format([(instruction[0],
-                                            str(instruction[1])) for
-                                           instruction in self.Instructions])
-        print "\nObjects: ", str(objects)        
-        for attribute in self.fields[1:]:
-            print "\n" + attribute
-            pprint.pprint(getattr(self, attribute))
-
-    def replace(self, component, new_component):
-        """ Replaces the instance component with the specified new_component.
-            The new_component will be obtain the replaced components
-            instance_name reference. The old component should be garbage
-            collected. """
-        if isinstance(component, unicode) or isinstance(component, str):
-            component = self.objects[component]
-
-        old_component_name = component.instance_name
-
-        self.objects[old_component_name] = self.objects.pop(new_component.instance_name, 
-                                                            new_component)
-
-       
-        
-
-        new_component.instance_name = old_component_name
-        references = self.references_to.get(old_component_name, set()).copy()
-
-        for referrer in references:
-            instance = self.objects[referrer]
-            instance.remove(component)
-            instance.add(new_component)
-
-    def delete(self, instance):
-        """ Deletes an object from the environment. This is called by
-            instance.delete. """
-        objects = instance.objects
-        
-        instance_name = instance.instance_name
-        if objects:
-            for children in objects.values():
-                [child.delete() for child in list(children)]
-
-
-        if instance_name in self.references_to:
-            for referrer in list(self.references_to[instance_name]):
-                self.objects[referrer].remove(instance)
-            del self.references_to[instance_name]
-      #  del self.objects[instance_name]
-        #del self.instance_name[instance]
-                
-    def add(self, instance):
-        try:
-            self.objects[instance.__class__.__name__].append(instance)
-        except KeyError:
-            self.objects[instance.__class__.__name__] = [instance]
-            
-    def __contains__(self, component):
-        if (component in self.objects.keys() or
-            component in itertools.chain(self.objects.values())):
-            return True
-
-    def update(self, environment):
-        """ Updates the fields of the environment. This is currently
-            unused and may be deprecated. """
-        for instruction in environment.Instructions:
-            heapq.heappush(self.Instructions, instruction)
-
-        self.objects.update(objects)
-        self.references_to.update(environment.references_to)
-        
+         
 
 class Instruction(object):
     """ usage: Instruction(component_name, method_name,
@@ -159,9 +74,8 @@ class Instruction(object):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
                                                    self.args, self.kwargs)
 
-#environment = Environment()
 _last_creator = ''
-#compatability purposes
+# compatibility purposes
 objects = objects
 
 # Things must be done in this order for Alert_Handler to exist inside this file
@@ -182,7 +96,7 @@ class Alert_Handler(pride.base.Base):
 
     defaults = {"log_level" : '0+v', "print_level" : '0',
                 "log_name" : "Alerts.log", "log_is_persistent" : False,
-                "parse_args" : True, "is_root_object" : True}
+                "parse_args" : True}
 
     parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
     parser_modifiers = {"exit_on_help" : False}
@@ -231,7 +145,6 @@ alert_handler = Alert_Handler()
 
 class Finalizer(base.Base):
     
-    defaults = {"is_root_object" : True}
     mutable_defaults = {"_callbacks" : list}
         
     def run(self):
