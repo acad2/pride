@@ -287,6 +287,8 @@ class Base(object):
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
+        for child in itertools.chain(*self.objects.values()):
+            child.delete()
             
         if self.references_to:
             # make a copy, as remove will mutate self.references_to

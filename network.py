@@ -92,7 +92,7 @@ class Socket_Error_Handler(pride.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
                  "connection_in_progress" : 0,
-                 "connection_closed" : 0,
+                 "connection_closed" : "vv",
                  "connection_reset" : 0,
                  "connection_was_aborted" : 0,
                  "eagain" : 0,
@@ -114,7 +114,7 @@ class Socket_Error_Handler(pride.base.Base):
         sock.delete()
         
     def connection_closed(self, sock, error):
-        sock.alert("{}", [error], level=0)
+        sock.alert("{}", [error], level=self.verbosity["connection_closed"])
         sock.delete()
         
     def connection_reset(self, sock, error):
@@ -243,7 +243,9 @@ class Socket(base.Wrapper):
                                                    buffer_size)                     
                 if not byte_count:
                     if not self._byte_count:
-                        raise ConnectionClosed()
+                        error = socket.error(CONNECTION_CLOSED)
+                        error.errno = CONNECTION_CLOSED
+                        raise error
                     break
                 self._byte_count += byte_count                
         except (ValueError, socket.error) as error:        
@@ -339,7 +341,7 @@ class Socket(base.Wrapper):
         if self.added_to_network:
             objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:
-            
+        self.wrapped_object.shutdown(1)
         self.wrapped_object.close()
         self.closed = True
     
@@ -608,7 +610,7 @@ class Network(vmlibrary.Process):
                 try:
                     _socket.on_select()
                 except socket.error as error:
-                    self.alert("socket.error when reading on select: {}", error, level=0)
+              #      self.alert("socket.error when reading on select: {}", ERROR_CODES[error.errno], level=0)
                     error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower()) 
                     
         connecting = self.connecting

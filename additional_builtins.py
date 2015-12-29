@@ -7,6 +7,7 @@ import sys
 import importlib
 import platform
 import itertools
+import pprint
 is_version_two = platform.python_version_tuple()[0] == '2'
 
 __all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input", 
@@ -121,7 +122,7 @@ class Objects_Dictionary(object):
         try:
             return _relative_name_lookup(value)
         except IndexError:
-            raise KeyError("Value not in objects")
+            raise KeyError("'{}' not in objects".format(value))
     
     #def __setitem__(self, item, value):
     #    current_object = self[item]
