@@ -77,7 +77,7 @@ class User(pride.base.Base):
             try:
                 self.login()
             except pride.security.InvalidPassword:
-                self.username = self.password = None
+                self.username = None
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:

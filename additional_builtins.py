@@ -98,7 +98,6 @@ def shutdown():
     raise SystemExit(0)
        
 def _relative_name_lookup(value):    
-  #  print "\n rnl on", value
     if value.count("->") == 1:
         return _root_objects[value]
     else:
@@ -118,7 +117,9 @@ def _relative_name_lookup(value):
             
 class Objects_Dictionary(object):    
             
-    def __getitem__(self, value): 
+    def __getitem__(self, value):         
+        if "->" not in value:
+            raise KeyError("{}".format(value))        
         try:
             return _relative_name_lookup(value)
         except IndexError:
@@ -181,5 +182,7 @@ class Objects_Dictionary(object):
     def __str__(self):
         return str(self.get_dict())
                 
-    
+    def __contains__(self, value):
+        return value in self.values()
+        
 objects = Objects_Dictionary()

@@ -44,8 +44,7 @@ class Instruction(object):
         that they do not happen inline even if the priority is 0.0. In
         order to access the result of the executed function, a callback
         function can be provided."""
-
-    caller = {}
+    
     instructions = []
     
     def __init__(self, component_name, method, *args, **kwargs):
@@ -63,12 +62,9 @@ class Instruction(object):
             The instruction will be executed in priority seconds.
             An optional callback function can be provided if the return value
             of the instruction is needed. """
-        key = (timer_function() + priority, self, callback)
-        try:
-            self.caller[self.component_name].append(key)
-        except KeyError:
-            self.caller[self.component_name] = [key]
-        heapq.heappush(self.instructions, key)
+        heapq.heappush(self.instructions, (timer_function() + priority, self, 
+                                           callback, self.component_name,
+                                           self.method, self.args, self.kwargs))
 
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
@@ -109,7 +105,7 @@ class Alert_Handler(pride.base.Base):
         if '0' in print_level:
             print_level.remove('0')
             print_level.append(0)
-        self._print_level = print_level
+        self._print_level = set(print_level)
     print_level = property(_get_print_level, _set_print_level)
 
     def _get_log_level(self):
@@ -120,7 +116,7 @@ class Alert_Handler(pride.base.Base):
         if '0' in log_level:
             log_level.remove('0')
             log_level.append(0)
-        self._log_level = log_level
+        self._log_level = set(log_level)
     log_level = property(_get_log_level, _set_log_level)
         
     def __init__(self, **kwargs):

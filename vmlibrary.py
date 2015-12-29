@@ -52,9 +52,9 @@ class Process(pride.base.Base):
     def __init__(self, **kwargs):
         self.args = tuple()
         self.kwargs = dict()
-        super(Process, self).__init__(**kwargs)
-        self.latency = resolve_string("pride.utilities.Latency")(self.instance_name)
+        super(Process, self).__init__(**kwargs)        
         self.run_instruction = Instruction(self.instance_name, "_run")
+        
         if self.running:
             Instruction(self.instance_name, "start").execute()
 
@@ -64,9 +64,6 @@ class Process(pride.base.Base):
         self._run_queued = True
         
     def _run(self):
-        if self.instance_name == "->Python->Network":
-            self.latency.mark()
-            pprint.pprint(self.latency.measurements)
         self._run_queued = False
         if self.context_managed:
             with self:
@@ -90,8 +87,9 @@ class Process(pride.base.Base):
     def delete(self):
         self.running = False
         try:
-            for entry in pride.Instruction.caller.pop(self.instance_name):
-                pride.Instruction.instructions.remove(entry)
+            for entry in pride.Instruction.instructions[:]:
+                if entry[-1] == self.instance_name:
+                    pride.Instruction.instructions.remove(entry)
         except KeyError:
             pass
         pride.Instruction.instructions.sort()
@@ -131,14 +129,12 @@ class Processor(Process):
     parser_modifiers = {"exit_on_help" : False}
             
     verbosity = {"instruction_execution" : "instruction_execution", "component_alert" : 0,
-                 "exception_alert" : 0}
+                 "exception_alert" : 0, "callback_exception" : 0}
     
     def run(self):
         self._return = {}
-        instructions = pride.Instruction.instructions
-        caller = pride.Instruction.caller
-        #objects = pride.objects
-                
+        instructions = pride.Instruction.instructions        
+                        
         sleep = time.sleep
         heappop = heapq.heappop
         _getattr = getattr        
@@ -146,39 +142,60 @@ class Processor(Process):
         component_errors = (AttributeError, KeyError)
         reraise_exceptions = (SystemExit, KeyboardInterrupt)
         alert = self.alert
-        component_alert = partial(alert, "{0}:\n    {1}", level=self.verbosity["component_alert"])
+        verbosity = self.verbosity
+        component_alert = partial(alert, "{0}:\n    {1}", level=verbosity["component_alert"])
         exception_alert = partial(alert, 
                                   "\nException encountered when processing {0}.{1}\n{2}", 
-                                  level=self.verbosity["exception_alert"])
+                                  level=verbosity["exception_alert"])
         execution_alert = partial(alert, "executing instruction {}")
+        callback_exception_alert = partial(alert, "Exception in callback '{}'", level=verbosity["callback_exception"])
         format_traceback = traceback.format_exc
-               
-        while instructions and self.running:            
-            key = execute_at, instruction, callback = heappop(instructions)
-            component_name = instruction.component_name
-            caller[component_name].remove(key)                  
+        result = null_result = [] # a unique object
+        while instructions and self.running:   
             try:
-                call = _getattr(objects[component_name], instruction.method)
-            except KeyError:
-                error = "'{}' component does not exist".format(component_name)                        
-                component_alert((str(instruction), error)) 
-                continue
+                while True:                    
+                    (execute_at, instruction, callback, 
+                     component_name, method, args, kwargs) = heappop(instructions)     
+                    call = _getattr(objects[component_name], method)
+                        
+                    time_until = max(0, (execute_at - timer_function()))
+                    if time_until:
+                        sleep(time_until)
+                                        
+                    execution_alert([instruction], level=verbosity["instruction_execution"])
+                    
+                    if callback:
+                        result = call(*args, **kwargs)
+                        callback(result)
+                        result = null_result
+                    else:
+                        call(*args, **kwargs)
+                        
+            except KeyError:                
+                if component_name in objects:
+                    if callback and result is not null_result:
+                        callback_exception_alert((callback, ))
+                    else:
+                        exception_alert((component_name, method, format_traceback()))
+                else:
+                    error = "'{}' component does not exist".format(component_name)                        
+                    component_alert((str(instruction), error)) 
+                    
             except AttributeError as error:
-                component_alert((str(instruction), error))
-                continue
-                
-            time_until = max(0, (execute_at - timer_function()))
-            if time_until:
-                sleep(time_until)
-                                
-            execution_alert([instruction], level=self.verbosity["instruction_execution"])
-            try:
-                result = call(*instruction.args, **instruction.kwargs)
-            except BaseException as result:
-                if type(result) in reraise_exceptions:
+                if hasattr(objects[component_name], method):
+                    if callback and result is not null_result:
+                        callback_exception_alert((callback, ))
+                    else:
+                        exception_alert((component_name, method, format_traceback()))
+                else:
+                    component_alert((str(instruction), error))   
+                    
+            except BaseException as error:                
+                if type(error) in reraise_exceptions:
                     raise
                 else:
-                    exception_alert((component_name, instruction.method, format_traceback()))
-            else:
-                if callback:
-                    callback(result)
+                    if callback and result is not null_result:
+                        callback_exception_alert((callback, ))
+                    else:
+                        exception_alert((component_name, method, format_traceback()))
+                            

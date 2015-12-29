@@ -130,7 +130,7 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {"references_to" : list} # {attribute_name : mutable_type}, i.e {'defaults' : dict}
+    mutable_defaults = {"references_to" : list}
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
@@ -355,18 +355,14 @@ class Base(object):
         print_level may passed in as command line arguments to globally control verbosity.
         
         format_args can sometimes make alerts more readable, depending on the
-        length of the message and the length of the format arguments."""
-        alert_handler = objects["->Alert_Handler"]
-        if level in alert_handler._print_level or level is 0:
-            formatted = True
-            message = message.format(*format_args) if format_args else message
+        length of the message and the length of the format arguments.""" 
+        alert_handler = objects["->Alert_Handler"]               
+        message = "{}: ".format(self.instance_name) + (message.format(*format_args) if format_args else message)
+        if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
         if level in alert_handler._log_level or level is 0:
-            if not formatted and format_args:
-                message = message.format(*format_args)
-            severity = alert_handler.level_map.get(level, str(level))            
             alert_handler.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
-            alert_handler.log.write(severity + message + "\n")    
+            alert_handler.log.write(str(level) + message + "\n")    
                                                  
     def __getstate__(self):
         return self.__dict__.copy()

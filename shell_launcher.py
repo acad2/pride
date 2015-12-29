@@ -1,12 +1,11 @@
 # pride.shell_launcher - configuration file for launching the shell 
 import pride
 
-options = {"parse_args" : True,
-           "startup_definitions" : '',
-           "username" : "localhost",
-           "password" : ''}
+options = {"parse_args" : True, "startup_definitions" : '',
+           "username" : pride.objects["->User"].username}
 
 # feel free to customize
+
 definitions = \
 r"""import pride.base
 import pride
