@@ -267,6 +267,12 @@ class Latency(object):
         return min(self._average.values)
     minimum = property(_get_min_measurement)
     
+    def _get_measurements(self):
+        _average = self._average
+        _values = _average.values
+        return (min(_values), _average.average, max(_values))
+    measurements = property(_get_measurements)
+    
     def __init__(self, name='', size=20):
         super(Latency, self).__init__()
         self.name = name

@@ -139,7 +139,6 @@ class Objects_Dictionary(object):
         result = result or []
         for _object in itertools.chain(*__object.objects.values()):
             if retrieve == "keys":
-                print "Adding child object: ", _object
                 result.append(_object.instance_name)
                 self._recursive_search(_object, "keys", result)
             elif retrieve == "values":

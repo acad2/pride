@@ -20,14 +20,11 @@ import struct
 import errno
 import traceback
 import sys
-import binascii
 
 import pride
 import pride.vmlibrary as vmlibrary
 import pride.base as base
-from utilities import Latency, Average
-Instruction = pride.Instruction
-#objects = pride.objects
+import pride.utilities
 
 _socket_names, _local_connections, ERROR_CODES = {}, {}, {}
 
@@ -147,30 +144,33 @@ class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
         Wrapper to a _socketobject. The default socket family is socket.AF_INET and
         the default socket type is socket.SOCK_STREAM (a tcp socket)."""
-    defaults = {"blocking" : 0,
-                "timeout" : 0,
-                "add_on_init" : True,                                 
-                "socket_family" : socket.AF_INET,
-                "socket_type" : socket.SOCK_STREAM,
+    defaults = {# standard socket stuff; see respective documentation for more information
+                "socket_family" : socket.AF_INET, "socket_type" : socket.SOCK_STREAM,
                 "protocol" : socket.IPPROTO_IP,
-                "interface" : "0.0.0.0",
-                "port" : 0,
-                "_byte_count" : 0,
-                "connection_attempts" : 10,
-                "bind_on_init" : False,
-                "closed" : False,
-                "_connecting" : False,
-                "_endpoint_instance_name" : '',
-                "connected" : False,
-                "added_to_network" : False,
-                "replace_reference_on_load" : False,
-                "bypass_network_stack" : False}
+                "interface" : "0.0.0.0", "port" : 0,
+                
+                # if timeout is not 0, then settimeout is called when initializing
+                # otherwise setblocking is called.
+                "blocking" : 0, "timeout" : 0,
+                
+                # connect_timeout is how long, in seconds, to wait before giving up when
+                # when attempting to establish a new connection to a server. 
+                # Note: Modifying the Network.priority attribute from the default of
+                # .01 will make this value significantly less meaningful. 
+                "connect_timeout" : .100,
+                                                
+                #"replace_reference_on_load" : False,
+                "bypass_network_stack" : False,
+                "shutdown_on_close" : True, "shutdown_flag" : 2}
         
     additional_parser_ignores = defaults.keys()
     additional_parser_ignores.remove("interface")
     additional_parser_ignores.remove("port")
     parser_ignore = tuple(additional_parser_ignores)
     
+    flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_instance_name" : '',
+             "connected" : False, "closed" : False, "_local_data" : ''}.items()
+             
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
     
@@ -179,15 +179,14 @@ class Socket(base.Wrapper):
     address = property(_get_address)
     
     def _get_os_recv_buffer_size(self):
-        return self.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-        
+        return self.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)        
     def _set_os_recv_buffer_size(self, size):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
+        Socket.recv_size = self.os_recv_buffer_size
     os_recv_buffer_size = property(_get_os_recv_buffer_size, _set_os_recv_buffer_size)  
     
     def _get_os_send_buffer_size(self):
-        return self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-        
+        return self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)        
     def _set_os_send_buffer_size(self, size):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, size)
     os_send_buffer_size = property(_get_os_send_buffer_size, _set_os_send_buffer_size)    
@@ -198,23 +197,28 @@ class Socket(base.Wrapper):
     # windows is basically the inverse: unless explicitly set by an admin there is no
     # max os size for buffers, and benefits may be seen by tweaking the above.
     
+    # so we only have to set it once instead of for every instance initialized
+    __socket = socket.socket()
+    recv_size = __socket.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+    __socket.close()
+    del __socket
+    
     wrapped_object_name = 'socket'
     
     def __init__(self, family=socket.AF_INET, type=socket.SOCK_STREAM,
                        proto=0, **kwargs):
         kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))        
         super(Socket, self).__init__(**kwargs)
-        self._local_data = ''
-        self.setblocking(self.blocking)
-        self.settimeout(self.timeout)
-        self.recv_size = self.os_recv_buffer_size
+        
+        if self.timeout:
+            self.settimeout(self.timeout) 
+        else:
+            self.setblocking(self.blocking)                                          
            
-        if self.add_on_init:
-            self.added_to_network = True
-            try:
-                objects["->Python->Network"].add(self)
-            except KeyError:
-                self.alert("Network component does not exist", level=0)
+        try:
+            objects["->Python->Network"].add(self)
+        except KeyError:
+            self.alert("Network component does not exist", level=0)
          
     def on_select(self):
         """ Used to customize behavior when a socket is readable according to select.select.
@@ -243,6 +247,8 @@ class Socket(base.Wrapper):
                                                    buffer_size)                     
                 if not byte_count:
                     if not self._byte_count:
+                        self.alert("Received EOF", level=self.verbosity["recv_eof"])
+                        self.shutdown_on_close = False
                         error = socket.error(CONNECTION_CLOSED)
                         error.errno = CONNECTION_CLOSED
                         raise error
@@ -311,7 +317,7 @@ class Socket(base.Wrapper):
             if ERROR_CODES[error.errno] == "CONNECTION_IS_CONNECTED":
                 self.on_connect()
             elif not self._connecting:
-                self._connection_attempts = self.connection_attempts
+                #self.connection_attempts = 
                 self.latency = pride.utilities.Latency(size=10)
                 self._connecting = True
                 objects["->Python->Network"].connecting.add(self)
@@ -338,10 +344,11 @@ class Socket(base.Wrapper):
     
     def close(self):
         self.alert("Closing", level=0)
-        if self.added_to_network:
-            objects["->Python->Network"].remove(self)
+        objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:
-        self.wrapped_object.shutdown(1)
+        if self.shutdown_on_close:
+            print self, "Shutting down"
+            self.wrapped_object.shutdown(self.shutdown_flag)
         self.wrapped_object.close()
         self.closed = True
     
@@ -350,8 +357,7 @@ class Socket(base.Wrapper):
         del stats["wrapped_object"]
         del stats["socket"]
         stats["connecting"] = False
-        stats["_connected"] = False
-        stats["added_to_network"] = False
+        stats["_connected"] = False        
         return stats
         
     def on_load(self, attributes):
@@ -359,16 +365,13 @@ class Socket(base.Wrapper):
         self.wraps(socket.socket(self.socket_family, self.socket_type, 
                                  self.protocol))
         self.setblocking(self.blocking)
-        self.settimeout(self.timeout)
-                
-        if self.add_on_init:
-            try:
-                pride.objects["->Python->Network"].add(self)
-            except KeyError: 
-                self.alert("Network unavailable")
-            else:
-                self.added_to_network = True
-                
+        self.settimeout(self.timeout)                
+        
+        try:
+            pride.objects["->Python->Network"].add(self)
+        except KeyError: 
+            self.alert("Network unavailable")
+            
                 
 class Raw_Socket(Socket):
     
@@ -576,8 +579,8 @@ class Network(vmlibrary.Process):
    
     mutable_defaults = {"connecting" : set, "sockets" : list}
     
-    error_handler = Socket_Error_Handler()      
-                
+    error_handler = Socket_Error_Handler()         
+    
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)
@@ -622,8 +625,9 @@ class Network(vmlibrary.Process):
                 
             # if not, then it's still waiting or the connection timed out
             still_connecting = connecting.difference(writable)
+            elapsed_time = self.priority
             for connection in still_connecting:
-                connection.connection_attempts -= 1
+                connection.connect_timeout -= elapsed_time
                 if not connection.connection_attempts:
                     try:
                         connection.connect(connection.host_info)

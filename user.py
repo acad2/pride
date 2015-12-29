@@ -96,6 +96,8 @@ class User(pride.base.Base):
                     self.create("pride.fileio.File_System")                
                     python.delete()
                     
+                    import pprint
+                    pprint.pprint(objects.get_dict())
                     # to do: replace modules so restart means new objects are from new source
                     #sys.modules.clear()
                     #sys.modules["sys"] = sys

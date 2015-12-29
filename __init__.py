@@ -127,20 +127,6 @@ class Alert_Handler(pride.base.Base):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = open(self.log_name, 'a+')
 
-    def _alert(self, message, level, format_args=tuple()):
-        formatted = False
-        assert level is not ''
-        if level in self._print_level or level is 0:
-            formatted = True
-            message = message.format(*format_args) if format_args else message
-            sys.stdout.write(message + "\n")
-        if level in self._log_level or level is 0:
-            if not formatted and format_args:
-                message = message.format(*format_args)
-            severity = self.level_map.get(level, str(level))            
-            self.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
-            self.log.write(severity + message + "\n")
-
 alert_handler = Alert_Handler()
 
 class Finalizer(base.Base):

@@ -18,6 +18,7 @@ import heapq
 import time
 import traceback
 import timeit
+import pprint
 from functools import partial
 
 import pride
@@ -52,7 +53,7 @@ class Process(pride.base.Base):
         self.args = tuple()
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)
-
+        self.latency = resolve_string("pride.utilities.Latency")(self.instance_name)
         self.run_instruction = Instruction(self.instance_name, "_run")
         if self.running:
             Instruction(self.instance_name, "start").execute()
@@ -63,6 +64,9 @@ class Process(pride.base.Base):
         self._run_queued = True
         
     def _run(self):
+        if self.instance_name == "->Python->Network":
+            self.latency.mark()
+            pprint.pprint(self.latency.measurements)
         self._run_queued = False
         if self.context_managed:
             with self:

@@ -64,6 +64,7 @@
     as long as the component exists at runtime."""
 import operator
 import itertools
+import sys
        
 import pride
 import pride.metaclass
@@ -293,6 +294,8 @@ class Base(object):
             references = self.references_to[:]
             for name in references:
                 objects[name].remove(self)
+        if self.is_root_object:
+            del _root_objects[self.instance_name]
         self._deleted = True      
             
     def add(self, instance):
@@ -335,7 +338,7 @@ class Base(object):
         else:
             instance.references_to.remove(self.instance_name)
             
-    def alert(self, message, format_args=tuple(), level=0):
+    def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 
@@ -353,9 +356,17 @@ class Base(object):
         
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments."""
-        return objects["->Alert_Handler"]._alert(self.instance_name + 
-                                                 ": " + message, 
-                                                 level, format_args)   
+        alert_handler = objects["->Alert_Handler"]
+        if level in alert_handler._print_level or level is 0:
+            formatted = True
+            message = message.format(*format_args) if format_args else message
+            sys.stdout.write(message + "\n")
+        if level in alert_handler._log_level or level is 0:
+            if not formatted and format_args:
+                message = message.format(*format_args)
+            severity = alert_handler.level_map.get(level, str(level))            
+            alert_handler.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
+            alert_handler.log.write(severity + message + "\n")    
                                                  
     def __getstate__(self):
         return self.__dict__.copy()
