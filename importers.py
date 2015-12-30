@@ -62,7 +62,6 @@ def split_instance_name(instance_name):
         number = 0
     return (instance_name[:index], number)
         
-        
 class From_Disk(object):
         
     def __init__(self, modules=tuple()):

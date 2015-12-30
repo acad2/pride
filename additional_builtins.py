@@ -185,4 +185,4 @@ class Objects_Dictionary(object):
     def __contains__(self, value):
         return value in self.keys()
         
-objects = Objects_Dictionary()
+objects = {}#Objects_Dictionary()

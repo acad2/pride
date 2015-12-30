@@ -147,7 +147,11 @@ class Compiler(object):
             #module_code = self.compile(source, path)
             self.compile_module(module_name, source, path)        
         return sys.modules[module_name]
-                
+           
+    def reload_module(self, module_name):
+        del sys.modules[module_name]
+        return importlib.import_module(module_name)
+        
     def compile_module(self, module_name, source, path):
         if module_name in self._outdated:
             with file_contents_swapped(source, path):

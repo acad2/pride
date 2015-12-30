@@ -140,7 +140,7 @@ class Base(object):
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
-    verbosity = {"delete" : "deletion", "initialized" : "vv", "remove" : "vv"}
+    verbosity = {"delete" : "deletion", "initialized" : "initialized", "remove" : "vv"}
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -170,22 +170,10 @@ class Base(object):
         else:
             return None
     parent = property(_get_parent)
-
-    def _get_instance_name(self):
-     #   assert not self._deleted, pride.environment.display()
-    #    print "Retrieving instance name for: ", repr(self)
-        if self.is_root_object:
-            return self._instance_name
-        else:
-            count = self.parent.objects[self._instance_type].index(self)
-      #      print "Returning instance name: ", self._instance_name + (str(count) if count else '')
-            return self._instance_name + (str(count) if count else '')
-    instance_name = property(_get_instance_name)
-    
+   
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
 
-        self.parent_name = pride._last_creator
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
               
@@ -216,25 +204,26 @@ class Base(object):
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
         
-        name = self._instance_type = self.__class__.__name__ # speeds up instance_name retrieval        
-     
-      #  pride.environment.parents[self] = pride.environment.last_creator            
+        self.parent_name = pride._last_creator
+        name = self.__class__.__name__ 
+                
         if self.parent:            
-            self._instance_name = (self.parent_name + "->" or '') + name
             self.is_root_object = False
             self.parent.add(self)
+            count = self.parent.objects[name].index(self)
+            count = str(count) if count else ''
+            self.instance_name = (self.parent_name + "->" or '') + name + count
+            objects[self.instance_name] = self
         else:
             instance_name = "->" + name
             counter = 1
             while instance_name in _root_objects:
                 instance_name = name + str(counter) 
                 counter += 1
-            self._instance_name = instance_name
-            _root_objects[instance_name] = self
+            self.instance_name = instance_name
+            objects[instance_name] = self
             self.is_root_object = True
-        if self.instance_name == "->User":
-            assert self.username == "localhost", self.username
-            
+
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
@@ -300,8 +289,8 @@ class Base(object):
             references = self.references_to[:]
             for name in references:
                 objects[name].remove(self)
-        if self.is_root_object:
-            del _root_objects[self.instance_name]
+        
+        del objects[self.instance_name]
         self._deleted = True      
             
     def add(self, instance):
@@ -343,7 +332,10 @@ class Base(object):
             raise 
         else:
             instance.references_to.remove(self.instance_name)
-            
+    
+    #def _replace(self, instance, instance_name):
+    #    index = self.objects[instance.__class__.__name__]
+        
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
@@ -452,17 +444,17 @@ class Base(object):
            
            Note that modules are preserved when update is called. Any
            modules used in the updated class will not necessarily be the
-           same as the modules in use in the current global scope.
-           
-           Note: Currently not implemented; changing over to localized data"""
-        raise NotImplementedError()
+           same as the modules in use in the current global scope. """
         self.alert("Updating", level='v') 
         
         class_base = pride.utilities.updated_class(type(self))
+        print "Updated class base: ", class_base
         class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
-                
+        print "Created new self: ", repr(new_self)
+        
         # a mini replacement __init__
+        
         attributes = new_self.defaults.copy()
         attributes["_required_modules"] = class_base._required_modules
         [setattr(new_self, key, value) for key, value in attributes.items()]
@@ -484,9 +476,10 @@ class Wrapper(Base):
         defining them."""
      
     defaults = {"wrapped_object" : None}
+    
     wrapped_object_name = ''
     
-    parser_ignore = Base.parser_ignore + ("wrapped_object", )
+    parser_ignore = ("wrapped_object", )
         
     def __init__(self, **kwargs):
         super(Wrapper, self).__init__(**kwargs)

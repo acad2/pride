@@ -52,26 +52,28 @@ def sys_argv_swapped(new_argv):
     finally:
         sys.argv[:] = backup
                               
-def updated_class(_class, importer_type="pride.importers.From_Disk"):
+def updated_class(_class):
     # modules are garbage collected if not kept alive        
     required_modules = []        
-    module_loader = resolve_string(importer_type)()
     class_mro = _class.__mro__[:-1] # don't update object
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
+    
     import pride.module_utilities
     with pride.module_utilities.modules_preserved(info[1] for 
-                                                 info in class_info):
+                                                  info in class_info):
         for cls, module_name in class_info:
-            module = module_loader.load_module(module_name)
-            try:
-                source = inspect.getsource(module)
-            except TypeError:
-                try:
-                    source = module._source
-                except AttributeError:
-                    error_string = "Could not locate source for {}".format(module.__name__)
-                    import pride.errors
-                    raise pride.errors.UpdateError(error_string)              
+            module = pride.compiler.reload_module(module_name)
+            source = pride.compiler.module_source[module_name]
+            
+            #try:
+            #    source = 
+            #except TypeError:
+            #    try:
+            #        source = module._source
+            #    except AttributeError:
+            #        error_string = "Could not locate source for {}".format(module.__name__)
+            #        import pride.errors
+            #        raise pride.errors.UpdateError(error_string)              
             required_modules.append((module_name, source, module))
     
     class_base = getattr(module, _class.__name__)

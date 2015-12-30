@@ -6,6 +6,7 @@ import symtable
 import pkgutil
 
 def installed_modules(directories=None):
+    """ Returns a list of the names of available python modules """
     return [module[1] for module in pkgutil.iter_modules(directories)]
             
 def create_module(module_name, source, context=None):
@@ -18,13 +19,13 @@ def create_module(module_name, source, context=None):
     return new_module
   
 def get_module_source(module):
+    """ Retrieve the source code of module. If the source code has been
+        processed by the pride compiler, the preprocessed code is returned
+        from the compilers cache. Otherwise, the inspect module is used. """
     try:
-        path = module.__file__[:-1] if module.__file__[-1] == 'c' else module.__file__
-    except AttributeError:
-        raise TypeError("{}.__file__ not found".format(module))
-    with open(path, 'rb') as module_file:
-        source = module_file.read()
-    return source
+        return pride.compiler.module_source[module.__name__]
+    except KeyError:        
+        return inspect.getsource(module)
     
 def reload_module(module_name):
     """ Reloads the module specified by module_name"""
@@ -38,9 +39,9 @@ def modules_preserved(modules=tuple()):
     if not modules:
         modules = [key for key in sys.modules if sys.modules[key]]
     for module_name in modules:
-        backup[module_name] = sys.modules.get(module_name, None)
-        if backup[module_name] is None:
-            print "Attempted to preserve non existent module: ", module_name
+        if module_name not in sys.modules:
+            raise ValueError("Attempted to preserve non existent module: {}".format(module_name))
+        backup[module_name] = sys.modules[module_name]                  
     try:
         yield
     finally:
@@ -50,8 +51,9 @@ def modules_preserved(modules=tuple()):
         
 @contextlib.contextmanager
 def modules_switched(module_dict):
-    """ Enters a context where the modules in module_dict.keys are replaced by the source
-        specified in module_dict[key]. The original modules will be restored upon exit."""
+    """ Enters a context where the modules named in module_dict keys are 
+        recompiled and replaced by the associated source. The original 
+        modules will be restored upon exit. """
     modules = {}
     with modules_preserved(module_dict.keys()):
         for module_name, source_code in module_dict.items():
