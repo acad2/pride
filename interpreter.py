@@ -44,8 +44,7 @@ class Shell(authentication2.Authenticated_Client2):
     def on_login(self, message):
         self.alert("{}", [message], level=0)
         sys.stdout.write(">>> ")
-        self.logged_in = True
-      #  print self.startup_definitions
+        self.logged_in = True      
         if self.startup_definitions:
             self.handle_startup_definitions()                
              
@@ -55,8 +54,8 @@ class Shell(authentication2.Authenticated_Client2):
             compile(source, "Shell", 'exec')
         except:
             self.alert("Startup defintions failed to compile:\n{}",
-                    [traceback.format_exc()],
-                    level=0)
+                       [traceback.format_exc()],
+                       level=0)
         else:
             self.startup_definitions = ''
             self.execute_source(source)

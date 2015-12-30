@@ -183,6 +183,6 @@ class Objects_Dictionary(object):
         return str(self.get_dict())
                 
     def __contains__(self, value):
-        return value in self.values()
+        return value in self.keys()
         
 objects = Objects_Dictionary()

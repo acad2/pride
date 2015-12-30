@@ -18,8 +18,7 @@ import timeit
 timer_function = timeit.default_timer
     
 def preprocess(function):
-    raise ImportError("Failed to replace preprocess function with source")     
-         
+    raise ImportError("Failed to replace preprocess function with source")       
 
 class Instruction(object):
     """ usage: Instruction(component_name, method_name,

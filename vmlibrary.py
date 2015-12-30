@@ -87,9 +87,13 @@ class Process(pride.base.Base):
     def delete(self):
         self.running = False
         try:
+            print pride.Instruction.instructions
             for entry in pride.Instruction.instructions[:]:
                 if entry[-1] == self.instance_name:
+                    print "Removing instruction..."
                     pride.Instruction.instructions.remove(entry)
+                else:
+                    print entry[-1]
         except KeyError:
             pass
         pride.Instruction.instructions.sort()
@@ -171,12 +175,13 @@ class Processor(Process):
                     else:
                         call(*args, **kwargs)
                         
-            except KeyError:                
+            except KeyError:                      
                 if component_name in objects:
-                    if callback and result is not null_result:
-                        callback_exception_alert((callback, ))
-                    else:
-                        exception_alert((component_name, method, format_traceback()))
+                    if callback:
+                        if result is not null_result:
+                            callback_exception_alert((callback, ))
+                            continue
+                    exception_alert((component_name, method, format_traceback()))
                 else:
                     error = "'{}' component does not exist".format(component_name)                        
                     component_alert((str(instruction), error)) 

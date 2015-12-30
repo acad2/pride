@@ -170,7 +170,10 @@ class Socket(base.Wrapper):
     
     flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_instance_name" : '',
              "connected" : False, "closed" : False, "_local_data" : ''}
-             
+    
+    verbosity = {"close" : "socket_close", "network_nonexistant" : "vv",
+                 "recv_eof" : "vv", "connected" : "socket_connected"}
+    
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
     
@@ -218,7 +221,8 @@ class Socket(base.Wrapper):
         try:
             objects["->Python->Network"].add(self)
         except KeyError:
-            self.alert("Network component does not exist", level=0)
+            self.alert("Network component does not exist", 
+                       level=self.verbosity["network_nonexistant"])
          
     def on_select(self):
         """ Used to customize behavior when a socket is readable according to select.select.
@@ -289,8 +293,6 @@ class Socket(base.Wrapper):
                     self._endpoint_instance_name = _local_connections[self.sockname]
                 else:
                     self._endpoint_instance_name = _socket_names[self.peername]
-            self.alert("Bypassing network stack. Sending to {}", 
-                       (self._endpoint_instance_name, ), level='vvv')
             instance = pride.objects[self._endpoint_instance_name]
             instance._local_data += data
             instance.recv()                 
@@ -334,7 +336,7 @@ class Socket(base.Wrapper):
         self.connected = True        
         self.peername = self.getpeername()
         self.sockname = self.getsockname()
-        self.alert("Connected", level='v')
+        self.alert("Connected", level=self.verbosity["connected"])
                 
     def delete(self):
         if not self.closed:
@@ -343,7 +345,7 @@ class Socket(base.Wrapper):
         super(Socket, self).delete()
     
     def close(self):
-        self.alert("Closing", level=0)
+        self.alert("Closing", level=self.verbosity["close"])
         objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:
         if self.shutdown_on_close:
@@ -455,7 +457,8 @@ class Server(Tcp_Socket):
                 "Tcp_Socket_type" : "network.Tcp_Socket",
                 "allow_port_zero" : False,
                 "dont_save" : False,
-                "replace_reference_on_load" : True}
+                "replace_reference_on_load" : True,
+                "shutdown_on_close" : False}
 
     parser_ignore = Tcp_Socket.parser_ignore + ("backlog", "reuse_port", 
                                                 "Tcp_Socket_type",
@@ -608,16 +611,23 @@ class Network(vmlibrary.Process):
             if writable_sockets:
                 writable.extend(writable_sockets)
                 
-        if readable:
-            for _socket in readable:
-                try:
-                    _socket.on_select()
-                except socket.error as error:
-              #      self.alert("socket.error when reading on select: {}", ERROR_CODES[error.errno], level=0)
-                    error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower()) 
-                    
         connecting = self.connecting
-        self.connecting = set()    
+        self.connecting = set()                 
+        read_progress = 0
+        readable_count = len(readable)
+        # nesting the for within the while so we don't have to
+        # set up and tear down a try... finally block for every socket        
+        while read_progress < readable_count:
+            try:
+                for read_counter, _socket in enumerate(readable[read_progress:]):
+                    _socket.on_select()                        
+            except socket.error as error:
+                read_progress += (read_counter + 1)                
+               # self.alert("socket.error when reading on select: {}", ERROR_CODES[error.errno], level=0)
+                error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower())
+            else:
+                break        
+        
         if connecting and writable:                            
             # if a connecting tcp client is now writable, it's connected   
             for accepted in connecting.intersection(writable):
@@ -626,6 +636,7 @@ class Network(vmlibrary.Process):
             # if not, then it's still waiting or the connection timed out
             still_connecting = connecting.difference(writable)
             elapsed_time = self.priority
+            
             for connection in still_connecting:
                 connection.connect_timeout -= elapsed_time
                 if not connection.connection_attempts:

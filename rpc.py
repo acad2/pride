@@ -10,6 +10,7 @@ import itertools
 
 import pride
 import pride.base
+import pride.utilities
 import pride.networkssl
 #objects = pride.objects
 
@@ -82,9 +83,12 @@ class Session(pride.base.Base):
             information regarding the callback is included in the request. """
         _call = component, method = instruction.component_name, instruction.method
         #print "Pickling: ", instruction.args, instruction.kwargs
-        request = ' '.join((self.id_size + self.id, component, method, 
-                            default_serializer.dumps((instruction.args, 
-                                                      instruction.kwargs))))
+        request = pride.utilities.pack_data(self.id, component, method, 
+                                            default_serializer.dumps((instruction.args, 
+                                                                      instruction.kwargs)))
+        #request = ' '.join((self.id_size + self.id, component, method, 
+        #                    default_serializer.dumps((instruction.args, 
+        #                                              instruction.kwargs))))
         try:
             host = _hosts[self.host_info]
         except KeyError:
@@ -203,8 +207,7 @@ class Rpc_Client(Packet_Client):
             self.alert("\n    Remote Traceback: Exception calling {}: {}: {}\n    Unable to proceed with callback {}",
                        ('.'.join(_call), response.__class__.__name__, 
                         getattr(response, "traceback", response), callback), 
-                        level=self.verbosity["handle_exception"])
-            
+                        level=self.verbosity["handle_exception"])            
             
     def deserealize(self, response):
         return default_serializer.loads(response)
@@ -212,7 +215,9 @@ class Rpc_Client(Packet_Client):
         
 class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
-                     
+    
+    verbosity = {"request_exception" : "vv", "request_result" : "vv"}
+    
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
         self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])
@@ -220,53 +225,66 @@ class Rpc_Socket(Packet_Socket):
     def recv(self, packet_count=0):
         peername = self.peername
         for packet in super(Rpc_Socket, self).recv():
-            result = next(self.rpc_workers).handle_request(packet, peername)
-            self.send(result)
-            
-        
-class Rpc_Worker(pride.base.Base):
-    """ Performs remote procedure call requests """
-    verbosity = {"request_exception" : 'v', "request_denied" : 'v',
-                 "request_result" : "vvv"}
-                 
-    def handle_request(self, packet, peername):
-        session_id_size = struct.unpack('l', packet[:4])[0]
-        end_session_id = 4 + session_id_size
-        
-        session_id = packet[4:end_session_id]
-        (component_name, method, 
-         serialized_arguments) = packet[end_session_id + 1:].split(' ', 2)
-
-        try:
-            instance = pride.objects[component_name]
-        except KeyError as result:
-            # this could allow people to enumerate components that do not exist
-            # but raising UnauthorizedError could be a pain for development
-            raise UnauthorizedError()
-        else:                
-            if not hasattr(instance, "validate"):
-                result = UnauthorizedError()
-            elif instance.validate(session_id, peername, method):
-                try:
-                    args, kwargs = self.deserealize(serialized_arguments)
-                    result = getattr(instance, method)(*args, **kwargs)
-                except BaseException as result:
+            (session_id, component_name, 
+             method, serialized_arguments) = pride.utilities.unpack_data(packet, 4)            
+            try:
+                result = next(self.rpc_workers).handle_request(peername, session_id, component_name,
+                                                               method, serialized_arguments)                                    
+            except BaseException as result:
+                if isinstance(result, KeyError) and component_name not in pride.objects:
+                    result = UnauthorizedError
+                elif not isinstance(result, UnauthorizedError):
                     stack_trace = traceback.format_exc()
                     self.alert("Exception processing request {}.{}: \n{}",
                                [component_name, method, stack_trace],
                                level=self.verbosity["request_exception"])                                
-                    result.traceback = stack_trace                    
-            else:
-                self.alert("Denying unauthorized request: {}",
-                           (packet, ), level=self.verbosity["request_denied"])
-                result = UnauthorizedError()
-        self.alert("Sending result of {}.{}: {}",
-                   (component_name, method, result), level=self.verbosity["request_result"])
-        return self.serealize(result)    
+                    result.traceback = stack_trace  
+            else:                
+                self.alert("Sending result of {}.{}: {}",
+                           (component_name, method, result), 
+                           level=self.verbosity["request_result"])                     
+            
+            self.send(self.serialize(result))
+      
+    def serialize(self, result):
+        return default_serializer.dumps(result)  
+
+        
+class Rpc_Worker(pride.base.Base):
+    """ Performs remote procedure call requests """
+    verbosity = {"request_result" : "vvv"}
+                 
+    def handle_request(self, peername, session_id, component_name, method,
+                       serialized_arguments): 
+        instance = pride.objects[component_name]
+        if not hasattr(instance, "validate") or not instance.validate(session_id, peername, method):            
+            raise UnauthorizedError()
+        else:
+            args, kwargs = self.deserealize(serialized_arguments)
+            return getattr(instance, method)(*args, **kwargs)
+        #try:
+        #    instance = pride.objects[component_name]
+        #except KeyError as result:
+        #    # this could allow people to enumerate components that do/do not exist
+        #    # but raising UnauthorizedError could be a pain for development
+        #    raise UnauthorizedError()
+        #else:                
+        #    if not hasattr(instance, "validate"):
+        #        result = UnauthorizedError()
+        #    elif instance.validate(session_id, peername, method):
+        #        try:
+        #            args, kwargs = self.deserealize(serialized_arguments)
+        #            result = getattr(instance, method)(*args, **kwargs)
+        #        except BaseException as result:
+        #            stack_trace = traceback.format_exc()
+        #            self.alert("Exception processing request {}.{}: \n{}",
+        #                       [component_name, method, stack_trace],
+        #                       level=self.verbosity["request_exception"])                                
+        #            result.traceback = stack_trace                    
+        #    else:
+        #        self.alert("Denying unauthorized request: {}",
+        #                   (packet, ), level=self.verbosity["request_denied"])
+        #        result = UnauthorizedError()    
         
     def deserealize(self, serialized_arguments):
-        return default_serializer.loads(serialized_arguments)
-        
-    def serealize(self, result):
-        return default_serializer.dumps(result)        
-        
+        return default_serializer.loads(serialized_arguments)        
