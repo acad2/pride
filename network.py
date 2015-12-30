@@ -349,7 +349,6 @@ class Socket(base.Wrapper):
         objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:
         if self.shutdown_on_close:
-            print self, "Shutting down"
             self.wrapped_object.shutdown(self.shutdown_flag)
         self.wrapped_object.close()
         self.closed = True

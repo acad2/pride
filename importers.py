@@ -44,7 +44,10 @@ def sys_meta_path_switched(new_meta_path):
 @contextlib.contextmanager        
 def imports_from_disk():
     with sys_meta_path_switched([From_Disk()]):
-        yield
+        try:
+            yield
+        finally:
+            pass
              
 def split_instance_name(instance_name):
     assert instance_name

@@ -85,28 +85,20 @@ class User(pride.base.Base):
         python = self.invoke(self.launcher_type, parse_args=True) 
         self.create("pride.shell.Command_Line")
         
-        while True:
-            try:
-                python.start_machine()                
-            except SystemExit as error:
-                pride.objects["->Finalizer"].run()          
-                if error.code == -1:
-                    self.objects["Shell"][0].delete()
-                    self.create("pride.fileio.File_System")                
-                    python.delete()
-                    
-                    import pprint
-                    pprint.pprint(objects.get_dict())
-                    # to do: replace modules so restart means new objects are from new source
-                    #sys.modules.clear()
-                    #sys.modules["sys"] = sys
-                    python = self.invoke(self.launcher_type, parse_args=True)
-                else:
-                    break    
-        
-        self.alert("Shutdown initiated", level='v')
-        raise SystemExit()
-        
+       # while True:
+        try:
+            python.start_machine()                
+        except SystemExit as error:
+            pride.objects["->Finalizer"].run()          
+            if error.code != -1:
+                raise
+            else:
+                if self.objects["Shell"]:
+                    for child in self.objects["Shell"]:
+                        child.delete()
+                #self.create("pride.fileio.File_System")                
+                python.delete()
+                        
     def login(self):
         """ Attempt to login as username using a password. Upon success, the
             users encryption and mac key are derived and stored in memory.
@@ -169,7 +161,8 @@ class User(pride.base.Base):
 
         encryption_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
         self.encryption_key = encryption_kdf.derive(master_key)                
-                
+        self.salt = salt
+        
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 
             does not encrypt, any extra_data. The data is encrypted using the 

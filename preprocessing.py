@@ -145,8 +145,7 @@ class Compiler(object):
         elif module_name not in sys.modules:
             source, path = self.module_source[module_name]
             #module_code = self.compile(source, path)
-            self.compile_module(module_name, source, path)
-
+            self.compile_module(module_name, source, path)        
         return sys.modules[module_name]
                 
     def compile_module(self, module_name, source, path):

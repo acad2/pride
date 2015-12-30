@@ -86,16 +86,10 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        try:
-            print pride.Instruction.instructions
-            for entry in pride.Instruction.instructions[:]:
-                if entry[-1] == self.instance_name:
-                    print "Removing instruction..."
-                    pride.Instruction.instructions.remove(entry)
-                else:
-                    print entry[-1]
-        except KeyError:
-            pass
+        for entry in pride.Instruction.instructions[:]:
+            if entry[3] == self.instance_name:
+                pride.Instruction.instructions.remove(entry)
+
         pride.Instruction.instructions.sort()
         super(Process, self).delete()
         

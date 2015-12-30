@@ -145,8 +145,7 @@ class Finalizer(base.Base):
                 callback(*args, **kwargs)
             except Exception as error:
                 self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
-                           (instance_name, method, error), level=0)
-        compiler.database.close()
+                           (instance_name, method, error), level=0)        
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):
