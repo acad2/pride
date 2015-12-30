@@ -216,7 +216,7 @@ class Rpc_Client(Packet_Client):
 class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
     
-    verbosity = {"request_exception" : "vv", "request_result" : "vv"}
+    verbosity = {"request_exception" : "rpc_exception", "request_result" : "vv"}
     
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)

@@ -124,5 +124,5 @@ import pride.gui
 
 options["startup_definitions"] += definitions
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     objects["->User"].create("pride.interpreter.Shell", **options)

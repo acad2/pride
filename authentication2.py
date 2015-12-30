@@ -174,7 +174,7 @@ class Authenticated_Service2(pride.base.Base):
     
     verbosity = {"register" : 'v', "login_stage_two" : 'v', "validate_success" : 'v',
                  "on_login" : 0, "login" : 'v', "authentication_success" : 'v',
-                 "authentication_failure" : 'v', "validate_failure" : 'v'}
+                 "authentication_failure" : 'v', "validate_failure" : "validate_failure"}
                  
     database_structure = {"Users" : ("authentication_table_hash BLOB PRIMARY_KEY", 
                                      "authentication_table BLOB", "session_key BLOB",
@@ -301,7 +301,7 @@ class Authenticated_Service2(pride.base.Base):
         if (method_name not in self.remotely_available_procedures or
             peername[0] in self.ip_blacklist or 
             (session_id == '0' and method_name != "register") or
-            (session_id not in self.session_id and method_name not in ("login", "login_stage_two"))):
+            (session_id not in self.session_id and method_name not in ("register", "login", "login_stage_two"))):
             
             self.alert(self.validation_failure_string,
                       (peername[0] in self.ip_blacklist, session_id in self.session_id,

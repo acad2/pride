@@ -22,7 +22,9 @@ class User(pride.base.Base):
                 # login/key derivation can be bypassed by supplying keys directly
                 # note that encryption key, salt, and mac key must be supplied to
                 # skip the login/key derivation process
-                "encryption_key" : None, "salt" : None, "mac_key" : None,
+                # filesystem_key is used to access nonindexable files in ->User->File_System
+                "encryption_key" : bytes(), "salt" : bytes(), "mac_key" : bytes(),
+                "file_system_key" : bytes(),
                 
                 # similarly, username may be assigned instead of prompted. 
                 "username" : '', 
@@ -30,6 +32,7 @@ class User(pride.base.Base):
                 # These may be changed for specific application needs
                 "hkdf_mac_info_string" : "{} Message Authentication Code Key",
                 "hkdf_encryption_info_string" : "{} Encryption Key",
+                "hkdf_file_system_info_string" : "{} File_System key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 
                 # the salt and verifier file are stored in the ->User->File_System
@@ -42,14 +45,15 @@ class User(pride.base.Base):
                 "username" : "localhost"}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
-                     "hkdf_encryption_info_string", "password_prompt",
-                     "iv_size", "verifier_filetype",
+                     "hkdf_encryption_info_string", "hkdf_file_system_info_string",
+                     "password_prompt", "iv_size", "verifier_filetype",
                      "salt_indexable", "kdf_iteration_count",
                      "encryption_mode", "encryption_algorithm",
                      "launcher_type", "verifier_indexable",
                      "salt_size", "salt_filetype", "salt")
     
-    flags = {"_password_verifier_size" : 32}
+    flags = {"_password_verifier_size" : 32, "_reset_encryption_key" : False,
+             "_reset_file_system_key" : False}
     
     verbosity = {"password_verified" : 'v', "invalid_password" : 0}
     
@@ -71,21 +75,23 @@ class User(pride.base.Base):
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
         self.create("pride.fileio.File_System")        
-        login_success = self.encryption_key and self.mac_key and self.salt
+        login_success = self.encryption_key and self.mac_key and self.file_system_key and self.salt
         while not login_success:
             try:
                 self.login()
-            except pride.security.InvalidPassword:
+            except pride.security.InvalidTag: # failed to open password verifier file
                 self.username = None
+                if self._reset_encryption_key:
+                    self.encryption_key = bytes()
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
                 login_success = True
-        # invoke will create it as it's own root object, not a child of User
-        python = self.invoke(self.launcher_type, parse_args=True) 
-        self.create("pride.shell.Command_Line")
         
-       # while True:
+        # invoke will create it as it's own root object, not a child of User
+        python = self.invoke(self.launcher_type, parse_args=True)       
+        self.create("pride.shell.Command_Line")       
+       
         try:
             python.start_machine()                
         except SystemExit as error:
@@ -103,10 +109,16 @@ class User(pride.base.Base):
         """ Attempt to login as username using a password. Upon success, the
             users encryption and mac key are derived and stored in memory.
             Upon failure, the prompt is repeated. """
+        if self.file_system_key:
+            backup = self.file_system_key
+            self.file_system_key = b''
+        else:
+            backup = ''
+                
         if not self.salt:
             with self.create(self.salt_filetype, # uses Database_Files by default
                              "{}_salt.bin".format(self.username), 
-                             "a+b", indexable=self.salt_indexable) as _file:
+                             "a+b", indexable=self.salt_indexable) as _file:                 
                 _file.seek(0)
                 salt = _file.read(self.salt_size)
                 if not salt:
@@ -117,7 +129,7 @@ class User(pride.base.Base):
         key_length = self.key_length
         if key_length < 16:
             raise ValueError("Invalid key length supplied ({})".format(key_length))
-            
+        
         kdf = self.invoke("pride.security.key_derivation_function", 
                           algorithm=self.hash_function, length=key_length, 
                           salt=salt, iterations=self.kdf_iteration_count)
@@ -125,44 +137,38 @@ class User(pride.base.Base):
         
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
-                
+        
+        if not self.encryption_key:
+            encryption_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            self.encryption_key = encryption_kdf.derive(master_key)                
+            self._reset_encryption_key = True
+                        
+        # Create a password verifier by creating/finding a nonindexable 
+        # encrypted file.
+        with self.create(self.verifier_filetype,
+                         "{}_password_verifier.bin".format(self.username),
+                         "a+b", indexable=False, encrypted=True) as _file:
+            _file.seek(0)
+            verifier = _file.read()
+            if verifier:
+                assert verifier == self.username
+            else:
+                _file.write(self.username)
+             
+        self.salt = salt          
+        
+        if not backup:
+            hkdf_options = {"info" : self.hkdf_file_system_info_string.format(self.username + salt)}
+            file_system_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            self.file_system_key = file_system_kdf.derive(master_key)            
+        else:
+            self.file_system_key = backup
+            
         if not self.mac_key:
             hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
             mac_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
             self.mac_key = mac_kdf.derive(master_key)
-            reset_mac_on_failure = True
-        else:
-            reset_mac_on_failure = False
-            
-        # Create a password verifier by attaching a mac to some random data
-        # On login, if the mac verifies, then the password was correct
-        with self.create(self.verifier_filetype,
-                         "{}_password_verifier.bin".format(self.username), 
-                         "a+b", indexable=self.verifier_indexable) as _file:
-            verifier_size = self._password_verifier_size
-            salt_size = self.salt_size
-            _file.seek(0)
-            verifier = _file.read()
-            
-            if not verifier:
-                verifier = random._urandom(verifier_size)
-                macd_verifier = self.authenticate(verifier)                         
-                _file.write(str(len(macd_verifier)) + ' ' + macd_verifier)            
-            else:
-                size, _verifier = verifier.split(' ', 1)
-                macd_verifier = _verifier[:int(size)]
-            
-        if not self.verify(macd_verifier):
-            self.alert("Password failed to match password verifier", level=0)
-            self.mac_key = None if reset_mac_on_failure else self.mac_key
-            raise pride.security.InvalidPassword()
-        else:
-            self.alert("Password verified", level=self.verbosity["password_verified"])
-
-        encryption_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
-        self.encryption_key = encryption_kdf.derive(master_key)                
-        self.salt = salt
-        
+                                
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 
             does not encrypt, any extra_data. The data is encrypted using the 

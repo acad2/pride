@@ -205,7 +205,7 @@ class Base(object):
             defaults = self.defaults
             for key, value in ((key, value) for key, value in
                                 command_line_args.items() if 
-                                value != defaults[key]):
+                                value != defaults[key]):                
                 setattr(self, key, value)
             
         if self.required_attributes:
@@ -264,17 +264,15 @@ class Base(object):
             If not (i.e. __slots__ is defined), the instance_name can be
             obtained via the pride.environment.instance_name dictionary, 
             using the instance as the key."""
-        self_name = self.instance_name
-        backup = pride._last_creator
-        pride._last_creator = self_name
-        try:
-            instance = instance_type(*args, **kwargs)
-        except TypeError:
-            if isinstance(instance_type, type):
-                raise
-            instance = resolve_string(instance_type)(*args, **kwargs)        
+        with pride.backup(pride, "_last_creator"):
+            pride._last_creator = self.instance_name
+            try:
+                instance = instance_type(*args, **kwargs)
+            except TypeError:
+                if isinstance(instance_type, type):
+                    raise                
+                instance = resolve_string(instance_type)(*args, **kwargs)        
 
-        pride._last_creator = backup
         return instance
 
     def invoke(self, callable_string, *args, **kwargs):

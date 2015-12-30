@@ -305,7 +305,7 @@ class Database_File(File):
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
         data, tags = pride.objects["->User->File_System"]._open_file(self.filename, self.mode, 
-                                                                       self.tags, self.indexable)
+                                                                     self.tags, self.indexable)
         filename = {"filename" : self.filename}
         if tags != self.tags:
             for old_tag in set(self.tags).difference(tags):
@@ -315,7 +315,8 @@ class Database_File(File):
             try:
                 data = pride.objects["->User"].decrypt(data)
             except KeyError:
-                self.alert("Unable to decrypt '{}'; User not logged in".format(filename))
+                self.alert("Unable to decrypt '{}'; User not logged in".format(filename), level=0)
+
         self.file.write(data)
         if self.mode[0] != 'a':
             self.file.seek(0)
@@ -325,9 +326,9 @@ class Database_File(File):
         
     def __exit__(self, type, value, traceback):
         self.save()
-        self.delete()
+        self.delete()        
         if traceback:
-            raise
+            raise traceback
         return value
         
     def flush(self): 
@@ -347,9 +348,7 @@ class Database_File(File):
                                                          
 class File_System(pride.database.Database):
     """ Database object for managing database file objects. """    
-    defaults = {"hash_function" : "SHA256", "salt_size" : 16,
-                "nonindexable_filename_pepper" : "Configure Me",
-                "database_name" : ''}
+    defaults = {"hash_function" : "SHA256", "salt_size" : 16, "database_name" : ''}
     
     verbosity = {"file_modified" : "vv", "file_created" : "vv"}
     
@@ -372,10 +371,15 @@ class File_System(pride.database.Database):
     def save_file(self, filename, data, tags=tuple(), encrypt=False, indexable=True):
         now = time.time()
         file_info = {}
+        
         if not indexable:
             hasher = pride.security.hash_function(self.hash_function)
-            hasher.update(filename + self.nonindexable_filename_pepper)
+            try:
+                hasher.update(filename + objects["->User"].file_system_key)
+            except KeyError:
+                hasher.update(filename)              
             filename = hasher.finalize()                    
+            
         if encrypt and data:
             try:
                 data = objects["->User"].encrypt(data)
@@ -408,7 +412,10 @@ class File_System(pride.database.Database):
     def _open_file(self, filename, mode, tags, indexable):
         if not indexable:
             hasher = pride.security.hash_function(self.hash_function)
-            hasher.update(filename + self.nonindexable_filename_pepper)
+            try:
+                hasher.update(filename + objects["->User"].file_system_key)
+            except KeyError:
+                hasher.update(filename)
             filename = hasher.finalize()
             
         if mode[0] == 'w':

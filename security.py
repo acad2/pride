@@ -57,7 +57,9 @@ def generate_mac(key, data, algorithm="SHA256", backend=BACKEND):
         authenticity of data by entities that possess the key. 
         
         Note this is a lower level function then apply_mac and
-        only returns the mac itself. """
+        only returns the mac itself. 
+        
+        The mac is generated via HMAC with the specified algorithm and key. """
     hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
     hasher.update(data)
     return hasher.finalize()

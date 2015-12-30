@@ -129,7 +129,7 @@ class Interpreter(authentication2.Authenticated_Service2):
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
         filename = '_'.join(word for word in self.instance_name.split("->") if word)
-        self.log = self.create("fileio.File", 
+        self.log = self.create("pride.fileio.File", 
                                "{}.log".format(filename), 'a+',
                                persistent=False).instance_name
         self._logger = self.invoke(self._logger_type)
@@ -187,10 +187,7 @@ class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
         Instantiating this component and calling the start_machine method 
         starts the execution of the Processor component."""
-    defaults = {"command" : os.path.join((os.getcwd() if "__file__" 
-                                          not in globals() else 
-                                          os.path.split(__file__)[0]), 
-                                          "shell_launcher.py"),
+    defaults = {"command" : '',
                 "environment_setup" : ("PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep, ),
@@ -219,8 +216,15 @@ class Python(base.Base):
 
         if self.startup_definitions:
             self.interpreter._exec_command(self.startup_definitions)           
-                        
-        with open(self.command, 'r') as module_file:
+        
+        if not self.command:
+            command = os.path.join((os.getcwd() if "__file__" 
+                                    not in globals() else 
+                                    os.path.split(__file__)[0]), 
+                                    "shell_launcher.py")
+        else:
+            command = self.command        
+        with open(command, 'r') as module_file:
             source = module_file.read()            
         Instruction(self.interpreter, "_exec_command", source).execute()
              
