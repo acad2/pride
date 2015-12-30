@@ -104,7 +104,7 @@ class Alert_Handler(pride.base.Base):
         print_level = value.split('+')
         if '0' in print_level:
             print_level.remove('0')
-            print_level.append(0)
+            print_level.append(0)        
         self._print_level = set(print_level)
     print_level = property(_get_print_level, _set_print_level)
 

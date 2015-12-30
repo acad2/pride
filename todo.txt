@@ -38,20 +38,15 @@ history from storing hashes of shared secrets?
   
 backport annotations ?
   
-export module_name to fqdn
 
-module = load_module(module_name)
-cnc[socket.gethostbyname(fqdn)].execute(module)
 deter — detect — alarm — delay — respond
 
 recently done:
 
 known bugs:
     fix z layer issue with multiple objects on the same space
-    fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
-    memory leak in Network/sockets - sockets have no referrers??
-    usage of startup_components and accessing parent_name in __init__ after super will return self as parent
-    
+    # just wait for new serialization fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
+        
 things that could be done:
     improve struct serialization
     preemptive multiprocessing?

@@ -239,7 +239,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     flags = {"x_range" : (0, MAX_W), "y_range" : (0, MAX_H), "z_range" : (0, pride.gui.MAX_LAYER),
              "scale_to_text" : False, "_texture_invalid" : False,
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
-             "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}.items()
+             "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
     
     mutable_defaults = {"children" : list, "draw_queue" : list, "_draw_operations" : list,
                         "pack_count" : dict}

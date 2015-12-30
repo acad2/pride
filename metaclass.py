@@ -316,11 +316,29 @@ class Inherited_Attributes(type):
 class Defaults(Inherited_Attributes):
 
     inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
-                            "parser_ignore" : tuple, "flags" : list,
+                            "parser_ignore" : tuple, "flags" : dict,
                             "mutable_defaults" : dict, "required_attributes" : tuple}
        
         
-class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults):
+class Value_Localized_Dictionaries(type):
+    """ That produces dictionaries order grouped by equivalent values.
+        Provides small data locality benefit, and requires slightly less space. """
+    localized_dictionaries = ("flags", "mutable_defaults", "defaults")
+    
+    def __new__(cls, name, bases, attributes):
+        for attribute_name in cls.localized_dictionaries:
+            dictionary = attributes[attribute_name]
+            new_dictionary = {}                        
+            for key, value in dictionary.items():
+                try:
+                    new_dictionary[value].append(key)
+                except KeyError:
+                    new_dictionary[value] = [key]
+            attributes["_localized_" + attribute_name] = new_dictionary
+        return super(Value_Localized_Dictionaries, cls).__new__(cls, name, bases, attributes)
+        
+        
+class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults, Value_Localized_Dictionaries):
     """ A metaclass that applies other metaclasses. Each metaclass
         in the list Metaclass.metaclasses will be chained into a 
         new single inheritance metaclass that utilizes each entry. 

@@ -1,4 +1,4 @@
-""" Provides a Database object for working with sqlite3 databases """
+""" Provides a Object oriented interface for working with sqlite3 databases """
 import sqlite3
 import contextlib
 
@@ -40,8 +40,8 @@ class Database(pride.base.Wrapper):
                  "drop_table" : "v", "table_info" : "vvv",
                  "update_table" : "vv"}
     
-    mutable_defaults = {"from_memory" : dict, "_batch_operations" : list}
-    flags = {"_batch_operation" : False, "_batch_table" : ''}.items()
+    mutable_defaults = {"from_memory" : dict}
+    
     database_structure = {}
     primary_key = {}
         

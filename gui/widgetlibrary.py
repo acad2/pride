@@ -40,7 +40,7 @@ class Instruction_Button(gui.Button):
 class Method_Button(gui.Button):
         
     defaults = {"args" : tuple(), "kwargs" : None, "method" : '', "target" : ''}
-    flags = {"scale_to_text" : True}.items()
+    flags = {"scale_to_text" : True}
     
     def left_click(self, mouse):
         try:
@@ -53,7 +53,7 @@ class Method_Button(gui.Button):
 class Delete_Button(Method_Button):
     
     defaults = {"pack_mode" : "right", "text" : "x", "method" : "delete"}
-    flags = {"scale_to_text" : True}.items()
+    flags = {"scale_to_text" : True}
     
         
 class Exit_Button(Delete_Button):

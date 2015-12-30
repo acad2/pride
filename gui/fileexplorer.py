@@ -63,7 +63,7 @@ class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):
         
     defaults = {"popup_type" : "pride.gui.fileexplorer.Directory_History",
                 "pack_mode" : "left", "text" : "history"}
-    flags = {"scale_to_text" : True}.items()
+    flags = {"scale_to_text" : True}
     
 
 class Ascend_Button(pride.gui.widgetlibrary.Method_Button):

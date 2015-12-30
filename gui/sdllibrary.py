@@ -37,7 +37,7 @@ class SDL_Window(SDL_Component):
     
     mutable_defaults = {"children" : list}
     
-    flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}.items()
+    flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}
     
     def _get_size(self):
         return (self.w, self.h)

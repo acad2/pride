@@ -169,7 +169,7 @@ class Socket(base.Wrapper):
     parser_ignore = tuple(additional_parser_ignores)
     
     flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_instance_name" : '',
-             "connected" : False, "closed" : False, "_local_data" : ''}.items()
+             "connected" : False, "closed" : False, "_local_data" : ''}
              
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)

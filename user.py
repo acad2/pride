@@ -49,7 +49,7 @@ class User(pride.base.Base):
                      "launcher_type", "verifier_indexable",
                      "salt_size", "salt_filetype", "salt")
     
-    flags = {"_password_verifier_size" : 32}.items()
+    flags = {"_password_verifier_size" : 32}
     
     verbosity = {"password_verified" : 'v', "invalid_password" : 0}
     
@@ -70,8 +70,7 @@ class User(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
-        self.create("pride.fileio.File_System")
-        
+        self.create("pride.fileio.File_System")        
         login_success = self.encryption_key and self.mac_key and self.salt
         while not login_success:
             try:

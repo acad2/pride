@@ -393,10 +393,10 @@ class Authenticated_Client2(pride.base.Base):
     def _get_username(self):
         if not self._username:
             self._username = raw_input(self.username_prompt.format(self.instance_name,
-                                                                                    self.target_service,
-                                                                                    self.ip))
+                                                                   self.target_service,
+                                                                   self.ip))
         return self._username
-    def _set_username(self, value):
+    def _set_username(self, value):        
         self._username = value
     username = property(_get_username, _set_username)
                 

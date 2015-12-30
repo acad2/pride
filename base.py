@@ -120,7 +120,7 @@ class Base(object):
     defaults = {"_deleted" : False, "dont_save" : False, "parse_args" : False,
                 "replace_reference_on_load" : True,
                 "startup_components" : tuple()}   
-    
+        
     # if certain attributes must be passed explicitly, including them in the
     # required_attributes class attribute will automatically raise an 
     # ArgumentError when they are not supplied.
@@ -132,16 +132,15 @@ class Base(object):
     # no arguments when the object initializes
     mutable_defaults = {"references_to" : list}
     
+    # defaults have a pitfall that can be a problem in certain cases;
+    # because dictionaries are unordered, the order in which defaults
+    # are assigned cannot be guaranteed. 
+    # flags are guaranteed to be assigned before defaults.
+    flags = {}
+    
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
     verbosity = {"delete" : "deletion", "initialized" : "vv", "remove" : "vv"}
-            
-    # defaults have a pitfall that can be a problem in certain cases
-    # because dictionaries are unordered, the order in which defaults
-    # are assigned cannot be guaranteed. 
-    # flags are guaranteed to be assigned before defaults, and in the order specified
-    # flags should be a container of 2-tuples, which are attribute value pairs
-    flags = {}.items() 
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -185,23 +184,30 @@ class Base(object):
     
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
+
         self.parent_name = pride._last_creator
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
-       
-        attributes = self.defaults.copy()
-        attributes.update(kwargs)
-        if attributes["parse_args"]:
-            additional_attributes = {}
+              
+        for value, attributes in itertools.chain(self._localized_flags.items(), 
+                                                 self._localized_defaults.items()):
+            for attribute in attributes:
+                setattr(self, attribute, value)             
+        for value_type, attributes in self._localized_mutable_defaults.items():
+            for attribute in attributes:
+                setattr(self, attribute, value_type())
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+                
+        if self.parse_args:            
             command_line_args = self.parser.get_options()
             defaults = self.defaults
-            attributes.update(dict((key, value) for key, value in 
-                                    command_line_args.items() if 
-                                    value != defaults[key]))        
-        for attribute, value in itertools.chain(self.flags, ((attribute, value()) for attribute, value in
-                                                              self.mutable_defaults.items()), attributes.items()):
-            setattr(self, attribute, value)
-                        
+            for key, value in ((key, value) for key, value in
+                                command_line_args.items() if 
+                                value != defaults[key]):
+                setattr(self, key, value)
+            
         if self.required_attributes:
             for attribute in self.required_attributes:
                 try:
@@ -226,7 +232,9 @@ class Base(object):
             self._instance_name = instance_name
             _root_objects[instance_name] = self
             self.is_root_object = True
-                          
+        if self.instance_name == "->User":
+            assert self.username == "localhost", self.username
+            
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)

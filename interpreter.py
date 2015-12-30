@@ -192,9 +192,9 @@ class Python(base.Base):
                                           not in globals() else 
                                           os.path.split(__file__)[0]), 
                                           "shell_launcher.py"),
-                "environment_setup" : ["PYSDL2_DLL_PATH = " + 
+                "environment_setup" : ("PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
-                                       os.path.sep + "gui" + os.path.sep],
+                                       os.path.sep + "gui" + os.path.sep, ),
                 "startup_components" : ("pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.interpreter.Interpreter",

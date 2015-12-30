@@ -11,6 +11,7 @@ import keyword
 import operator
 import anydbm
 import hashlib
+import atexit
 
 import additional_builtins
 import additional_keywords
@@ -67,7 +68,10 @@ class Compiler(object):
     def __init__(self, preprocessors=tuple(), patches=None, modify_builtins=None,
                  cache_filename=".py.cache"):
         self._loading = ''
-        self.database = anydbm.open(cache_filename, 'c')
+        
+        self.database = anydbm.open(cache_filename, 'c') # for caching preprocessed source
+        atexit.register(lambda: self.database.close())
+        
         self._outdated = set()
         sys.meta_path.insert(0, self)
         self.patches = patches or {}
