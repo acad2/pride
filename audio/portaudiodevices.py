@@ -15,7 +15,7 @@ import pride
 import pride.base as base
 import pride.vmlibrary as vmlibrary
 import pride.audio.audiolibrary as audiolibrary
-from pride.utilities import Latency
+from pride.datastructures import Latency
 Instruction = pride.Instruction
 #objects = pride.objects
 
@@ -113,7 +113,7 @@ class Audio_Device(audiolibrary.Audio_Reactor):
         super(Audio_Device, self).__init__(**kwargs)
         
      #   import pride.utilities
-       # self.latency = pride.utilities.Latency("audio input")
+       # self.latency = pride.datastructures.Latency("audio input")
         
     def open_stream(self):
         return PORTAUDIO.open(**self.options)

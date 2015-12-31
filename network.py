@@ -22,6 +22,7 @@ import traceback
 import sys
 
 import pride
+import pride.datastructures
 import pride.vmlibrary as vmlibrary
 import pride.base as base
 import pride.utilities
@@ -320,7 +321,7 @@ class Socket(base.Wrapper):
                 self.on_connect()
             elif not self._connecting:
                 #self.connection_attempts = 
-                self.latency = pride.utilities.Latency(size=10)
+                self.latency = pride.datastructures.Latency(size=10)
                 self._connecting = True
                 objects["->Python->Network"].connecting.add(self)
             else:

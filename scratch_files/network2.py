@@ -11,7 +11,7 @@ import pride
 import pride.base as base
 import pride.network as network
 import pride.fileio as fileio
-from pride.utilities import Latency, timer_function
+from pride.datastructures import Latency, timer_function
 Instruction = pride.Instruction
 #objects = pride.objects
            

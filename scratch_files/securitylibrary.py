@@ -9,7 +9,7 @@ import pride.base as base
 
 import pride.vmlibrary as vmlibrary
 import pride.network as network
-from pride.utilities import Latency
+from pride.datastructures import Latency
 Instruction = pride.Instruction
 
 """def trace_function(frame, instruction, args):

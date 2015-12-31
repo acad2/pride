@@ -7,7 +7,7 @@ import pride
 import pride.base as base
 import pride.vmlibrary as vmlibrary
 import pride.fileio as fileio
-from pride.utilities import Latency
+from pride.datastructures import Latency
 #objects = pride.objects
 Instruction = pride.Instruction
 

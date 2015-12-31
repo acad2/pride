@@ -48,7 +48,7 @@ class SDL_Window(SDL_Component):
     def __init__(self, **kwargs):
         self.layers = collections.OrderedDict((x, (None, [])) for 
                                                x in xrange(100))
-        self.latency = utilities.Latency(name="framerate")
+        #self.latency = resolve_string("pride.datastructures.Latency")(name="framerate")
                 
         super(SDL_Window, self).__init__(**kwargs)
         window = sdl2.ext.Window(self.name, size=self.size, 

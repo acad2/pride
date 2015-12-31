@@ -1,15 +1,11 @@
 import heapq
 
-import pride.base
-
-class Index_Preserving_List(pride.base.Wrapper):
+class Index_Preserving_List(object):
     """ A list that preserves the index of each item when an item is added or removed. """
-    blank_space = []
-    
-    mutable_defaults = {"_storage" : list, "blank_spaces" : list,
-                        "wrapped_object" : list}
-    
-    wrapped_object_name = "list"
+    blank_space = []             
+        
+    def __init__(self):
+        self.list, self.blank_spaces = [], []
         
     def append(self, item):
         storage = self.list

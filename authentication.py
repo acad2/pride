@@ -7,6 +7,7 @@ import getpass
 import pride
 import pride.errors
 import pride.base
+import pride.datastructures
 import pride.database
 import pride.utilities
 import pride.shell
@@ -384,7 +385,7 @@ class Authenticated_Service(pride.base.Base):
             try:
                 self._rate[session_id][method_name].mark()
             except KeyError:
-                latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
+                latency = pride.datastructures.Latency("{}_{}".format(session_id, method_name))
                 try:
                     self._rate[session_id][method_name] = latency
                 except KeyError:

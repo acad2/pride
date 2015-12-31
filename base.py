@@ -65,16 +65,18 @@
 import operator
 import itertools
 import sys
+import heapq
        
 import pride
 import pride.metaclass
 import pride.persistence
 import pride.utilities
-
+import pride.datastructures
 from pride.errors import *
 #objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
+_NULL_SPACE = []
 
 def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
@@ -130,7 +132,7 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {"references_to" : list}
+    mutable_defaults = {"references_to" : list, "blank_spaces" : list}
     
     # defaults have a pitfall that can be a problem in certain cases;
     # because dictionaries are unordered, the order in which defaults
@@ -140,7 +142,8 @@ class Base(object):
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
-    verbosity = {"delete" : "deletion", "initialized" : "initialized", "remove" : "vv"}
+    verbosity = {"delete" : "deletion", "initialized" : "initialized", "remove" : "vv",
+                 "add" : "vv"}
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -165,18 +168,15 @@ class Base(object):
                      "parse_args", "dont_save", "startup_components")    
         
     def _get_parent(self):
-        if self.parent_name:
-            return objects[self.parent_name]
-        else:
-            return None
+        return objects[self.parent_name] if self.parent_name else None
     parent = property(_get_parent)
    
     def __init__(self, **kwargs):
-        super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing
+        super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing          
 
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
-              
+                            
         for value, attributes in itertools.chain(self._localized_flags.items(), 
                                                  self._localized_defaults.items()):
             for attribute in attributes:
@@ -203,27 +203,19 @@ class Base(object):
                         raise ArgumentError("Required argument {} not supplied".format(attribute))
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
+     
+        parent_name = self.parent_name = pride._last_creator
+        instance_count = 0   
+        _name = name = parent_name + "->" + self.__class__.__name__              
+        while name in objects:
+            instance_count += 1
+            name = _name + str(instance_count)
+        self.instance_name = name
+        objects[self.instance_name] = self
         
-        self.parent_name = pride._last_creator
-        name = self.__class__.__name__ 
-                
         if self.parent:            
-            self.is_root_object = False
-            self.parent.add(self)
-            count = self.parent.objects[name].index(self)
-            count = str(count) if count else ''
-            self.instance_name = (self.parent_name + "->" or '') + name + count
-            objects[self.instance_name] = self
-        else:
-            instance_name = "->" + name
-            counter = 1
-            while instance_name in _root_objects:
-                instance_name = name + str(counter) 
-                counter += 1
-            self.instance_name = instance_name
-            objects[instance_name] = self
-            self.is_root_object = True
-
+            self.parent.add(self) 
+            
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
@@ -231,7 +223,8 @@ class Base(object):
                         component.instance_name)                         
         try:
             self.alert("Initialized", level=self.verbosity["initialized"])
-        except KeyError: # Alert handler can not exist in some situations
+        except (AttributeError, KeyError): 
+            # Alert handler can not exist in some situations or not have its log yet
             pass
             
     def create(self, instance_type, *args, **kwargs):
@@ -277,61 +270,64 @@ class Base(object):
             
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
-            the object can be collected by the python garbage collector"""
+            the object can be collected by the python garbage collector"""        
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
             raise DeleteError("{} has already been deleted".format(self.instance_name))
-        for child in itertools.chain(*self.objects.values()):
-            child.delete()
-            
+                    
+        for child in itertools.chain(*self.objects.values()):            
+            if child:
+                child.delete()            
         if self.references_to:
             # make a copy, as remove will mutate self.references_to
             references = self.references_to[:]
             for name in references:
-                objects[name].remove(self)
-        
+                objects[name].remove(self)            
         del objects[self.instance_name]
         self._deleted = True      
+         
             
     def add(self, instance):
         """ usage: object.add(instance)
 
             Adds an object to caller.objects[instance.__class__.__name__] and
-            notes the reference location."""           
-        objects = self.objects
-        instance_class = instance.__class__.__name__
-        
-   #     siblings = objects.get(instance_class, [])
-   #     if instance in siblings:
-   #         raise AddError
-   #     
-   #     siblings.append(instance)
-   #     objects[instance_class] = siblings                                  
-   #     instance.references_to.append(self.instance_name)     
-        
+            notes the reference location."""    
+        self.alert("Adding: {}", (instance, ), level=self.verbosity["add"])
+        self_objects = self.objects
+        instance_class = instance.__class__.__name__         
         try:
-            siblings = objects[instance_class]
+            siblings = self_objects[instance_class]
         except KeyError:
-            siblings = [instance]
+            self_objects[instance_class] = siblings = [instance]                         
         else:
             if instance in siblings:
-                raise AddError
-            siblings.append(instance)
-        objects[instance_class] = siblings                                  
+                raise AddError                
+            try:
+                next_free_space = heapq.heappop(self.blank_spaces)
+            except IndexError:
+                siblings.append(instance)
+            else:                 
+                siblings.insert(next_free_space, instance)
+                del siblings[next_free_space + 1]
+                 
         instance.references_to.append(self.instance_name)          
         
     def remove(self, instance):
         """ Usage: object.remove(instance)
         
             Removes an instance from self.objects. Modifies object.objects
-            and environment.references_to."""    
-        self.alert("Removing {}", [instance], level=self.verbosity["remove"])         
+            and instance.references_to."""    
+        self.alert("Removing {}", [instance], level=self.verbosity["remove"])        
         try:
-            self.objects[instance.__class__.__name__].remove(instance)
-        except ValueError:
-            raise 
+            storage = self.objects[instance.__class__.__name__]
+            index = storage.index(instance)
+        except (KeyError, ValueError):            
+            raise
         else:
-            instance.references_to.remove(self.instance_name)
+            heapq.heappush(self.blank_spaces, index)        
+            storage.insert(index, _NULL_SPACE)
+            del storage[index + 1]
+        instance.references_to.remove(self.instance_name)        
     
     #def _replace(self, instance, instance_name):
     #    index = self.objects[instance.__class__.__name__]

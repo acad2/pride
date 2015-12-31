@@ -313,7 +313,7 @@ class Authenticated_Service2(pride.base.Base):
        #     try:
        #         self._rate[session_id][method_name].mark()
        #     except KeyError:
-       #         latency = pride.utilities.Latency("{}_{}".format(session_id, method_name))
+       #         latency = pride.datastructures.Latency("{}_{}".format(session_id, method_name))
        #         try:
        #             self._rate[session_id][method_name] = latency
        #         except KeyError:
