@@ -5,6 +5,9 @@ import random
 
 import pride.base
 import pride.security
+import pride.shell
+
+class InvalidUsername(BaseException): pass
 
 class User(pride.base.Base):
     """ A User object for managing secure information and client accounts.
@@ -41,8 +44,7 @@ class User(pride.base.Base):
                 "verifier_filetype" : "pride.fileio.Database_File",
                 "salt_indexable" : False, "verifier_indexable" : False,
                 
-                "launcher_type" : "pride.interpreter.Python",
-                "username" : "localhost"}
+                "launcher_type" : "pride.interpreter.Python"}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "hkdf_file_system_info_string",
@@ -63,14 +65,12 @@ class User(pride.base.Base):
     
     def _get_username(self):
         if not self._username:
-            username_prompt = "{}: please provide a username: ".format(self.reference)
-            self._username = raw_input(username_prompt)
+            username_prompt = "{}: Please provide a username: ".format(self.reference)
+            self._username = raw_input(username_prompt, must_reply=True)
         return self._username
     def _set_username(self, value):
         self._username = value
-    username = property(_get_username, _set_username)
-    
-    login_information = {("pride.interpreter.Shell", "localhost") : ("localhost", '')}
+    username = property(_get_username, _set_username)   
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -79,8 +79,8 @@ class User(pride.base.Base):
         while not login_success:
             try:
                 self.login()
-            except pride.security.InvalidTag: # failed to open password verifier file
-                self.username = None
+            except (InvalidUsername, pride.security.InvalidTag): # failed to open password verifier file
+                self.username = ''
                 if self._reset_encryption_key:
                     self.encryption_key = bytes()
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
@@ -153,8 +153,11 @@ class User(pride.base.Base):
             if verifier:
                 assert verifier == self.username
             else:
-                _file.write(self.username)
-             
+                if pride.shell.get_permission("{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)):
+                    _file.write(self.username)
+                else:
+                    _file.delete_from_filesystem()
+                    raise InvalidUsername
         self.salt = salt          
         
         if not backup:

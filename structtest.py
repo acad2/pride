@@ -71,7 +71,7 @@ def get_structure_bytestream(structure):
                                [get_structure_bytestream(getattr(structure, attribute)) for 
                                 attribute, _type in _values])
     return utilities.pack_data(*[name, fields_format, struct.pack(format_string, *values)] + 
-                                [get_structure_bytestream(getattr(structure, attribute)) for 
+                                [(attribute, get_structure_bytestream(getattr(structure, attribute))) for 
                                  attribute, _type in _values])
         
 def get_fields_format(structure):
@@ -148,21 +148,18 @@ class Persistent_Object(pride.base.Base):
     
     store_in_dict = ("memory", "size", "defaults", "flags", "mutable_defaults", "verbosity",
                      "startup_components", "required_attributes", "alert", "reference",
-                     "store_in_dict", "objects", "struct_size")
-    
-    def __init__(self, **kwargs):
-        super(Persistent_Object, self).__init__(**kwargs)
-                
+                     "store_in_dict", "objects", "struct_size", "references_to", "parent_name")    
         
     def __setattr__(self, attribute, value):
-   #     print "Setting attribute: ", attribute, value
+        print "Setting attribute: ", attribute, value
         if attribute[:2] == "__" or attribute in self.store_in_dict:
             super(Persistent_Object, self).__setattr__(attribute, value)
         else:
             try:
                 packed_struct = self.memory[:self.struct_size]
             except AttributeError:
-                with open(self.reference.replace("->", '_'), 'a+b') as _file:
+                reference = value if attribute == "reference" else self.reference
+                with open(reference.replace("->", '_'), 'a+b') as _file:
                     self.memory = mmap.mmap(_file.fileno(), 65535)
                 structure = new_struct_type(self.reference)()
             else:
@@ -217,11 +214,12 @@ class Persistent_Object(pride.base.Base):
             self.memory[:size] = repacked_struct
         
     def __getattribute__(self, attribute):
-    #    print "Getting: ", attribute
+        print "Getting: ", attribute
         get_attribute = super(Persistent_Object, self).__getattribute__
-        if attribute[:2] == "__" or attribute in get_attribute("store_in_dict"):
+        try:
+        #if attribute[:2] == "__" or attribute in get_attribute("store_in_dict"):
             return get_attribute(attribute)
-        else:
+        except AttributeError:
             #memory = get_attribute("memory")
             #size = get_attribute("struct_size")
             #packed_structure = memory[:size]

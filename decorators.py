@@ -12,9 +12,65 @@ if "win" in sys.platform:
 else:
     timer = time.time
 
+def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
+                       requires_kwargs=False, **_kwargs):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            raise_error = False
+            if ((no_args and args) or (requires_args and not args) or
+                (no_kwargs and kwargs) or (requires_kwargs and kwargs)):
+                raise pride.errors.ArgumentError("Unable to call {}".format(function))
+            if _kwargs:
+                for key, value in _kwargs.items():
+                    if kwargs[key] != value:
+                        raise pride.errors.ArgumentError("expected {} == {}; found {} == {}".format(key, value, key, kwargs[value]))
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
+    
+def with_arguments_from(entry_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            args, kwargs = entry_function(*args, **kwargs)
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
+
+def enter(enter_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            enter_function(*args, **kwargs)
+            return function(*args, **kwargs)
+        return new_call
+    return decorate
+    
+def exit(exit_function):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            result = function(*args, **kwargs)
+            exit_function(*args, **kwargs)
+            return result
+        return new_call
+    return decorate
+    
+def call_if(**conditions):
+    callback = conditions.pop("otherwise_callback", None)
+    def decorate(function):
+        def new_call(self, *args, **kwargs):            
+            for key, value in conditions.items():
+                if not getattr(self, key) == value:
+                    if callback:
+                        return callback(self, *args, **kwargs)
+                    else:
+                        break
+            else:                
+                return function(self, *args, **kwargs)
+        return new_call
+    return decorate
+    
 class Pystone_Test(object):
 
-    def __init__(self, function):
+    def __init__(self, function):        
         from test import pystone
         self.function = function
         if not hasattr(Pystone_Test, "pystones_per_second"):
@@ -148,3 +204,4 @@ class Dump_Source(Tracer):
             super(Dump_Source, self).__call__(*args, **kwargs)
             sys.stdout = old_stdout
             file.close()
+            

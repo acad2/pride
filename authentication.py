@@ -70,7 +70,7 @@ def remote_procedure_call(callback_name='', callback=None):
         return _make_rpc
     return decorate
   
-def with_arguments(entry_function):
+def with_arguments_from(entry_function):
     def decorate(function):
         def new_call(*args, **kwargs):
             args, kwargs = entry_function(*args, **kwargs)
@@ -483,7 +483,7 @@ class Authenticated_Client(pride.base.Base):
     def _get_username_password(self):
         return (self, self.username, self.password), {} 
         
-    @with_arguments(_get_username_password)
+    @with_arguments_from(_get_username_password)
     @remote_procedure_call(callback_name="register_results")
     def register(self, username, password): 
         """ Attempt to register username with target_service operating 
@@ -523,7 +523,7 @@ class Authenticated_Client(pride.base.Base):
         username, A = self._client.login()
         return (self, username, A), {}
         
-    @with_arguments(_setup_login)
+    @with_arguments_from(_setup_login)
     @remote_procedure_call(callback_name="login_stage_two")
     def login(self, username, password_info):
         """ Attempt to log in to the target_service operating on the
@@ -540,7 +540,7 @@ class Authenticated_Client(pride.base.Base):
         table_response = Authentication_Table.load(bytestream).get_passcode(*table_challenge)
         return (self, self.username, self.proof_of_key, table_response), {}
         
-    @with_arguments(_derive_proof_of_key)
+    @with_arguments_from(_derive_proof_of_key)
     @remote_procedure_call(callback_name="login_result")
     def login_stage_two(self, username, proof_of_key, table_response): 
         """ The second stage of the login process. This is the callback

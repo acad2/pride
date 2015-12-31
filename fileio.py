@@ -279,7 +279,15 @@ class File(base.Wrapper):
         super(File, self).delete()
         self.wrapped_object.close()
                                                 
-
+    def delete_from_filesystem(self):
+        if self.file_type == "file":
+            os.remove(self.filename)
+            self.delete()
+        else:
+            raise ValueError("File type '{}' does not exist on file system".format(self.file_type))
+        pride.objects["->User->File_System"].delete_file(self.filename)
+                
+        
 class Database_File(File):
     """ A file that persists in the ->User->File_System when saved or flushed.
         Standard read/write/seek operations take place with a file like object
@@ -325,10 +333,12 @@ class Database_File(File):
         return self
         
     def __exit__(self, type, value, traceback):
-        self.save()
-        self.delete()        
+        if not self.deleted:
+            # delete_from_filesystem can be called in the context
+            self.save()
+            self.delete()        
         if traceback:
-            raise traceback
+            raise
         return value
         
     def flush(self): 
@@ -345,7 +355,11 @@ class Database_File(File):
                                                          self.indexable)                                                       
         file.seek(backup_position)
         
-                                                         
+    def delete_from_filesystem(self):
+        pride.objects["->User->File_System"].delete_file(self.filename)
+        self.delete()
+        
+        
 class File_System(pride.database.Database):
     """ Database object for managing database file objects. """    
     defaults = {"hash_function" : "SHA256", "salt_size" : 16, "database_name" : ''}
@@ -432,6 +446,9 @@ class File_System(pride.database.Database):
         
     def open_file(self, filename, mode):
         return self.create(Database_File, filename, mode)
+        
+    def delete_file(self, filename):
+        self.delete_from("Files", where={"filename" : filename})
         
         
 class Mmap(object):

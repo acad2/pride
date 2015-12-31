@@ -4,31 +4,12 @@ import hashlib
 
 from pride import Instruction
 import pride.security
+import pride.decorators
 from pride.security import hash_function, SecurityError
-                
-def required_arguments(no_args=False, no_kwargs=False, requires_args=False, 
-                       requires_kwargs=False, **_kwargs):
-    def decorate(function):
-        def new_call(*args, **kwargs):
-            raise_error = False
-            if ((no_args and args) or (requires_args and not args) or
-                (no_kwargs and kwargs) or (requires_kwargs and kwargs)):
-                raise pride.errors.ArgumentError("Unable to call {}".format(function))
-            if _kwargs:
-                for key, value in _kwargs.items():
-                    if kwargs[key] != value:
-                        raise pride.errors.ArgumentError("expected {} == {}; found {} == {}".format(key, value, key, kwargs[value]))
-            return function(*args, **kwargs)
-        return new_call
-    return decorate
-    
-@required_arguments(no_args=True)
+                    
+@pride.decorators.required_arguments(no_args=True)
 def remote_procedure_call(callback_name='', callback=None):
-   # print "\nrpc callback info: ", callback_name, callback
-    def decorate(function):
-  #      print "Rpc decorating: ", function
-       # if not (callback_name or callback):
-       #     raise pride.errors.ArgumentError("callback_name or callback not supplied for {}".format(function))        
+    def decorate(function):       
         call_name = function.__name__
         def _make_rpc(self, *args, **kwargs):       
             self.alert("Making request '{}.{}'", (self.target_service, call_name),
@@ -39,43 +20,7 @@ def remote_procedure_call(callback_name='', callback=None):
                                              getattr(self, callback_name) if callback_name else None)
         return _make_rpc
     return decorate
-  
-def with_arguments(entry_function):
-    def decorate(function):
-        def new_call(*args, **kwargs):
-            args, kwargs = entry_function(*args, **kwargs)
-            return function(*args, **kwargs)
-        return new_call
-    return decorate
-
-def enter(enter_function):
-    def decorate(function):
-        def new_call(*args, **kwargs):
-            enter_function(*args, **kwargs)
-            return function(*args, **kwargs)
-        return new_call
-    return decorate
-    
-def exit(exit_function):
-    def decorate(function):
-        def new_call(*args, **kwargs):
-            result = function(*args, **kwargs)
-            exit_function(*args, **kwargs)
-            return result
-        return new_call
-    return decorate
-    
-def call_if(**conditions):
-    def decorate(function):
-        def new_call(self, *args, **kwargs):
-            for key, value in conditions.items():
-                if not getattr(self, key) == value:
-                    break
-            else:
-                return function(self, *args, **kwargs)
-        return new_call
-    return decorate
-    
+      
 def _split_byte(byte):
     """ Splits a byte into high and low order bytes. 
         Returns two integers between 0-15 """
@@ -415,7 +360,7 @@ class Authenticated_Client2(pride.base.Base):
     
     def _supply_username(self):
         return (self, self.username), {}
-    @with_arguments(_supply_username)
+    @pride.decorators.with_arguments_from(_supply_username)
     @remote_procedure_call(callback_name="_store_auth_table")
     def register(self): pass
     
@@ -450,7 +395,7 @@ class Authenticated_Client2(pride.base.Base):
         self._answer = hasher.finalize()        
         return (self, challenge), {}
         
-    @with_arguments(_get_auth_table_hash)
+    @pride.decorators.with_arguments_from(_get_auth_table_hash)
     @remote_procedure_call(callback_name="login_stage_two")
     def login(self): pass
     
@@ -469,7 +414,7 @@ class Authenticated_Client2(pride.base.Base):
         self.alert("Answering challenge", level=self.verbosity["answer_challenge"])
         return (self, hasher.finalize(), challenge), {}
         
-    @with_arguments(_answer_challenge)
+    @pride.decorators.with_arguments_from(_answer_challenge)
     @remote_procedure_call(callback_name="decrypt_new_secret")
     def login_stage_two(self, authenticated_table_hash, answer, challenge): pass
     
@@ -501,8 +446,8 @@ class Authenticated_Client2(pride.base.Base):
         self.logged_in = False
         self.session.id = '0'
         
-    @call_if(logged_in=True)
-    @exit(_reset_login_flags)
+    @pride.decorators.call_if(logged_in=True)
+    @pride.decorators.exit(_reset_login_flags)
     @remote_procedure_call(callback=None)
     def logout(self): 
         """ Logout self.username from the target service. If the user is logged in,

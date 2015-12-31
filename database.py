@@ -15,10 +15,14 @@ def create_where_string(where):
     keys = []
     values = []
     for key, value in where.items():
-        keys.append(key)
+        try:
+            key, operator = key.split()
+        except:
+            operator = '='        
+        keys.append((key, operator))
         values.append(value)        
-    condition_string = "WHERE " + "AND ".join("{} = ?".format(key) for 
-                                              key in keys)
+    condition_string = "WHERE " + "AND ".join("{} {} ?".format(key, operator) for 
+                                              key, operator in keys)
     return condition_string, values
          
 class Database(pride.base.Wrapper):
@@ -34,11 +38,11 @@ class Database(pride.base.Wrapper):
         
     wrapped_object_name = "connection"
     
-    verbosity = {"open_database" : 'v', "create_table" : "v",
+    verbosity = {"open_database" : 'v', "create_table" : "vvv",
                  "query_issued" : "vvv", "query_result" : "vvv",
                  "insert_into" : "vvv", "delete_from" : "vvv",
                  "drop_table" : "v", "table_info" : "vvv",
-                 "update_table" : "vv"}
+                 "update_table" : "vvv"}
     
     mutable_defaults = {"from_memory" : dict}
     
@@ -94,7 +98,8 @@ class Database(pride.base.Wrapper):
                     break
         return result
         
-    def query(self, table_name, retrieve_fields=tuple(), where=None):
+    def query(self, table_name, retrieve_fields=tuple(), where=None,
+              group_by=None, having=None, order_by=None, distinct=True):
         """ Retrieves information from the named database table.
             retrieve_fileds is an iterable containing string names of
             the fields that should be returned. The where argument
@@ -103,17 +108,7 @@ class Database(pride.base.Wrapper):
             primary_key = self.primary_key[table_name]
         except KeyError:
             primary_key = ''
-        #    if not table_name not self.database_structure:
-        #        
-        #    for (index, field_name, field_type, _,
-        #         __, is_primary_key) in self.table_info(table_name):
-        #        if is_primary_key:
-        #            primary_key = self.primary_key[table_name] = field_name
-        #            break
-        #    else:
-        #        self.alert("Unable to determine primary key for: {}".format(table_name),
-        #                   level=0)
-                #raise ValueError()
+
         if primary_key in (where or {}) and not self.return_cursor:
             try:
                 return self.from_memory[table_name][where[primary_key]]
@@ -121,15 +116,31 @@ class Database(pride.base.Wrapper):
                 pass                  
         retrieve_fields = ", ".join(retrieve_fields or (field.split()[0] for
                                     field in self.database_structure.get(table_name, [])))
+        post_string = ''
+        if group_by:
+            post_string += " GROUP BY {}".format(", ".join(group_by))
+            
+        if having:
+            post_string += " HAVING {}".format(having)
+            
+        if order_by:
+            field_order, asc_or_desc = order_by
+            post_string += " ORDER BY {} {};".format(", ".join(field_order), asc_or_desc)
+        
+        if distinct:
+            pre_string = "SELECT DISTINCT {} FROM {}"
+        else:
+            pre_string = "SELECT {} FROM  {}"
+            
         if where:
             condition_string, values = create_where_string(where)
             query_format = (retrieve_fields, table_name, condition_string)
-            query = "SELECT {} FROM {} {}".format(*query_format)
+            query = (pre_string + " {}").format(*query_format) + post_string
             self.alert("Making query: {}, {}".format(query, values),
                        level=self.verbosity["query_issued"])
             result = self.cursor.execute(query, values)
         else:
-            query = "SELECT {} FROM {}".format(retrieve_fields, table_name)
+            query = pre_string.format(retrieve_fields, table_name) + post_string
             self.alert("Making query: {}".format(query), 
                        level=self.verbosity["query_issued"])
             result = self.cursor.execute(query)

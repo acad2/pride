@@ -119,7 +119,7 @@ class Base(object):
     # the defaults attribute sets what attributes new instances will initialize with
     # they can be overridden when initialized an object via keyword arguments
     # PITFALL: do not use mutable objects as a default. use mutable_defaults instead
-    defaults = {"_deleted" : False, "dont_save" : False, "parse_args" : False,
+    defaults = {"deleted" : False, "dont_save" : False, "parse_args" : False,
                 "replace_reference_on_load" : True,
                 "startup_components" : tuple()}   
         
@@ -132,7 +132,7 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {"references_to" : list, "blank_spaces" : list}
+    mutable_defaults = {"blank_spaces" : list}
     
     # defaults have a pitfall that can be a problem in certain cases;
     # because dictionaries are unordered, the order in which defaults
@@ -164,7 +164,7 @@ class Base(object):
     parser_modifiers = {"exit_on_help" : True}    
     
     # names in parser_ignore will not be available as command line arguments
-    parser_ignore = ("replace_reference_on_load", "_deleted",
+    parser_ignore = ("replace_reference_on_load", "deleted",
                      "parse_args", "dont_save", "startup_components")    
         
     def _get_parent(self):
@@ -173,7 +173,19 @@ class Base(object):
    
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing          
-
+        self.references_to = []
+        parent_name = self.parent_name = pride._last_creator
+        instance_count = 0   
+        _name = name = parent_name + "->" + self.__class__.__name__              
+        while name in objects:
+            instance_count += 1
+            name = _name + str(instance_count)
+        self.reference = name
+        objects[self.reference] = self
+        
+        if self.parent:            
+            self.parent.add(self) 
+            
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
                             
@@ -203,19 +215,7 @@ class Base(object):
                         raise ArgumentError("Required argument {} not supplied".format(attribute))
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
-     
-        parent_name = self.parent_name = pride._last_creator
-        instance_count = 0   
-        _name = name = parent_name + "->" + self.__class__.__name__              
-        while name in objects:
-            instance_count += 1
-            name = _name + str(instance_count)
-        self.reference = name
-        objects[self.reference] = self
-        
-        if self.parent:            
-            self.parent.add(self) 
-            
+                 
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
@@ -272,7 +272,7 @@ class Base(object):
             attempts to clear out known references to the object so that
             the object can be collected by the python garbage collector"""        
         self.alert("Deleting", level=self.verbosity["delete"])
-        if self._deleted:
+        if self.deleted:
             raise DeleteError("{} has already been deleted".format(self.reference))
                     
         for child in itertools.chain(*self.objects.values()):            
@@ -284,7 +284,7 @@ class Base(object):
             for name in references:
                 objects[name].remove(self)            
         del objects[self.reference]
-        self._deleted = True      
+        self.deleted = True      
          
             
     def add(self, instance):

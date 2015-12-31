@@ -39,7 +39,7 @@ class Shell(authentication2.Authenticated_Client2):
     
     parser_ignore = ("prompt", "lines", "user_is_entering_definition")
     
-    verbosity = {"login" : 0}
+    verbosity = {"login" : 0, "execute_source" : "vv"}
                 
     def on_login(self, message):
         self.alert("{}", [message], level=0)
@@ -68,7 +68,7 @@ class Shell(authentication2.Authenticated_Client2):
             
         self.lines += user_input
         lines = self.lines
-        write_prompt = True  
+        write_prompt = True          
         if lines != "\n":     
             try:
                 code = codeop.compile_command(lines, "<stdin>", "exec")
@@ -94,16 +94,16 @@ class Shell(authentication2.Authenticated_Client2):
         else:
             self.lines = ''
         objects["->User->Command_Line"].set_prompt(self.prompt)
+    
+    def login_before_executing(self, source):
+        self.alert("Not logged in".format(source))
+        if self.auto_login or pride.shell.get_permission("Login now? :"):
+            self.startup_definitions = source
+            self.login()
         
-    def execute_source(self, source):
-        if not self.logged_in:
-            self.alert("Not logged in".format(source))
-            if self.auto_login or pride.shell.get_permission("Login now? :"):
-                self.startup_definitions = source
-                self.login()            
-        else:
-            self.session.execute(Instruction(self.target_service, "handle_input",
-                                             source), callback=self.result)
+    @pride.decorators.call_if(logged_in=True, otherwise_callback=login_before_executing)
+    @pride.authentication2.remote_procedure_call(callback_name="result")
+    def execute_source(self, source): pass
                                     
     def result(self, packet):
         if not packet:
@@ -124,7 +124,7 @@ class Interpreter(authentication2.Authenticated_Service2):
     
     mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
     
-    remotely_available_procedures = ("handle_input", "execute_instruction")
+    remotely_available_procedures = ("execute_source", "execute_instruction")
     
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
@@ -141,7 +141,7 @@ class Interpreter(authentication2.Authenticated_Service2):
         string_info = (username, sender, sys.version, sys.platform, self.help_string)
         return self.login_message.format(*string_info)
         
-    def handle_input(self, source):
+    def execute_source(self, source):
         log = pride.objects[self.log]
         session_id, sender = self.current_session
                 

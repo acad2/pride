@@ -15,6 +15,7 @@ if __name__ == "__main__":
         # restarting; it also saves some cpu cycles by not having to 
         # reperform the crypto to derive the keys.
         keywords.update({"encryption_key" : user.encryption_key, "mac_key" : user.mac_key, 
-                         "file_system_key" : user.file_system_key, "salt" : user.salt})        
+                         "file_system_key" : user.file_system_key, "salt" : user.salt,
+                         "username" : user.username})        
         user.delete()
         
