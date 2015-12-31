@@ -181,7 +181,7 @@ class Package(pride.base.Base):
         return module_name in self.sources
                                 
     def __str__(self):
-        return self.instance_name + ": " + self.package_name
+        return self.reference + ": " + self.package_name
         
         
 class Documentation(pride.base.Base):

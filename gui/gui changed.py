@@ -48,7 +48,7 @@ class Organizer(base.Base):
             #    print "removing : ", _instance, self._pack_modes[parent][old_value]
                 self._pack_modes[parent][old_pack_mode].remove(instance)
             return
-        parent = pride.objects[instance].parent.instance_name
+        parent = pride.objects[instance].parent.reference
         old_pack_mode = self.pack_modes.get(instance, '')
         if old_pack_mode:
             self._pack_modes[parent][old_pack_mode].remove(instance)
@@ -71,19 +71,19 @@ class Organizer(base.Base):
         self.alert("packing: {}, {} {} {}", 
                   [item, item.area, item.z, item.pack_mode],
                    level=self.verbosity["packing"])
-        instance_name = item.instance_name
-        pack_mode = self.pack_modes[instance_name]
+        reference = item.reference
+        pack_mode = self.pack_modes[reference]
         pack = getattr(self, "pack_{0}".format(pack_mode))
         parent = item.parent
         old_size = item.size
-        pack(parent, item, self._pack_index[instance_name], 
-             len(self._pack_modes[parent.instance_name][pack_mode]))
+        pack(parent, item, self._pack_index[reference], 
+             len(self._pack_modes[parent.reference][pack_mode]))
         self.alert("Finished packing {}: {} {}", [item, item.area, item.z], 
                    level=self.verbosity["packing"])
     
     def pack_main(self, parent, item, count, length):
         item.z = parent.z + 1
-        pack_modes = self._pack_modes[parent.instance_name]
+        pack_modes = self._pack_modes[parent.reference]
         sides = [[objects[name] for name in pack_modes[side]] for side in ("top", "bottom", "left", "right")]
         top, bottom, left, right = sides
         top_count, bottom_count, left_count, right_count = (len(item) for item in sides)
@@ -106,7 +106,7 @@ class Organizer(base.Base):
         
     def pack_left(self, parent, item, count, length):
         item.z = parent.z + 1       
-        pack_modes = self._pack_modes[parent.instance_name]
+        pack_modes = self._pack_modes[parent.reference]
         space_per_object = parent.w / (length + len(pack_modes["right"]))
         left_items = [objects[name] for name in pack_modes["left"][:count]]
         if left_items:
@@ -135,7 +135,7 @@ class Organizer(base.Base):
         assert parent.w
         top_size = parent.h / length
         if count:
-            top_items = (objects[name] for name in self._pack_modes[parent.instance_name]["top"][:count])
+            top_items = (objects[name] for name in self._pack_modes[parent.reference]["top"][:count])
             
             item.y = parent.y + sum(top_item.h or min(top_size, top_item.h_range[1]) for
                                     top_item in top_items)
@@ -144,7 +144,7 @@ class Organizer(base.Base):
         item.x = parent.x
         
         if count == length - 1:
-            bottom_objects = [objects[name] for name in self._pack_modes[parent.instance_name]["bottom"]]
+            bottom_objects = [objects[name] for name in self._pack_modes[parent.reference]["bottom"]]
             item_h = parent.h - item.y
             if bottom_objects:
                 width_spacing = parent.h / len(bottom_objects)
@@ -176,7 +176,7 @@ class Organizer(base.Base):
         bottom_size = parent.h / length
         item.size = (parent.w, bottom_size)
         if count:
-            pack_modes = self._pack_modes[parent.instance_name]
+            pack_modes = self._pack_modes[parent.reference]
             bottom_objects = (objects[name] for name in pack_modes["bottom"][:count])            
             item.y = parent.y + parent.h - sum(item.h or min(bottom_size, item.h_range[1]) for 
                                                item in bottom_objects)
@@ -189,7 +189,7 @@ class Organizer(base.Base):
         item.x = parent.x
                 
     def pack_right(self, parent, item, count, length):  
-        pack_modes = self._pack_modes[parent.instance_name]
+        pack_modes = self._pack_modes[parent.reference]
         left_objects = [objects[name] for name in pack_modes["left"]]
         bottom_objects = [objects[name] for name in pack_modes["bottom"]]
         top_objects = [objects[name] for name in pack_modes["top"]]
@@ -202,12 +202,12 @@ class Organizer(base.Base):
             if count == length - 1:                
                 item.size = (parent.w - left_size, item_height)
         #      print "Set item size: ", item, item.size, parent.w
-                assert item.w, (item, item.size, parent.w / length, parent.h, sum((objects[item]._pack_width for item in self._pack_modes[parent.instance_name]["left"])))
+                assert item.w, (item, item.size, parent.w / length, parent.h, sum((objects[item]._pack_width for item in self._pack_modes[parent.reference]["left"])))
         else:
             item.size = (parent.w / length, item_height)
             left_size = 0
             
-        right_objects = (objects[name] for name in self._pack_modes[parent.instance_name]["right"][:count + 1])
+        right_objects = (objects[name] for name in self._pack_modes[parent.reference]["right"][:count + 1])
         right_unit = (parent.w - left_size) / length
         required_space = lambda item: item.w or min(right_unit, item.w_range[1])
         item.x = parent.x + parent.w - sum(required_space(item) for item in right_objects)        
@@ -323,7 +323,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._pack_mode
     def _set_pack_mode(self, value):
         self._pack_mode = value
-        objects[self.sdl_window + "->Organizer"].set_pack_mode(self.instance_name, value)
+        objects[self.sdl_window + "->Organizer"].set_pack_mode(self.reference, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def _get_parent_application(self):
@@ -423,7 +423,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def toggle_hidden(self):
         if not self.hidden:
             sdl_user_input = pride.objects[self.sdl_window + "->SDL_User_Input"]
-            sdl_user_input._update_coordinates(self.instance_name,
+            sdl_user_input._update_coordinates(self.reference,
                                                self.area, -1)            
         self.hidden = not self.hidden
        
@@ -442,7 +442,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         renderer = window.renderer
         draw_instructions = renderer.instructions
         self.alert("Drawing texture", level=0)   
-        window.user_input._update_coordinates(self.instance_name, self.area, self.z)
+        window.user_input._update_coordinates(self.reference, self.area, self.z)
         layer_texture = window.layers[self.z][0].texture
         with renderer.target_set_to(None):
             for operation, args, kwargs in self._draw_operations:
@@ -486,7 +486,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         for item in self.children:
             item.pack()
         try:
-            pack_modes = organizer._pack_modes[self.instance_name]
+            pack_modes = organizer._pack_modes[self.reference]
         except KeyError:
             pass
         else:
@@ -510,8 +510,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 if not self._scroll_bar_h:
                     if excess_height:
                         bar = self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
-                                        target=(self.instance_name, "texture_window_y"))
-                        self._scroll_bar_h = bar.instance_name
+                                        target=(self.reference, "texture_window_y"))
+                        self._scroll_bar_h = bar.reference
                         bar.pack()
                 elif not excess_height:
                     objects[self._scroll_bar_h].delete()
@@ -520,9 +520,9 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 if not self._scroll_bar_w:
                     if excess_width:
                         bar = self.create("pride.gui.widgetlibrary.Scroll_Bar",
-                                        pack_mode="bottom", target=(self.instance_name,
+                                        pack_mode="bottom", target=(self.reference,
                                                                     "texture_window_x"))
-                        self._scroll_bar_w = bar.instance_name
+                        self._scroll_bar_w = bar.reference
                         bar.pack()
                 elif not excess_width:
                     objects[self._scroll_bar_w].delete()
@@ -534,7 +534,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.pack_mode = None # clear Organizer cache
         super(Window_Object, self).delete()
         objects[self.sdl_window].remove_from_layer(self, self.z)
-        objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.instance_name) 
+        objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
         
         

@@ -140,13 +140,13 @@ class Objects_Dictionary(object):
         result = result or []
         for _object in itertools.chain(*__object.objects.values()):
             if retrieve == "keys":
-                result.append(_object.instance_name)
+                result.append(_object.reference)
                 self._recursive_search(_object, "keys", result)
             elif retrieve == "values":
                 result.append(_object)
                 self._recursive_search(_object, "values", result)
             elif retrieve == "items":
-                result.append((_object.instance_name, _object))
+                result.append((_object.reference, _object))
                 self._recursive_search(_object, "items", result)
             else:
                 raise ValueError("Unsupported retrieve flag '{}'".format(retrieve))            

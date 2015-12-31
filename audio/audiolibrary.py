@@ -37,18 +37,18 @@ class Audio_Reactor(base.Base):
         self.listeners = []
         super(Audio_Reactor, self).__init__(**kwargs)
         if self.source_name:
-            objects[self.source_name].add_listener(self.instance_name)
+            objects[self.source_name].add_listener(self.reference)
             
-    def set_input_device(self, target_instance_name):
-        self.alert("Setting input device to {}".format(target_instance_name),
+    def set_input_device(self, target_reference):
+        self.alert("Setting input device to {}".format(target_reference),
                    level='v')
         if self.source_name:
-            objects[self.source_name].remove_listener(self.instance_name)
+            objects[self.source_name].remove_listener(self.reference)
             self.source_name = None
         
-        if target_instance_name:
-            objects[target_instance_name].add_listener(self.instance_name)
-            self.source_name = target_instance_name
+        if target_reference:
+            objects[target_reference].add_listener(self.reference)
+            self.source_name = target_reference
             
     def handle_audio_input(self, audio_data):
         self.handle_audio_output(audio_data)
@@ -60,11 +60,11 @@ class Audio_Reactor(base.Base):
     def handle_end_of_stream(self):
         self.alert("end of stream")
                 
-    def add_listener(self, instance_name):
-        self.listeners.append(instance_name)
+    def add_listener(self, reference):
+        self.listeners.append(reference)
             
-    def remove_listener(self, instance_name):
-        self.listeners.remove(instance_name)    
+    def remove_listener(self, reference):
+        self.listeners.remove(reference)    
                     
 
 class Wav_File(Audio_Reactor):
@@ -138,7 +138,7 @@ class Config_Utility(vmlibrary.Process):
             self.selected_devices.append(self.default_input)
             self.selected_devices.append(self.default_output)
             self.write_config_file(self.selected_devices)
-            Instruction(self.instance_name, "delete").execute()
+            Instruction(self.reference, "delete").execute()
         else:
             self.run()
             
@@ -195,7 +195,7 @@ class Config_Utility(vmlibrary.Process):
         if getattr(self, "exit_when_finished", None):
             exit()
         else:
-            Instruction(self.instance_name, "delete").execute()
+            Instruction(self.reference, "delete").execute()
 
             
 class Audio_Manager(base.Base):
@@ -295,24 +295,24 @@ class Audio_Manager(base.Base):
         output = self.create(self.Audio_Output, **self.default_output)
         
         device_names = self.device_names
-        device_names[input.instance_name] = input
+        device_names[input.reference] = input
         device_names["Microphone"] = input
         
-        device_names[output.instance_name] = output
+        device_names[output.reference] = output
         device_names["Speakers"] = output
         
     def load_config_file(self):
         with open(self.config_file_name, "rb") as config_file:
             for device_info in pickle.load(config_file):
                 device = self.create(self.Audio_Input, **device_info)
-                self.device_names[device.instance_name] = device
+                self.device_names[device.reference] = device
                 self.device_names[device.name] = device
                          
     def get_devices(self, devices="Audio_Input"):
-        return [(instance.name, instance.instance_name) for 
+        return [(instance.name, instance.reference) for 
                 instance in self.objects[devices]]
                         
     def record(self, device_name, audio_file):  
-        device_name = self.device_names[device_name].instance_name
+        device_name = self.device_names[device_name].reference
         audio_file.set_input_device(device_name)
         

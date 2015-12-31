@@ -134,7 +134,7 @@ class Audio_Input(Audio_Device):
         self.preserved_listeners = []
         self.frame_count = 0
         super(Audio_Input, self).__init__(**kwargs)
-        refresh = self.refresh_instruction = Instruction(self.instance_name, "refresh")
+        refresh = self.refresh_instruction = Instruction(self.reference, "refresh")
         refresh.execute(self.priority)
         
         if not hasattr(self, "input_device_index"):
@@ -150,7 +150,7 @@ class Audio_Input(Audio_Device):
         self.playing_to[_file] = listeners
         
         for listener in listeners:
-            objects[listener].set_input_device(self.instance_name)
+            objects[listener].set_input_device(self.reference)
             if listener in self.listeners:
                 self.listeners.remove(listener)
                 self.preserved_listeners.append(listener)

@@ -15,9 +15,9 @@ class Persistent_Reactor(base.Base):
         set_attribute = super_object.__setattr__
         get_attribute = super_object.__getattribute__
         
-        instance_name = get_attribute("instance_name")
-        fileio.ensure_file_exists(instance_name)
-        _file = open(instance_name, 'r+b')# fileio.File(instance_name, 'r+b')
+        reference = get_attribute("reference")
+        fileio.ensure_file_exists(reference)
+        _file = open(reference, 'r+b')# fileio.File(reference, 'r+b')
         memory = mmap.mmap(_file.fileno(), 65535)        
         
        # set_attribute("file", _file)

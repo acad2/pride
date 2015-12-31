@@ -87,7 +87,7 @@ class Network_Service(network.Udp_Socket):
         self.alert("handling response {} {}",
                    [command, value[:32]],
                    level='vv')
-        #print "reaction: ", self.instance_name, command, value[:45]
+        #print "reaction: ", self.reference, command, value[:45]
         response = getattr(self, command)(sender, value)
         response = response if response else "end_request"
         expect_response = response[:11] != "end_request"

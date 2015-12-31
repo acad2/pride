@@ -144,7 +144,7 @@ class Struct(object):
 class Persistent_Reactor(base.Base):
     
     local_only = set(('_file', '_memory', "_struct", "dictionary",
-                      "instance_number", "instance_name", "environment",
+                      "instance_number", "reference", "environment",
                       "local_only", "defaults"))
     
     def __init__(self, **kwargs):
@@ -153,8 +153,8 @@ class Persistent_Reactor(base.Base):
         set_attribute = super_object.__setattr__
                 
         dictionary = {}
-        fileio.ensure_file_exists(self.instance_name)
-        _file = self._file = open(self.instance_name, 'r+b')
+        fileio.ensure_file_exists(self.reference)
+        _file = self._file = open(self.reference, 'r+b')
         memory = self._memory = mmap.mmap(_file.fileno(), 65535)
         
         _struct = Struct(dictionary)

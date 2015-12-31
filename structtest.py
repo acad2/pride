@@ -147,7 +147,7 @@ def unpack_structure(packed_data):
 class Persistent_Object(pride.base.Base):
     
     store_in_dict = ("memory", "size", "defaults", "flags", "mutable_defaults", "verbosity",
-                     "startup_components", "required_attributes", "alert", "instance_name",
+                     "startup_components", "required_attributes", "alert", "reference",
                      "store_in_dict", "objects", "struct_size")
     
     def __init__(self, **kwargs):
@@ -162,15 +162,15 @@ class Persistent_Object(pride.base.Base):
             try:
                 packed_struct = self.memory[:self.struct_size]
             except AttributeError:
-                with open(self.instance_name.replace("->", '_'), 'a+b') as _file:
+                with open(self.reference.replace("->", '_'), 'a+b') as _file:
                     self.memory = mmap.mmap(_file.fileno(), 65535)
-                structure = new_struct_type(self.instance_name)()
+                structure = new_struct_type(self.reference)()
             else:
                 structure = unpack_structure(packed_struct)
             if attribute not in (name for name, _type in structure._fields_):
     #            print "Setting new attribute: ", attribute, value
                 try:
-                    struct_type = new_struct_type_from_ctypes(self.instance_name, 
+                    struct_type = new_struct_type_from_ctypes(self.reference, 
                                                               *structure._fields_ + 
                                                               [(attribute, type_conversion[type(value)])])
                 except KeyError:
@@ -202,7 +202,7 @@ class Persistent_Object(pride.base.Base):
                                 raise Type_Error("Unable to serialize mapping of type '{}'".format(type(value)))
                             _struct_type = new_struct_type("Dict{}".format(len(value)), 
                                                            *[(key, _value) for key, _value in iterator])
-                    struct_type = new_struct_type_from_ctypes(self.instance_name, 
+                    struct_type = new_struct_type_from_ctypes(self.reference, 
                                                               *structure._fields_ + [(attribute, _struct_type)])
                 _fields = struct_type._fields_
                 #print "Instantiating structure: ", [(name, getattr(structure, name)) for name, _type in _fields[:-1]] + [value]

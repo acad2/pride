@@ -11,11 +11,11 @@ class Save(pride.base.Base):
         except AttributeError:
             attributes = component.__dict__
             
-        saved = {component.instance_name : attributes}
+        saved = {component.reference : attributes}
         
         for key, value in attributes["objects"].items():
-            if hasattr(value, "instance_name"):
+            if hasattr(value, "reference"):
                 try:
-                    saved[value.instance_name] = value.__getstate__()
+                    saved[value.reference] = value.__getstate__()
                 except AttributeError:
-                    saved[value.instance_name] = value.__dict__
+                    saved[value.reference] = value.__dict__

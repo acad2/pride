@@ -56,11 +56,11 @@
     Note that some features are facilitated by the metaclass. These include
     the argument parser, runtime decoration, and documentation.
     
-    Instances of Base classes are counted and have an instance_name attribute.
+    Instances of Base classes are counted and have an reference attribute.
     This is equal to type(instance).__name__ + str(instance_count). There
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
-    The instance_name can be used to reference the object from any scope, 
+    The reference can be used to reference the object from any scope, 
     as long as the component exists at runtime."""
 import operator
 import itertools
@@ -210,8 +210,8 @@ class Base(object):
         while name in objects:
             instance_count += 1
             name = _name + str(instance_count)
-        self.instance_name = name
-        objects[self.instance_name] = self
+        self.reference = name
+        objects[self.reference] = self
         
         if self.parent:            
             self.parent.add(self) 
@@ -220,7 +220,7 @@ class Base(object):
             for component_type in self.startup_components:
                 component = self.create(component_type)
                 setattr(self, component.__class__.__name__.lower(), 
-                        component.instance_name)                         
+                        component.reference)                         
         try:
             self.alert("Initialized", level=self.verbosity["initialized"])
         except (AttributeError, KeyError): 
@@ -237,17 +237,17 @@ class Base(object):
             performs reference tracking maintainence. The object
             will be added to the environment if it is not yet in it.
             
-            Use of the create method provides an instance_name
+            Use of the create method provides an reference
             reference to the instance. The instance does not need
-            to be a Base object to receive an instance_name this way.
+            to be a Base object to receive an reference this way.
             Non Base objects can retrieve their instance name via
             up to two ways. If the object can have arbitrary attributes
-            assigned, it will be provided with an instance_name attribute. 
-            If not (i.e. __slots__ is defined), the instance_name can be
-            obtained via the pride.environment.instance_name dictionary, 
+            assigned, it will be provided with an reference attribute. 
+            If not (i.e. __slots__ is defined), the reference can be
+            obtained via the pride.environment.reference dictionary, 
             using the instance as the key."""
         with pride.backup(pride, "_last_creator"):
-            pride._last_creator = self.instance_name
+            pride._last_creator = self.reference
             try:
                 instance = instance_type(*args, **kwargs)
             except TypeError:
@@ -273,7 +273,7 @@ class Base(object):
             the object can be collected by the python garbage collector"""        
         self.alert("Deleting", level=self.verbosity["delete"])
         if self._deleted:
-            raise DeleteError("{} has already been deleted".format(self.instance_name))
+            raise DeleteError("{} has already been deleted".format(self.reference))
                     
         for child in itertools.chain(*self.objects.values()):            
             if child:
@@ -283,7 +283,7 @@ class Base(object):
             references = self.references_to[:]
             for name in references:
                 objects[name].remove(self)            
-        del objects[self.instance_name]
+        del objects[self.reference]
         self._deleted = True      
          
             
@@ -310,7 +310,7 @@ class Base(object):
                 siblings.insert(next_free_space, instance)
                 del siblings[next_free_space + 1]
                  
-        instance.references_to.append(self.instance_name)          
+        instance.references_to.append(self.reference)          
         
     def remove(self, instance):
         """ Usage: object.remove(instance)
@@ -327,9 +327,9 @@ class Base(object):
             heapq.heappush(self.blank_spaces, index)        
             storage.insert(index, _NULL_SPACE)
             del storage[index + 1]
-        instance.references_to.remove(self.instance_name)        
+        instance.references_to.remove(self.reference)        
     
-    #def _replace(self, instance, instance_name):
+    #def _replace(self, instance, reference):
     #    index = self.objects[instance.__class__.__name__]
         
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
@@ -351,7 +351,7 @@ class Base(object):
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments.""" 
         alert_handler = objects["->Alert_Handler"]               
-        message = "{}: ".format(self.instance_name) + (message.format(*format_args) if format_args else message)
+        message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
         if level in alert_handler._log_level or level is 0:
@@ -365,7 +365,7 @@ class Base(object):
         self.on_load(state)
               
     def __str__(self):
-        return self.instance_name
+        return self.reference
         
     def save(self, attributes=None, _file=None):
         """ usage: base.save([attributes], [_file])
@@ -390,7 +390,7 @@ class Base(object):
         found_objects = []
         for component_type, values in objects.items():
             saved_objects[component_type] = new_values = []
-            for value in sorted(values, key=operator.attrgetter("instance_name")):
+            for value in sorted(values, key=operator.attrgetter("reference")):
                 if hasattr(value, "save"):
                     found_objects.append(value)
                     if not getattr(value, "dont_save", False):   
@@ -399,7 +399,7 @@ class Base(object):
         attribute_type = attributes["_attribute_type"] = {}
         for key, value in attributes.items():
             if value in found_objects:
-                attributes[key] = value.instance_name
+                attributes[key] = value.reference
                 attribute_type[key] = "reference"
             elif hasattr(value, "save") and not getattr(value, "dont_save"):
                 attributes[key] = value.save()
@@ -422,9 +422,9 @@ class Base(object):
         [setattr(self, key, value) for key, value in attributes.items()]
                 
         if (self.replace_reference_on_load and 
-            self.instance_name != attributes["instance_name"]):
+            self.reference != attributes["reference"]):
             print "Replacing instance"
-            pride.environment.replace(attributes["instance_name"], self)
+            pride.environment.replace(attributes["reference"], self)
             print "Done"
         self.alert("Loaded", level='v')
         
@@ -434,7 +434,7 @@ class Base(object):
            Reloads the module that defines base and returns an updated
            instance. The old component is replaced by the updated component
            in the environment. Further references to the object via 
-           instance_name will be directed to the new, updated object. 
+           reference will be directed to the new, updated object. 
            Attributes of the original object will be assigned to the
            updated object.
            

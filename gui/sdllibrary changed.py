@@ -80,12 +80,12 @@ class SDL_Window(SDL_Component):
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
         self.organizer = self.create("pride.gui.gui.Organizer")
-        self.run_instruction = Instruction(self.instance_name, "run")
+        self.run_instruction = Instruction(self.reference, "run")
         
         if self.showing:
             self.show()  
 
-        objects["->Finalizer"].add_callback((self.instance_name, "delete"))
+        objects["->Finalizer"].add_callback((self.reference, "delete"))
     
     def _new_layer(self):
         return (pride.gui.gui.create_texture(self.size), [])
@@ -136,7 +136,7 @@ class SDL_Window(SDL_Component):
 
         #print "Running: ", window_object, window_object.children
         #for instance in itertools.chain((window_object, ), window_object.children):
-        #    user_input._update_coordinates(instance.instance_name, instance.area, instance.z)
+        #    user_input._update_coordinates(instance.reference, instance.area, instance.z)
         #    self.alert("Drawing: {}", (instance, ), level=0)#self.verbosity["draw_instance"])
         #    for operation, args, kwargs in instance._draw_operations:
         #        if operation == "text" and not args[0]:
@@ -162,7 +162,7 @@ class SDL_Window(SDL_Component):
             #    if instance.hidden:
             #        continue
             #    x, y, w, h = instance.area
-            #    user_input._update_coordinates(instance.instance_name, 
+            #    user_input._update_coordinates(instance.reference, 
             #                                   (x, y, w, h), instance.z)
             #    source_rect = [x + instance.texture_window_x,
             #                   y + instance.texture_window_y, w, h]    

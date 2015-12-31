@@ -33,7 +33,7 @@ class Instruction(object):
                            *args, **kwargs).execute(priority=priority,
                                                     callback=callback)
 
-            - component_name is the string instance_name of the component
+            - component_name is the string reference of the component
             - method_name is a string of the component method to be called
             - Positional and keyword arguments for the method may be
               supplied after the method_name.
@@ -139,21 +139,21 @@ class Finalizer(base.Base):
     def run(self):
         for callback, args, kwargs in self._callbacks:
             try:
-                instance_name, method = callback
+                reference, method = callback
             except ValueError:
                 pass
             else:
                 try:
-                    callback = getattr(objects[instance_name], method)
+                    callback = getattr(objects[reference], method)
                 except KeyError:
-                    self.alert("Unable to load object for callback: '{}'".format(instance_name), level=0)
+                    self.alert("Unable to load object for callback: '{}'".format(reference), level=0)
                 except AttributeError:
-                    self.alert("Unable to call method: '{}.{}'".format(instance_name, method), level=0)
+                    self.alert("Unable to call method: '{}.{}'".format(reference, method), level=0)
             try:
                 callback(*args, **kwargs)
             except Exception as error:
                 self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
-                           (instance_name, method, error), level=0)        
+                           (reference, method, error), level=0)        
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):

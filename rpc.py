@@ -94,7 +94,7 @@ class Session(pride.base.Base):
         except KeyError:
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)              
-        if host.bypass_network_stack and host._endpoint_instance_name:
+        if host.bypass_network_stack and host._endpoint_reference:
             self._callbacks.insert(0, (_call, callback))
         else:
             self._callbacks.append((_call, callback))
@@ -102,7 +102,7 @@ class Session(pride.base.Base):
      #   import pprint
      #   print self, "Storing callback: ", callback
      #   pprint.pprint(self._callbacks)
-        host.make_request(request, self.instance_name)
+        host.make_request(request, self.reference)
        
     def __next__(self): # python 3
         return self._callbacks.pop(0)

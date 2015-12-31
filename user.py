@@ -58,12 +58,12 @@ class User(pride.base.Base):
     verbosity = {"password_verified" : 'v', "invalid_password" : 0}
     
     def _get_password(self):
-        return getpass.getpass(self.password_prompt.format(self.instance_name))
+        return getpass.getpass(self.password_prompt.format(self.reference))
     password = property(_get_password)
     
     def _get_username(self):
         if not self._username:
-            username_prompt = "{}: please provide a username: ".format(self.instance_name)
+            username_prompt = "{}: please provide a username: ".format(self.reference)
             self._username = raw_input(username_prompt)
         return self._username
     def _set_username(self, value):

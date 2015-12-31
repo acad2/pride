@@ -198,8 +198,8 @@ class Authenticated_Service2(pride.base.Base):
                 
     def _load_database(self):
         if not self.database_name:
-            _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
-            name = self.database_name = "{}.db".format(_instance_name)
+            _reference = '_'.join(name for name in self.reference.split("->") if name)
+            name = self.database_name = "{}.db".format(_reference)
         else:
             name = self.database_name
         self.database = self.create(self.database_type, database_name=name,
@@ -392,7 +392,7 @@ class Authenticated_Client2(pride.base.Base):
     
     def _get_username(self):
         if not self._username:
-            self._username = raw_input(self.username_prompt.format(self.instance_name,
+            self._username = raw_input(self.username_prompt.format(self.reference,
                                                                    self.target_service,
                                                                    self.ip))
         return self._username
@@ -402,7 +402,7 @@ class Authenticated_Client2(pride.base.Base):
                 
     def __init__(self, **kwargs):
         super(Authenticated_Client2, self).__init__(**kwargs)
-        self.password_prompt = self.password_prompt.format(self.instance_name, self.ip, self.target_service)
+        self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
         module = self.__module__
         name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')
@@ -541,7 +541,7 @@ def test_Authenticated_Service2():
     service = objects["->Python"].create(Authenticated_Service2)
     client = objects["->Python"].create(Authenticated_Client2, auto_login=False)
     client.register()
-    Instruction(client.instance_name, "login").execute(priority=2.5)
+    Instruction(client.reference, "login").execute(priority=2.5)
     
 if __name__ == "__main__":
     peer = objects["->Python"].create(Authenticated_Peer, target_service="->Python->Peer1")

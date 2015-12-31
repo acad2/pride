@@ -29,7 +29,7 @@ unused = ('$', '?')
 misc = ("\'", "\"", "\#", "\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
-
+    
 @contextlib.contextmanager
 def file_contents_swapped(contents, filepath=''):
     """ Enters a context where the data of the supplied file/filepath are the 
@@ -40,13 +40,22 @@ def file_contents_swapped(contents, filepath=''):
         manager may not be enough to restore the original file contents. """
     with open(filepath, "r+b") as _file:
         original_contents = _file.read()
+        
+        # the context manager isn't enough if CTRL+C happens
+        def _in_case_of_failure():
+            _file.truncate(0)
+            _file.write(original_contents)
+            _file.flush()
+        atexit.register(_in_case_of_failure)
+        
         _file.truncate(0)
         _file.seek(0)
         _file.write(contents)
         _file.flush()
         try:
             yield
-        finally:
+        finally:            
+            atexit._exithandlers.remove((_in_case_of_failure, tuple(), {}))
             _file.truncate(0)
             _file.seek(0)
             _file.write(original_contents)

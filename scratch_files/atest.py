@@ -82,7 +82,7 @@ class Authenticated_Client(pride.base.Base):
         self.alert("Login success", level=0)
         
 def test():
-    service = Authenticated_Service().instance_name
+    service = Authenticated_Service().reference
     client = Authenticated_Client(username="root", target_service=service,
                                   auto_login=True)
     client.register()

@@ -41,7 +41,7 @@ class Save_Button(pride.gui.widgetlibrary.Method_Button):
         
     def _open(self, filename):
         with open(filename, 'r') as _file:
-            self.parent_application._current_save_file = self.instance_name
+            self.parent_application._current_save_file = self.reference
         super(Save_Button, self).left_click(None)
             
         
@@ -57,7 +57,7 @@ class Save_As_Button(pride.gui.widgetlibrary.Method_Button):
         
     def _open(self, filename):
         with open(filename, 'r') as _file:
-            self.parent_application._current_save_file = self.instance_name
+            self.parent_application._current_save_file = self.reference
         super(Save_As_Button, self).left_click(None)    
         
         
@@ -121,7 +121,7 @@ class Cyvasse(pride.gui.gui.Application):
     def _get_current_game(self):
         reference = "->Python->SDL_Window->Cyvasse->Cyvasse_Gameboard"
         return (self._current_game or
-                self.objects[reference][0].instance_name if
+                self.objects[reference][0].reference if
                 self.objects[reference] else None)
     def _set_current_game(self, value):
         self._current_game = value

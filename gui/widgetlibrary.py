@@ -15,13 +15,13 @@ class Attribute_Modifier_Button(gui.Button):
     verbosity = {"left_click" : 0}
     
     def left_click(self, mouse):        
-        instance_name, attribute = self.target
-        instance = pride.objects[instance_name]        
+        reference, attribute = self.target
+        instance = pride.objects[reference]        
         old_value = getattr(instance, attribute)
         new_value = getattr(old_value, self.operation)(self.amount)
         setattr(instance, attribute, new_value)
         self.alert("Modified {}.{}; {}.{}({}) = {}",
-                   (instance_name, attribute, old_value, 
+                   (reference, attribute, old_value, 
                     self.operation, self.amount, getattr(instance, attribute)),
                    level=self.verbosity["left_click"])  
                     
@@ -29,10 +29,10 @@ class Attribute_Modifier_Button(gui.Button):
 class Instruction_Button(gui.Button):
     
     defaults = {"args" : tuple(), "kwargs" : None, "method" : '',
-                "instance_name" : '', "priority" : 0.0, "callback" : None}
+                "reference" : '', "priority" : 0.0, "callback" : None}
                      
     def left_click(self, mouse):
-        Instruction(self.instance_name, self.method, 
+        Instruction(self.reference, self.method, 
                     *self.args, **self.kwargs or {}).execute(priority=self.priority, 
                                                              callback=self.callback)
                                              
@@ -149,7 +149,7 @@ class Date_Time_Button(gui.Button):
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
-        update = self.update_instruction = Instruction(self.instance_name, "update_time")        
+        update = self.update_instruction = Instruction(self.reference, "update_time")        
         self.update_time()        
   
     def update_time(self):
@@ -164,7 +164,7 @@ class Color_Palette(gui.Window):
         color_button = self.create("pride.gui.gui.Button", pack_mode="left")
         slider_container = self.create("pride.gui.gui.Container", pack_mode="left")
         
-        button_name = color_button.instance_name
+        button_name = color_button.reference
         for color in ('r', 'g', 'b'):
             slider_container.create("pride.gui.widgetlibrary.Scroll_Bar", 
                                     target=(button_name, color))
@@ -274,7 +274,7 @@ class Dialog_Box(gui.Application):
                     allow_text_edit=False)
         self.user_text = self.create("pride.gui.widgetlibrary.Prompt",
                                      use_done_button=True,
-                                     callback=(self.instance_name, "handle_input"))
+                                     callback=(self.reference, "handle_input"))
    
     def handle_input(self, user_input):
         getattr(pride.objects[self.callback_owner], self.callback)(user_input)       

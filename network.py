@@ -60,15 +60,15 @@ def local_sends(socket_send):
         sockname = self.sockname
         peername = self.peername
         if sockname in _local_connections: # client socket
-            instance_name = _local_connections[sockname]
+            reference = _local_connections[sockname]
         elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
-            instance_name = _socket_names[peername]
+            reference = _socket_names[peername]
         else:
             self.alert("Sending data over nic")        
             return socket_send(self, data)
            
         self.alert("Sending data locally, bypassing nic")
-        instance = pride.objects[instance_name]
+        instance = pride.objects[reference]
         instance._local_data += data
         instance.alert("recv called locally")
         instance.recv()            
@@ -76,7 +76,7 @@ def local_sends(socket_send):
     
 def local_recvs(socket_recv):
     def _recv(self, buffer_size=0):
-        instance_name = self.instance_name
+        reference = self.reference
         if self._local_data:
             data = self._local_data
             self._local_data = bytes()
@@ -169,7 +169,7 @@ class Socket(base.Wrapper):
     additional_parser_ignores.remove("port")
     parser_ignore = tuple(additional_parser_ignores)
     
-    flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_instance_name" : '',
+    flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_reference" : '',
              "connected" : False, "closed" : False, "_local_data" : ''}
     
     verbosity = {"close" : "socket_close", "network_nonexistant" : "vv",
@@ -289,12 +289,12 @@ class Socket(base.Wrapper):
         byte_count = len(data)
 #        assert not self.closed
         if self.bypass_network_stack:
-            if not self._endpoint_instance_name:
+            if not self._endpoint_reference:
                 if self.sockname in _socket_names: # socket is the client
-                    self._endpoint_instance_name = _local_connections[self.sockname]
+                    self._endpoint_reference = _local_connections[self.sockname]
                 else:
-                    self._endpoint_instance_name = _socket_names[self.peername]
-            instance = pride.objects[self._endpoint_instance_name]
+                    self._endpoint_reference = _socket_names[self.peername]
+            instance = pride.objects[self._endpoint_reference]
             instance._local_data += data
             instance.recv()                 
         else:
@@ -442,11 +442,11 @@ class Tcp_Socket(Socket):
     def on_connect(self):
         super(Tcp_Socket, self).on_connect()
         if self.peername[0] in ("127.0.0.1", "localhost"):
-            _local_connections[self.peername] = self.instance_name
+            _local_connections[self.peername] = self.reference
             try:
-                self._endpoint_instance_name = _socket_names[self.peername]
+                self._endpoint_reference = _socket_names[self.peername]
             except KeyError:
-                self._endpoint_instance_name = None
+                self._endpoint_reference = None
             
         
 class Server(Tcp_Socket):
@@ -485,7 +485,7 @@ class Server(Tcp_Socket):
                                  wrapped_object=_socket,
                                  peername=address)   
         if address[0] in ("127.0.0.1", "localhost"):
-            _local_connections[address] = connection.instance_name   
+            _local_connections[address] = connection.reference   
             
         connection.on_connect()         
         return connection, address
@@ -524,11 +524,11 @@ class Tcp_Client(Tcp_Socket):
     def on_connect(self):
         super(Tcp_Client, self).on_connect()      
         if self.peername[0] in ("localhost", "127.0.0.1"):
-            _socket_names[self.sockname] = self.instance_name
+            _socket_names[self.sockname] = self.reference
             try:
-                self._endpoint_instance_name = _local_connections[self.sockname]
+                self._endpoint_reference = _local_connections[self.sockname]
             except KeyError:
-                self._endpoint_instance_name = None
+                self._endpoint_reference = None
                 
         
 class Udp_Socket(Socket):

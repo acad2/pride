@@ -93,7 +93,7 @@ class Audio_Input(Audio_Device):
         self.playing_files.append(_file)
         self.playing_to[_file] = listeners
         for listener in listeners:
-            objects[listener].set_input_device(self.instance_name)
+            objects[listener].set_input_device(self.reference)
 
     def stop_file(self, _file):
         self.playing_files.remove(_file)

@@ -241,8 +241,8 @@ class Authenticated_Service(pride.base.Base):
         
     def _load_database(self):
         if not self.database_name:
-            _instance_name = '_'.join(name for name in self.instance_name.split("->") if name)
-            name = self.database_name = "{}.db".format(_instance_name)
+            _reference = '_'.join(name for name in self.reference.split("->") if name)
+            name = self.database_name = "{}.db".format(_reference)
         else:
             name = self.database_name
         self.database = self.create(self.database_type, database_name=name,
@@ -459,7 +459,7 @@ class Authenticated_Client(pride.base.Base):
     
     def _get_username(self):
         if not self._username:
-            username_prompt = "{}: please provide a username: ".format(self.instance_name)
+            username_prompt = "{}: please provide a username: ".format(self.reference)
             self._username = raw_input(username_prompt)
         return self._username
     def _set_username(self, value):
@@ -471,9 +471,9 @@ class Authenticated_Client(pride.base.Base):
         if not self.target_service:
             raise pride.errors.ArgumentError("target_service for {} not supplied".format(self))
                 
-        self.password_prompt = self.password_prompt.format(self.instance_name)
+        self.password_prompt = self.password_prompt.format(self.reference)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
-        name = self.instance_name.replace("->", '_')
+        name = self.reference.replace("->", '_')
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
         if self.auto_login:

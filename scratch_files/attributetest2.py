@@ -8,7 +8,7 @@ class Persistent_Reactor(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(Persistent_Reactor, self).__init__(**kwargs)
-        file = self.file = fileio.File(self.instance_name, "r+b")
+        file = self.file = fileio.File(self.reference, "r+b")
         memory = memory = mmap.mmap(file.fileno(), 65535)
         memory.seek(0)
         

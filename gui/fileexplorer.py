@@ -45,7 +45,7 @@ class Navigation_Bar(pride.gui.gui.Container):
         self.create(History_Dropdown)
         self.create(Ascend_Button)
         self.create(Search_Bar, 
-                    callback=(self.parent_application.instance_name + "->Directory_Viewer",
+                    callback=(self.parent_application.reference + "->Directory_Viewer",
                               "handle_input"))
         
    
@@ -106,7 +106,7 @@ class Directory_Viewer(pride.gui.gui.Window):
         self.create(Places_Bar)
         viewer = self.create(Column_Viewer)
     #    self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
-    #                target=(viewer.instance_name, "texture_window_y"))
+    #                target=(viewer.reference, "texture_window_y"))
                 
     
 class Column_Viewer(pride.gui.gui.Window):

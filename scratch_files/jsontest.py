@@ -15,7 +15,7 @@ class Base_Encoder(json.JSONEncoder):
         already_found = []
         for key, values in objects.items():
             saved_objects[key] = [self.default(item) for item in sorted(values,
-                                  key=operator.attrgetter("instance_name"))
+                                  key=operator.attrgetter("reference"))
                                   if not item.dont_save]
             already_found.extend(values)
         
@@ -28,14 +28,14 @@ class Base_Encoder(json.JSONEncoder):
                 attributes[name] = None
                 continue
             elif value in already_found:
-                _instance_name = value.instance_name
-                references[name] = _instance_name
-                attributes[value] = "reference_{}".format(_instance_name)
+                _reference = value.reference
+                references[name] = _reference
+                attributes[value] = "reference_{}".format(_reference)
             else:
                 try:
                     json.dumps(value)
                 except TypeError:
-                    if hasattr(value, "instance_name"):
+                    if hasattr(value, "reference"):
                         attributes[value] = self.default(value)
                         attributes_serialized.append(name)
                     else:

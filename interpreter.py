@@ -128,10 +128,10 @@ class Interpreter(authentication2.Authenticated_Service2):
     
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
-        filename = '_'.join(word for word in self.instance_name.split("->") if word)
+        filename = '_'.join(word for word in self.reference.split("->") if word)
         self.log = self.create("pride.fileio.File", 
                                "{}.log".format(filename), 'a+',
-                               persistent=False).instance_name
+                               persistent=False).reference
         self._logger = self.invoke(self._logger_type)
         
     def on_login(self):

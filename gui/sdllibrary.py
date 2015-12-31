@@ -59,12 +59,12 @@ class SDL_Window(SDL_Component):
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
         self.organizer = self.create("pride.gui.gui.Organizer")
-        self.run_instruction = Instruction(self.instance_name, "run")
+        self.run_instruction = Instruction(self.reference, "run")
                
         if self.showing:
             self.show()  
 
-        objects["->Finalizer"].add_callback((self.instance_name, "delete"))
+        objects["->Finalizer"].add_callback((self.reference, "delete"))
         
     def invalidate_layer(self, layer):
         self.invalid_layer = min(self.invalid_layer, layer)
@@ -124,7 +124,7 @@ class SDL_Window(SDL_Component):
                 if instance.hidden:
                     continue
                 x, y, w, h = instance.area
-                user_input._update_coordinates(instance.instance_name, 
+                user_input._update_coordinates(instance.reference, 
                                                (x, y, w, h), instance.z)
                 source_rect = [x + instance.texture_window_x,
                                y + instance.texture_window_y, w, h]    

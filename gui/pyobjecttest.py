@@ -28,7 +28,7 @@ class Object_Button(pride.gui.widgetlibrary.Popup_Button):
     
     def __init__(self, _object, **kwargs):
         super(Object_Button, self).__init__(**kwargs)
-        self.text = repr(_object) if hasattr(_object, "instance_name") else str(_object)
+        self.text = repr(_object) if hasattr(_object, "reference") else str(_object)
         self._object = _object
     
     def left_click(self, mouse):

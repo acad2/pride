@@ -49,18 +49,18 @@ def imports_from_disk():
         finally:
             pass
              
-def split_instance_name(instance_name):
-    assert instance_name
-    for index, character in enumerate(reversed(instance_name)):
+def split_reference(reference):
+    assert reference
+    for index, character in enumerate(reversed(reference)):
         try:
             number = int(character)
         except ValueError:
             break
     try:
-        number = int(instance_name[-index:])
+        number = int(reference[-index:])
     except ValueError:
         number = 0
-    return (instance_name[:index], number)
+    return (reference[:index], number)
         
 class From_Disk(object):
         
@@ -133,9 +133,9 @@ class From_Disk(object):
 #            #        names = _line.split("->")
 #            #        for name in names:
 #            #            if '"' in name or "'" in name:
-#            #                new_line += str(split_instance_name(name)) + ", "
+#            #                new_line += str(split_reference(name)) + ", "
 #            #            else:
-#            #                new_line += "split_instance_name({}), ".format(name)
+#            #                new_line += "split_reference({}), ".format(name)
 #            #        new_line = new_line[:2] + "))"
 #            #        lines.append
 #
@@ -235,9 +235,9 @@ class From_Disk(object):
 #            for name, is_string in names:
 #                if name:
 #                    if not is_string:                    
-#                        arg_string += "pride.split_instance_name({}), ".format(name)
+#                        arg_string += "pride.split_reference({}), ".format(name)
 #                    else:
-#                        arg_string += str(split_instance_name(name)) + ", "
+#                        arg_string += str(split_reference(name)) + ", "
 #            arg_string = arg_string[:-2] + "))" # replace the last ", " with "))" 
 #            replacement = "pride.dereference(" + arg_string
 #            _end = start# - len(names[0][0])

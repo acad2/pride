@@ -53,10 +53,10 @@ class Process(pride.base.Base):
         self.args = tuple()
         self.kwargs = dict()
         super(Process, self).__init__(**kwargs)        
-        self.run_instruction = Instruction(self.instance_name, "_run")
+        self.run_instruction = Instruction(self.reference, "_run")
         
         if self.running:
-            Instruction(self.instance_name, "start").execute()
+            Instruction(self.reference, "start").execute()
 
     def start(self):
         self.run_instruction.execute(priority=self.priority,
@@ -87,7 +87,7 @@ class Process(pride.base.Base):
     def delete(self):
         self.running = False
         for entry in pride.Instruction.instructions[:]:
-            if entry[3] == self.instance_name:
+            if entry[3] == self.reference:
                 pride.Instruction.instructions.remove(entry)
 
         pride.Instruction.instructions.sort()
@@ -100,9 +100,9 @@ class Process(pride.base.Base):
         
     def on_load(self, state):
         super(Process, self).on_load(state)
-        self.run_instruction = Instruction(self.instance_name, "_run")
+        self.run_instruction = Instruction(self.reference, "_run")
         if self.running:
-            Instruction(self.instance_name, "start").execute()
+            Instruction(self.reference, "start").execute()
             
     def __enter__(self):
         return self

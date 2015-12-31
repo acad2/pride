@@ -3,7 +3,7 @@ class Reference(object):
     references = {}
     
     def __new__(cls, base_object):
-        name = base_object.instance_name
+        name = base_object.reference
         references = cls.references
         if name not in references:
             self = super(Reference, cls).__new__(cls)

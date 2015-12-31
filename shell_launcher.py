@@ -29,17 +29,17 @@ def open_firefox():
 #def restart():
     
     
-def save(instance_name, _file=None):
-    return objects[instance_name].save(_file=None)
+def save(reference, _file=None):
+    return objects[reference].save(_file=None)
     
 def create(instance_type, *args, **kwargs):
     return objects["->Python"].create(instance_type, *args, **kwargs)
 
-def delete(instance_name):
-    objects[instance_name].delete()
+def delete(reference):
+    objects[reference].delete()
                                      
-def update(instance_name):
-    return objects[instance_name].update()
+def update(reference):
+    return objects[reference].update()
     
 #_package = create("pride.package.Package", pride, include_documentation=True)
 #with open("metapython.pack", 'wb') as package_file:
