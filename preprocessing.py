@@ -169,7 +169,11 @@ class Compiler(object):
             
         with backup(self, "_loading"):
             self._loading = module_name
-            sys.modules[module_name] = importlib.import_module(module_name)
+            try:
+                sys.modules[module_name] = importlib.import_module(module_name)
+            except BaseException:
+                del self.module_source[module_name]
+                raise
 
     #def compile_module(self, module_name, module_code, path):
     #    new_module = types.ModuleType(module_name) 

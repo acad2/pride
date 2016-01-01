@@ -161,7 +161,7 @@ class Socket(base.Wrapper):
                 "connect_timeout" : .100,
                                                 
                 #"replace_reference_on_load" : False,
-                "bypass_network_stack" : True,
+                "bypass_network_stack" : False,
                 "shutdown_on_close" : True, "shutdown_flag" : 2}
         
     additional_parser_ignores = defaults.keys()

@@ -256,14 +256,6 @@ class Base(object):
                 instance = resolve_string(instance_type)(*args, **kwargs)        
 
         return instance
-
-    def invoke(self, callable_string, *args, **kwargs):
-        """ Calls the method specified in callable_string with args and kwargs.
-                        
-            Base objects that are created via invoke instead of create will
-            exist as a root object in the objects dictionary instead of as a
-            child of self. """
-        return resolve_string(callable_string)(*args, **kwargs)
         
     def delete(self):
         """usage: object.delete()

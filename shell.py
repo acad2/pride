@@ -3,6 +3,8 @@ import pprint
 import sys
 import os
 import threading
+import codeop
+import traceback
 
 import pride
 import pride.vmlibrary
@@ -67,7 +69,8 @@ class Command_Line(pride.vmlibrary.Process):
         set_default_program, and get_program methods."""
     defaults = {"thread_started" : False, "write_prompt" : True,
                 "prompt" : ">>> ", "programs" : None,
-                "default_programs" : ("pride.shell.Shell_Program", 
+                "default_programs" : ("pride.shell.Python_Shell",
+                                      "pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
                 "idle_threshold" : 10000, 
                 "screensaver_type" : "pride.shell.CA_Screensaver"}
@@ -79,9 +82,10 @@ class Command_Line(pride.vmlibrary.Process):
         
         self._new_thread()  
         self.programs = self.programs or {}
-        self.set_default_program("python", ("->User->Shell", "handle_input"), set_backup=True)
-                
-        for program in self.default_programs:
+        default_program = self.create(self.default_programs[0])
+        self.set_default_program(default_program.name, (default_program.reference, "handle_input"), set_backup=True)
+             
+        for program in self.default_programs[1:]:
             self.create(program)
         
         priority = self.idle_threshold * self.priority
@@ -219,10 +223,53 @@ class Program(pride.base.Base):
         self.alert("Unrecognized command '{}'".format(input), level=0)
         print self.__doc__
                     
+       
+class Python_Shell(Program):
         
-class Shell_Program(Program):
+    defaults = {"name" : "python", "shell" : "->User->Shell"}
+    
+    flags = {"user_is_entering_definition" : False, "prompt" : ">>> ",
+             "lines" : ''}
+             
+    def handle_input(self, user_input):               
+        if not user_input:
+            user_input = '\n'
+        else:
+            user_input = pride.compiler.preprocess(user_input)
             
-    defaults = {"use_shell" : True, "name" : "shell"}
+        self.lines += user_input
+        lines = self.lines
+        write_prompt = True          
+        if lines != "\n":     
+            try:
+                code = codeop.compile_command(lines, "<stdin>", "exec")
+            except (SyntaxError, OverflowError, ValueError) as error:
+                sys.stdout.write(traceback.format_exc())
+                self.prompt = ">>> "
+                self.lines = ''
+            else:
+                if code:
+                    if self.user_is_entering_definition:
+                        if lines[-2:] == "\n\n":
+                            self.prompt = ">>> "
+                            self.lines = ''
+                            objects[self.shell].execute_source(lines)                            
+                            self.user_is_entering_definition = False
+                    else:
+                        self.lines = ''
+                        objects[self.shell].execute_source(lines)                        
+                        write_prompt = False
+                else:
+                    self.user_is_entering_definition = True
+                    self.prompt = "... "
+        else:
+            self.lines = ''
+        objects["->User->Command_Line"].set_prompt(self.prompt)        
+        
+        
+class OS_Shell(Program):
+            
+    defaults = {"use_shell" : True, "name" : "os_shell"}
                      
     def handle_input(self, input):
         pride.utilities.shell(input, shell=self.use_shell)
@@ -238,31 +285,18 @@ class Switch_Program(Program):
             input = "__default"
         _input = input.strip()
         command_line.set_default_program(_input, command_line.get_program(_input))
-        
-        
-class File_Explorer(Program):
+                          
+
+class Messenger_Program(Program):
+                            
+    defaults = {"name" : "messenger"}
     
-    defaults = {"name" : "file_explorer"}
-    
-    def listdir(self, directory_name='', mode='print'):
-        directory_name = directory_name or '.'
-        join = os.path.join
-        isdir = os.path.isdir        
-        contents = {}
-        directories = contents["directories"] = []
-        files = contents["files"] = []
+    def handle_input(self, user_input):
+        destination, message = user_input.split(':', 1)
+        objects["->Messenger_Client"].send_message(destination, message, 
+                                                   self.reference)
         
-        for filename in os.listdir(directory_name):
-            if isdir(join(directory_name, filename)):
-                directories.append(filename)
-            else:
-                files.append(filename)
-        if mode == 'print':
-            pprint.pprint(contents)
-        else:
-            return contents
-            
-            
+        
 class Terminal_Screensaver(pride.vmlibrary.Process):
     
     defaults = {"rate" : 3, "priority" : .08, "newline_scalar" : 1.5,

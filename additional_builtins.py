@@ -11,9 +11,7 @@ import pprint
 is_version_two = platform.python_version_tuple()[0] == '2'
 
 __all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input", 
-           "restart", "shutdown", "objects", "_root_objects")
-
-_root_objects = {}
+           "restart", "shutdown", "objects", "invoke")
 
 _NUMBERS = ''.join(str(x) for x in xrange(10))
 
@@ -26,29 +24,51 @@ def slide(iterable, x=16):
         
 # used in way too many places. no need to bother importing utilities everywhere       
 def resolve_string(module_name):
-    """Given an attribute string of a.b...z, return the object z"""
-    result = None
-    _original = module_name
-    attributes = []
-    while not result:
+    """Given an attribute string of a.b...z, return the object z, importing 
+       any required packages and modules to access z.
+       
+       Alternatively, resolves a reference from the objects dictionary, and 
+       potentially loads a specified attribute i.e.:
+        
+        resolve_string("->Python") == objects["->Python"]
+        resolve_string("->User->Shell.logged_in") == objects["->User->Shell"].logged_in"""
+    if module_name[:2] == "->":
         try:
-            result = (sys.modules[module_name] if module_name in 
-                      sys.modules else importlib.import_module(module_name))
-        except ImportError:
-            module_name = module_name.split('.')
-            attributes.append(module_name.pop())
-            module_name = '.'.join(module_name)
+            reference, attribute = module_name.split('.', 1)
         except ValueError:
-            raise ValueError("Unable to load package or module: {}".format(_original))
-    try:
-        for attribute in reversed(attributes):
-            result = getattr(result, attribute)
-    except AttributeError:
-        error_message = "unable to load {} from {}; failed to resolve string '{}'"
-        print error_message.format(attribute, result, _original)
-        raise
+            result = objects[module_name]
+        else:
+            result = getattr(objects[reference], attribute)
+    else:        
+        result = None
+        _original = module_name
+        attributes = []
+        while not result:
+            try:
+                result = (sys.modules[module_name] if module_name in 
+                        sys.modules else importlib.import_module(module_name))
+            except ImportError:
+                module_name = module_name.split('.')
+                attributes.append(module_name.pop())
+                module_name = '.'.join(module_name)
+            except ValueError:
+                raise ValueError("Unable to load package or module: {}".format(_original))
+        try:
+            for attribute in reversed(attributes):
+                result = getattr(result, attribute)
+        except AttributeError:
+            error_message = "unable to load {} from {}; failed to resolve string '{}'"
+            print error_message.format(attribute, result, _original)
+            raise
     return result        
     
+def invoke(callable_string, *args, **kwargs):
+    """ Calls the method named in callable_string with args and kwargs.
+     
+        Base objects that are created via invoke instead of create will
+        exist as a root object in the objects dictionary. """
+    return resolve_string(callable_string)(*args, **kwargs)
+        
 if is_version_two:    
     __raw_input = raw_input
     

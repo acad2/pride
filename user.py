@@ -89,7 +89,7 @@ class User(pride.base.Base):
                 login_success = True
         
         # invoke will create it as it's own root object, not a child of User
-        python = self.invoke(self.launcher_type, parse_args=True)       
+        python = invoke(self.launcher_type, parse_args=True)       
         self.create("pride.shell.Command_Line")       
        
         try:
@@ -130,7 +130,7 @@ class User(pride.base.Base):
         if key_length < 16:
             raise ValueError("Invalid key length supplied ({})".format(key_length))
         
-        kdf = self.invoke("pride.security.key_derivation_function", 
+        kdf = invoke("pride.security.key_derivation_function", 
                           algorithm=self.hash_function, length=key_length, 
                           salt=salt, iterations=self.kdf_iteration_count)
         master_key = kdf.derive(self.username + ':' + self.password)
@@ -139,7 +139,7 @@ class User(pride.base.Base):
                         "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
         
         if not self.encryption_key:
-            encryption_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            encryption_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.encryption_key = encryption_kdf.derive(master_key)                
             self._reset_encryption_key = True
                         
@@ -151,7 +151,7 @@ class User(pride.base.Base):
             _file.seek(0)
             verifier = _file.read()
             if verifier:
-                assert verifier == self.username
+                assert verifier == self.username, verifier
             else:
                 if pride.shell.get_permission("{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)):
                     _file.write(self.username)
@@ -162,14 +162,14 @@ class User(pride.base.Base):
         
         if not backup:
             hkdf_options = {"info" : self.hkdf_file_system_info_string.format(self.username + salt)}
-            file_system_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            file_system_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.file_system_key = file_system_kdf.derive(master_key)            
         else:
             self.file_system_key = backup
             
         if not self.mac_key:
             hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
-            mac_kdf = self.invoke("pride.security.hkdf_expand", **hkdf_options)
+            mac_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.mac_key = mac_kdf.derive(master_key)
                                 
     def encrypt(self, data, extra_data=''):

@@ -23,7 +23,8 @@ class Patched_Module(pride.base.Wrapper):
  
 class Stdout(pride.base.Wrapper):
     
-    defaults = {"file" : None, "log_type" : "StringIO.StringIO"}
+    defaults = {"file" : None, "log_type" : "StringIO.StringIO", 
+                "limit_log_size" : 1024 * 1024 }
     wrapped_object_name = "file"
     
     def __init__(self, **kwargs):
@@ -31,6 +32,8 @@ class Stdout(pride.base.Wrapper):
         self.log = self.create("pride.fileio.File", file_type=self.log_type)
         
     def write(self, data):
+        if self.limit_log_size and self.log.tell() > self.limit_log_size:
+            self.log.truncate()
         self.log.write(data)
         self.file.write(data)
         self.file.flush()

@@ -96,8 +96,10 @@ class Session(pride.base.Base):
                                                         host_info=self.host_info)              
         if host.bypass_network_stack and host._endpoint_reference:
             self._callbacks.insert(0, (_call, callback))
+    #        print self, "Inserted callback at beginning", self._callbacks
         else:
             self._callbacks.append((_call, callback))
+    #        print self, "Appended callback: ", self._callbacks
         #self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
      #   import pprint
      #   print self, "Storing callback: ", callback
@@ -108,7 +110,7 @@ class Session(pride.base.Base):
         return self._callbacks.pop(0)
       
     def next(self): # python 2   
-   #     print "Inside next: ", self, self._callbacks
+    #    print "Inside next: ", self, self._callbacks
         return self._callbacks.pop(0)
         
     def delete(self):
@@ -177,7 +179,10 @@ class Rpc_Client(Packet_Client):
             self._requests.append((request, callback_owner))
         else:    
             self.alert("Making request for {}".format(callback_owner), level=self.verbosity["request_sent"])
-            self._callbacks.append(callback_owner)
+            if self.bypass_network_stack and self._endpoint_reference:
+                self._callbacks.insert(0, callback_owner)
+            else:
+                self._callbacks.append(callback_owner)
             self.send(request)            
         
     def recv(self, packet_count=0):
@@ -185,7 +190,7 @@ class Rpc_Client(Packet_Client):
          #   print "Deserealizing: ", len(response), response
             _response = self.deserealize(response)
             callback_owner = self._callbacks.pop(0)
-     #       print "Getting callback from: ", callback_owner, pride.objects[callback_owner]._callbacks
+    #        print "Getting callback from: ", callback_owner, pride.objects[callback_owner]._callbacks
             try:
                 _call, callback = next(pride.objects[callback_owner])
             except KeyError:
@@ -200,11 +205,10 @@ class Rpc_Client(Packet_Client):
                                                 
     def handle_exception(self, _call, callback, response):   
         if (isinstance(response, SystemExit) or 
-            isinstance(response, KeyboardInterrupt)):
-        #    print "Reraising exception", type(response)()
+            isinstance(response, KeyboardInterrupt)):        
             raise response
         else:
-            self.alert("\n    Remote Traceback: Exception calling {}: {}: {}\n    Unable to proceed with callback {}",
+            self.alert("\nRemote Traceback: Exception calling {}\n{}: {}\nUnable to proceed with callback {}",
                        ('.'.join(_call), response.__class__.__name__, 
                         getattr(response, "traceback", response), callback), 
                         level=self.verbosity["handle_exception"])            

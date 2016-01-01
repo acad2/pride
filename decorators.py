@@ -30,7 +30,7 @@ def required_arguments(no_args=False, no_kwargs=False, requires_args=False,
     
 def with_arguments_from(entry_function):
     def decorate(function):
-        def new_call(*args, **kwargs):
+        def new_call(*args, **kwargs):            
             args, kwargs = entry_function(*args, **kwargs)
             return function(*args, **kwargs)
         return new_call
@@ -68,6 +68,15 @@ def call_if(**conditions):
         return new_call
     return decorate
     
+def on_exception(exception, callback):
+    def decorate(function):
+        def new_call(*args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except exception:
+                callback(*args, **kwargs)
+        return new_call
+    return decorate
 class Pystone_Test(object):
 
     def __init__(self, function):        

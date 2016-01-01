@@ -13,13 +13,8 @@ except ImportError:
 
 import pride
 import pride.base as base
-import pride.vmlibrary as vmlibrary
 import pride.authentication2 as authentication2
-import pride.utilities as utilities
-import pride.fileio as fileio
 import pride.shell
-#objects = pride.objects
-Instruction = pride.Instruction            
 
 @contextlib.contextmanager
 def main_as_name():
@@ -30,21 +25,17 @@ def main_as_name():
     finally:
         globals()["__name__"] = backup        
     
-class Shell(authentication2.Authenticated_Client2):
+class Shell(authentication2.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
-    defaults = {"username" : "", "password" : "", "prompt" : ">>> ",
-                "startup_definitions" : '', "target_service" : "->Python->Interpreter",
-                "lines" : '', "user_is_entering_definition" : False}
-    
-    parser_ignore = ("prompt", "lines", "user_is_entering_definition")
+    defaults = {"username" : "", "password" : "", "startup_definitions" : '', 
+                "target_service" : "->Python->Interpreter"}   
     
     verbosity = {"login" : 0, "execute_source" : "vv"}
                 
     def on_login(self, message):
-        self.alert("{}", [message], level=0)
-        sys.stdout.write(">>> ")
-        self.logged_in = True      
+        super(Shell, self).on_login(message)        
+        sys.stdout.write(">>> ")        
         if self.startup_definitions:
             self.handle_startup_definitions()                
              
@@ -59,51 +50,10 @@ class Shell(authentication2.Authenticated_Client2):
         else:
             self.startup_definitions = ''
             self.execute_source(source)
-                    
-    def handle_input(self, user_input):                
-        if not user_input:
-            user_input = '\n'
-        else:
-            user_input = pride.compiler.preprocess(user_input)
-            
-        self.lines += user_input
-        lines = self.lines
-        write_prompt = True          
-        if lines != "\n":     
-            try:
-                code = codeop.compile_command(lines, "<stdin>", "exec")
-            except (SyntaxError, OverflowError, ValueError) as error:
-                sys.stdout.write(traceback.format_exc())
-                self.prompt = ">>> "
-                self.lines = ''
-            else:
-                if code:
-                    if self.user_is_entering_definition:
-                        if lines[-2:] == "\n\n":
-                            self.prompt = ">>> "
-                            self.lines = ''
-                            self.execute_source(lines)
-                            self.user_is_entering_definition = False
-                    else:
-                        self.lines = ''
-                        self.execute_source(lines)
-                        write_prompt = False
-                else:
-                    self.user_is_entering_definition = True
-                    self.prompt = "... "
-        else:
-            self.lines = ''
-        objects["->User->Command_Line"].set_prompt(self.prompt)
-    
-    def login_before_executing(self, source):
-        self.alert("Not logged in".format(source))
-        if self.auto_login or pride.shell.get_permission("Login now? :"):
-            self.startup_definitions = source
-            self.login()
-        
-    @pride.decorators.call_if(logged_in=True, otherwise_callback=login_before_executing)
+                        
     @pride.authentication2.remote_procedure_call(callback_name="result")
-    def execute_source(self, source): pass
+    def execute_source(self, source): 
+        """ Sends source to the interpreter specified in self.target_service for execution """
                                     
     def result(self, packet):
         if not packet:
@@ -111,10 +61,11 @@ class Shell(authentication2.Authenticated_Client2):
         if isinstance(packet, BaseException):
             raise packet
         else:
-            sys.stdout.write('\b' * 4 + packet + self.prompt)
+            print packet
+            sys.stdout.write('\b' * 4 + packet + objects["->User->Command_Line"].prompt)
         
 
-class Interpreter(authentication2.Authenticated_Service2):
+class Interpreter(authentication2.Authenticated_Service):
     """ Executes python source. Requires authentication from remote hosts. 
         The source code and return value of all requests are logged. """
     
@@ -132,7 +83,7 @@ class Interpreter(authentication2.Authenticated_Service2):
         self.log = self.create("pride.fileio.File", 
                                "{}.log".format(filename), 'a+',
                                persistent=False).reference
-        self._logger = self.invoke(self._logger_type)
+        self._logger = invoke(self._logger_type)
         
     def on_login(self):
         session_id, sender = self.current_session
@@ -157,18 +108,16 @@ class Interpreter(authentication2.Authenticated_Service2):
             with sys.stdout.switched(self._logger):
                 try:
                     exec code in globals()
-                except Exception as error:
-                    if type(error) == SystemExit:
+                except Exception as result:
+                    if type(result) == SystemExit:
                         raise
-                    else:
-                        result = traceback.format_exc()
+                    result.traceback = traceback.format_exc()
                 else:
-                    self.user_session[username] += source
-                finally:
+                    self.user_session[username] += source                
                     sys.stdout.seek(0)
                     result = sys.stdout.read() + result
-                    log.write("{}\n".format(result))                    
-                    sys.stdout.truncate(0)                                                 
+                log.write("{}\n".format(result))                    
+                sys.stdout.truncate(0)                                                 
         log.flush()        
         return result
         
@@ -226,7 +175,7 @@ class Python(base.Base):
             command = self.command        
         with open(command, 'r') as module_file:
             source = module_file.read()            
-        Instruction(self.interpreter, "_exec_command", source).execute()
+        pride.Instruction(self.interpreter, "_exec_command", source).execute()
              
     def setup_os_environ(self):
         """ This method is called automatically in Python.__init__; os.environ can
