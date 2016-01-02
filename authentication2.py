@@ -228,8 +228,8 @@ class Authenticated_Service(pride.base.Base):
                 encrypted_key = pride.security.encrypt(login_packet, session_key)
                 
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
-                                   length=self.authentication_table_size,
-                                   info=self.hkdf_table_update_info_string) 
+                              length=self.authentication_table_size,
+                              info=self.hkdf_table_update_info_string) 
                 new_table = hkdf.derive(saved_table + ':' + new_key)
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)

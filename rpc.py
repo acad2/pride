@@ -214,9 +214,7 @@ class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
     
     verbosity = {"request_exception" : "rpc_exception", "request_result" : "vv"}
-    
-    packet_structure = ("session_id", "component_name", "method", "serialized_arguments")
-    
+        
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
         self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])

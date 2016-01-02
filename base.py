@@ -230,7 +230,7 @@ class Base(object):
             
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create("module_name.object_name", 
-                                args, kwargs) => instance
+                                 args, kwargs) => instance
 
             Given a type or string reference to a type and any arguments,
             return an instance of the specified type. The creating
@@ -321,9 +321,7 @@ class Base(object):
             del storage[index + 1]
         instance.references_to.remove(self.reference)        
     
-    #def _replace(self, instance, reference):
-    #    index = self.objects[instance.__class__.__name__]
-        
+
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
@@ -436,21 +434,19 @@ class Base(object):
         self.alert("Updating", level='v') 
         
         class_base = pride.utilities.updated_class(type(self))
-        print "Updated class base: ", class_base
+        
         class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
-        print "Created new self: ", repr(new_self)
-        
-        # a mini replacement __init__
-        
-        attributes = new_self.defaults.copy()
-        attributes["_required_modules"] = class_base._required_modules
-        [setattr(new_self, key, value) for key, value in attributes.items()]
-        pride.environment.add(new_self)        
-        
-        attributes = self.__dict__
-        pride.environment.replace(self, new_self)
-        [setattr(new_self, key, value) for key, value in attributes.items()]
+        for attribute, value in ((key, value) for key, value in
+                                 self.__dict__.items() if key not in
+                                 self.__class__.__dict__):
+            setattr(new_self, attribute, value)
+                    
+        for reference in self.references_to[:]:
+            _object = pride.objects[reference]
+            _object.remove(self)
+            _object.add(new_self)
+        pride.objects[self.reference] = new_self        
         return new_self
                 
         
