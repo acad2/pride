@@ -19,14 +19,6 @@ timer_function = timeit.default_timer
     
 def preprocess(function):
     raise ImportError("Failed to replace preprocess function with source")       
-
-@contextlib.contextmanager
-def backup(_object, attribute):
-    value = getattr(_object, attribute)
-    try:
-        yield
-    finally:
-        setattr(_object, attribute, value)
         
 class Instruction(object):
     """ usage: Instruction(component_name, method_name,

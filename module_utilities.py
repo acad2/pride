@@ -5,6 +5,8 @@ import inspect
 import symtable
 import pkgutil
 
+import contextmanagers
+
 def installed_modules(directories=None):
     """ Returns a list of the names of available python modules """
     return [module[1] for module in pkgutil.iter_modules(directories)]
@@ -63,7 +65,7 @@ def modules_switched(module_dict):
                 module = importlib.import_module(module_name)                
             filepath = (module.__file__ if module.__file__[-1] != 'c' else
                         module.__file__[:-1])
-            with file_contents_swapped(source_code, filepath):
+            with contextmanagers.file_contents_swapped(source_code, filepath):
                 modules[module_name] = importlib.import_module(module_name)
         try:
             yield

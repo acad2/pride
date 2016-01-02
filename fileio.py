@@ -3,7 +3,6 @@ import sys
 import mmap
 import os
 import StringIO
-import contextlib
 import platform
 import time
 import datetime
@@ -43,38 +42,7 @@ def ensure_file_exists(filepath, data=''):
             _file.truncate(0)
             _file.write(data)
             _file.flush()
-
-@contextlib.contextmanager
-def current_working_directory(directory_name):
-    """ Temporarily sets the current working directory """
-    backup = os.getcwd()
-    os.chdir(directory_name)
-    try:
-        yield
-    finally:
-        os.chdir(backup)
-    
-@contextlib.contextmanager
-def file_contents_swapped(contents, filepath='', _file=None):
-    """ Enters a context where the data of the supplied file/filepath are the 
-        contents specified in the contents argument."""
-    if not _file:
-        _file = open(filepath, 'r+b')
-    original_contents = _file.read()
-    _file.truncate(0)
-    _file.seek(0)
-    _file.write(contents)
-    _file.flush()
-    try:
-        yield
-    finally:
-        _file.truncate(0)
-        _file.seek(0)
-        _file.write(original_contents)
-        _file.flush()
-        _file.close() 
-
-     
+        
 class Cached(object):
     """ A memoization decorator that should work with any method and argument structure"""
     cache = {}

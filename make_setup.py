@@ -5,6 +5,7 @@ import setuptools
 
 import pride.base
 import pride.package
+import pride.contextmanagers
 
 class Version_Manager(pride.base.Base):
     
@@ -30,7 +31,7 @@ class Version_Manager(pride.base.Base):
         module = importlib.import_module(self.name)
         package = pride.package.Package(module, include_documentation=True)
         
-        with pride.fileio.current_working_directory(self.setuppy_directory):
+        with pride.contextmanagers.current_working_directory(self.setuppy_directory):
             backup = sys.argv
             sys.argv = [backup[0], argv]
             setuptools.setup(**self.options)

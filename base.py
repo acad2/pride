@@ -72,6 +72,7 @@ import pride.metaclass
 import pride.persistence
 import pride.utilities
 import pride.datastructures
+import pride.contextmanagers
 from pride.errors import *
 #objects = pride.objects
 
@@ -246,7 +247,7 @@ class Base(object):
             If not (i.e. __slots__ is defined), the reference can be
             obtained via the pride.environment.reference dictionary, 
             using the instance as the key."""
-        with pride.backup(pride, "_last_creator"):
+        with pride.contextmanagers.backup(pride, "_last_creator"):
             pride._last_creator = self.reference
             try:
                 instance = instance_type(*args, **kwargs)
@@ -254,7 +255,6 @@ class Base(object):
                 if isinstance(instance_type, type):
                     raise                
                 instance = resolve_string(instance_type)(*args, **kwargs)        
-
         return instance
         
     def delete(self):

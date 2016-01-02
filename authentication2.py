@@ -7,6 +7,8 @@ import pride.security
 import pride.decorators
 from pride.security import hash_function, SecurityError
                     
+class UnauthorizedError(SecurityError): pass
+                    
 @pride.decorators.required_arguments(no_args=True)
 def remote_procedure_call(callback_name='', callback=None):
     def decorate(function):       
@@ -116,7 +118,7 @@ class Authenticated_Service(pride.base.Base):
                 "hkdf_table_update_info_string" : "Authentication Table Update",
                 
                 # non security related configuration options
-                "database_type" : "pride.database.Database",
+                "database_type" : "pride.database.Database", 
                 "validation_failure_string" :\
                    ".validate: Authorization Failure:\n   ip_blacklisted: {}" +
                    "    session_id logged in: {}\n    method_name: '{}'\n    " +
@@ -128,7 +130,9 @@ class Authenticated_Service(pride.base.Base):
                  "on_login" : 0, "login" : 'v', "authentication_success" : 'vv',
                  "authentication_failure" : 'v', "validate_failure" : "validate_failure",
                  "login_stage_two_hash_not_found" : "v"}
-                 
+    
+    flags = {"current_session" : ('', None)}
+    
     database_structure = {"Users" : ("authentication_table_hash BLOB PRIMARY_KEY", 
                                      "authentication_table BLOB", "session_key BLOB",
                                      "username TEXT")}
@@ -200,7 +204,7 @@ class Authenticated_Service(pride.base.Base):
                    level=self.verbosity["login_stage_two"])       
         
         # a fake key, iv, tag, and response for failed attempts
-        encrypted_key = pride.security.random_bytes(self.shared_key_size + 48 + 32) 
+        encrypted_key = pride.security.random_bytes(self.shared_key_size + 48 + 32)
         try:
             (saved_table,
              session_key,
@@ -211,15 +215,17 @@ class Authenticated_Service(pride.base.Base):
         except TypeError:
             self.alert("Failed to find authentication_table_hash in database for login_stage_two",
                        level=self.verbosity["login_stage_two_hash_not_found"])             
-        else:                
-            if Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer):
+        else:         
+            if (authentication_table_hash not in self.session_id and
+                Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer)):
                 del self._challenge_answer[authentication_table_hash]
                 self.alert("Authentication success: {} '{}'",
                            (ip, username), level=self.verbosity["authentication_success"])
                 self.session_id[authentication_table_hash] = username
                 login_message = self.on_login()
                 new_key = pride.security.random_bytes(self.shared_key_size)
-                encrypted_key = pride.security.encrypt(new_key, session_key, extra_data=login_message or '')
+                login_packet = pride.utilities.pack_data(new_key, login_message)                                                    
+                encrypted_key = pride.security.encrypt(login_packet, session_key)
                 
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
                                    length=self.authentication_table_size,
@@ -262,7 +268,7 @@ class Authenticated_Service(pride.base.Base):
                       (peername[0] in self.ip_blacklist, session_id in self.session_id,
                        method_name, self.allow_login, self.allow_registration),
                        level=self.verbosity["validate_failure"])
-            return False            
+            return False         
        # if self.rate_limit and method_name in self.rate_limit:
        #     _new_connection = False
        #     try:
@@ -280,8 +286,7 @@ class Authenticated_Service(pride.base.Base):
        #             self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
        #                     (method_name, self.rate_limit[method_name], current_rate),                           
        #                     level=self.verbosity["validate_failure"])
-       #             return False
-        self.current_session = (session_id, peername)
+       #             return False        
         self.alert("Authorizing: {} for {}", 
                   (peername, method_name), 
                   level=self.verbosity["validate_success"])
@@ -302,7 +307,7 @@ class Authenticated_Client(pride.base.Base):
     verbosity = {"register" : 0, "login" : 'v', "answer_challenge" : 'vv',
                  "login_stage_two" : 'vv', "register_sucess" : 0,
                  "auto_login" : 'v', "logout" : 'v', "login_message" : 0,
-                 "delayed_request_sent" : "vv"}
+                 "delayed_request_sent" : "vv", "login_failed_already_logged_in" : 0}
                  
     defaults = {# security related configuration options
                 "hash_function" : "SHA256", "authentication_table_size" : 256,
@@ -444,31 +449,34 @@ class Authenticated_Client(pride.base.Base):
             auth_table = _file.read(self.authentication_table_size)
             shared_key = _file.read(self.shared_key_size)
             try:
-                new_key, login_message = pride.security.decrypt(encrypted_key, shared_key)
+                packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key)
             except ValueError:
-                new_key = pride.security.decrypt(encrypted_key, shared_key)
-                login_message = ''
-            self.shared_key = new_key
-            hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
-                                length=self.authentication_table_size,
-                                info=self.hkdf_table_update_info_string) 
-                                
-            new_table = hkdf.derive(auth_table + ':' + new_key)            
-            _file.truncate(0)
-            _file.seek(0)
-            _file.write(new_table)
-            _file.write(new_key)     
-            _file.flush()
-        self.session.id = self._hash_auth_table(new_table, new_key)
-        self.on_login(login_message)
+                self.alert("Login attempt failed; Already logged in.", 
+                           level=self.verbosity["login_failed_already_logged_in"])
+            else:
+                new_key, login_message = pride.utilities.unpack_data(packed_key_and_message, 2)
+                self.shared_key = new_key
+                hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
+                                    length=self.authentication_table_size,
+                                    info=self.hkdf_table_update_info_string) 
+                                    
+                new_table = hkdf.derive(auth_table + ':' + new_key)            
+                _file.truncate(0)
+                _file.seek(0)
+                _file.write(new_table)
+                _file.write(new_key)     
+                _file.flush()
+                self.session.id = self._hash_auth_table(new_table, new_key)
+                self.on_login(login_message)
         
     def on_login(self, login_message):
         self.logged_in = True
+        self._logging_in = False
         self.alert("{}", [login_message], level=self.verbosity["login_message"])
         for instruction, callback in self._delayed_requests:
             self.alert("Making delayed request: {}",
                       [(instruction.component_name, instruction.method)],
-                      level=0)#self.verbosity["delayed_request_sent"])
+                      level=self.verbosity["delayed_request_sent"])
             self.session.execute(instruction, callback)
             
     def _reset_login_flags(self):
@@ -484,8 +492,7 @@ class Authenticated_Client(pride.base.Base):
             If the user is not logged in, this is a no-op. """
     
     def handle_not_logged_in(self, instruction, callback):
-        self.alert("Not logged in")
-        print "Delaying until logged in: ", instruction
+        self.alert("Not logged in")        
         if self.auto_login or pride.shell.get_permission("Login now? :"):
             self._delayed_requests.append((instruction, callback))
             self.login()            

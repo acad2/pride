@@ -31,24 +31,7 @@ unused = ('$', '?')
 misc = ("\'", "\"", "\#", "\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
-  
-@contextlib.contextmanager
-def sys_meta_path_switched(new_meta_path):
-    backup = sys.meta_path
-    sys.meta_path = new_meta_path
-    try:
-        yield
-    finally:
-        sys.meta_path = backup
-
-@contextlib.contextmanager        
-def imports_from_disk():
-    with sys_meta_path_switched([From_Disk()]):
-        try:
-            yield
-        finally:
-            pass
-             
+               
 def split_reference(reference):
     assert reference
     for index, character in enumerate(reversed(reference)):

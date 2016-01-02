@@ -15,6 +15,7 @@ import atexit
 
 import additional_builtins
 import additional_keywords
+import contextmanagers
 resolve_string = additional_builtins.resolve_string
 
 OPERATORS = ('+', '-', '*', '**', '/', '//', '%', '<<', '>>', '&', '|', '^',
@@ -29,47 +30,7 @@ unused = ('$', '?')
 misc = ("\'", "\"", "\#", "\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
-    
-@contextlib.contextmanager
-def file_contents_swapped(contents, filepath=''):
-    """ Enters a context where the data of the supplied file/filepath are the 
-        contents specified in the contents argument. After exiting the context,
-        the contents are replaced.
-        
-        Note that if a catastrophe like a power outage occurs, pythons context 
-        manager may not be enough to restore the original file contents. """
-    with open(filepath, "r+b") as _file:
-        original_contents = _file.read()
-        
-        # the context manager isn't enough if CTRL+C happens
-        def _in_case_of_failure():
-            _file.truncate(0)
-            _file.write(original_contents)
-            _file.flush()
-        atexit.register(_in_case_of_failure)
-        
-        _file.truncate(0)
-        _file.seek(0)
-        _file.write(contents)
-        _file.flush()
-        try:
-            yield
-        finally:            
-            atexit._exithandlers.remove((_in_case_of_failure, tuple(), {}))
-            _file.truncate(0)
-            _file.seek(0)
-            _file.write(original_contents)
-            _file.flush()
-            _file.close() 
-        
-@contextlib.contextmanager
-def backup(_object, attribute):
-    value = getattr(_object, attribute)
-    try:
-        yield
-    finally:
-        setattr(_object, attribute, value)
-        
+            
 class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
@@ -163,11 +124,11 @@ class Compiler(object):
         
     def compile_module(self, module_name, source, path):
         if module_name in self._outdated:
-            with file_contents_swapped(source, path):
+            with contextmanagers.file_contents_swapped(source, path):
                 py_compile.compile(path)
             self._outdated.remove(module_name)
             
-        with backup(self, "_loading"):
+        with contextmanagers.backup(self, "_loading"):
             self._loading = module_name
             try:
                 sys.modules[module_name] = importlib.import_module(module_name)

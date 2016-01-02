@@ -69,15 +69,7 @@ class Audio_Input(Audio_Device):
         if not self.data_source:
             self.data_source = self.pcm            
         self.byte_scalar = self.sample_size / 8
-    
-    @contextlib.contextmanager
-    def listeners_preserved(self):
-        old_listeners = self.listeners
-        try:
-            yield
-        finally:
-            self.listeners = old_listeners 
-            
+                
     def get_data(self):
         frame_count, data = self.pcm.read()
         self.handle_audio_output(data)

@@ -156,12 +156,12 @@ class Socket(base.Wrapper):
                 
                 # connect_timeout is how long, in seconds, to wait before giving up when
                 # when attempting to establish a new connection to a server. 
-                # Note: Modifying the Network.priority attribute from the default of
-                # .01 will make this value significantly less meaningful. 
-                "connect_timeout" : .100,
+                "connect_timeout" : 1,
                                                 
-                #"replace_reference_on_load" : False,
-                "bypass_network_stack" : False,
+                # Sockets that are connected to each other from within the application
+                # can communicate directly with each other via references, bypassing
+                # even the loopback connector; 0 round trips occur, all sends/recvs occur inline
+                "bypass_network_stack" : True,
                 "shutdown_on_close" : True, "shutdown_flag" : 2}
         
     additional_parser_ignores = defaults.keys()
@@ -320,7 +320,7 @@ class Socket(base.Wrapper):
             if ERROR_CODES[error.errno] == "CONNECTION_IS_CONNECTED":
                 self.on_connect()
             elif not self._connecting:
-                #self.connection_attempts = 
+                self._started_connecting_at = pride.utilities.timer_function()
                 self.latency = pride.datastructures.Latency(size=10)
                 self._connecting = True
                 objects["->Python->Network"].connecting.add(self)
@@ -349,7 +349,7 @@ class Socket(base.Wrapper):
         self.alert("Closing", level=self.verbosity["close"])
         objects["->Python->Network"].remove(self)
         #if self.sock_name in _local_connections:
-        if self.shutdown_on_close:
+        if self.shutdown_on_close and self.connected:
             self.wrapped_object.shutdown(self.shutdown_flag)
         self.wrapped_object.close()
         self.closed = True
@@ -580,7 +580,8 @@ class Network(vmlibrary.Process):
         not require user interaction."""
     defaults = {"priority" : .01, "run_condition" : "sockets"}
    
-    mutable_defaults = {"connecting" : set, "sockets" : list}
+    mutable_defaults = {"connecting" : set, "sockets" : list, 
+                        "_timestamp" : pride.utilities.timer_function}
     
     error_handler = Socket_Error_Handler()         
     
@@ -637,9 +638,16 @@ class Network(vmlibrary.Process):
             still_connecting = connecting.difference(writable)
             elapsed_time = self.priority
             
+            old_timestamp = self._timestamp
+            self._timestamp = now = pride.utilities.timer_function()
+            elapsed_time = now - old_timestamp
+            
             for connection in still_connecting:
-                connection.connect_timeout -= elapsed_time
-                if not connection.connection_attempts:
+                #connection.connect_timeout -= elapsed_time                
+                #if connection.connect_timeout < 0:#if not connection.connection_attempts:
+                print "Connection time info: ", now, connection._started_connecting_at, now - connection._started_connecting_at, connection.connect_timeout
+                if now - connection._started_connecting_at > connection.connect_timeout:
+                    print "Connection out of time; now or never!", connection.connect_timeout                    
                     try:
                         connection.connect(connection.host_info)
                     except socket.error as error:                           

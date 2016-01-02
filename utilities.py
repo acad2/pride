@@ -42,16 +42,7 @@ def unpack_data(packed_bytes, size_count):
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')
     sys.stdout.flush()
-    
-@contextlib.contextmanager
-def sys_argv_swapped(new_argv):
-    backup = sys.argv[:]
-    sys.argv[:] = new_argv
-    try:
-        yield
-    finally:
-        sys.argv[:] = backup
-                              
+                                  
 def updated_class(_class):
     # modules are garbage collected if not kept alive        
     required_modules = []        

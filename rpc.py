@@ -95,22 +95,15 @@ class Session(pride.base.Base):
             host = _hosts[self.host_info] = self.create(self.requester_type,
                                                         host_info=self.host_info)              
         if host.bypass_network_stack and host._endpoint_reference:
-            self._callbacks.insert(0, (_call, callback))
-    #        print self, "Inserted callback at beginning", self._callbacks
+            self._callbacks.insert(0, (_call, callback))    
         else:
             self._callbacks.append((_call, callback))
-    #        print self, "Appended callback: ", self._callbacks
-        #self.alert("Storing callback: {}. callbacks: {}".format(callback, self._callbacks), level=0)  
-     #   import pprint
-     #   print self, "Storing callback: ", callback
-     #   pprint.pprint(self._callbacks)
         host.make_request(request, self.reference)
        
     def __next__(self): # python 3
         return self._callbacks.pop(0)
       
-    def next(self): # python 2   
-    #    print "Inside next: ", self, self._callbacks
+    def next(self): # python 2       
         return self._callbacks.pop(0)
         
     def delete(self):
@@ -200,7 +193,7 @@ class Rpc_Client(Packet_Client):
             else:
                 if isinstance(_response, BaseException):
                     self.handle_exception(_call, callback, _response)
-                elif callback is not None:
+                elif callback is not None:                    
                     callback(_response)                                
                                                 
     def handle_exception(self, _call, callback, response):   
@@ -222,21 +215,24 @@ class Rpc_Socket(Packet_Socket):
     
     verbosity = {"request_exception" : "rpc_exception", "request_result" : "vv"}
     
+    packet_structure = ("session_id", "component_name", "method", "serialized_arguments")
+    
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
         self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])
         
     def recv(self, packet_count=0):
         peername = self.peername
-        for packet in super(Rpc_Socket, self).recv():
-            (session_id, component_name, 
-             method, serialized_arguments) = pride.utilities.unpack_data(packet, 4)            
+        for (session_id, component_name, method, 
+             serialized_arguments) in (pride.utilities.unpack_data(packet, 4) for 
+                                       packet in super(Rpc_Socket, self).recv()):          
             try:
                 result = next(self.rpc_workers).handle_request(peername, session_id, component_name,
                                                                method, serialized_arguments)                                    
             except BaseException as result:
-                if isinstance(result, KeyError) and component_name not in pride.objects:
-                    result = UnauthorizedError
+                if ((isinstance(result, KeyError) and component_name not in pride.objects) or
+                    (isinstance(result, AttributeError) and not hasattr(objects[component_name], "validate"))):
+                    result = UnauthorizedError()
                 elif not isinstance(result, UnauthorizedError):
                     stack_trace = traceback.format_exc()
                     self.alert("Exception processing request {}.{}: \n{}",
@@ -260,35 +256,17 @@ class Rpc_Worker(pride.base.Base):
                  
     def handle_request(self, peername, session_id, component_name, method,
                        serialized_arguments): 
+      #  with pride.objects[component_name] as network_service:
+      #      return network_service.remote_procedure_call(session_id, peername, 
+      #                                                   method, serialized_arguments)
         instance = pride.objects[component_name]
-        if not hasattr(instance, "validate") or not instance.validate(session_id, peername, method):            
+        if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()
         else:
             args, kwargs = self.deserealize(serialized_arguments)
-            return getattr(instance, method)(*args, **kwargs)
-        #try:
-        #    instance = pride.objects[component_name]
-        #except KeyError as result:
-        #    # this could allow people to enumerate components that do/do not exist
-        #    # but raising UnauthorizedError could be a pain for development
-        #    raise UnauthorizedError()
-        #else:                
-        #    if not hasattr(instance, "validate"):
-        #        result = UnauthorizedError()
-        #    elif instance.validate(session_id, peername, method):
-        #        try:
-        #            args, kwargs = self.deserealize(serialized_arguments)
-        #            result = getattr(instance, method)(*args, **kwargs)
-        #        except BaseException as result:
-        #            stack_trace = traceback.format_exc()
-        #            self.alert("Exception processing request {}.{}: \n{}",
-        #                       [component_name, method, stack_trace],
-        #                       level=self.verbosity["request_exception"])                                
-        #            result.traceback = stack_trace                    
-        #    else:
-        #        self.alert("Denying unauthorized request: {}",
-        #                   (packet, ), level=self.verbosity["request_denied"])
-        #        result = UnauthorizedError()    
+            with pride.contextmanagers.backup(instance, "current_session"):
+                instance.current_session = (session_id, peername)
+                return getattr(instance, method)(*args, **kwargs) 
         
     def deserealize(self, serialized_arguments):
         return default_serializer.loads(serialized_arguments)        
