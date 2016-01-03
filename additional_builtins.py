@@ -11,7 +11,7 @@ import pprint
 is_version_two = platform.python_version_tuple()[0] == '2'
 
 __all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input", 
-           "restart", "shutdown", "objects", "invoke")
+           "restart", "shutdown", "objects", "invoke", "system_update")
 
 _NUMBERS = ''.join(str(x) for x in xrange(10))
 
@@ -112,97 +112,16 @@ else:
         return reply    
     
 def restart():
-    raise SystemExit(-1)
+    raise SystemExit("Restart")
+    
+def system_update():
+    for reference, root_object in ((reference, _object) for reference, _object in 
+                                    objects.items() if reference.count("->") == 1):      
+        if reference not in ("->Finalizer", "->Alert_Handler"):
+            print "Updating root object: ", reference
+            root_object.update(True)
     
 def shutdown():
     raise SystemExit(0)
-       
-def _relative_name_lookup(value):    
-    if value.count("->") == 1:
-        return _root_objects[value]
-    else:
-        root_name, children = value[2:].split("->", 1)            
-        current_object = _root_objects["->" + root_name]
-        for child_name in children.split("->"):
-       #     print "Resolving child: ", child_name
-            for number_count, character in enumerate(reversed(child_name)):
-                if character not in _NUMBERS:
-                    break
-            index = int(child_name[-number_count:]) if number_count else 0
-         #   print "Parent: ", current_object
-         #   print "Parent objects: ", current_object.objects
-            current_object = (current_object.objects[child_name[:-number_count or None]]
-                                                    [index])
-        return current_object
-            
-class Objects_Dictionary(object):    
-            
-    def __getitem__(self, value):         
-        if "->" not in value:
-            raise KeyError("{}".format(value))        
-        try:
-            return _relative_name_lookup(value)
-        except IndexError:
-            raise KeyError("'{}' not in objects".format(value))
-    
-    #def __setitem__(self, item, value):
-    #    current_object = self[item]
-    #    parent_objects = current_object.parent.objects
-    #    index = parent_objects.index(current_object)
-    #    parent_object.insert(index, value)
-    #    del parent_objects[index + 1]
-        
-   # def __delitem__(self, item):
-    #    current_object = self[item]
-        
-        
-    def _recursive_search(self, __object, retrieve="keys", result=None):
-        result = result or []
-        for _object in itertools.chain(*__object.objects.values()):
-            if retrieve == "keys":
-                result.append(_object.reference)
-                self._recursive_search(_object, "keys", result)
-            elif retrieve == "values":
-                result.append(_object)
-                self._recursive_search(_object, "values", result)
-            elif retrieve == "items":
-                result.append((_object.reference, _object))
-                self._recursive_search(_object, "items", result)
-            else:
-                raise ValueError("Unsupported retrieve flag '{}'".format(retrieve))            
-        return result
-            
-    def keys(self):
-        keys = []
-        for root_name, root_object in _root_objects.items():
-            keys.append(root_name)           
-            self._recursive_search(root_object, "keys", keys)
-        return keys
-            
-    def values(self):
-        values = []
-        for root_name, root_object in _root_objects.items():
-            values.append(root_object)
-            self._recursive_search(root_object, "values", values)
-        return values
-        
-    def items(self):
-        items = []
-        for item in _root_objects.items():
-            items.append(item)
-            self._recursive_search(item[1], "items", items)
-        return items        
-    
-    def __len__(self):
-        return len(self.keys())
-   
-    def get_dict(self):
-        return dict((key, value) for key, value in self.items())
-            
-    def __str__(self):
-        return str(self.get_dict())
-                
-    def __contains__(self, value):
-        return value in self.keys()
-        
+               
 objects = {}#Objects_Dictionary()

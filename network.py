@@ -27,7 +27,7 @@ import pride.vmlibrary as vmlibrary
 import pride.base as base
 import pride.utilities
 
-_socket_names, _local_connections, ERROR_CODES = {}, {}, {}
+ERROR_CODES = {}
 
 try:
     CALL_WOULD_BLOCK = errno.WSAEWOULDBLOCK
@@ -54,38 +54,7 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                     CONNECTION_CLOSED : "CONNECTION_CLOSED"})
                
 HOST = socket.gethostbyname(socket.gethostname())
-
-def local_sends(socket_send):
-    def _send(self, data):
-        sockname = self.sockname
-        peername = self.peername
-        if sockname in _local_connections: # client socket
-            reference = _local_connections[sockname]
-        elif peername[0] in ("localhost", "127.0.0.1"): # server side socket
-            reference = _socket_names[peername]
-        else:
-            self.alert("Sending data over nic")        
-            return socket_send(self, data)
-           
-        self.alert("Sending data locally, bypassing nic")
-        instance = pride.objects[reference]
-        instance._local_data += data
-        instance.alert("recv called locally")
-        instance.recv()            
-    return _send
-    
-def local_recvs(socket_recv):
-    def _recv(self, buffer_size=0):
-        reference = self.reference
-        if self._local_data:
-            data = self._local_data
-            self._local_data = bytes()
-        else:
-            data = socket_recv(self, buffer_size)
-        return data
-    return _recv
-     
-#def local_     
+  
 class Socket_Error_Handler(pride.base.Base):
     
     verbosity = {"call_would_block" : 'vv',
@@ -217,8 +186,7 @@ class Socket(base.Wrapper):
         if self.timeout:
             self.settimeout(self.timeout) 
         else:
-            self.setblocking(self.blocking)                                          
-           
+            self.setblocking(self.blocking)           
         try:
             objects["->Python->Network"].add(self)
         except KeyError:
@@ -230,8 +198,7 @@ class Socket(base.Wrapper):
             It is less likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead."""
         return self.recvfrom()
- 
- #   @local_recvs
+  
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
             when the socket becomes readable according to select.select. This
@@ -289,11 +256,8 @@ class Socket(base.Wrapper):
         byte_count = len(data)
 #        assert not self.closed
         if self.bypass_network_stack:
-            if not self._endpoint_reference:
-                if self.sockname in _socket_names: # socket is the client
-                    self._endpoint_reference = _local_connections[self.sockname]
-                else:
-                    self._endpoint_reference = _socket_names[self.peername]
+            if not self._endpoint_reference:                
+                self._endpoint_reference = pride.objects["->Python->Network->Connection_Manager"].socket_reference[self.peername]
             instance = pride.objects[self._endpoint_reference]
             instance._local_data += data
             instance.recv()                 
@@ -342,13 +306,13 @@ class Socket(base.Wrapper):
     def delete(self):
         if not self.closed:
             self.close()        
-        #del _local_data[self]
+        
         super(Socket, self).delete()
     
     def close(self):
         self.alert("Closing", level=self.verbosity["close"])
         objects["->Python->Network"].remove(self)
-        #if self.sock_name in _local_connections:
+        #objects["->Python->Connection_Manager"]
         if self.shutdown_on_close and self.connected:
             self.wrapped_object.shutdown(self.shutdown_flag)
         self.wrapped_object.close()
@@ -426,8 +390,7 @@ class Packet_Sniffer(Raw_Socket):
         
 class Tcp_Socket(Socket):
 
-    defaults = {"socket_family" : socket.AF_INET,
-                "socket_type" : socket.SOCK_STREAM,
+    defaults = {"socket_family" : socket.AF_INET, "socket_type" : socket.SOCK_STREAM,
                 "dont_save" : True}
     
     def __init__(self, **kwargs):
@@ -441,12 +404,10 @@ class Tcp_Socket(Socket):
         
     def on_connect(self):
         super(Tcp_Socket, self).on_connect()
-        if self.peername[0] in ("127.0.0.1", "localhost"):
-            _local_connections[self.peername] = self.reference
-            try:
-                self._endpoint_reference = _socket_names[self.peername]
-            except KeyError:
-                self._endpoint_reference = None
+        connection_manager = pride.objects["->Python->Network->Connection_Manager"]
+        sockname = self.sockname
+        connection_manager.socket_reference[sockname] = self.reference
+        connection_manager.inbound_connections[sockname] = self.peername
             
         
 class Server(Tcp_Socket):
@@ -469,7 +430,8 @@ class Server(Tcp_Socket):
 #        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
         self.bind((self.interface, self.port))
         self.listen(self.backlog)
-                    
+        pride.objects["->Python->Network->Connection_Manager"].servers[(self.interface, self.port)] = self.reference
+        
     def on_select(self):
         try:
             while True:
@@ -481,12 +443,8 @@ class Server(Tcp_Socket):
     def accept(self):
         _socket, address = self.socket.accept()
         
-        connection = self.create(self.Tcp_Socket_type,
-                                 wrapped_object=_socket,
+        connection = self.create(self.Tcp_Socket_type, wrapped_object=_socket,
                                  peername=address)   
-        if address[0] in ("127.0.0.1", "localhost"):
-            _local_connections[address] = connection.reference   
-            
         connection.on_connect()         
         return connection, address
     
@@ -522,13 +480,11 @@ class Tcp_Client(Tcp_Socket):
             self.connect(self.host_info)
 
     def on_connect(self):
-        super(Tcp_Client, self).on_connect()      
-        if self.peername[0] in ("localhost", "127.0.0.1"):
-            _socket_names[self.sockname] = self.reference
-            try:
-                self._endpoint_reference = _local_connections[self.sockname]
-            except KeyError:
-                self._endpoint_reference = None
+        super(Tcp_Client, self).on_connect()               
+        connection_manager = objects["->Python->Network->Connection_Manager"]
+        sockname = self.sockname
+        connection_manager.socket_reference[sockname] = self.reference
+        connection_manager.outbound_connections[sockname] = self.peername
                 
         
 class Udp_Socket(Socket):
@@ -573,6 +529,12 @@ class Multicast_Receiver(Udp_Socket):
         self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
            
 
+class Connection_Manager(pride.base.Base):
+            
+    mutable_defaults = {"outbound_connections" : dict, "inbound_connections" : dict,
+                        "servers" : dict, "socket_reference" : dict}            
+        
+        
 class Network(vmlibrary.Process):
     """ Manages socket objects and is responsible for calling select.select to determine
         readability/writability of sockets. Also responsible for non blocking connect logic. 
@@ -581,10 +543,14 @@ class Network(vmlibrary.Process):
     defaults = {"priority" : .01, "run_condition" : "sockets"}
    
     mutable_defaults = {"connecting" : set, "sockets" : list, 
-                        "_timestamp" : pride.utilities.timer_function}
+                        "_timestamp" : pride.utilities.timer_function,
+                        "error_handler" : Socket_Error_Handler}   
     
-    error_handler = Socket_Error_Handler()         
-    
+    def __init__(self, **kwargs):
+        super(Network, self).__init__(**kwargs)
+        connection_manager = self.create(Connection_Manager)        
+        self.sockets.remove(connection_manager)        
+        
     def add(self, sock):
         super(Network, self).add(sock)
         self.sockets.append(sock)

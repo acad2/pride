@@ -86,24 +86,17 @@ class User(pride.base.Base):
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
-                login_success = True
-        
-        # invoke will create it as it's own root object, not a child of User
-        python = invoke(self.launcher_type, parse_args=True)       
-        self.create("pride.shell.Command_Line")       
+                login_success = True        
        
-        try:
-            python.start_machine()                
-        except SystemExit as error:
-            pride.objects["->Finalizer"].run()          
-            if error.code != -1:
-                raise
-            else:
-                if self.objects["Shell"]:
-                    for child in self.objects["Shell"]:
-                        child.delete()
-                #self.create("pride.fileio.File_System")                
-                python.delete()
+        self.create("pride.shell.Command_Line")       
+ 
+            
+          #  if error.code != -1:
+          #      raise
+          #  else:
+          #      
+          #      #self.create("pride.fileio.File_System")                
+          #      python.delete()
                         
     def login(self):
         """ Attempt to login as username using a password. Upon success, the

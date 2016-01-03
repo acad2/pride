@@ -143,6 +143,7 @@ class Python(base.Base):
                 "startup_components" : ("pride.vmlibrary.Processor",
                                         "pride.network.Network", 
                                         "pride.interpreter.Interpreter",
+                                        "pride.rpc.Rpc_Connection_Manager",
                                         "pride.rpc.Rpc_Server",
                                         "pride.rpc.Rpc_Worker"),
                 "startup_definitions" : '',

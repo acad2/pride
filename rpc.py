@@ -86,31 +86,18 @@ class Session(pride.base.Base):
         request = pride.utilities.pack_data(self.id, component, method, 
                                             default_serializer.dumps((instruction.args, 
                                                                       instruction.kwargs)))
-        #request = ' '.join((self.id_size + self.id, component, method, 
-        #                    default_serializer.dumps((instruction.args, 
-        #                                              instruction.kwargs))))
-        try:
-            host = _hosts[self.host_info]
-        except KeyError:
-            host = _hosts[self.host_info] = self.create(self.requester_type,
-                                                        host_info=self.host_info)              
+        host = pride.objects["->Python->Rpc_Connection_Manager"].get_host(self.host_info) 
+        # we have to insert at the beginning things will happen inline, and
+        # must append to the end when network round trips with callbacks are used
         if host.bypass_network_stack and host._endpoint_reference:
             self._callbacks.insert(0, (_call, callback))    
         else:
             self._callbacks.append((_call, callback))
         host.make_request(request, self.reference)
        
-    def __next__(self): # python 3
+    def next_callback(self):      
         return self._callbacks.pop(0)
-      
-    def next(self): # python 2       
-        return self._callbacks.pop(0)
-        
-    def delete(self):
-        for requester in self.objects[self.requester_type.split('.')[-1]]:
-            del _hosts[requester.host_info]
-        super(Session, self).delete()
-        
+                
         
 class Packet_Client(pride.networkssl.SSL_Client):
     """ An SSL_Client that uses packetized send and recv (client side) """        
@@ -138,6 +125,19 @@ class Packet_Socket(pride.networkssl.SSL_Socket):
         return super(Packet_Socket, self).recv(buffer_size)
                        
                         
+class Rpc_Connection_Manager(pride.base.Base):
+    """ Creates Rpc_Clients for making rpc requests. Used to facilitate the
+        the usage of a single connection for arbitrary requests to the host. """
+    defaults = {"requester_type" : "pride.rpc.Rpc_Client"}
+    mutable_defaults = {"hosts" : dict}
+    
+    def get_host(self, host_info):
+        try:
+            return self.hosts[host_info]
+        except KeyError:
+            return self.create(self.requester_type, host_info=host_info)  
+        
+    
 class Rpc_Server(pride.networkssl.SSL_Server):
     """ Creates Rpc_Sockets for handling rpc requests. By default, this
         server runs on the localhost only, meaning it is not accessible 
@@ -179,13 +179,11 @@ class Rpc_Client(Packet_Client):
             self.send(request)            
         
     def recv(self, packet_count=0):
-        for response in super(Rpc_Client, self).recv():
-         #   print "Deserealizing: ", len(response), response
+        for response in super(Rpc_Client, self).recv():         
             _response = self.deserealize(response)
-            callback_owner = self._callbacks.pop(0)
-    #        print "Getting callback from: ", callback_owner, pride.objects[callback_owner]._callbacks
+            callback_owner = self._callbacks.pop(0)    
             try:
-                _call, callback = next(pride.objects[callback_owner])
+                _call, callback = pride.objects[callback_owner].next_callback()
             except KeyError:
                 self.alert("Could not resolve callback_owner '{}' for {} {}",
                            (callback_owner, "callback with arguments {}",

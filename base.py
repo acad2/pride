@@ -144,7 +144,7 @@ class Base(object):
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
     verbosity = {"delete" : "deletion", "initialized" : "initialized", "remove" : "vv",
-                 "add" : "vv"}
+                 "add" : "vv", "update" : "v"}
     
     # A command line argument parser is generated automatically for
     # every Base class based upon the attributes contained in the
@@ -172,6 +172,10 @@ class Base(object):
         return objects[self.parent_name] if self.parent_name else None
     parent = property(_get_parent)
    
+    def _get_children(self):
+        return (child for child in itertools.chain(*self.objects.values()) if child)
+    children = property(_get_children)
+    
     def __init__(self, **kwargs):
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing          
         self.references_to = []
@@ -267,7 +271,7 @@ class Base(object):
         if self.deleted:
             raise DeleteError("{} has already been deleted".format(self.reference))
                     
-        for child in itertools.chain(*self.objects.values()):            
+        for child in self.children:
             if child:
                 child.delete()            
         if self.references_to:
@@ -321,7 +325,6 @@ class Base(object):
             del storage[index + 1]
         instance.references_to.remove(self.reference)        
     
-
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
@@ -344,6 +347,7 @@ class Base(object):
         message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
+            sys.stdout.flush()
         if level in alert_handler._log_level or level is 0:
             alert_handler.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
             alert_handler.log.write(str(level) + message + "\n")    
@@ -418,7 +422,7 @@ class Base(object):
             print "Done"
         self.alert("Loaded", level='v')
         
-    def update(self):
+    def update(self, update_children=False, _already_updated=None):
         """usage: base_instance.update() => updated_base
         
            Reloads the module that defines base and returns an updated
@@ -430,11 +434,16 @@ class Base(object):
            
            Note that modules are preserved when update is called. Any
            modules used in the updated class will not necessarily be the
-           same as the modules in use in the current global scope. """
-        self.alert("Updating", level='v') 
-        
-        class_base = pride.utilities.updated_class(type(self))
-        
+           same as the modules in use in the current global scope. 
+           
+           Potential pitfalls/problems:
+               
+                - Classes that instantiate base objects as a class attribute
+                  will produce an additional object each time the class is
+                  updated. Solution: instantiate base objects in __init__ """
+        self.alert("Beginning Update...", level=self.verbosity["update"])          
+        _already_updated = _already_updated or [self.reference]
+        class_base = pride.utilities.updated_class(type(self))        
         class_base._required_modules.append(self.__class__.__name__)        
         new_self = class_base.__new__(class_base)
         for attribute, value in ((key, value) for key, value in
@@ -446,7 +455,13 @@ class Base(object):
             _object = pride.objects[reference]
             _object.remove(self)
             _object.add(new_self)
-        pride.objects[self.reference] = new_self        
+        pride.objects[self.reference] = new_self
+        if update_children:
+            for child in self.children:
+                if child.reference not in _already_updated:                    
+                    _already_updated.append(child.reference)
+                    child.update(True, _already_updated)  
+        self.alert("... Finished updating", level=0)
         return new_self
                 
         

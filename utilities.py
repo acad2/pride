@@ -49,12 +49,12 @@ def updated_class(_class):
     class_mro = _class.__mro__[:-1] # don't update object
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
     
-    import pride.module_utilities
-    with pride.module_utilities.modules_preserved(info[1] for 
-                                                  info in class_info):
+    import module_utilities
+    with module_utilities.modules_preserved(info[1] for info in class_info):
+        compiler = sys.meta_path[0]
         for cls, module_name in class_info:
-            module = pride.compiler.reload_module(module_name)
-            source = pride.compiler.module_source[module_name]
+            module = compiler.reload_module(module_name)
+            source = compiler.module_source[module_name]
             
             #try:
             #    source = 

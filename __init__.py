@@ -1,9 +1,9 @@
 """ Stores global objects including instructions and the environment """
 import sys
-import pride.preprocessing
+import preprocessing
         
-compiler = pride.preprocessing.Compiler(preprocessors=(pride.preprocessing.Preprocess_Decorator, ),
-                                        modify_builtins=None)                                    
+compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decorator, ),
+                                  modify_builtins=None)                                    
 
 import heapq
 import inspect
@@ -75,9 +75,9 @@ objects = objects
 
 # Things must be done in this order for Alert_Handler to exist inside this file
 # and reuse Base machinery, namely for argument parsing. 
-import pride.base
+import base
 
-class Alert_Handler(pride.base.Base):
+class Alert_Handler(base.Base):
     """ Provides the backend for the base.alert method. The print_level
         and log_level attributes act as global levels for alerts;
         print_level and log_level may be specified as command line arguments
@@ -156,6 +156,6 @@ class Finalizer(base.Base):
         
 finalizer = Finalizer()        
 
-import pride.patch
-for name in pride.patch.patches:
-    getattr(pride.patch, name)()
+import patch
+for name in patch.patches:
+    getattr(patch, name)()
