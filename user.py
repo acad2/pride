@@ -86,17 +86,8 @@ class User(pride.base.Base):
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
-                login_success = True        
-       
+                login_success = True      
         self.create("pride.shell.Command_Line")       
- 
-            
-          #  if error.code != -1:
-          #      raise
-          #  else:
-          #      
-          #      #self.create("pride.fileio.File_System")                
-          #      python.delete()
                         
     def login(self):
         """ Attempt to login as username using a password. Upon success, the

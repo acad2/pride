@@ -141,6 +141,7 @@ class Python(base.Base):
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep, ),
                 "startup_components" : ("pride.vmlibrary.Processor",
+                                        "pride.network.Network_Connection_Manager",
                                         "pride.network.Network", 
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Connection_Manager",
@@ -159,6 +160,8 @@ class Python(base.Base):
                         "help" : {"types" : ("short", "long"),
                                   "nargs" : '?'},
                         "exit_on_help" : False}
+    
+    verbosity = {"shutdown" : 0, "restart" : 0, "os_environ_set" : 'v'}
     
     def __init__(self, **kwargs):
         super(Python, self).__init__(**kwargs)
@@ -197,6 +200,8 @@ class Python(base.Base):
                 environment_value = os.environ[variable]
                 method = modes[mode]
                 result = getattr(environment_value, method)(value)
+            self.alert("Setting os.environ[{}] = {}", (variable, result),
+                       level=self.verbosity["os_environ_set"])
             os.environ[variable] = result
             
     def start_machine(self):
@@ -206,6 +211,5 @@ class Python(base.Base):
         processor.run()
         
     def exit(self, exit_code=0):
-        pride.objects["->Finalizer"].run()
-        sys.exit()
+        raise SystemExit(exit_code)
         

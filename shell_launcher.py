@@ -1,8 +1,6 @@
 # pride.shell_launcher - configuration file for launching the shell 
 import pride
-
-options = {"parse_args" : True, "startup_definitions" : '',
-           "username" : pride.objects["->User"].username}
+import pride.user
 
 # feel free to customize
 
@@ -122,7 +120,10 @@ import pride.gui
 #ca = create("pride.catest.CA_Test")
 """
 
-options["startup_definitions"] += definitions
+#options["startup_definitions"] += definitions
 
-if __name__ == "__main__":    
-    objects["->User"].create("pride.interpreter.Shell", **options)
+if __name__ == "__main__":     
+    user = pride.user.User(parse_args=True)        
+    shell_options = {"parse_args" : True, "username" : user.username,
+                     "startup_definitions" : definitions}            
+    user.create("pride.interpreter.Shell", **shell_options)

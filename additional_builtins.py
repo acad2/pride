@@ -20,7 +20,8 @@ def slide(iterable, x=16):
     """ Yields x bytes at a time from iterable """
     slice_count, remainder = divmod(len(iterable), x)
     for position in range((slice_count + 1 if remainder else slice_count)):
-        yield iterable[position * x:x * (position + 1)]  
+        _position = position * x
+        yield iterable[_position:_position + x]        
         
 # used in way too many places. no need to bother importing utilities everywhere       
 def resolve_string(module_name):
@@ -43,10 +44,12 @@ def resolve_string(module_name):
         result = None
         _original = module_name
         attributes = []
+        modules = sys.modules
+        import_module = importlib.import_module
         while not result:
             try:
-                result = (sys.modules[module_name] if module_name in 
-                        sys.modules else importlib.import_module(module_name))
+                result = (modules[module_name] if module_name in 
+                          modules else import_module(module_name))
             except ImportError:
                 module_name = module_name.split('.')
                 attributes.append(module_name.pop())

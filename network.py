@@ -55,60 +55,12 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                
 HOST = socket.gethostbyname(socket.gethostname())
   
-class Socket_Error_Handler(pride.base.Base):
-    
-    verbosity = {"call_would_block" : 'vv',
-                 "connection_in_progress" : 0,
-                 "connection_closed" : "vv",
-                 "connection_reset" : 0,
-                 "connection_was_aborted" : 0,
-                 "eagain" : 0,
-                 "bad_target" : 0,
-                 "unhandled" : 0,
-                 "bind_error" : 0}
+class Socket_Error_Handler(pride.base.Base):       
                  
     def dispatch(self, sock, error, error_name):
-        sock.alert("{}".format(error), level=self.verbosity[error_name])
+        sock.alert("{}".format(error), level=sock.verbosity[error_name])
         sock.delete()
-        
-    def call_would_block(self, sock, error):
-        if getattr(sock, "_connecting", False):
-            sock.latency.mark()
-            message = "Connection timed out after {:5f}\n{}"
-        else:
-            message = "{}"
-        sock.alert(message, [error], level=self.verbosity["call_would_block"])
-        sock.delete()
-        
-    def connection_closed(self, sock, error):
-        sock.alert("{}", [error], level=self.verbosity["connection_closed"])
-        sock.delete()
-        
-    def connection_reset(self, sock, error):
-        sock.alert("Connection reset\n{}", [error], level=0)
-        sock.delete()
-        
-    def connection_was_aborted(self, sock, error):
-        sock.alert("Connection was aborted\n{}", [error], level=0)
-        sock.delete()
-        
-    def eagain(self, sock, error):
-        sock.alert("{}", [error], level=0)
-        
-    def bad_target(self, sock, error):
-        sock.alert("Invalid target {}; {} {}", 
-                   [getattr(sock, "target", ''), errno.errorcode[error.errno], error], 
-                   level=0)
-        sock.delete()
-        
-    def unhandled(self, sock, error):
-        sock.alert("Unhandled error:{} {}", [errno.errorcode[error.errno], error], level=0)
-        sock.delete()
-    
-    def bind_error(self, sock, error):
-        sock.alert("socket.error when binding to {}", (sock.port, ), 0)
-        return sock.handle_bind_error()
-        
+                
        
 class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
@@ -139,10 +91,16 @@ class Socket(base.Wrapper):
     parser_ignore = tuple(additional_parser_ignores)
     
     flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_reference" : '',
-             "connected" : False, "closed" : False, "_local_data" : ''}
+             "connected" : False, "closed" : False, "_local_data" : '',
+             "_saved_in_attribute" : ''}
     
     verbosity = {"close" : "socket_close", "network_nonexistant" : "vv",
-                 "recv_eof" : "vv", "connected" : "socket_connected"}
+                 "recv_eof" : "vv", "connected" : "socket_connected",
+                 
+                 "call_would_block" : 'vv', "connection_in_progress" : "vv",
+                 "connection_closed" : "vv", "connection_reset" : "vv",
+                 "connection_was_aborted" : "vv", "eagain" : "vv",
+                 "bad_target" : "vv", "unhandled" : 0, "bind_error" : 0}
     
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
@@ -197,7 +155,7 @@ class Socket(base.Wrapper):
         """ Used to customize behavior when a socket is readable according to select.select.
             It is less likely that one would overload this method; End users probably want
             to overload recv/recvfrom instead."""
-        return self.recvfrom()
+        return self.recv()
   
     def recv(self, buffer_size=0):
         """ Receives data from a remote endpoint. This method is event triggered and called
@@ -257,7 +215,7 @@ class Socket(base.Wrapper):
 #        assert not self.closed
         if self.bypass_network_stack:
             if not self._endpoint_reference:                
-                self._endpoint_reference = pride.objects["->Python->Network->Connection_Manager"].socket_reference[self.peername]
+                self._endpoint_reference = pride.objects["->Python->Network_Connection_Manager"].socket_reference[self.peername]
             instance = pride.objects[self._endpoint_reference]
             instance._local_data += data
             instance.recv()                 
@@ -285,7 +243,7 @@ class Socket(base.Wrapper):
                 self.on_connect()
             elif not self._connecting:
                 self._started_connecting_at = pride.utilities.timer_function()
-                self.latency = pride.datastructures.Latency(size=10)
+                #self.latency = pride.datastructures.Latency(size=10)
                 self._connecting = True
                 objects["->Python->Network"].connecting.add(self)
             else:
@@ -306,13 +264,21 @@ class Socket(base.Wrapper):
     def delete(self):
         if not self.closed:
             self.close()        
-        
         super(Socket, self).delete()
     
     def close(self):
         self.alert("Closing", level=self.verbosity["close"])
         objects["->Python->Network"].remove(self)
-        #objects["->Python->Connection_Manager"]
+        if self._saved_in_attribute:
+            connection_manager = objects["->Python->Network_Connection_Manager"]
+            sockname = self.sockname
+            #import pprint
+            #print self, "Removing from connection manager"
+            #pprint.pprint(connection_manager.inbound_connections)
+            #pprint.pprint(connection_manager.outbound_connections)
+            
+            del getattr(connection_manager, self._saved_in_attribute)[sockname]
+            del connection_manager.socket_reference[sockname]
         if self.shutdown_on_close and self.connected:
             self.wrapped_object.shutdown(self.shutdown_flag)
         self.wrapped_object.close()
@@ -392,23 +358,16 @@ class Tcp_Socket(Socket):
 
     defaults = {"socket_family" : socket.AF_INET, "socket_type" : socket.SOCK_STREAM,
                 "dont_save" : True}
-    
-    def __init__(self, **kwargs):
-        kwargs.setdefault("wrapped_object", socket.socket(socket.AF_INET,
-                                                          socket.SOCK_STREAM))
-        self._local_data = bytes()
-        super(Tcp_Socket, self).__init__(**kwargs)
-                 
-    def on_select(self):
-        self.recv()
-        
+    flags = {"_local_data" : b''}
+                     
     def on_connect(self):
         super(Tcp_Socket, self).on_connect()
-        connection_manager = pride.objects["->Python->Network->Connection_Manager"]
+        connection_manager = pride.objects["->Python->Network_Connection_Manager"]
         sockname = self.sockname
         connection_manager.socket_reference[sockname] = self.reference
         connection_manager.inbound_connections[sockname] = self.peername
-            
+        self._saved_in_attribute = "inbound_connections"
+        
         
 class Server(Tcp_Socket):
 
@@ -430,7 +389,7 @@ class Server(Tcp_Socket):
 #        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
         self.bind((self.interface, self.port))
         self.listen(self.backlog)
-        pride.objects["->Python->Network->Connection_Manager"].servers[(self.interface, self.port)] = self.reference
+        pride.objects["->Python->Network_Connection_Manager"].servers[(self.interface, self.port)] = self.reference
         
     def on_select(self):
         try:
@@ -481,11 +440,12 @@ class Tcp_Client(Tcp_Socket):
 
     def on_connect(self):
         super(Tcp_Client, self).on_connect()               
-        connection_manager = objects["->Python->Network->Connection_Manager"]
+        connection_manager = objects["->Python->Network_Connection_Manager"]
         sockname = self.sockname
         connection_manager.socket_reference[sockname] = self.reference
         connection_manager.outbound_connections[sockname] = self.peername
-                
+        self._saved_in_attribute = "outbound_connections"
+        
         
 class Udp_Socket(Socket):
 
@@ -501,6 +461,9 @@ class Udp_Socket(Socket):
             
         if not self.port:
             self.port = self.getsockname()[1]
+        
+    def on_select(self):
+        return self.recvfrom()
         
         
 class Multicast_Beacon(Udp_Socket):
@@ -529,8 +492,19 @@ class Multicast_Receiver(Udp_Socket):
         self.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_configuration)
            
 
-class Connection_Manager(pride.base.Base):
-            
+class Network_Connection_Manager(pride.base.Base):
+    """ Provides a record of sockets currently in use. 
+    
+        The inbound and outbound connections dictionary maps (ip, port) pairs
+        to the (ip, port) pair of their connected endpoint 
+        
+        The socket_reference dictionary maps socket (ip, port) pairs to the 
+        socket.reference. This applies to local sockets only. The reference 
+        can be/is used to bypass the network stack and call send/recv between
+        sockets exclusively at the application level. 
+        
+        The servers dictionary maps an (interface, port) pair to the reference
+        of the server listening on at that address. """
     mutable_defaults = {"outbound_connections" : dict, "inbound_connections" : dict,
                         "servers" : dict, "socket_reference" : dict}            
         
@@ -544,12 +518,7 @@ class Network(vmlibrary.Process):
    
     mutable_defaults = {"connecting" : set, "sockets" : list, 
                         "_timestamp" : pride.utilities.timer_function,
-                        "error_handler" : Socket_Error_Handler}   
-    
-    def __init__(self, **kwargs):
-        super(Network, self).__init__(**kwargs)
-        connection_manager = self.create(Connection_Manager)        
-        self.sockets.remove(connection_manager)        
+                        "error_handler" : Socket_Error_Handler}          
         
     def add(self, sock):
         super(Network, self).add(sock)
@@ -611,9 +580,9 @@ class Network(vmlibrary.Process):
             for connection in still_connecting:
                 #connection.connect_timeout -= elapsed_time                
                 #if connection.connect_timeout < 0:#if not connection.connection_attempts:
-                print "Connection time info: ", now, connection._started_connecting_at, now - connection._started_connecting_at, connection.connect_timeout
+            #    print "Connection time info: ", now, connection._started_connecting_at, now - connection._started_connecting_at, connection.connect_timeout
                 if now - connection._started_connecting_at > connection.connect_timeout:
-                    print "Connection out of time; now or never!", connection.connect_timeout                    
+           #         print "Connection out of time; now or never!", connection.connect_timeout                    
                     try:
                         connection.connect(connection.host_info)
                     except socket.error as error:                           

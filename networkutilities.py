@@ -1,6 +1,7 @@
 import pride.base
 import pride.network
 import pride.utilities
+import pride.datastructures
 shell = pride.utilities.shell
 
 def tune_tcp_performance(minimum_size=10240, initial_size=87830,
@@ -58,7 +59,13 @@ def set_max_connection(limit):
     
 class RTT_Test(pride.network.Tcp_Client):
     
+    def connect(self, address):
+        super(RTT_Test, self).connect((address))
+        latency = self.latency = pride.datastructures.Latency()
+        latency.mark()
+        
     def on_connect(self):
         super(RTT_Test, self).on_connect()
+        self.latency.mark()
         self.alert("Connection took: {}".format(self.latency.last_measurement), level=0)
         self.delete()

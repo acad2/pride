@@ -135,9 +135,11 @@ class Rpc_Connection_Manager(pride.base.Base):
         try:
             return self.hosts[host_info]
         except KeyError:
-            return self.create(self.requester_type, host_info=host_info)  
+            if host_info in self.hosts:
+                raise            
+            host = self.hosts[host_info] = self.create(self.requester_type, host_info=host_info)  
+            return host
         
-    
 class Rpc_Server(pride.networkssl.SSL_Server):
     """ Creates Rpc_Sockets for handling rpc requests. By default, this
         server runs on the localhost only, meaning it is not accessible 
