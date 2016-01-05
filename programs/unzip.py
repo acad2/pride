@@ -1,16 +1,13 @@
 import zipfile
-import pride.base as base
+import pride.base
 
-class Unzipper(base.Base):
+class Unzipper(pride.base.Base):
     
-    defaults = base.Base.defaults.copy()
-    defaults.update({"filename" : '',
-                     "target_directory" : ''})
-                     
+    defaults = {"filename" : '', "target_directory" : ''}
+    required_attributes = ("filename", )
+                
     def __init__(self, **kwargs):
         super(Unzipper, self).__init__(**kwargs)
-                
-    def unzip(self):
         with zipfile.ZipFile(self.filename, 'r') as zipped_file:
             if self.target_directory:
                 zipped_file.extractall(self.target_directory)
