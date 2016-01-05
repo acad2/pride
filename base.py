@@ -168,6 +168,8 @@ class Base(object):
     parser_ignore = ("replace_reference_on_load", "deleted",
                      "parse_args", "dont_save", "startup_components")    
         
+    site_config_support = ("defaults", "verbosity", "flags", "mutable_defaults")
+    
     def _get_parent(self):
         return objects[self.parent_name] if self.parent_name else None
     parent = property(_get_parent)

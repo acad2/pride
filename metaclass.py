@@ -6,6 +6,7 @@ import ast
 from copy import copy
 
 import pride.utilities as utilities
+import site_config
 
 class Docstring(object):
     """ A descriptor object used by the Documented metaclass. Augments
@@ -309,49 +310,52 @@ class Inherited_Attributes(type):
                 
             attributes[attribute_name] = _attribute
                 
-        return super(Inherited_Attributes, cls).__new__(cls, name, bases,
-                                                        attributes)
+        return super(Inherited_Attributes, cls).__new__(cls, name, bases, attributes)
         
         
 class Defaults(Inherited_Attributes):
 
     inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
                             "parser_ignore" : tuple, "flags" : dict,
-                            "mutable_defaults" : dict, "required_attributes" : tuple}
+                            "mutable_defaults" : dict, "required_attributes" : tuple,
+                            "site_config_support" : tuple}
        
-        
-class Value_Localized_Dictionaries(type):
-    """ That produces dictionaries order grouped by equivalent values.
-        Provides small data locality benefit, and requires slightly less space. """
-    localized_dictionaries = ("flags", "mutable_defaults", "defaults")
+ 
+class Site_Configuration(type):
     
     def __new__(cls, name, bases, attributes):
-        for attribute_name in cls.localized_dictionaries:
-            dictionary = attributes[attribute_name]
-            new_dictionary = {}                        
-            for key, value in dictionary.items():
-                try:
-                    new_dictionary[value].append(key)
-                except KeyError:
-                    new_dictionary[value] = [key]
-            attributes["_localized_" + attribute_name] = new_dictionary
-        return super(Value_Localized_Dictionaries, cls).__new__(cls, name, bases, attributes)
+        new_class = super(Site_Configuration, cls).__new__(cls, name, bases, attributes)
+        new_class_name = (new_class.__module__ + '.' + name).replace('.', '_')
+        dir_output = dir(site_config)        
+        for attribute in new_class.site_config_support:         
+            attribute_name = new_class_name + '_' + attribute
+            if attribute_name in dir_output:                
+                getattr(new_class, attribute).update(getattr(site_config, attribute_name))                
+        return new_class
+                                
         
+class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults, 
+                Site_Configuration):
+    """ A metaclass that applies other metaclasses. 
         
-class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults, Value_Localized_Dictionaries):
-    """ A metaclass that applies other metaclasses. Each metaclass
-        in the list Metaclass.metaclasses will be chained into a 
-        new single inheritance metaclass that utilizes each entry. 
-        The methods insert_metaclass and remove_metaclass may be used
-        to alter the contents of this list.
+        Also Produces class dictionaries keyed by equivalent values.
+        This makes mass attribute assignment slightly faster. 
         
-        Implementation currently under examination"""
+        i.e.:
+            
+            {'attribute' : True, 'attribute2' : True, 'attribute3' : True}
+            
+        becomes:
+            
+            {True: ('attribute', 'attribute1', 'attribute2')}
+            
+        This is an optimization used to speed up Base.__init__"""
         
     #metaclasses = [Documented, Instance_Tracker, Parser_Metaclass, Method_Hook]
    # _metaclass = type("Metaclass",
      #                 tuple(metaclasses),
       #                {})
-                      
+    localized_dictionaries = ("flags", "mutable_defaults", "defaults")                  
     def __new__(cls, name, bases, attributes):
         # create a new metaclass that uses Metaclass.metaclasses as it's bases.
         #new_metaclass = cls._metaclass
@@ -359,8 +363,18 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults, Value_Local
         new_class = super(Metaclass, cls).__new__(cls, name, bases, attributes)
        # print "New class bases: ", new_class.__bases__
         #print "new class mro: ", new_class.__mro__
-        return new_class
-    
+      #  return new_class        
+        for attribute_name in cls.localized_dictionaries:
+            dictionary = getattr(new_class, attribute_name)
+            new_dictionary = {}                        
+            for key, value in dictionary.items():
+                try:
+                    new_dictionary[value].append(key)
+                except KeyError:
+                    new_dictionary[value] = [key]
+            attributes["_localized_" + attribute_name] = new_dictionary
+        return super(Metaclass, cls).__new__(cls, name, bases, attributes)
+        
     @classmethod
     def update_metaclass(cls):
         cls._metaclass = type(cls.__name__,
