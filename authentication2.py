@@ -339,7 +339,8 @@ class Authenticated_Client(pride.base.Base):
                  "_register_results" : None}
     
     mutable_defaults = {"_delayed_requests" : list}
-    flags = {"_registering" : False, "logged_in" : False, "_logging_in" : False}
+    flags = {"_registering" : False, "logged_in" : False, "_logging_in" : False,
+             "_username" : '', "auto_register" : False}
     
     def _get_host_info(self):
         return (self.ip, self.port)
@@ -404,7 +405,7 @@ class Authenticated_Client(pride.base.Base):
     def _token_not_registered(self): # called when login fails because user is not registered
         if not self._registering:
             self.alert("Login token for '{}' not found", (self.username, ), level=0)
-            if pride.shell.get_permission("Register now? "):                    
+            if self.auto_register or pride.shell.get_permission("Register now? "):                    
                 self.register()
                 
     def _get_auth_table_hash(self):        

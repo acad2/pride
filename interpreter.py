@@ -146,7 +146,8 @@ class Python(base.Base):
                                         "pride.interpreter.Interpreter",
                                         "pride.rpc.Rpc_Connection_Manager",
                                         "pride.rpc.Rpc_Server",
-                                        "pride.rpc.Rpc_Worker"),
+                                        "pride.rpc.Rpc_Worker",
+                                        "pride.datatransfer.Data_Transfer_Service"),
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      

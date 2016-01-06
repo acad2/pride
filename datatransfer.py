@@ -3,7 +3,21 @@
     party to another. """
     
 import pride.authentication2
+import pride.shell
+import pride.utilities
 
+def file_operation(filename, mode, method, file_type="open", offset=None, data=None):
+    with invoke(file_type, filename, mode) as _file:
+        if offset is not None:
+            _file.seek(offset)
+        if method == "write":
+            assert data is not None
+            _file.write(data)
+            _file.flush()
+        else:
+            assert method == "read"
+            return _file.read(data)            
+            
 class Data_Transfer_Client(pride.authentication2.Authenticated_Client):
     """ Client program for sending data securely to a party registered
         with the target service. """
@@ -26,7 +40,11 @@ class Data_Transfer_Client(pride.authentication2.Authenticated_Client):
         for sender, message in messages:
             self.alert("{}: {}", (sender, message), level=self.verbosity.get(sender, 0))
             
-            
+    def refresh(self):
+        """ Checks for new data from the server """
+        self.send_to('', '')
+        
+        
 class Data_Transfer_Service(pride.authentication2.Authenticated_Service):
     """ Service for transferring arbitrary data from one registered client to another """        
     mutable_defaults = {"messages" : dict}
@@ -48,10 +66,85 @@ class Data_Transfer_Service(pride.authentication2.Authenticated_Service):
                        level=self.verbosity["refresh"])
         return self.messages.pop(sender, tuple())
         
+    
+class File_Transfer(Data_Transfer_Client):
+    
+    defaults = {"filename" : '', "file" : None, "receivers" : tuple(),
+                "file_type" : "open", 
+                "permission_string" : ("{}:{} Accept file transfer from '{}'?" + 
+                                       "\n'{}' ({} bytes) ")}
         
+    def __init__(self, **kwargs):
+        super(File_Transfer, self).__init__(**kwargs)
+        if self.file or self.filename:
+            _file = self.file or open(self.filename, "a+b")
+            _file.seek(-1, 2) # seek to end
+            filesize = _file.tell()
+            if filesize < 65535:
+                _file.seek(0)
+                packet = pride.utilities.pack_data(self.filename, 0, _file.read())
+                ip = self.ip
+                port = self.port
+                for receiver in self.receivers:
+                    self.alert("Sending packet to: {}@{}:{}",
+                               (receiver, ip, port), level=0)
+                    self.send_to(receiver, packet)
+            else:
+                raise NotImplementedError()
+        else: # this must be a download            
+            self.refresh()
+            
+    def receive(self, messages):
+        for sender, message in messages:
+            filename, offset, data = pride.utilities.unpack_data(message, 3)
+            if pride.shell.get_permission(self.permission_string.format(self.username, self.reference, 
+                                                                        sender, filename, len(data))):
+                filename = raw_input("Please enter the filename or press enter to use '{}': ".format(filename)) or filename
+                file_operation(filename, "a+b", "write", self.file_type, int(offset), data)
+            
+
+class File_Storage_Daemon(Data_Transfer_Client):
+    
+    defaults = {"username" : "File_Storage_Daemon", "file_type" : 
+    verbosity = {"invalid_request_type" : 0}
+    
+    def receive(self, message):
+        for sender, message in message:
+            request_type, packet = pride.utilities.unpack_data(message, 2)
+            filename, offset, data = pride.utilities.unpack_data(packet, 3) 
+            offset = int(offset)
+            if request_type == "save":
+                file_operation(filename, "a+b", "write", self.file_type, offset, data)
+                try:
+                    self.file_access[sender].add(filename)
+                except KeyError:
+                    self.file_access[sender] = set((filename, ))
+                    
+            elif request_type == "load":
+                if filename in self.file_access[sender]:
+                    self.send_to(sender, file_operation(filename, "rb", "read", self.file_type, offset, data))
+            else:
+                self.alert("Received unsupported request_type '{}' from '{}'\npacket: {}",
+                           (request_type, sender, packet), level=self.verbosity["invalid_request_type"])
+            
+    
+class Proxy(Data_Transfer_Client):
+    
+    defaults = {"username" : "Proxy", "auto_register" : True}
+    
+    def receive(self, messages):
+        for sender, message in messages:
+            target, packet = pride.utilities.unpack_data(message, 2)
+            self.send_to(target, packet)
+            
+            
 def test_dts():
-    objects["->Python"].create(Data_Transfer_Service)
     client1 = Data_Transfer_Client(username="Ella")
     client2 = Data_Transfer_Client(username="Not_Ella")
     return client1, client2
     
+def test_File_Transfer():
+    file_transfer1 = File_Transfer(username="Ella")
+    file_transfer2 = File_Transfer(filename="base_Copy.py", username="Not_Ella",
+                                   receivers=("Not_Ella", "Ella"))
+                              

@@ -31,7 +31,7 @@ def enable():
         pride.objects["->Python"].create("pride.audio.audiolibrary.Audio_Manager")
                     
 def mix_signals(audio_data, bit_width):
-    data = ''
+    _data = []
     size = max(len(data) for data in audio_data)
     for index in range(size):
         samples = ''
@@ -40,8 +40,8 @@ def mix_signals(audio_data, bit_width):
                 samples += data[index]
             except IndexError:
                 continue
-        data += audioop.avg(samples, bit_width)
-    return data
+        _data.append(audioop.avg(samples, bit_width))
+    return _data
                                 
 class Audio_Transfer(pride.datatransfer.Data_Transfer_Client):
     """ A data transfer client that outputs data from the specified audio 

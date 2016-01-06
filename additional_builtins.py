@@ -40,6 +40,8 @@ def resolve_string(module_name):
             result = objects[module_name]
         else:
             result = getattr(objects[reference], attribute)
+    elif module_name in __builtins__:
+        result = __builtins__[module_name]
     else:        
         result = None
         _original = module_name
