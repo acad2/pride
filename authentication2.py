@@ -331,8 +331,7 @@ class Authenticated_Client(pride.base.Base):
                 "target_service" : "->Python->Authenticated_Service",
                 "username_prompt" : "{}: Please provide the user name for {}@{}: ",
                 "password_prompt" : "{}: Please provide the pass phrase or word for {}@{}: ",
-                "ip" : "localhost", "port" : 40022, 
-                "auto_login" : True, "logged_in" : False,
+                "ip" : "localhost", "port" : 40022, "auto_login" : True, 
 
                 # a callback function may be passed to the constructor to handle
                 # successful registration without defining/extending a class
@@ -340,6 +339,7 @@ class Authenticated_Client(pride.base.Base):
                  "_register_results" : None}
     
     mutable_defaults = {"_delayed_requests" : list}
+    flags = {"_registering" : False, "logged_in" : False, "_logging_in" : False}
     
     def _get_host_info(self):
         return (self.ip, self.port)

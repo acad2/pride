@@ -1,7 +1,7 @@
 # site_config 
 # defaults specified here will override defaults defined in the source code
 
-pride_user_User_defaults = {"username" : ""}
+pride_user_User_defaults = {"username" : "localhost"}
 
 pride_interpreter_Shell_defaults = {"startup_definitions" : \
 r"""import pride.base
@@ -21,5 +21,7 @@ def create(instance_type, *args, **kwargs):
     return objects["->Python"].create(instance_type, *args, **kwargs)
 
 def delete(reference):
-    objects[reference].delete()                                     
+    objects[reference].delete()       
+import pride.audio
+pride.audio.enable()    
 """}

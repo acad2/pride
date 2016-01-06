@@ -83,7 +83,7 @@ class Audio_Device(audiolibrary.Audio_Reactor):
                 "source_name" : '',
                 "data_source" : '',
                 "mute" : False,
-                "silence" : b"\x00" * 65535}
+                "silence" : b"\x00" * 8192}
     possible_options = ("rate", "channels", "format", "input", "output",    
                         "input_device_index", "output_device_index", 
                         "frames_per_buffer", "start", "stream_callback",
@@ -173,20 +173,19 @@ class Audio_Input(Audio_Device):
         frame_count = stream.get_read_available()
         if not frame_count: 
             return self.refresh_instruction.execute(self.priority)
-            
+#        print frame_count    
         channels = self.channels
         sample_size = self.sample_size
         byte_count = min(self.frames_per_buffer * channels * sample_size,
                          frame_count * channels * sample_size)
         if self.mute:
-            data = self.data = self.silence
-        else:
-            data = self.data        
-            data += stream.read(frame_count) 
+            self.handle_audio_output(self.silence[:byte_count])
+        else:           
+            self.handle_audio_output(stream.read(frame_count)[-byte_count:])
             
-        assert len(data) >= byte_count
-        self.handle_audio_output(data[:byte_count])
-        self.data = data[byte_count:]      
+        #assert len(data) == byte_count
+        #self.handle_audio_output(data)
+      #  self.data = data[byte_count:]      
         
         if self.playing_files:
             for _file in self.playing_files:
@@ -216,7 +215,7 @@ class Audio_Output(Audio_Device):
      #   self.latency.update()
     #    self.latency.display()
         self.alert("Received {} bytes of data".format(len(audio_data)), 
-                   level='vvv')
+                   level=0)#'vvv')
         self.data_source += audio_data
         available = self.available = len(self.data_source)
                    

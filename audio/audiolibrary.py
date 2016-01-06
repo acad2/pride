@@ -18,7 +18,7 @@ def record_wav_file(parse_args=False, **kwargs):
     print "Creating wav file: ", kwargs
     wav_file = audio_manager.create("pride.audio.audiolibrary.Wav_File",
                                     parse_args=parse_args, mode='wb', **kwargs)
-    audio_manager.record("Microphone", file=wav_file)
+    audio_manager.record("Microphone", wav_file)
     return wav_file
     
 def wav_file_info(parse_args=True, **kwargs):
