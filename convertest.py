@@ -108,21 +108,7 @@ def test_test_hash():
     print output
     print output2
     
-def test_one_way_function():
-    outputs = [one_way_function(format(x, 'b').zfill(16)) for x in xrange(512)]
-    assert len(set(outputs)) == 512, len(set(outputs))
-    for output in outputs:
-        print output
-        
-def test_pack_factors():
-    factors = ((11, 11), )
-    number = 1
-    for factor, power in factors:
-        number *= factor ** power
-    packed_factors = pack_factors(factors)
-    packed_integer = format(number, 'b')
-    print len(packed_factors), packed_factors
-    print len(packed_integer), packed_integer
+
     
 if __name__ == "__main__":
     #test_convert()
