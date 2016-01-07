@@ -12,6 +12,22 @@ import traceback
 import timeit
 
 timer_function = timeit.default_timer    
+     
+def rotate(input_string, amount):
+    """ Rotate input_string by amount. Amount may be positive or negative.
+        Example:
+            
+            >>> data = "0001"
+            >>> rotated = rotate(data, -1) # shift left one
+            >>> print rotated
+            >>> 0010
+            >>> print rotate(rotated, 1) # shift right one, back to original
+            >>> 0001 """
+    if not amount or not input_string:
+        return input_string    
+    else:
+        amount = amount % len(input_string)
+        return input_string[-amount:] + input_string[:-amount]
         
 def pack_data(*args):
     """ Pack arguments into a stream, prefixed by size headers.
@@ -72,23 +88,38 @@ def updated_class(_class):
     return class_base
     
 def convert(old_value, old_base, new_base):
-    old_base_size = len(old_base)
-    new_base_size = len(new_base)
+    """ Converts a number in an arbitrary base to the equivalent number
+        in another. 
+        
+        old_value is a string representation of the number to be converted,
+        represented in old_base.
+        
+        new_base is the symbol set to be converted to.
+        
+        old_base and new_base are iterables, most commonly string or list. """
+    old_base_size = len(old_base)    
     old_base_mapping = dict((symbol, index) for index, symbol in enumerate(old_base))
-    decimal_value = 0    
-    new_value = ''
+            
+    for leading_zero_count, symbol in enumerate(old_value):
+        if old_base_mapping[symbol]:
+            break
+    zero_padding = new_base[0] * leading_zero_count
     
-    for power, value_representation in enumerate(reversed(old_value)):
-        decimal_value += old_base_mapping[value_representation]*(old_base_size**power)
+    decimal_value = sum((old_base_mapping[value_representation] * (old_base_size ** power) for
+                         power, value_representation in enumerate(reversed(old_value))))
+    
+    # this is the above in a potentially more readable format:
+    # decimal_value = 0    
+    # for power, value_representation in enumerate(reversed(old_value)):
+    #     decimal_value += old_base_mapping[value_representation]*(old_base_size**power)
                             
-    if decimal_value == 0:
-        new_value = new_base[0]
-    else:
+    if decimal_value:
+        new_base_size = len(new_base)    
+        new_value = ''
         while decimal_value > 0: # divmod = divide and modulo in one action
             decimal_value, digit = divmod(decimal_value, new_base_size)
             new_value += new_base[digit]
-
-    return ''.join(reversed(new_value))  
+    return zero_padding + ''.join(reversed(new_value))  
     
 def shell(command, shell=False):
     """ usage: shell('command string --with args', 

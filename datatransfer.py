@@ -105,7 +105,7 @@ class File_Transfer(Data_Transfer_Client):
 
 class File_Storage_Daemon(Data_Transfer_Client):
     
-    defaults = {"username" : "File_Storage_Daemon", "file_type" : 
+    defaults = {"username" : "File_Storage_Daemon", "file_type" : ''}
     verbosity = {"invalid_request_type" : 0}
     
     def receive(self, message):
