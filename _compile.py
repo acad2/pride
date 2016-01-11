@@ -3,7 +3,7 @@ from sys import platform
 import subprocess
             
 COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}." if "win" in platform else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}. "
-
+#gcc primetest.c -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o primetest.pyd
 def convert_to_pyx(file_list):
     new_names = []
     

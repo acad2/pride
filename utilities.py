@@ -23,7 +23,7 @@ def rotate(input_string, amount):
             >>> 0010
             >>> print rotate(rotated, 1) # shift right one, back to original
             >>> 0001 """
-    if not amount or not input_string:
+    if not amount or not input_string:            
         return input_string    
     else:
         amount = amount % len(input_string)

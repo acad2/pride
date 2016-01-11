@@ -34,7 +34,7 @@ def _alsa_errors_suppressed():
     alsa.snd_lib_error_set_handler(None)
 
 def _initialize_portaudio():
-    print "initializing PortAudio..."
+  #  print "initializing PortAudio..."
     if "linux" in sys.platform:
         print "Trying to suppress ALSA configuration errors..."
         with _alsa_errors_suppressed():
@@ -42,7 +42,7 @@ def _initialize_portaudio():
         print "**Please ignore any warnings you may have received**"
     else:
         portaudio = pyaudio.PyAudio()
-    print "...done"
+   # print "...done"
     return portaudio
 
 PORTAUDIO = _initialize_portaudio()

@@ -35,8 +35,7 @@ class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
         sys.meta_path as the first entry when pride is imported. """
-    def __init__(self, preprocessors=tuple(), patches=None, modify_builtins=None,
-                 cache_filename=".py.cache"):
+    def __init__(self, preprocessors=tuple(), modify_builtins=None, cache_filename=".py.cache"):
         self._loading = ''
         
         self.database = anydbm.open(cache_filename, 'c') # for caching preprocessed source
@@ -44,8 +43,7 @@ class Compiler(object):
         
         self._outdated = set()
         sys.meta_path.insert(0, self)
-        self.patches = patches or {}
-        modify_builtins = self.additional_builtins = modify_builtins or {}
+        
         self.path_loader, self.module_source = {}, {}
         
         for name in additional_builtins.__all__:
@@ -63,10 +61,7 @@ class Compiler(object):
         for name in preprocessors:
             _preprocessors.append(name)#resolve_string(name))
             
-        self.preprocessors = tuple(_preprocessors + keyword_preprocessors)
-        
-        for name, package_path in modify_builtins.items():
-            setattr(__builtin__, name, resolve_string(package_path))
+        self.preprocessors = tuple(_preprocessors + keyword_preprocessors)        
             
     def find_module(self, module_name, path):
         if module_name == self._loading:
@@ -108,11 +103,7 @@ class Compiler(object):
         return loader    
     
     def load_module(self, module_name):
-        if module_name in self.patches:
-            print "Loading patch: ", module_name
-            resolve_string(self.patches.pop(module_name))()
-             
-        elif module_name not in sys.modules:
+        if module_name not in sys.modules:
             source, path = self.module_source[module_name]
             #module_code = self.compile(source, path)
             self.compile_module(module_name, source, path)        
