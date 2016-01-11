@@ -42,10 +42,7 @@ def unpack_factors(bits):
             (2 ** 2) * (3 ** 0) * (5 ** 2) * (7 ** 1)
             
         The bits that previously represented the number 205 are composed and 
-        result in the integer 700.
-
-        All bitstrings unpack to unique values. There are no collisions or 
-        preimages. """    
+        result in the integer 700. """    
     if '1' not in bits:
         return 0 
     variables = prime_generator()
