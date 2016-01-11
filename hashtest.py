@@ -39,12 +39,13 @@ def unpack_factors(bits):
             
         Is interpreted to mean:
             
-            (2 ** 2) * (3 ** 0) * (5 ** 0) * (7 ** 2) * (11 ** 0 ) * (13 ** 1)
+            (2 ** 2) * (3 ** 0) * (5 ** 2) * (7 ** 1)
             
         The bits that previously represented the number 205 are composed and 
-        result in the integer 2548.
+        result in the integer 700.
 
-        All bitstrings unpack to unique values. There are no collisions. """    
+        All bitstrings unpack to unique values. There are no collisions or 
+        preimages. """    
     if '1' not in bits:
         return 0 
     variables = prime_generator()
@@ -65,7 +66,7 @@ def unpack_factors(bits):
     return output
     
 def hash_function(hash_input, key='', output_size=None, iterations=1):
-    """ A tunable, variable length hash function. Security is based on
+    """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
     input_size = str(len(hash_input))
     state = binary_form(hash_input + input_size)
