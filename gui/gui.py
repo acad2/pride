@@ -241,7 +241,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
              "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
     
-    mutable_defaults = {"children" : list, "draw_queue" : list, "_draw_operations" : list,
+    mutable_defaults = {"gui_children" : list, "draw_queue" : list, "_draw_operations" : list,
                         "pack_count" : dict}
     verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv"} 
     
@@ -348,18 +348,18 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 
     def add(self, instance):
         if hasattr(instance, "pack"):
-            self.children.append(instance)
+            self.gui_children.append(instance)
         super(Window_Object, self).add(instance)
 
     def remove(self, instance):
-        if instance in self.children:
-            self.children.remove(instance)            
+        if instance in self.gui_children:
+            self.gui_children.remove(instance)            
         super(Window_Object, self).remove(instance)
         
     def press(self, mouse):
         self.alert("Pressing", level=self.verbosity["press"])
         self.held = True
-        for instance in self.children:
+        for instance in self.gui_children:
             instance.held = True        
 
     def release(self, mouse):
@@ -395,19 +395,19 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             if top_level:
                 mouse_position = objects[self.sdl_window].get_mouse_position()            
                 if not pride.gui.point_in_area(self.parent.area, mouse_position):
-                    if self in self.parent.children:
+                    if self in self.parent.gui_children:
                     #    self.parent.alert("Removing {}; {} not in {}", [self, objects["SDL_Window"].get_mouse_position(), self.parent.area], level=0)
                         self.parent.remove(self)                    
                         self.parent.pack({"position" : self.parent.position})
                         self.z -= 1
-                elif self not in self.parent.children: 
+                elif self not in self.parent.gui_children: 
                  #   self.parent.alert("Adding {}", [self], level=0)
                     self.parent.add(self)
                     self.parent.pack({"position" : self.parent.position})
                     #self.held = False                    
             x_difference = self.x - _x
             y_difference = self.y - _y
-            for instance in self.children:
+            for instance in self.gui_children:
                 instance.held = True
                 instance.mousemotion(x_difference, y_difference, top_level=False)
                 instance.held = False
@@ -455,7 +455,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             for attribute, value in modifiers.items():
                 setattr(self, attribute, value)
         
-        for item in self.children:
+        for item in self.gui_children:
             item.pack()
         try:
             pack_modes = organizer._pack_modes[self.reference]

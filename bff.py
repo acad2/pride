@@ -88,6 +88,7 @@ def unpack_factors(bits, variables=None):
     return output
    
 def compress(data):    
+    raise NotImplementedError
     bits = ''.join(format(ord(character), 'b').zfill(8) for character in data)    
     return pack_factors(factor(int(bits, 2)))
 

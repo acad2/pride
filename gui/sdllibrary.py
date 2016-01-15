@@ -33,9 +33,7 @@ class SDL_Window(SDL_Component):
                 "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
                 "name" : "->Python",
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
-                "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE
-    
-    mutable_defaults = {"children" : list}
+                "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE   
     
     flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}
     

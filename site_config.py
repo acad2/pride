@@ -1,6 +1,8 @@
 # site_config 
 # defaults specified here will override defaults defined in the source code
 
+pride_rpc_Rpc_Server_defaults = {"certfile" : "server.crt", "keyfile" : "server.key"}
+
 pride_user_User_defaults = {"username" : "localhost"}
 
 pride_interpreter_Shell_defaults = {"startup_definitions" : \
@@ -25,5 +27,5 @@ def delete(reference):
 #import pride.audio
 #pride.audio.enable()
 import pride.gui
-pride.gui.enable()
+#pride.gui.enable()
 """}

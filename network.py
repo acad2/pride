@@ -51,14 +51,16 @@ ERROR_CODES.update({CALL_WOULD_BLOCK : "CALL_WOULD_BLOCK",
                     CONNECTION_IS_CONNECTED : "CONNECTION_IS_CONNECTED",
                     CONNECTION_WAS_ABORTED : "CONNECTION_WAS_ABORTED",
                     CONNECTION_RESET  : "CONNECTION_RESET",
-                    CONNECTION_CLOSED : "CONNECTION_CLOSED"})
+                    CONNECTION_CLOSED : "CONNECTION_CLOSED",
+                    11001 : "GETADDRINFO_FAILED"}) # not in errno.errorcode
                
 HOST = socket.gethostbyname(socket.gethostname())
   
 class Socket_Error_Handler(pride.base.Base):       
                  
-    def dispatch(self, sock, error, error_name):
-        sock.alert("{}".format(error), level=sock.verbosity[error_name])
+    def dispatch(self, sock, error, error_name):        
+        sock.alert("socket.error: {}".format(error), 
+                  level=sock.verbosity.get(error_name, sock.verbosity["unhandled"]))
         sock.delete()
                 
        
@@ -95,12 +97,13 @@ class Socket(base.Wrapper):
              "_saved_in_attribute" : ''}
     
     verbosity = {"close" : "socket_close", "network_nonexistant" : "vv",
-                 "recv_eof" : "vv", "connected" : "socket_connected",
+                 "recv_eof" : "vv", "connected" : "vv",
                  
                  "call_would_block" : 'vv', "connection_in_progress" : "vv",
                  "connection_closed" : "vv", "connection_reset" : "vv",
                  "connection_was_aborted" : "vv", "eagain" : "vv",
-                 "bad_target" : "vv", "unhandled" : 0, "bind_error" : 0}
+                 "bad_target" : "vv", "unhandled" : 0, "bind_error" : 0,
+                 "getaddrinfo_failed" : 0}
     
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
@@ -238,7 +241,7 @@ class Socket(base.Wrapper):
         self.host_info = address
         try:
             self.wrapped_object.connect(address)
-        except socket.error as error:
+        except socket.error as error:            
             if ERROR_CODES[error.errno] == "CONNECTION_IS_CONNECTED":
                 self.on_connect()
             elif not self._connecting:
@@ -268,7 +271,7 @@ class Socket(base.Wrapper):
     
     def close(self):
         self.alert("Closing", level=self.verbosity["close"])
-        objects["->Python->Network"].remove(self)
+    #    objects["->Python->Network"].remove(self)
         if self._saved_in_attribute:
             connection_manager = objects["->Python->Network_Connection_Manager"]
             sockname = self.sockname
@@ -558,8 +561,7 @@ class Network(vmlibrary.Process):
                 for read_counter, _socket in enumerate(readable[read_progress:]):
                     _socket.on_select()                        
             except socket.error as error:
-                read_progress += (read_counter + 1)                
-               # self.alert("socket.error when reading on select: {}", ERROR_CODES[error.errno], level=0)
+                read_progress += (read_counter + 1)                               
                 error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower())
             else:
                 break        
@@ -578,11 +580,7 @@ class Network(vmlibrary.Process):
             elapsed_time = now - old_timestamp
             
             for connection in still_connecting:
-                #connection.connect_timeout -= elapsed_time                
-                #if connection.connect_timeout < 0:#if not connection.connection_attempts:
-            #    print "Connection time info: ", now, connection._started_connecting_at, now - connection._started_connecting_at, connection.connect_timeout
-                if now - connection._started_connecting_at > connection.connect_timeout:
-           #         print "Connection out of time; now or never!", connection.connect_timeout                    
+                if now - connection._started_connecting_at > connection.connect_timeout:           
                     try:
                         connection.connect(connection.host_info)
                     except socket.error as error:                           

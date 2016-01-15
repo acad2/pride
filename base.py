@@ -133,7 +133,7 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {"blank_spaces" : list}
+    mutable_defaults = {"_blank_spaces" : list}
     
     # defaults have a pitfall that can be a problem in certain cases;
     # because dictionaries are unordered, the order in which defaults
@@ -143,7 +143,7 @@ class Base(object):
     
     # verbosity is an inherited class attribute used to store the verbosity
     # level of a particular message.
-    verbosity = {"delete" : "deletion", "initialized" : "initialized", "remove" : "vv",
+    verbosity = {"delete" : "vv", "initialized" : "vv", "remove" : "vv",
                  "add" : "vv", "update" : "v"}
     
     # A command line argument parser is generated automatically for
@@ -187,6 +187,7 @@ class Base(object):
         while name in objects:
             instance_count += 1
             name = _name + str(instance_count)
+        self._instance_count = instance_count
         self.reference = name
         objects[self.reference] = self
         
@@ -198,7 +199,7 @@ class Base(object):
                             
         for value, attributes in itertools.chain(self._localized_flags.items(), 
                                                  self._localized_defaults.items()):
-            for attribute in attributes:
+            for attribute in attributes:                
                 setattr(self, attribute, value)             
         for value_type, attributes in self._localized_mutable_defaults.items():
             for attribute in attributes:
@@ -218,7 +219,7 @@ class Base(object):
         if self.required_attributes:
             for attribute in self.required_attributes:
                 try:
-                    if getattr(self, attribute) == self.defaults[attribute]:
+                    if not getattr(self, attribute):
                         raise ArgumentError("Required argument {} not supplied".format(attribute))
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
@@ -282,8 +283,7 @@ class Base(object):
             for name in references:
                 objects[name].remove(self)            
         del objects[self.reference]
-        self.deleted = True      
-         
+        self.deleted = True           
             
     def add(self, instance):
         """ usage: object.add(instance)
@@ -301,7 +301,7 @@ class Base(object):
             if instance in siblings:
                 raise AddError                
             try:
-                next_free_space = heapq.heappop(self.blank_spaces)
+                next_free_space = heapq.heappop(self._blank_spaces)
             except IndexError:
                 siblings.append(instance)
             else:                 
@@ -321,8 +321,8 @@ class Base(object):
             index = storage.index(instance)
         except (KeyError, ValueError):            
             raise
-        else:
-            heapq.heappush(self.blank_spaces, index)        
+        else:            
+            heapq.heappush(self._blank_spaces, index)        
             storage.insert(index, _NULL_SPACE)
             del storage[index + 1]
         instance.references_to.remove(self.reference)        
@@ -543,12 +543,12 @@ class Proxy(Base):
             value = super(Proxy, self).__getattribute__(attribute)
         return value
 
-    def __setattr__(self, attribute, value):
+    def __setattr__(self, attribute, value):        
         super_object = super(Proxy, self)
         try:
             wrapped_object = super_object.__getattribute__("wrapped_object")
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
-        except AttributeError:
+        except AttributeError:                        
             super_object.__setattr__(attribute, value)
             
             

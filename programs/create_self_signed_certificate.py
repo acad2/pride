@@ -3,9 +3,8 @@ import pride.networkssl
 
 class Self_Signed_Certificate(pride.base.Base):
     
-    defaults = pride.base.Base.defaults.copy()
-    defaults.update({"name" : "server"})
-    
+    defaults = {"name" : ''}
+        
     def _get_key(self):
         return self.create("pride.fileio.File", "{}.key".format(self.name), 'rb')
     key = property(_get_key)

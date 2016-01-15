@@ -1,4 +1,6 @@
 import itertools   
+from utilities import rotate
+from additional_builtins import slide
 
 ASCII = ''.join(chr(x) for x in range(256))
 
@@ -62,27 +64,56 @@ def unpack_factors(bits):
     output *= variable ** power       
     return output
     
+def one_way_compression(data, prime=17, modulus=257):
+    bits = binary_form(data)
+    half_size = len(data) / 2
+    first_half, second_half = data[:half_size], data[half_size:]
+    output = ''
+    for index in range(half_size):
+        output += chr(pow(prime, 
+                          ord(first_half[index]) * ord(second_half[index]), 
+                          modulus) % 256)
+    return output
+        
+    output = ''
+    for index in range(len(data)):
+        last_symbol = data[index-1]
+        symbol = data[index]
+        print "value: ", ord(last_symbol), ord(symbol)
+        output += chr(pow(17, (3 + ord(last_symbol)) * (7 + ord(symbol)), 257) % 256)
+        #output += chr(\
+        #              pow(int(binary_form(word), 2) * 
+        #                  17, 257) % 256
+    return output    
+    #return ''.join(chr(pow(int(word, 2), 17, 257) % 256) for word in slide(bits, 16))
+    
 def hash_function(hash_input, key='', output_size=None, iterations=1):
     """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
     input_size = str(len(hash_input))
     state = binary_form(hash_input + input_size)
     state += binary_form(input_size + str(len(state)))
+  #  print state
+    
     for round in range(iterations):
-        state = binary_form(unpack_factors(state)) + binary_form(str(len(state)))
-    state_size = len(state) / 8
-    if output_size and state_size < output_size:        
+        state = binary_form(unpack_factors(state))# + binary_form(str(len(state)))
+        random_index = pow(17, int(state, 2), len(state))
+        state = rotate(state[:random_index] + state[random_index+16:], 
+                       int(state[random_index:random_index+16], 2))        
+        
+    state_size = (len(state) / 8) - 1    
+    if output_size and state_size < output_size:     
         return hash_function(state + str(state_size) + hash_input, 
                              output_size=output_size)
     else:
-        return byte_form(state)[:output_size]
+        return rotate(byte_form(state[:-8])[:output_size], int(state[-8:], 2))
         
 def test_hash_function():      
     outputs = []    
     from hashlib import sha1
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input, output_size=3, iterations=1)
+        hash_output = hash_function(hash_input, output_size=4, iterations=1)
         assert hash_output not in outputs, ("Collision", count, hash_output)
         outputs.append(hash_output)       
         

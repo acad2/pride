@@ -58,10 +58,7 @@ class Shell(authentication2.Authenticated_Client):
     def result(self, packet):
         if not packet:
             return
-        if isinstance(packet, BaseException):
-            raise packet
-        else:
-            print packet
+        else:            
             sys.stdout.write('\b' * 4 + packet + objects["->User->Command_Line"].prompt)
         
 
@@ -108,10 +105,11 @@ class Interpreter(authentication2.Authenticated_Service):
             with sys.stdout.switched(self._logger):
                 try:
                     exec code in globals()
-                except Exception as result:
+                except Exception: # we explicitly really do want to catch everything here
                     if type(result) == SystemExit:
                         raise
-                    result.traceback = traceback.format_exc()
+                    result = traceback.format_exc()
+                    #result.traceback = traceback.format_exc()
                 else:
                     self.user_session[username] += source                
                     sys.stdout.seek(0)

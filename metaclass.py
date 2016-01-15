@@ -302,12 +302,13 @@ class Inherited_Attributes(type):
                 for _class in bases:
                     _attribute += getattr(_class, attribute_name, empty_tuple)
                 _attribute += attributes.get(attribute_name, empty_tuple)
+                _attribute = tuple(set(_attribute))
             elif issubclass(attribute_type, list):
                 _attribute = []
                 for _class in bases:
                     _attribute += getattr(_class, attribute_name, [])
                 _attribute += attributes.get(attribute_name, [])
-                
+                _attribute = list(set(_attribute))
             attributes[attribute_name] = _attribute
                 
         return super(Inherited_Attributes, cls).__new__(cls, name, bases, attributes)
@@ -326,11 +327,11 @@ class Site_Configuration(type):
     def __new__(cls, name, bases, attributes):
         new_class = super(Site_Configuration, cls).__new__(cls, name, bases, attributes)
         new_class_name = (new_class.__module__ + '.' + name).replace('.', '_')
-        dir_output = dir(site_config)        
+        dir_output = dir(site_config)                
         for attribute in new_class.site_config_support:         
-            attribute_name = new_class_name + '_' + attribute
+            attribute_name = new_class_name + '_' + attribute            
             if attribute_name in dir_output:                
-                getattr(new_class, attribute).update(getattr(site_config, attribute_name))                
+                getattr(new_class, attribute).update(getattr(site_config, attribute_name))                                
         return new_class
                                 
         
@@ -357,13 +358,7 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults,
       #                {})
     localized_dictionaries = ("flags", "mutable_defaults", "defaults")                  
     def __new__(cls, name, bases, attributes):
-        # create a new metaclass that uses Metaclass.metaclasses as it's bases.
-        #new_metaclass = cls._metaclass
-       # print "\nCreating new class: ", name, bases
-        new_class = super(Metaclass, cls).__new__(cls, name, bases, attributes)
-       # print "New class bases: ", new_class.__bases__
-        #print "new class mro: ", new_class.__mro__
-      #  return new_class        
+        new_class = super(Metaclass, cls).__new__(cls, name, bases, attributes)    
         for attribute_name in cls.localized_dictionaries:
             dictionary = getattr(new_class, attribute_name)
             new_dictionary = {}                        
@@ -372,8 +367,9 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults,
                     new_dictionary[value].append(key)
                 except KeyError:
                     new_dictionary[value] = [key]
-            attributes["_localized_" + attribute_name] = new_dictionary
-        return super(Metaclass, cls).__new__(cls, name, bases, attributes)
+            
+            setattr(new_class, "_localized_" + attribute_name, new_dictionary)
+        return new_class
         
     @classmethod
     def update_metaclass(cls):
