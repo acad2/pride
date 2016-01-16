@@ -16,7 +16,7 @@ import copy
 import types
 import timeit
 timer_function = timeit.default_timer
-    
+        
 def preprocess(function):
     raise ImportError("Failed to replace preprocess function with source")       
         
@@ -159,3 +159,4 @@ finalizer = Finalizer()
 import patch
 for name in patch.patches:
     getattr(patch, name)()
+    

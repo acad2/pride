@@ -146,8 +146,8 @@ class Rpc_Server(pride.networkssl.SSL_Server):
         from the network. """
     defaults = {"port" : 40022, "interface" : "localhost",
                 "Tcp_Socket_type" : "pride.rpc.Rpc_Socket"}
-    
-    
+        
+        
 class Rpc_Client(Packet_Client):
     """ Client socket for making rpc requests using packetized tcp stream. """  
     verbosity = {"delayed_request_sent" : "vv", "request_delayed" : "vv",

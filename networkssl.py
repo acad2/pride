@@ -36,7 +36,7 @@ else: # python 2.7.9+ will use SSLContext.wrap_socket
 def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and arguments
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
-    name = name or raw_input("Please provide the name for the .key, .crt, and .csr files: ")
+    name = name or raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
     openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
     delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
     shell = pride.utilities.shell
@@ -46,7 +46,7 @@ def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and
     shell("{} req -new -key {}.key -out {}.csr".format(openssl, name, name))
     shell("{} x509 -req -days 365 -in {}.csr -signkey {}.key -out {}.crt".format(openssl, name, name, name))
     shell("{} {}.pass.key".format(delete_program, name), True)
-        
+               
 def generate_rsa_keypair(name=''):
     shell = pride.utilities.shell
     shell("openssl genrsa -out {}_private_key.pem 4096".format(name))
@@ -148,12 +148,34 @@ class SSL_Server(pride.network.Server):
     defaults.update({"port" : 443, "Tcp_Socket_type" : "pride.networkssl.SSL_Socket",
                      "dont_save" : False, "server_side" : True,                     
                      # configurable
-                     "certfile" : ".crt", "keyfile" : ".key"})       
-    
-    required_attributes = ("certfile", "keyfile")
+                     "certfile" : '', "keyfile" : '', #.crt and .key
+                     "update_site_config_on_new_certfile" : True})       
+        
+    verbosity = {"certfile_not_found" : 0, "certfile_generated" : 0}
     
     def __init__(self, **kwargs):
         super(SSL_Server, self).__init__(**kwargs)
+        
+        # some stuff to streamline the first run/install process
+        if not os.path.exists(self.certfile) or not os.path.exists(self.keyfile):
+            self.alert("Certificate/Key file not found: '{}'\n", (self.certfile, ),
+                       level=self.verbosity["certfile_not_found"])
+            if pride.shell.get_permission("{}: Generate a new self signed certificate and key now?: ".format(self.reference)):
+                filename = raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
+                self.create("pride.programs.create_self_signed_certificate.Self_Signed_Certificate", name=filename)
+                self.alert("Self signed certificate generated; Continuing.", 
+                           level=self.verbosity["certfile_generated"])
+                self.certfile = filename + ".crt"
+                self.keyfile = filename + ".key"
+                if self.update_site_config_on_new_certfile:
+                    with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
+                        print "Writing certfile info to site config"
+                        _file.write("\npride_rpc_Rpc_Server_defaults =" +
+                                    '{' + "'certfile' : '{}.crt', 'keyfile' : '{}.key'".format(filename, filename) + "}\n")                              
+                        _file.flush()          
+            else:
+                raise ValueError("pride.network.SSL_Server requires a certificate and key;" +
+                                 " Unable to load certificate file; Unable to continue")            
         try:
             raise AttributeError
             context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

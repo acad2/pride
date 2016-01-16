@@ -57,7 +57,7 @@ class User(pride.base.Base):
     flags = {"_password_verifier_size" : 32, "_reset_encryption_key" : False,
              "_reset_file_system_key" : False}
     
-    verbosity = {"password_verified" : 'v', "invalid_password" : 0}
+    verbosity = {"password_verified" : 'v', "invalid_password" : 0, "login_success" : 0}
     
     def _get_password(self):
         return getpass.getpass(self.password_prompt.format(self.reference))
@@ -87,6 +87,7 @@ class User(pride.base.Base):
                 continue
             else:
                 login_success = True      
+        self.alert("Logged in successfully", level=self.verbosity["login_success"])
         self.create("pride.shell.Command_Line")       
                         
     def login(self):

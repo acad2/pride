@@ -391,6 +391,12 @@ class Authenticated_Client(pride.base.Base):
             _file.write(new_table + ("\x00" * self.shared_key_size))
         self.alert("Registered successfully", level=self.verbosity["register_sucess"])  
         self._registering = False
+        
+        if pride.shell.get_permission("{}: Insert username into site_config?: ".format(self.reference)):
+            with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
+                _file.write("\npride_user_User_defaults = {" + "'username' : '{}'".format(self.username) + "}\n")
+                _file.flush()
+                
         if self.auto_login:
             self.login()
         else:

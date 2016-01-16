@@ -1,9 +1,9 @@
 # site_config 
 # defaults specified here will override defaults defined in the source code
-
-pride_rpc_Rpc_Server_defaults = {"certfile" : "server.crt", "keyfile" : "server.key"}
-
-pride_user_User_defaults = {"username" : "localhost"}
+import os
+PRIDE_DIRECTORY = os.path.split(__file__)[0]
+SITE_CONFIG_FILE = __file__ if __file__[-1] != 'c' else __file__[:-1]
+del os
 
 pride_interpreter_Shell_defaults = {"startup_definitions" : \
 r"""import pride.base
@@ -29,3 +29,7 @@ def delete(reference):
 import pride.gui
 #pride.gui.enable()
 """}
+
+pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}
+
+pride_user_User_defaults = {'username' : 'localhost'}
