@@ -85,18 +85,23 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     output *= variable ** power       
     return output
         
-def hash_function(hash_input, key='', output_size=None, iterations=1):
+def hash_function(hash_input, key='', output_size=None, iterations=0):
     """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
     input_size = len(hash_input)
     _input_size = str(input_size)
-    state = binary_form(hash_input)
-   # random_index = input_size   
-    for round in range(iterations):
-        state = binary_form(unpack_factors(state))
-        #random_index = pow(17, int(state[random_index:random_index + 16]), prime)
+    state = binary_form(unpack_factors(binary_form(hash_input + _input_size + '1')))
+
+    if iterations:
+        random_index = input_size 
+        for round in range(iterations):        
+            psuedorandom_byte = int(state[random_index:random_index + 8], 2)
+            state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
+            random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
+            state = binary_form(unpack_factors(state))     
+        
     state_size = len(state) / 8
-    if output_size and state_size < output_size:
+    if output_size and state_size < output_size:    
         return hash_function(byte_form(state), key=key, output_size=output_size, iterations=iterations)
     else:
         return byte_form(state)[:output_size]
@@ -145,18 +150,24 @@ def hamming_distance(input_one, input_two):
     return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
                 
 def test_bias():
-    outputs = []
+    outputs = []    
+    outputs2 = []
     for x in xrange(256):
-        outputs.append(ord(hash_function(chr(x))[0]))    
-    print sorted(outputs)
+        output = hash_function(chr(x))
+        #print output, type(output), len(output)
+        outputs2.extend(output)
+        outputs.append(ord(output[0]))    
+    #import pprint
+    print "Symbols out of 256 that appeared as first symbol: ", len(set(outputs))#sorted([item for item in outputs])
+    print "Symbols out of 256 that appeared anywhere: ", len(set(outputs2))
     
 def test_hash_function():      
     outputs = {}
     from hashlib import sha1
-    for count, possibility in enumerate(ASCII):#itertools.product(ASCII, ASCII)):
+    for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input)#, output_size=4, iterations=1)
-        assert hash_output not in outputs, ("Collision", hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
+        hash_output = hash_function(hash_input, iterations=0)#, output_size=4, iterations=1)
+        assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
         

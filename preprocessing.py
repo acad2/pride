@@ -12,6 +12,7 @@ import operator
 import anydbm
 import hashlib
 import atexit
+import textwrap
 
 import additional_builtins
 import additional_keywords
@@ -408,17 +409,15 @@ class Preprocess_Decorator(Preprocessor):
                     _indentation += 1
                     line = line[4:]
                 if _indentation == indentation or not line.strip():
-                    break
+                    break            
             code = compile(textwrap.dedent('\n'.join(function_source)), "preprocessor_decorator", "exec")
             namespace = {}
             exec code in namespace, namespace
             new_source = namespace[name]()
-            assert new_source, "Preprocessor function failed to return new source"
-            #print source[:start] + new_source
+            assert new_source, "Preprocessor function failed to return new source"            
             #print 'end of source next\n'
             #print source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
-            source = source[:start] + new_source + source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
-            
+            source = source[:start - 4] + new_source + source[(end - 4) + sum((len(line) for line in function_source[:-1])) + len("@pride.preprocess"):]            
         return source
             
   

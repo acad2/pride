@@ -27,7 +27,7 @@ def delete(reference):
 #import pride.audio
 #pride.audio.enable()
 import pride.gui
-#pride.gui.enable()
+pride.gui.enable()
 """}
 
 pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}

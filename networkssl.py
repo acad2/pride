@@ -37,7 +37,14 @@ def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
     name = name or raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
-    openssl = r"C:\\OpenSSL-Win32\\bin\\openssl" if 'win' in sys.platform else "openssl"
+    OPENSSL = r"C:\\OpenSSL-Win32\\bin\\openssl"
+    OPENSSL64 = r"C:\\OpenSSL_Win64\\bin\openssl"
+    if os.path.exists(OPENSSL):
+        openssl = OPENSSL 
+    elif os.path.exists(OPENSSL64):
+        openssl = OPENSSL64
+    else:
+        openssl = "openssl"
     delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
     shell = pride.utilities.shell
     
