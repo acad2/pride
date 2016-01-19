@@ -56,7 +56,7 @@ def prime_generator():
         else:
             yield test_number
             primes.append(test_number)
-            
+                        
 def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):   
     """ Unpack encoded (prime, power) pairs and compose them into an integer.
         Each contiguous 1-bit increments the exponent of the current prime.
@@ -91,49 +91,34 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
         power += power_increment
     output *= variable ** power       
     return output           
-        
-#def round_permutation(state, random_index):
-#    psuedorandom_byte = int(state[random_index:random_index + 8], 2)
-#    state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
-#    random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-#    return binary_form(unpack_factors(state)), random_index       
     
-def hash_function(hash_input, output_size=None, iterations=0, state_size=64):
+def hash_function(hash_input, output_size=None, iterations=1, state_size=64, security_margin=32):
     """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
         
-    # expansion stage
+    # compression first, if necessary
     input_size = len(hash_input)    
-    if input_size > state_size:
+    if state_size and input_size > state_size:
         hash_input = one_way_compression(hash_input, state_size)
-    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size) + '1')))
-
-    # hardening stage
-    random_index = input_size 
-    for round in range(iterations):    
-        psuedorandom_byte = int(state[random_index:random_index + 8], 2)
-        state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
-        random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-        state = binary_form(unpack_factors(state))        
-        if len(state) / 8 > state_size:
-            state = binary_form(one_way_compression(byte_form(state), state_size))
-            
-    # output stage        
-    if not output_size:
-        return one_way_permutation(byte_form(state), iterations)
-    else:
-        # basically interleave expand and hardening stages to produce additional bits
-        while len(state) / 8 < output_size:
-            psuedorandom_byte = int(state[random_index:random_index + 8], 2)
-            state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
-            random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-            state = binary_form(unpack_factors(state))             
-        return one_way_permutation(byte_form(state)[:output_size], iterations)
         
-#def psuedorandom_number_generator(seed, key=''):
-#    state = hash_function(seed, key,         
+    # expansion stage; input size and a '1' bit are appended to prevent collisions
+    # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
+    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size) + '1')))
+    
+    for round in range(iterations):
+        state = binary_form(unpack_factors(state))
+        if state_size and len(state) / 8 > state_size:
+            state = binary_form(one_way_compression(byte_form(state), iterations))
+    if output_size is None:
+        output_size = len(state) / 8
+        
+    while len(state) / 8 < output_size + security_margin:
+        state = binary_form(unpack_factors(state))
+    return byte_form(state)[security_margin:output_size + security_margin]    
             
 def one_way_compression(data, state_size=256):
+    """ Compress data into state_size bytes in a non reversible manner. 
+        Returned data will be state_size bytes in length. """
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
         for index, byte in enumerate(_bytes):
@@ -141,8 +126,9 @@ def one_way_compression(data, state_size=256):
     return bytes(output)
         
 def one_way_permutation(data, iterations=1):
-    if not data or iterations:
-        return data
+    """ Returns psuedorandomly permuted data; returned data will be of equivalent length. """
+    if not data or not iterations:
+        raise ValueError()        
     data_size = len(data)
     data = bytearray(data)   
     for round in range(iterations):
@@ -152,8 +138,8 @@ def one_way_permutation(data, iterations=1):
             data[psuedorandom_byte], data[index] = data[index], data[psuedorandom_byte]            
             data[index] ^= psuedorandom_byte % 256
         data = rotate(data, psuedorandom_byte)        
-    return bytes(data)
-        
+    return bytes(data)                                   
+                    
 def hamming_distance(input_one, input_two):
     size = len(input_one)
     if len(input_two) != size:
@@ -184,20 +170,22 @@ def test_difference():
     print_hash_comparison(output1, output2)
     
 def test_bias():
-    outputs = []    
+    biases = [[] for x in xrange(8)]    
     outputs2 = []
     for x in xrange(256):
-        output = hash_function(chr(x))
-        #print output, type(output), len(output)
+        output = hash_function(chr(x), output_size=8)
+        for index, byte in enumerate(output):
+            biases[index].append(ord(byte))
         outputs2.extend(output)
-        outputs.append(ord(output[0]))    
-    #import pprint
-    print "Symbols out of 256 that appeared as first symbol: ", len(set(outputs))#sorted([item for item in outputs])
+        #outputs.append(ord(output[0]))    
+    import pprint
+    print "Byte bias: ", [len(set(_list)) for _list in biases]
+  #  for _list in biases:
+  #      print sorted(_list)    
     print "Symbols out of 256 that appeared anywhere: ", len(set(outputs2))
     
 def test_hash_function():      
-    outputs = {}
-    from hashlib import sha1
+    outputs = {}    
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
         hash_output = hash_function(hash_input)
