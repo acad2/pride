@@ -92,38 +92,67 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     output *= variable ** power       
     return output           
         
-def hash_function(hash_input, key='', output_size=None, iterations=0, state_size=64):
+#def round_permutation(state, random_index):
+#    psuedorandom_byte = int(state[random_index:random_index + 8], 2)
+#    state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
+#    random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
+#    return binary_form(unpack_factors(state)), random_index       
+    
+def hash_function(hash_input, output_size=None, iterations=0, state_size=64):
     """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
-    input_size = len(hash_input)
-    _input_size = str(input_size)
+        
+    # expansion stage
+    input_size = len(hash_input)    
     if input_size > state_size:
         hash_input = one_way_compression(hash_input, state_size)
-    state = binary_form(unpack_factors(binary_form(hash_input + _input_size + '1')))
+    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size) + '1')))
 
+    # hardening stage
     random_index = input_size 
     for round in range(iterations):    
         psuedorandom_byte = int(state[random_index:random_index + 8], 2)
         state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
         random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-        state = binary_form(unpack_factors(state))     
-    
+        state = binary_form(unpack_factors(state))        
+        if len(state) / 8 > state_size:
+            state = binary_form(one_way_compression(byte_form(state), state_size))
+            
+    # output stage        
     if not output_size:
-        return byte_form(state)
+        return one_way_permutation(byte_form(state), iterations)
     else:
+        # basically interleave expand and hardening stages to produce additional bits
         while len(state) / 8 < output_size:
             psuedorandom_byte = int(state[random_index:random_index + 8], 2)
             state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
             random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-            state = binary_form(unpack_factors(state))            
-        return byte_form(state)[:output_size]
+            state = binary_form(unpack_factors(state))             
+        return one_way_permutation(byte_form(state)[:output_size], iterations)
         
+#def psuedorandom_number_generator(seed, key=''):
+#    state = hash_function(seed, key,         
+            
 def one_way_compression(data, state_size=256):
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
         for index, byte in enumerate(_bytes):
             output[index] ^= ord(byte)
     return bytes(output)
+        
+def one_way_permutation(data, iterations=1):
+    if not data or iterations:
+        return data
+    data_size = len(data)
+    data = bytearray(data)   
+    for round in range(iterations):
+        for index in range(data_size):
+            psuedorandom_byte = pow(251, data[index], 257)
+            psuedorandom_byte %= data_size
+            data[psuedorandom_byte], data[index] = data[index], data[psuedorandom_byte]            
+            data[index] ^= psuedorandom_byte % 256
+        data = rotate(data, psuedorandom_byte)        
+    return bytes(data)
         
 def hamming_distance(input_one, input_two):
     size = len(input_one)
@@ -136,9 +165,7 @@ def hamming_distance(input_one, input_two):
     return count
     #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
          
-def test_difference():
-    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32, iterations=2)
-    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32, iterations=2)
+def print_hash_comparison(output1, output2):
     output1_binary = binary_form(output1)
     output2_binary = binary_form(output2)
     _distance = hamming_distance(binary_form(output1), binary_form(output2))
@@ -150,6 +177,11 @@ def test_difference():
     print output2_binary    
     print output1
     print output2
+    
+def test_difference():
+    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32, iterations=1)
+    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32, iterations=1)
+    print_hash_comparison(output1, output2)
     
 def test_bias():
     outputs = []    
@@ -168,13 +200,13 @@ def test_hash_function():
     from hashlib import sha1
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input, iterations=0)#, output_size=4, iterations=1)
+        hash_output = hash_function(hash_input)
         assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
         
 if __name__ == "__main__":
     test_difference()
-    #test_bias()
-    #test_hash_function()
+    test_bias()
+    test_hash_function()
     
