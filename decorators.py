@@ -124,7 +124,7 @@ class Timed(object):
         else:
             start = timer()
             function(*args, **kwargs)
-        return timer() - start
+        return (timer() - start) / self.iterations
 
         
 class Tracer(object):

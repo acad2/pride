@@ -6,6 +6,23 @@ from mathutilities import exponent_search
 #        for prime in window:
 #            yield prime
   
+def prime_generator2():
+    primes = [1, 2, 3, 5]
+    progress = 3
+    while True:
+        current_number = 1
+        current_primes = []
+        for prime in primes[1:progress]:
+            current_primes.append(prime)
+            current_number *= prime
+       
+        for prime in (prime for prime in primes if prime not in current_primes):
+            next_prime = current_number + prime         
+       #     print "Added: ", current_number, prime, next_prime
+            yield next_prime
+            primes.append(next_prime)
+            #current_primes.append(current_number + prime)           
+            
 def prime_generator():
     primes = [2]
     yield 2
@@ -134,7 +151,7 @@ def oldfactor(number):
     
 def factor(number):
     factors = []        
-    for prime in prime_generator():
+    for prime in prime_generator2():
         if not number % prime:
             number, remainder, factor = exponent_search(number, prime)
             print "Found factor: ", factor
@@ -192,10 +209,10 @@ if __name__ == "__main__":
    # test_factor()
    # test_prime_generator()
     #random_number_generator()
-    data = "This is an awesome test message. Seriously though, good job."
+    data = "This is an awe"#some test message. Seriously though, good job."
     bits = ''.join(format(ord(character), 'b').zfill(8) for character in data)
     integer = int(bits, 2)
-    factors = _factor(integer)
+    factors = factor(integer)
     calculated = 1
     for prime, power in factors:
         calculated *= prime ** power

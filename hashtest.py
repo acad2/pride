@@ -18,6 +18,13 @@ def rotate(input_string, amount):
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
         
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x]   
+        
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """
     try:
@@ -83,72 +90,67 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     if bits[-1] == '1':
         power += power_increment
     output *= variable ** power       
-    return output
+    return output           
         
-def hash_function(hash_input, key='', output_size=None, iterations=0):
+def hash_function(hash_input, key='', output_size=None, iterations=0, state_size=64):
     """ A tunable, variable output length hash function. Security is based on
         the hardness of the well known problem of integer factorization. """
     input_size = len(hash_input)
     _input_size = str(input_size)
+    if input_size > state_size:
+        hash_input = one_way_compression(hash_input, state_size)
     state = binary_form(unpack_factors(binary_form(hash_input + _input_size + '1')))
 
-    if iterations:
-        random_index = input_size 
-        for round in range(iterations):        
+    random_index = input_size 
+    for round in range(iterations):    
+        psuedorandom_byte = int(state[random_index:random_index + 8], 2)
+        state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
+        random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
+        state = binary_form(unpack_factors(state))     
+    
+    if not output_size:
+        return byte_form(state)
+    else:
+        while len(state) / 8 < output_size:
             psuedorandom_byte = int(state[random_index:random_index + 8], 2)
             state = rotate(state[:random_index] + state[random_index + 8:], psuedorandom_byte)
             random_index = pow(251, (psuedorandom_byte ** random_index), 257) % (len(state) - 8)
-            state = binary_form(unpack_factors(state))     
-        
-    state_size = len(state) / 8
-    if output_size and state_size < output_size:    
-        return hash_function(byte_form(state), key=key, output_size=output_size, iterations=iterations)
-    else:
+            state = binary_form(unpack_factors(state))            
         return byte_form(state)[:output_size]
         
-    
-    
-        #random_index = pow(prime - g_offset, int(state, 2), prime)#pow(17, int(state, 2), len(state))
-        #state = rotate(state[:random_index] + state[random_index+16:], 
-        #               int(state[random_index:random_index+16], 2))        
+def one_way_compression(data, state_size=256):
+    output = bytearray('\x00' * state_size)
+    for _bytes in slide(data, state_size):
+        for index, byte in enumerate(_bytes):
+            output[index] ^= ord(byte)
+    return bytes(output)
         
-    state_size = (len(state) / 8) - 1    
-    if output_size and state_size < output_size:     
-        return hash_function(state + str(state_size) + hash_input, 
-                             output_size=output_size)
-    else:
-        return rotate(byte_form(state[:-8])[:output_size], int(state[-8:], 2))
-        
-def one_way_compression(data, prime=17, modulus=257):
-    raise NotImplementedError
-    bits = binary_form(data)
-    half_size = len(data) / 2
-    first_half, second_half = data[:half_size], data[half_size:]
-    output = ''
-    for index in range(half_size):
-        output += chr(pow(prime, 
-                          ord(first_half[index]) * ord(second_half[index]), 
-                          modulus) % 256)
-    return output
-        
-    output = ''
-    for index in range(len(data)):
-        last_symbol = data[index-1]
-        symbol = data[index]
-        print "value: ", ord(last_symbol), ord(symbol)
-        output += chr(pow(17, (3 + ord(last_symbol)) * (7 + ord(symbol)), 257) % 256)
-        #output += chr(\
-        #              pow(int(binary_form(word), 2) * 
-        #                  17, 257) % 256
-    return output    
-    #return ''.join(chr(pow(int(word, 2), 17, 257) % 256) for word in slide(bits, 16))
-    
 def hamming_distance(input_one, input_two):
     size = len(input_one)
     if len(input_two) != size:
         raise ValueError("Inputs must be same length")
-    return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
-                
+    count = 0
+    for index, bit in enumerate(input_one):
+        if input_two[index] == bit:
+            count += 1
+    return count
+    #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
+         
+def test_difference():
+    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32, iterations=2)
+    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32, iterations=2)
+    output1_binary = binary_form(output1)
+    output2_binary = binary_form(output2)
+    _distance = hamming_distance(binary_form(output1), binary_form(output2))
+    bit_count = len(output1_binary)
+    print "bit string length: ", bit_count
+    print "Hamming weights: ", output1_binary.count('1'), output2_binary.count('1')
+    print "Hamming distance and ratio: ", _distance, _distance / float(bit_count)
+    print output1_binary
+    print output2_binary    
+    print output1
+    print output2
+    
 def test_bias():
     outputs = []    
     outputs2 = []
@@ -172,5 +174,7 @@ def test_hash_function():
     #    print hash_input, hash_output
         
 if __name__ == "__main__":
-    test_hash_function()
-    test_bias()
+    test_difference()
+    #test_bias()
+    #test_hash_function()
+    

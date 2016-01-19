@@ -65,7 +65,7 @@ things that could be done:
 things other people could do:
 -------------------------
 security related:
-    - penetration testing and security auditing of rpc/authention
+    - penetration testing and security auditing of rpc/authentication
         - try to break your way in!
     
     - secure serialization format
