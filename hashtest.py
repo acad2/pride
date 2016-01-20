@@ -92,11 +92,12 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     output *= variable ** power       
     return output           
     
-def hash_function(hash_input, output_size=None, iterations=1, state_size=64, security_margin=32):
+def hash_function(hash_input, output_size=32, state_size=64, security_margin=32):
     """ A tunable, variable output length hash function. Security is based on
-        the hardness of the well known problem of integer factorization. """
-        
-    # compression first, if necessary
+        the hardness of the well known problem of integer factorization. """        
+    # Compression first, if necessary. state_size can be set to 0 to never compress
+    # The size of the state determines how long unpack_factors takes to execute and
+    # also influences collisions.
     input_size = len(hash_input)    
     if state_size and input_size > state_size:
         hash_input = one_way_compression(hash_input, state_size)
@@ -104,18 +105,26 @@ def hash_function(hash_input, output_size=None, iterations=1, state_size=64, sec
     # expansion stage; input size and a '1' bit are appended to prevent collisions
     # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
     state = binary_form(unpack_factors(binary_form(hash_input + str(input_size) + '1')))
-    
-    for round in range(iterations):
-        state = binary_form(unpack_factors(state))
-        if state_size and len(state) / 8 > state_size:
-            state = binary_form(one_way_compression(byte_form(state), iterations))
+        
+    # expand until there is enough output, including the requested security margin    
     if output_size is None:
         output_size = len(state) / 8
-        
-    while len(state) / 8 < output_size + security_margin:
+    required_bits = (output_size + security_margin) * 8
+    while len(state) < required_bits:
         state = binary_form(unpack_factors(state))
+        
+    # The bytes are pulled from the middle because the first and last bytes are
+    # slightly biased compared to the others (at least in my testing)
+    
+    # the inversion of unpack_factors is factoring; The security margin removes
+    # a specified number of bytes from the output. Reversal of the output involves
+    # factoring all possible combinations of the unknown security margin bytes + the known output
+    
+    # Reversal should have exponential complexity regardless of the difficulty of factoring.
+    # Attempting reversal produces a field of possible inputs.
     return byte_form(state)[security_margin:output_size + security_margin]    
-            
+    #return one_way_compression(byte_form(state)[security_margin:], output_size)
+                
 def one_way_compression(data, state_size=256):
     """ Compress data into state_size bytes in a non reversible manner. 
         Returned data will be state_size bytes in length. """
@@ -165,9 +174,16 @@ def print_hash_comparison(output1, output2):
     print output2
     
 def test_difference():
-    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32, iterations=1)
-    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32, iterations=1)
+    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32)
+    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32)
+    for x in xrange(10):
+        output1 = hash_function(output1, output_size=32)
+        output2 = hash_function(output2, output_size=32)
     print_hash_comparison(output1, output2)
+    
+def test_time():
+    from pride.decorators import Timed
+    print Timed(hash_function, 1000)("Timing test hash input")
     
 def test_bias():
     biases = [[] for x in xrange(8)]    
@@ -188,13 +204,14 @@ def test_hash_function():
     outputs = {}    
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input)
+        hash_output = hash_function(hash_input, output_size=4)
         assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
         
 if __name__ == "__main__":
     test_difference()
-    test_bias()
-    test_hash_function()
+    #test_bias()
+    #test_time()
+    #test_hash_function()
     

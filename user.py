@@ -17,7 +17,7 @@ class User(pride.base.Base):
     defaults = {# security configuration options    
                 # these may need to update with time
                 "hash_function" : "SHA256", "kdf_iteration_count" : 100000, 
-                "salt_size" : 16, "key_length" : 32, "iv_size" : 16,
+                "salt_size" : 16, "key_length" : 32, "iv_size" : 12,
                 
                 # these will probably be updated less frequently
                 "encryption_mode" : "GCM", "encryption_algorithm" : "AES",
