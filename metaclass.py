@@ -293,7 +293,7 @@ class Inherited_Attributes(type):
             if issubclass(attribute_type, dict):
                 _attribute = {}
                 for _class in bases:
-                    _attribute.update(getattr(_class, attribute_name, {}))
+                    _attribute.update(getattr(_class, attribute_name, {}))                
                 _attribute.update(attributes.get(attribute_name, 
                                                  getattr(_class, attribute_name, {}).copy()))
             elif issubclass(attribute_type, tuple):

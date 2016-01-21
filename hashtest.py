@@ -116,11 +116,13 @@ def hash_function(hash_input, output_size=32, state_size=64):
         return byte_form(state)
     else:
         # make (at least) twice as many bits as needed and apply the compression function for output  
-        required_bits = output_size * 2 * 8
-        while len(state) < required_bits:
+        required_bytes = output_size * 2
+        
+        output = one_way_compression(byte_form(state), len(state) / 8)
+        while len(output) < required_bytes:
             state = binary_form(unpack_factors(state))                          
-        return one_way_compression(byte_form(state), output_size)
-                                    
+        return one_way_compression(byte_form(state), output_size)                  
+            
 def one_way_compression(data, state_size=256):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):

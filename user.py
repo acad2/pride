@@ -25,7 +25,7 @@ class User(pride.base.Base):
                 # login/key derivation can be bypassed by supplying keys directly
                 # note that encryption key, salt, and mac key must be supplied to
                 # skip the login/key derivation process
-                # filesystem_key is used to access nonindexable files in ->User->File_System
+                # filesystem_key is used to access nonindexable files in ->Python->File_System
                 "encryption_key" : bytes(), "salt" : bytes(), "mac_key" : bytes(),
                 "file_system_key" : bytes(),
                 
@@ -38,7 +38,7 @@ class User(pride.base.Base):
                 "hkdf_file_system_info_string" : "{} File_System key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 
-                # the salt and verifier file are stored in the ->User->File_System
+                # the salt and verifier file are stored in the ->Python->File_System
                 # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
@@ -74,7 +74,7 @@ class User(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)        
-        self.create("pride.fileio.File_System")        
+            
         login_success = self.encryption_key and self.mac_key and self.file_system_key and self.salt
         while not login_success:
             try:
