@@ -1,7 +1,7 @@
 import itertools   
+import binascii
 
 ASCII = ''.join(chr(x) for x in range(256))
-
 # helper functions
 
 def rotate(input_string, amount):
@@ -40,13 +40,12 @@ def binary_form(_string):
         
 def byte_form(bitstring):
     """ Returns the ascii equivalent string of a string of bits. """
-    slice_count, remainder = divmod(len(bitstring), 8)                   
-    output = ''
-    for position in range((slice_count + 1 if remainder else slice_count)):
-        _position = position * 8
-        output += chr(int(bitstring[_position:_position + 8], 2))
-    return output
-
+    _hex = hex(int(bitstring, 2))[2:]   
+    try:
+        return binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
+    except TypeError:
+        return binascii.unhexlify('0' + _hex[:-1 if _hex[-1] == 'L' else None])
+        
 def prime_generator():
     """ Generates prime numbers in successive order. """
     primes = [2]
@@ -111,25 +110,22 @@ def hash_function(hash_input, output_size=32, state_size=64):
     input_size = len(hash_input)               
     if state_size and input_size > state_size:
         hash_input = one_way_compression(hash_input, state_size)
-            
+    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size))))        
+    
     if output_size is None:
-        output_size = len(hash_input)
-        
-    # make (at least) twice as many bits as needed and apply the compression function for output  
-    required_bits = output_size * 2 * 8
-    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size))))
-    while len(state) < required_bits:
-        state = binary_form(unpack_factors(state))                  
-        
-    return one_way_compression(byte_form(state), output_size)
-                                
-def one_way_compression(data, state_size=256):
-    """ Compress data into state_size bytes in a non reversible manner. 
-        Returned data will be state_size bytes in length. """
+        return byte_form(state)
+    else:
+        # make (at least) twice as many bits as needed and apply the compression function for output  
+        required_bits = output_size * 2 * 8
+        while len(state) < required_bits:
+            state = binary_form(unpack_factors(state))                          
+        return one_way_compression(byte_form(state), output_size)
+                                    
+def one_way_compression(data, state_size=256):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
-        for index, byte in enumerate(_bytes):
-            output[index] ^= ord(byte)        
+        for index, byte in enumerate(bytearray(_bytes)):
+            output[index] ^= byte
     return bytes(output)                              
                 
 def cipher(data, key, iv):
@@ -207,8 +203,8 @@ def test_difference():
 def test_time():
     from pride.decorators import Timed
     from hashlib import sha256
-    print Timed(sha256, 1000)("Timing test hash input")
-    print Timed(hash_function, 1)("Timing test hash input")
+    print Timed(sha256, 100)("Timing test hash input" * 1000)
+    print Timed(hash_function, 100)("Timing test hash input" * 1000)
     
 def test_bias():
     biases = [[] for x in xrange(8)]    
@@ -246,9 +242,9 @@ def test_performance():
         output = hash_function(output)
         
 if __name__ == "__main__":
-    #test_hash_object()
-    #test_difference()
-    #test_bias()
-    #test_time()
-    #test_hash_function()
-    test_performance()
+    test_hash_object()
+    test_difference()
+    test_bias()
+    test_time()
+    test_hash_function()
+    #test_performance()
