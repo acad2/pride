@@ -128,7 +128,7 @@ def one_way_compression(data, state_size=256):
             output[index] ^= byte
     return bytes(output)                              
                 
-def cipher(data, key, iv):
+def stream_cipher(data, key, iv):
     """ Cipher that is more or less equivalent to CTR mode with a hash function.
         Secure under the random oracle model. iv must never repeat.
         Encryption and decryption are the same operation. """
@@ -136,6 +136,30 @@ def cipher(data, key, iv):
     data_size = len(data)
     key_material = hash_function(key + iv, output_size=data_size)
     return one_way_compression(data + key_material, data_size)        
+        
+def encrypt(data, key, iv, mac_size=16):
+    """ Authenticated encryption function. Similar to stream_cipher, but with 
+        authentication/integrity included. Returns keystream verifier, mac tag,
+        and ciphertext. """
+    assert isinstance(iv, bytes)
+    data_size = len(data)
+    mac_tag = hash_function(data, output_size=mac_size)
+    key_material = hash_function(key + iv + mac_tag, output_size=data_size)
+    return (hash_function(key_material, output_size=mac_size) + mac_tag + 
+            one_way_compression(data + key_material, data_size))
+    
+def decrypt(data, key, iv, mac_size=16):
+    """ Authenticated decryption function. Raises ValueError when an invalid 
+        tag is encountered. Otherwise returns plaintext bytes. """
+    assert isinstance(iv, bytes)
+    verifier = data[:mac_size]
+    mac_tag = data[mac_size:mac_size * 2]
+    data = data[mac_size * 2:]
+    data_size = len(data)
+    key_material = hash_function(key + iv + mac_tag, output_size=data_size)
+    if hash_function(key_material, output_size=mac_size) != verifier:
+        raise ValueError("Invalid mac tag/verifier")        
+    return one_way_compression(data + key_material, data_size)
         
 class Hash_Object(object):
                         
