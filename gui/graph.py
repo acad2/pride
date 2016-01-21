@@ -2,7 +2,7 @@ import pride.gui.gui
 
 class Graph(pride.gui.gui.Window):
     
-    defaults = {"background_color" : (255, 255, 255), "color" : (0, 0, 0),
+    defaults = {"background_color" : (0, 0, 0), "color" : (255, 255, 255),
                 "x_axis_range" : (0, 100), "y_axis_range" : (0, 100)}
     mutable_defaults = {"points" : list}
     
@@ -23,9 +23,8 @@ class Graph(pride.gui.gui.Window):
     #        
     #    points[x] = new_value
     #    self.texture_invalid = True
-        
-        
-        self.points[mouse.x] = (mouse.y + self.points[mouse.x]) / 2
+        x = (mouse.x - self.x) / self.x_spacing        
+        self.points[x] = (((mouse.y - self.y) / self.y_spacing) + self.points[x]) / 2
         self.texture_invalid = True
         
     def draw_texture(self):
@@ -37,5 +36,7 @@ class Graph(pride.gui.gui.Window):
         x_spacing = self.x_spacing
         y_spacing = self.y_spacing
         for x_coord, y_coord in enumerate(self.points):
-            coordinates.extend((self_x + (x_coord * x_spacing), (self_y - self_h - (y_coord * y_spacing))))
+            coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
+            if y_coord:
+                self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
         self.draw("point", coordinates, color=self.color)

@@ -2,6 +2,8 @@ import itertools
 
 ASCII = ''.join(chr(x) for x in range(256))
 
+# helper functions
+
 def rotate(input_string, amount):
     """ Rotate input_string by amount. Amount may be positive or negative.
         Example:
@@ -56,7 +58,12 @@ def prime_generator():
         else:
             yield test_number
             primes.append(test_number)
-                        
+
+generator = prime_generator()
+PRIMES = [next(generator) for count in range(1000)]
+del generator          
+# end of helper functions
+                                                
 def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):   
     """ Unpack encoded (prime, power) pairs and compose them into an integer.
         Each contiguous 1-bit increments the exponent of the current prime.
@@ -75,7 +82,7 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
         result in the integer 700. """    
     if '1' not in bits:
         return 0 
-    variables = prime_generator()
+    variables = iter(PRIMES)#prime_generator()
     variable = next(variables)
     power = initial_power
     output = initial_output   
@@ -90,65 +97,78 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     if bits[-1] == '1':
         power += power_increment
     output *= variable ** power       
-    return output           
-    
-def hash_function(hash_input, output_size=32, state_size=64, security_margin=32):
+    return output                       
+        
+def hash_function(hash_input, output_size=32, state_size=64):
     """ A tunable, variable output length hash function. Security is based on
-        the hardness of the well known problem of integer factorization. """        
-    # Compression first, if necessary. state_size can be set to 0 to never compress
+        the hardness of the well known problem of integer factorization. """   
+        
+    # Compression first, if necessary. state_size can be set to 0 to never compress.
     # The size of the state determines how long unpack_factors takes to execute and
-    # also influences collisions.
-    input_size = len(hash_input)    
+    # also influences collisions. Large inputs should be compressed or will take forever.
+    # input size and a '1' bit are appended to help prevent collisions. 
+    # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
+    input_size = len(hash_input)               
     if state_size and input_size > state_size:
         hash_input = one_way_compression(hash_input, state_size)
-        
-    # expansion stage; input size and a '1' bit are appended to prevent collisions
-    # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
-    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size) + '1')))
-        
-    # expand until there is enough output, including the requested security margin    
+            
     if output_size is None:
-        output_size = len(state) / 8
-    required_bits = (output_size + security_margin) * 8
-    while len(state) < required_bits:
-        state = binary_form(unpack_factors(state))
+        output_size = len(hash_input)
         
-    # The bytes are pulled from the middle because the first and last bytes are
-    # slightly biased compared to the others (at least in my testing)
-    
-    # the inversion of unpack_factors is factoring; The security margin removes
-    # a specified number of bytes from the output. Reversal of the output involves
-    # factoring all possible combinations of the unknown security margin bytes + the known output
-    
-    # Reversal should have exponential complexity regardless of the difficulty of factoring.
-    # Attempting reversal produces a field of possible inputs.
-    return byte_form(state)[security_margin:output_size + security_margin]    
-    #return one_way_compression(byte_form(state)[security_margin:], output_size)
-                
+    # make (at least) twice as many bits as needed and apply the compression function for output  
+    required_bits = output_size * 2 * 8
+    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size))))
+    while len(state) < required_bits:
+        state = binary_form(unpack_factors(state))                  
+        
+    return one_way_compression(byte_form(state), output_size)
+                                
 def one_way_compression(data, state_size=256):
     """ Compress data into state_size bytes in a non reversible manner. 
         Returned data will be state_size bytes in length. """
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
         for index, byte in enumerate(_bytes):
-            output[index] ^= ord(byte)
-    return bytes(output)
-        
-def one_way_permutation(data, iterations=1):
-    """ Returns psuedorandomly permuted data; returned data will be of equivalent length. """
-    if not data or not iterations:
-        raise ValueError()        
+            output[index] ^= ord(byte)        
+    return bytes(output)                              
+                
+def cipher(data, key, iv):
+    """ Cipher that is more or less equivalent to CTR mode with a hash function.
+        Secure under the random oracle model. iv must never repeat.
+        Encryption and decryption are the same operation. """
+    assert isinstance(iv, bytes)
     data_size = len(data)
-    data = bytearray(data)   
-    for round in range(iterations):
-        for index in range(data_size):
-            psuedorandom_byte = pow(251, data[index], 257)
-            psuedorandom_byte %= data_size
-            data[psuedorandom_byte], data[index] = data[index], data[psuedorandom_byte]            
-            data[index] ^= psuedorandom_byte % 256
-        data = rotate(data, psuedorandom_byte)        
-    return bytes(data)                                   
-                    
+    key_material = hash_function(key + iv, output_size=data_size)
+    return one_way_compression(data + key_material, data_size)        
+        
+class Hash_Object(object):
+                        
+    def __init__(self, hash_input='', output_size=32, state_size=64, state=None):                   
+        self.output_size = output_size
+        self.state_size = state_size
+        self.state = ''
+        if state is not None:
+            self.state = state
+        
+        if hash_input:
+            if self.state:
+                self.update(hash_input)
+            else:
+                self.state = self.hash(hash_input)
+        
+    def hash(self, hash_input):
+        return hash_function(hash_input, self.output_size, self.state_size)
+       
+    def update(self, hash_input):
+        self.state = one_way_compression(self.state + self.hash(hash_input), self.state_size)
+        
+    def digest(self):
+        return self.state
+
+    def copy(self):
+        return Hash_Object(output_size=self.output_size, state_size=self.state_size, state=self.state)
+
+# test functions        
 def hamming_distance(input_one, input_two):
     size = len(input_one)
     if len(input_two) != size:
@@ -174,25 +194,31 @@ def print_hash_comparison(output1, output2):
     print output2
     
 def test_difference():
+    from hashlib import sha256
+    #output1 = sha256("The quick brown fox jumps over the lazy dog").digest()
+    #output2 = sha256("The quick brown fox jumps over the lazy dog").digest()
     output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32)
     output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32)
-    for x in xrange(10):
-        output1 = hash_function(output1, output_size=32)
-        output2 = hash_function(output2, output_size=32)
+   # for x in xrange(10):
+   #     output1 = hash_function(output1, output_size=32)
+   #     output2 = hash_function(output2, output_size=32)
     print_hash_comparison(output1, output2)
     
 def test_time():
     from pride.decorators import Timed
-    print Timed(hash_function, 1000)("Timing test hash input")
+    from hashlib import sha256
+    print Timed(sha256, 1000)("Timing test hash input")
+    print Timed(hash_function, 1)("Timing test hash input")
     
 def test_bias():
     biases = [[] for x in xrange(8)]    
     outputs2 = []
+    from hashlib import sha256
     for x in xrange(256):
-        output = hash_function(chr(x), output_size=8)
-        for index, byte in enumerate(output):
+        output = hash_function(chr(x), output_size=32)
+        for index, byte in enumerate(output[:8]):
             biases[index].append(ord(byte))
-        outputs2.extend(output)
+        outputs2.extend(output[:8])
         #outputs.append(ord(output[0]))    
     import pprint
     print "Byte bias: ", [len(set(_list)) for _list in biases]
@@ -202,6 +228,7 @@ def test_bias():
     
 def test_hash_function():      
     outputs = {}    
+    from hashlib import sha256
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
         hash_output = hash_function(hash_input, output_size=4)
@@ -209,9 +236,19 @@ def test_hash_function():
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
         
+def test_hash_object():
+    hasher = Hash_Object("Test data")
+    assert hasher.digest() == hash_function("Test data")
+    
+def test_performance():
+    output = ''
+    for x in xrange(10000):
+        output = hash_function(output)
+        
 if __name__ == "__main__":
-    test_difference()
+    #test_hash_object()
+    #test_difference()
     #test_bias()
     #test_time()
     #test_hash_function()
-    
+    test_performance()

@@ -299,35 +299,35 @@ class SDL_User_Input(vmlibrary.Process):
         letters = string.ascii_letters
         for index, character in enumerate(letters[:26]):
             uppercase[character] = letters[index+26]
-
-        # for not yet implemented features
+        
         unhandled = self.handle_unhandled_event
-
-        self.handlers = {sdl2.SDL_DOLLARGESTURE : unhandled,
-                         sdl2.SDL_DROPFILE : unhandled,
-                         sdl2.SDL_FINGERMOTION : unhandled,
-                         sdl2.SDL_FINGERDOWN : unhandled,
-                         sdl2.SDL_FINGERUP : unhandled,
-                         sdl2.SDL_FINGERMOTION :unhandled,
-                         sdl2.SDL_KEYDOWN : self.handle_keydown,
-                         sdl2.SDL_KEYUP : self.handle_keyup,
-                         sdl2.SDL_JOYAXISMOTION : unhandled,
-                         sdl2.SDL_JOYBALLMOTION : unhandled,
-                         sdl2.SDL_JOYHATMOTION : unhandled,
-                         sdl2.SDL_JOYBUTTONDOWN : unhandled,
-                         sdl2.SDL_JOYBUTTONUP : unhandled,
-                         sdl2.SDL_MOUSEMOTION : self.handle_mousemotion,
-                         sdl2.SDL_MOUSEBUTTONDOWN : self.handle_mousebuttondown,
-                         sdl2.SDL_MOUSEBUTTONUP : self.handle_mousebuttonup,
-                         sdl2.SDL_MOUSEWHEEL : self.handle_mousewheel,
-                         sdl2.SDL_MULTIGESTURE : unhandled,
-                         sdl2.SDL_QUIT : self.handle_quit,
-                         sdl2.SDL_SYSWMEVENT : unhandled,
-                         sdl2.SDL_TEXTEDITING : unhandled,
-                         sdl2.SDL_TEXTINPUT : self.handle_textinput,
-                         sdl2.SDL_USEREVENT : unhandled,
-                         sdl2.SDL_WINDOWEVENT : self.parent.window_handler.handle_event}
-
+        self.handlers = {"sdl2.SDL_DOLLARGESTURE" : unhandled,
+                         "sdl2.SDL_DROPFILE" : unhandled,
+                         "sdl2.SDL_FINGERMOTION" : unhandled,
+                         "sdl2.SDL_FINGERDOWN" : unhandled,
+                         "sdl2.SDL_FINGERUP" : unhandled,
+                         "sdl2.SDL_FINGERMOTION" :unhandled,
+                         "sdl2.SDL_KEYDOWN" : self.handle_keydown,
+                         "sdl2.SDL_KEYUP" : self.handle_keyup,
+                         "sdl2.SDL_JOYAXISMOTION" : unhandled,
+                         "sdl2.SDL_JOYBALLMOTION" : unhandled,
+                         "sdl2.SDL_JOYHATMOTION" : unhandled,
+                         "sdl2.SDL_JOYBUTTONDOWN" : unhandled,
+                         "sdl2.SDL_JOYBUTTONUP" : unhandled,
+                         "sdl2.SDL_MOUSEMOTION" : self.handle_mousemotion,
+                         "sdl2.SDL_MOUSEBUTTONDOWN" : self.handle_mousebuttondown,
+                         "sdl2.SDL_MOUSEBUTTONUP" : self.handle_mousebuttonup,
+                         "sdl2.SDL_MOUSEWHEEL" : self.handle_mousewheel,
+                         "sdl2.SDL_MULTIGESTURE" : unhandled,
+                         "sdl2.SDL_QUIT" : self.handle_quit,
+                         "sdl2.SDL_SYSWMEVENT" : unhandled,
+                         "sdl2.SDL_TEXTEDITING" : unhandled,
+                         "sdl2.SDL_TEXTINPUT" : self.handle_textinput,
+                         "sdl2.SDL_USEREVENT" : unhandled,
+                         "sdl2.SDL_WINDOWEVENT" : self.parent.window_handler.handle_event}        
+        self.event_names = dict((value, key) for key, value in self.handlers.items())
+        self.handlers = dict((resolve_string(key), value) for key, value in self.handlers.items())
+        
     def run(self):
         handlers = self.handlers
         for event in sdl2.ext.get_events():
@@ -336,8 +336,12 @@ class SDL_User_Input(vmlibrary.Process):
             except KeyError:
                 if event.type in handlers:
                     raise
-                self.alert("Unhandled event: {}".format(event.type))
-
+                else:
+                    self.alert("Unhandled event: {}".format(event.type))
+            except BaseException as error:
+                self.alert("Exception handling {};\n{}", 
+                           (self.event_names[event.type], error), level=0)
+                
     def _update_coordinates(self, item, area, z):
         try:
             _, old_z = self.coordinate_tracker[item]
