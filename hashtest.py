@@ -114,14 +114,19 @@ def hash_function(hash_input, output_size=32, state_size=64):
     
     if output_size is None:
         return byte_form(state)
-    else:
-        # make (at least) twice as many bits as needed and apply the compression function for output  
-        required_bytes = output_size * 2 * 8        
-        #output = one_way_compression(byte_form(state), len(state) / 8)
-        while len(state) < required_bytes:
-            state = binary_form(unpack_factors(state))                          
-        return one_way_compression(byte_form(state), output_size)                  
+    else:        
+        state_size_in_bits = state_size * 8
+        while len(state) < state_size_in_bits:
+            state = binary_form(unpack_factors(state))  
             
+        state = byte_form(state)        
+        bytes_per_round = state_size / 2
+        output = one_way_compression(state, bytes_per_round)                  
+        while len(output) < output_size:
+            state = permutation_function(state)
+            output += one_way_compression(state, bytes_per_round)
+        return output[:output_size]
+        
 def _split_byte(byte):
     """ Splits a byte into high and low order bytes. 
         Returns two integers between 0-15 """
@@ -129,6 +134,15 @@ def _split_byte(byte):
     a, b = int(bits[:4], 2), int(bits[4:], 2)
     return a, b 
             
+def permutation_function(_bytes):
+    output = bytearray(_bytes)
+    byte_length = len(_bytes)
+    state = (10 + byte_length) * byte_length * 2
+    for counter, byte in enumerate(bytearray(_bytes)):
+        output[counter] ^= pow(251, (state + counter) ^ byte, 257) % 256
+        state += output[counter]
+    return bytes(output)
+                
 def preimage_resistant_compression(input_data, state_size=64):
     message = input_data[:state_size]
     message_size = len(message)
