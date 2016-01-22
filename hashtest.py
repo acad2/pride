@@ -59,7 +59,7 @@ def prime_generator():
             primes.append(test_number)
 
 generator = prime_generator()
-PRIMES = [next(generator) for count in range(1000)]
+PRIMES = [next(generator) for count in range(1024)]
 del generator          
 # end of helper functions
                                                 
@@ -94,7 +94,7 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
             power = initial_power        
             variable = next(variables)              
     if bits[-1] == '1':
-        power += power_increment
+        power += power_increment    
     output *= variable ** power       
     return output                       
         
@@ -109,21 +109,39 @@ def hash_function(hash_input, output_size=32, state_size=64):
     # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
     input_size = len(hash_input)               
     if state_size and input_size > state_size:
-        hash_input = one_way_compression(hash_input, state_size)
+        hash_input = preimage_resistant_compression(hash_input, state_size)
     state = binary_form(unpack_factors(binary_form(hash_input + str(input_size))))        
     
     if output_size is None:
         return byte_form(state)
     else:
         # make (at least) twice as many bits as needed and apply the compression function for output  
-        required_bytes = output_size * 2
-        
-        output = one_way_compression(byte_form(state), len(state) / 8)
-        while len(output) < required_bytes:
+        required_bytes = output_size * 2 * 8        
+        #output = one_way_compression(byte_form(state), len(state) / 8)
+        while len(state) < required_bytes:
             state = binary_form(unpack_factors(state))                          
         return one_way_compression(byte_form(state), output_size)                  
             
-def one_way_compression(data, state_size=256):    
+def _split_byte(byte):
+    """ Splits a byte into high and low order bytes. 
+        Returns two integers between 0-15 """
+    bits = format(byte, 'b').zfill(8)
+    a, b = int(bits[:4], 2), int(bits[4:], 2)
+    return a, b 
+            
+def preimage_resistant_compression(input_data, state_size=64):
+    message = input_data[:state_size]
+    message_size = len(message)
+    key_size = len(input_data) - message_size
+    state = (10 + key_size) * key_size * 2
+    output = bytearray(message)
+    for counter, byte in enumerate(bytearray(input_data[state_size:])):
+        index = counter % message_size
+        output[index] ^= pow(251, (state + counter) ^ byte, 257) % 256
+        state += output[index]        
+    return bytes(output)        
+    
+def one_way_compression(data, state_size=64):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
         for index, byte in enumerate(bytearray(_bytes)):

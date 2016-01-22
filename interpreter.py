@@ -209,6 +209,7 @@ class Python(base.Base):
         processor = pride.objects[self.processor]
         processor.running = True
         processor.run()
+        print "Finished running"
         
     def exit(self, exit_code=0):
         raise SystemExit(exit_code)

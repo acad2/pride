@@ -9,23 +9,27 @@ if __name__ == "__main__":
     running = True
     while running:
         python = pride.interpreter.Python(parse_args=True)                
-        try:
+        try:            
             python.start_machine()                
-        except SystemExit as error:
+        except Exception as error:            
             running = False
-            python.alert("System shutdown intiated. Running finalizer... ", 
-                         level=python.verbosity["shutdown"])
-            pride.objects["->Finalizer"].run()
-            if error.code == "Restart":
-                try:
-                    pride.objects["->User"].delete()
-                except KeyError:
-                    if "->User" in pride.objects:
-                        raise
-                python.alert("Initiating restart.. ", level=python.verbosity["restart"])        
-                python.delete()
-                del python
-                running = True
+            pride.objects["->Finalizer"].run()            
+            if isinstance(Exception, SystemExit):
+                python.alert("System shutdown intiated. Running finalizer... ", 
+                            level=python.verbosity["shutdown"])                
+                if error.code == "Restart":
+                    try:
+                        pride.objects["->User"].delete()
+                    except KeyError:
+                        if "->User" in pride.objects:
+                            raise
+                    python.alert("Initiating restart.. ", level=python.verbosity["restart"])        
+                    python.delete()
+                    del python
+                    running = True
+                else:
+                    raise
             else:
-                raise              
-                
+                python.alert("Unhandled exception caused a fatal error", level=0)
+                raise     
+            

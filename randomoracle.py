@@ -1,4 +1,5 @@
 import collections
+import time
 
 import pride.authentication2
 from pride.security import random_bytes
@@ -11,16 +12,17 @@ class Random_Oracle(pride.authentication2.Authenticated_Service):
     
     remotely_available_procedures = ("hash", )
     database_structure = {"Memo" : ("input_data BLOB PRIMARY_KEY", "output_data BLOB",
-                                    "creator TEXT")}
+                                    "creator TEXT", "creation_date FLOAT")}
     
     def hash(self, input_data, output_size=16):
         try:
             return self.database.query("Memo", where={"input_data" : input_data}, 
-                                       retrieve_fields=("output_data", ))
+                                       retrieve_fields=("output_data", ))[0]
         except IndexError:
             output_data = random_bytes(output_size)
             self.database.insert_into("Memo", (input_data, output_data, 
-                                               self.session_id[self.current_session[0]]))
+                                               self.session_id[self.current_session[0]],
+                                               time.time()))
             return output_data
             
 

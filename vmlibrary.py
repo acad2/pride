@@ -169,7 +169,7 @@ class Processor(Process):
                     else:
                         call(*args, **kwargs)
                         
-            except KeyError:                      
+            except KeyError:                 
                 if component_name in objects:
                     if callback:
                         if result is not null_result:
@@ -180,7 +180,7 @@ class Processor(Process):
                     error = "'{}' component does not exist".format(component_name)                        
                     component_alert((str(instruction), error)) 
                     
-            except AttributeError as error:
+            except AttributeError as error:                
                 if hasattr(objects[component_name], method):
                     if callback and result is not null_result:
                         callback_exception_alert((callback, ))
@@ -190,11 +190,11 @@ class Processor(Process):
                     component_alert((str(instruction), error))   
                     
             except BaseException as error:                
-                if type(error) in reraise_exceptions:
+                if type(error) in reraise_exceptions:                    
                     raise
-                else:
+                else:                    
                     if callback and result is not null_result:
                         callback_exception_alert((callback, ))
                     else:
                         exception_alert((component_name, method, format_traceback()))
-                            
+        
