@@ -112,99 +112,83 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     output *= variable ** power       
     return output                       
         
-def hash_function(hash_input, output_size=32, state_size=64):
-    """ A tunable, variable output length hash function. Security is based on
-        the hardness of the well known problem of integer factorization. """   
-        
-    # Compression first, if necessary. state_size can be set to 0 to never compress.
-    # The size of the state determines how long unpack_factors takes to execute and
-    # also influences collisions. Large inputs should be compressed or will take forever.
-    # input size and a '1' bit are appended to help prevent collisions. 
-    # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
-    input_size = len(hash_input)               
-    if state_size and input_size > state_size:        
-        hash_input = preimage_resistant_compression(hash_input, state_size)
-    state = cast(unpack_factors(cast(hash_input + str(input_size), 
-                                     "binary")),
-                "binary")        
-    
-    if output_size is None and state_size is None:
-        return cast(state, "bytes")
-    else:        
-        state_size_in_bits = state_size * 8
-        while len(state) < state_size_in_bits:            
-            state = cast(unpack_factors(state), "binary")  
-            
-        state = cast(state, "bytes")        
-        bytes_per_round = state_size / 2
-  #      assert bytes_per_round == output_size, (bytes_per_round, output_size)
-        output = one_way_compression(state, bytes_per_round)                  
-        while len(output) < output_size:            
-            state = one_way_compression(cast(unpack_factors(binary_form(state)), "bytes"))
-            output += one_way_compression(state, bytes_per_round)
-        return output[:output_size]
+#def hash_function(hash_input, output_size=32, state_size=64):
+#    """ A tunable, variable output length hash function. Security is based on
+#        the hardness of the well known problem of integer factorization. """   
+#        
+#    # Compression first, if necessary. state_size can be set to 0 to never compress.
+#    # The size of the state determines how long unpack_factors takes to execute and
+#    # also influences collisions. Large inputs should be compressed or will take forever.
+#    # input size and a '1' bit are appended to help prevent collisions. 
+#    # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
+#    input_size = len(hash_input)               
+#    if state_size and input_size > state_size:        
+#        hash_input = preimage_resistant_compression(hash_input, state_size)
+#    state = cast(unpack_factors(cast(hash_input + str(input_size), 
+#                                     "binary")),
+#                "binary")        
+#    
+#    if output_size is None and state_size is None:
+#        return cast(state, "bytes")
+#    else:        
+#        state_size_in_bits = state_size * 8
+#        while len(state) < state_size_in_bits:            
+#            state = cast(unpack_factors(state), "binary")  
+#            
+#        state = cast(state, "bytes")        
+#        bytes_per_round = state_size / 2
+#  #      assert bytes_per_round == output_size, (bytes_per_round, output_size)
+#        output = preimage_resistant_compression(state, bytes_per_round)                  
+#        while len(output) < output_size:            
+#            state = permutation_function(state)
+#            output += state[-bytes_per_round:]
+#        return output[:output_size]
                     
-def permutation_function(_bytes, state=79):
+def hash_function(hash_input, output_size=32, state_size=64):
+    if len(hash_input) > state_size:
+        state = bytearray(hash_input[:state_size])
+        permute_state(state)
+        for _bytes in slide(bytearray(hash_input[state_size:]), state_size):    
+            for index, byte in enumerate(_bytes):
+                state[index] ^= byte
+            permute_state(state)                
+    else:        
+        state = hash_input + str(len(hash_input))
+        while len(state) < state_size:
+            state = byte_form(unpack_factors(binary_form(state)))        
+        state = bytearray(state[:state_size])
+        permute_state(state)
+        
+    output = state[-output_size:]
+    while len(output) < output_size:
+        permute_state(state)
+        output += state[-output_size:]
+    return bytes(output[:output_size])
+    
+def permute_state(_bytes):
+    byte_length = len(_bytes)
+    state = (45 + sum(_bytes)) * byte_length * 2
+    for counter, byte in enumerate(bytearray(_bytes)):
+        psuedorandom_byte = pow(251, state ^ byte, 257) % 256
+        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)
+        
+def permutation_function(_bytes):
     output = bytearray(_bytes)
     byte_length = len(_bytes)
     state = (45 + sum(output)) * byte_length * 2
     for counter, byte in enumerate(bytearray(_bytes)):
         psuedorandom_byte = pow(251, state ^ byte, 257) % 256
-        output[counter % byte_length] = psuedorandom_byte ^ counter        
+        output[counter % byte_length] = psuedorandom_byte ^ (counter % 256)
     return bytes(output)
-                
-def test_chain_cycle():
-    _input = "\x00"
-    size = len(_input)
-    outputs = [_input]
-    import itertools
-    for cycle_length in itertools.count():
-        _input = permutation_function(_input)
-        if _input in outputs:
-            break
-        else:
-            outputs.append(_input)
-    print "Cycle length: ", cycle_length
-    
-def test_permutation():
-    _input = "\x00"
-    outputs = []
-    max_cycle = 0
-    best_initial_state = 0
-    for initial_state in xrange(256):  
-        outputs = []
-        for y in xrange(256):
-            _input = permutation_function(_input, initial_state)
-            outputs.append(_input)  
-                
-        start = cycle = outputs.pop()
-        for cycle_length, output in enumerate(reversed(outputs)):
-            if output == start:                
-                break
-            cycle += output
-        outputs.append(start)
-        
-        if cycle_length > max_cycle:
-            best = (cycle_length, initial_state, len(set(outputs)))
-            max_cycle = cycle_length
-            _outputs = outputs
-    print best# [char for char in reversed(cycle)]
-    #print
-    print [char for char in _outputs], "\n"
-    print set(ASCII).difference(_outputs)
-    
+                    
 def preimage_resistant_compression(input_data, state_size=64):
-    message = input_data[:state_size]
-    message_size = len(message)
-    key_size = len(input_data) - message_size
-    
-    state = (10 + key_size) * key_size * 2
-    output = bytearray(message)
+    output = bytearray(input_data[:state_size])
+    byte_length = len(output)
+    state = (45 + sum(output)) * byte_length * 2
     for counter, byte in enumerate(bytearray(input_data[state_size:])):
-        index = counter % message_size
-        output[index] ^= pow(251, (state + counter + byte), 257) % 256
-        state ^= output[index] 
-    return bytes(output)        
+        psuedorandom_byte = pow(251, state ^ byte, 257) % 256        
+        output[counter % byte_length] = psuedorandom_byte ^ (counter % 256)
+    return bytes(output)      
             
 def one_way_compression(data, state_size=64):    
     output = bytearray('\x00' * state_size)
@@ -224,28 +208,25 @@ def stream_cipher(data, key, iv):
         
 def encrypt(data, key, iv, mac_size=16):
     """ Authenticated encryption function. Similar to stream_cipher, but with 
-        authentication/integrity included. Returns keystream verifier, mac tag,
-        and ciphertext. """
+        authentication/integrity included. Returns mac + ciphertext. """
     assert isinstance(iv, bytes)
     data_size = len(data)
-    key_material = hash_function(key + iv, output_size=data_size)
-    ciphertext = one_way_compression(data + key_material)
-    #return hash_function(key_material
-    return (hash_function(key_material, output_size=mac_size) + mac_tag + 
-            one_way_compression(data + key_material, data_size))
+    key_material = hash_function(key + iv, output_size=data_size + mac_size)
+    ciphertext = one_way_compression(data + key_material[:-mac_size], data_size)
+    mac = hash_function(key_material[-mac_size:] + ciphertext, mac_size)
+    return mac + ciphertext
     
 def decrypt(data, key, iv, mac_size=16):
     """ Authenticated decryption function. Raises ValueError when an invalid 
         tag is encountered. Otherwise returns plaintext bytes. """
     assert isinstance(iv, bytes)
-    verifier = data[:mac_size]
-    mac_tag = data[mac_size:mac_size * 2]
-    data = data[mac_size * 2:]
-    data_size = len(data)
-    key_material = hash_function(key + iv + mac_tag, output_size=data_size)
-    if hash_function(key_material, output_size=mac_size) != verifier:
-        raise ValueError("Invalid mac tag/verifier")        
-    return one_way_compression(data + key_material, data_size)
+    mac, ciphertext = data[:mac_size], data[mac_size:]#pride.utilities.unpack_data(data, 2)
+    data_size = len(ciphertext)
+    key_material = hash_function(key + iv, output_size=data_size + mac_size)
+    if hash_function(key_material[-mac_size:] + ciphertext, mac_size) != mac:
+        raise ValueError("Invalid mac")
+    else:
+        return one_way_compression(ciphertext + key_material[:-mac_size], data_size)   
         
 class Hash_Object(object):
                         
@@ -303,18 +284,20 @@ def test_difference():
     from hashlib import sha256
     #output1 = sha256("The quick brown fox jumps over the lazy dog").digest()
     #output2 = sha256("The quick brown fox jumps over the lazy dog").digest()
-    output1 = hash_function("The quick brown fox jumps over the lazy dog", output_size=32)
-    output2 = hash_function("The quick brown fox jumps over the lazy cog", output_size=32)
+    output1 = hash_function("The quick brown fox jumps over the lazy dog" * 100, output_size=32)
+    output2 = hash_function("The quick brown fox jumps over the lazy cog" * 100, output_size=32)    
+    
    # for x in xrange(10):
    #     output1 = hash_function(output1, output_size=32)
    #     output2 = hash_function(output2, output_size=32)
     print_hash_comparison(output1, output2)
     
 def test_time():
-    from pride.decorators import Timed
-    from hashlib import sha256
-    print Timed(sha256, 100)("Timing test hash input" * 1000)
-    print Timed(hash_function, 100)("Timing test hash input" * 1000)
+    #from pride.decorators import Timed
+    #from hashlib import sha256
+    #print Timed(sha256, 100)("Timing test hash input" * 1000)
+    #print Timed(hash_function, 100)("Timing test hash input" * 1000)
+    hash_function("Timing test hash input" * 10000)
     
 def test_bias():
     biases = [[] for x in xrange(8)]    
@@ -337,7 +320,7 @@ def test_collisions():
     from hashlib import sha256
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input, output_size=3)
+        hash_output = hash_function(hash_input, output_size=4)
         assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
@@ -353,17 +336,58 @@ def test_encrypt_decrypt():
     assert decrypt(ciphertext, key, '0') == message
     
 def test_performance():
-    output = '\x00' * 1024
-    for x in xrange(10000):
-        hash_function(output)
+    hash_function('', output_size=1024 * 1024)
+    #output = '\x00' * 1024
+    #for x in xrange(10000):
+    #    hash_function(output)
         
+def test_chain_cycle():
+    _input = "\x00"
+    size = len(_input)
+    outputs = [_input]
+    import itertools
+    for cycle_length in itertools.count():
+        _input = permutation_function(_input)
+        if _input in outputs:
+            break
+        else:
+            outputs.append(_input)
+    print "Cycle length: ", cycle_length
+    
+def test_permutation():
+    _input = "\x00"
+    outputs = []
+    max_cycle = 0
+    best_initial_state = 0
+    for initial_state in xrange(256):  
+        outputs = []
+        for y in xrange(256):
+            _input = permutation_function(_input, initial_state)
+            outputs.append(_input)  
+                
+        start = cycle = outputs.pop()
+        for cycle_length, output in enumerate(reversed(outputs)):
+            if output == start:                
+                break
+            cycle += output
+        outputs.append(start)
+        
+        if cycle_length > max_cycle:
+            best = (cycle_length, initial_state, len(set(outputs)))
+            max_cycle = cycle_length
+            _outputs = outputs
+    print best# [char for char in reversed(cycle)]
+    #print
+    print [char for char in _outputs], "\n"
+    print set(ASCII).difference(_outputs)
+    
 if __name__ == "__main__":
     #test_permutation()
     test_chain_cycle()
     #test_hash_object()
-    #test_difference()
-    #test_bias()
+    test_difference()
+    test_bias()
     #test_time()
     #test_encrypt_decrypt()
-    #test_collisions()
+    test_collisions()
     #test_performance()
