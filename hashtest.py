@@ -35,17 +35,31 @@ def binary_form(_string):
         bits = format(_string, 'b')
         bit_length = len(bits)
         if bit_length % 8:
-            bits = bits.zfill(bit_length + (8 - (bit_length % 8)))        
+            bits = bits.zfill(bit_length + (8 - (bit_length % 8)))                
         return bits
         
 def byte_form(bitstring):
     """ Returns the ascii equivalent string of a string of bits. """
-    _hex = hex(int(bitstring, 2))[2:]   
     try:
-        return binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
+        _hex = hex(int(bitstring, 2))[2:]
     except TypeError:
-        return binascii.unhexlify('0' + _hex[:-1 if _hex[-1] == 'L' else None])
+        _hex = hex(bitstring)[2:]
+        bitstring = binary_form(bitstring)
+    try:
+        output = binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
+    except TypeError:
+        output = binascii.unhexlify('0' + _hex[:-1 if _hex[-1] == 'L' else None])
         
+    if len(output) == len(bitstring) / 8:
+        return output
+    else:
+        return ''.join(chr(int(bits, 2)) for bits in slide(bitstring, 8))
+        
+_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bits: int(bits, 2)}
+    
+def cast(input_data, _type):
+    return _type_resolver[_type](input_data)
+    
 def prime_generator():
     """ Generates prime numbers in successive order. """
     primes = [2]
@@ -59,7 +73,7 @@ def prime_generator():
             primes.append(test_number)
 
 generator = prime_generator()
-PRIMES = [next(generator) for count in range(1024)]
+PRIMES = [next(generator) for count in range(2048)]
 del generator          
 # end of helper functions
                                                 
@@ -108,53 +122,90 @@ def hash_function(hash_input, output_size=32, state_size=64):
     # input size and a '1' bit are appended to help prevent collisions. 
     # example: unpack_factors would otherwise return 2 when supplied with 1, 10, 100, 1000, ...    
     input_size = len(hash_input)               
-    if state_size and input_size > state_size:
+    if state_size and input_size > state_size:        
         hash_input = preimage_resistant_compression(hash_input, state_size)
-    state = binary_form(unpack_factors(binary_form(hash_input + str(input_size))))        
+    state = cast(unpack_factors(cast(hash_input + str(input_size), 
+                                     "binary")),
+                "binary")        
     
-    if output_size is None:
-        return byte_form(state)
+    if output_size is None and state_size is None:
+        return cast(state, "bytes")
     else:        
         state_size_in_bits = state_size * 8
-        while len(state) < state_size_in_bits:
-            state = binary_form(unpack_factors(state))  
+        while len(state) < state_size_in_bits:            
+            state = cast(unpack_factors(state), "binary")  
             
-        state = byte_form(state)        
+        state = cast(state, "bytes")        
         bytes_per_round = state_size / 2
+  #      assert bytes_per_round == output_size, (bytes_per_round, output_size)
         output = one_way_compression(state, bytes_per_round)                  
-        while len(output) < output_size:
-            state = permutation_function(state)
+        while len(output) < output_size:            
+            state = one_way_compression(cast(unpack_factors(binary_form(state)), "bytes"))
             output += one_way_compression(state, bytes_per_round)
         return output[:output_size]
-        
-def _split_byte(byte):
-    """ Splits a byte into high and low order bytes. 
-        Returns two integers between 0-15 """
-    bits = format(byte, 'b').zfill(8)
-    a, b = int(bits[:4], 2), int(bits[4:], 2)
-    return a, b 
-            
-def permutation_function(_bytes):
+                    
+def permutation_function(_bytes, state=79):
     output = bytearray(_bytes)
     byte_length = len(_bytes)
-    state = (10 + byte_length) * byte_length * 2
+    state = (45 + sum(output)) * byte_length * 2
     for counter, byte in enumerate(bytearray(_bytes)):
-        output[counter] ^= pow(251, (state + counter) ^ byte, 257) % 256
-        state += output[counter]
+        psuedorandom_byte = pow(251, state ^ byte, 257) % 256
+        output[counter % byte_length] = psuedorandom_byte ^ counter        
     return bytes(output)
                 
+def test_chain_cycle():
+    _input = "\x00"
+    size = len(_input)
+    outputs = [_input]
+    import itertools
+    for cycle_length in itertools.count():
+        _input = permutation_function(_input)
+        if _input in outputs:
+            break
+        else:
+            outputs.append(_input)
+    print "Cycle length: ", cycle_length
+    
+def test_permutation():
+    _input = "\x00"
+    outputs = []
+    max_cycle = 0
+    best_initial_state = 0
+    for initial_state in xrange(256):  
+        outputs = []
+        for y in xrange(256):
+            _input = permutation_function(_input, initial_state)
+            outputs.append(_input)  
+                
+        start = cycle = outputs.pop()
+        for cycle_length, output in enumerate(reversed(outputs)):
+            if output == start:                
+                break
+            cycle += output
+        outputs.append(start)
+        
+        if cycle_length > max_cycle:
+            best = (cycle_length, initial_state, len(set(outputs)))
+            max_cycle = cycle_length
+            _outputs = outputs
+    print best# [char for char in reversed(cycle)]
+    #print
+    print [char for char in _outputs], "\n"
+    print set(ASCII).difference(_outputs)
+    
 def preimage_resistant_compression(input_data, state_size=64):
     message = input_data[:state_size]
     message_size = len(message)
     key_size = len(input_data) - message_size
+    
     state = (10 + key_size) * key_size * 2
     output = bytearray(message)
     for counter, byte in enumerate(bytearray(input_data[state_size:])):
         index = counter % message_size
-        output[index] ^= pow(251, (state + counter) ^ byte, 257) % 256
-        state += output[index]        
+        output[index] ^= pow(251, (state + counter + byte), 257) % 256
+        state ^= output[index] 
     return bytes(output)        
-    
+            
 def one_way_compression(data, state_size=64):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
@@ -177,8 +228,9 @@ def encrypt(data, key, iv, mac_size=16):
         and ciphertext. """
     assert isinstance(iv, bytes)
     data_size = len(data)
-    mac_tag = hash_function(data, output_size=mac_size)
-    key_material = hash_function(key + iv + mac_tag, output_size=data_size)
+    key_material = hash_function(key + iv, output_size=data_size)
+    ciphertext = one_way_compression(data + key_material)
+    #return hash_function(key_material
     return (hash_function(key_material, output_size=mac_size) + mac_tag + 
             one_way_compression(data + key_material, data_size))
     
@@ -280,12 +332,12 @@ def test_bias():
   #      print sorted(_list)    
     print "Symbols out of 256 that appeared anywhere: ", len(set(outputs2))
     
-def test_hash_function():      
+def test_collisions():      
     outputs = {}    
     from hashlib import sha256
     for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
         hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input, output_size=4)
+        hash_output = hash_function(hash_input, output_size=3)
         assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
         outputs[hash_output] = hash_input
     #    print hash_input, hash_output
@@ -294,15 +346,24 @@ def test_hash_object():
     hasher = Hash_Object("Test data")
     assert hasher.digest() == hash_function("Test data")
     
+def test_encrypt_decrypt():
+    message = "I am an awesome test message, for sure :)"
+    key = "Super secret key"
+    ciphertext = encrypt(message, key, '0')
+    assert decrypt(ciphertext, key, '0') == message
+    
 def test_performance():
-    output = ''
+    output = '\x00' * 1024
     for x in xrange(10000):
-        output = hash_function(output)
+        hash_function(output)
         
 if __name__ == "__main__":
-    test_hash_object()
-    test_difference()
-    test_bias()
-    test_time()
-    test_hash_function()
+    #test_permutation()
+    test_chain_cycle()
+    #test_hash_object()
+    #test_difference()
+    #test_bias()
+    #test_time()
+    #test_encrypt_decrypt()
+    #test_collisions()
     #test_performance()

@@ -88,8 +88,7 @@ def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
     encryptor = Cipher(getattr(algorithms, algorithm)(key), 
                        getattr(modes, mode)(iv), 
                        backend=BACKEND).encryptor()
-    if mode == "GCM":
-        extra_data = iv + extra_data
+    if mode == "GCM":        
         encryptor.authenticate_additional_data(extra_data)
     ciphertext = encryptor.update(data) + encryptor.finalize()
     try:
@@ -101,8 +100,7 @@ def decrypt(packed_encrypted_data, key, algorithm="AES",
             mode="GCM", backend=BACKEND):
     """ Decrypts packed encrypted data as returned by encrypt with the same key. 
         If extra data is present, returns plaintext, extra_data. If not,
-        returns plaintext. Extra data returned this way will NOT include the IV
-        that is implicitly authenticated by encrypt with GCM mode. """
+        returns plaintext. Raises InvalidTag on authentication failure. """
     ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data,
                                                   4 if mode == "GCM" else 2)
     if mode == "GCM" and not tag:
@@ -113,8 +111,6 @@ def decrypt(packed_encrypted_data, key, algorithm="AES",
                        backend=BACKEND).decryptor()
     if mode == "GCM":
         decryptor.authenticate_additional_data(extra_data)
-        # remove implicitly/automatically authenticated iv from extra_data
-        extra_data = extra_data[len(iv):]
     if extra_data:
         return (decryptor.update(ciphertext) + decryptor.finalize(), extra_data)     
     else:
