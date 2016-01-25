@@ -146,18 +146,35 @@ def permute_state(_bytes):
     state = (45 + sum(_bytes)) * byte_length * 2    
     for counter, byte in enumerate(_bytes):
         psuedorandom_byte = pow(251, state ^ byte, 257) % 256
-        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)        
-    return _bytes
-    
-def preimage_resistant_compression(input_data, state_size=64):
-    output = bytearray(input_data[:state_size])
-    byte_length = len(output)
-    state = (45 + sum(output)) * byte_length * 2
-    for counter, byte in enumerate(bytearray(input_data[state_size:])):
-        psuedorandom_byte = pow(251, state ^ byte, 257) % 256        
-        output[counter % byte_length] = psuedorandom_byte ^ (counter % 256)
-    return bytes(output)      
+        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)             
+    return _bytes        
+
+def invert_permutation(_bytes):
+    import itertools
+    length = len(_bytes)
+    recovered = bytearray()
+    for counter, psuedorandom_byte in enumerate(_bytes):
+        psuedorandom_byte ^= (counter % 256)
             
+        reform_state = lambda byte: (45 + sum(recovered) + byte) * length * 2
+        possible_inputs = []
+        unknown_bytes = length - len(recovered)
+        for byte in xrange(256):
+            possible_state = reform_state(byte)
+            for increment in xrange(unknown_bytes * 256):                
+                if pow(251, (increment + possible_state) ^ byte, 257) % 256 == psuedorandom_byte:
+                    possible_inputs.append(byte)
+                    break                         
+        
+        if not possible_inputs:    
+            print "Failed to find any possible inputs"
+            raise Exception()
+        elif len(possible_inputs) == 1:
+            recovered.append(possible_inputs[0])
+        else:
+            print "ambiguous recovery: ", psuedorandom_byte, possible_inputs
+    return recovered
+    
 def one_way_compression(data, state_size=64):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
@@ -314,7 +331,7 @@ def test_performance():
     from hashlib import sha256
     print Timed(sha256, 100)(output)
     
-def test_chain_cycle(state="\x00", key="\x00"):
+def test_chain_cycle(state="\x00", key=""):
     state = bytearray(key + state)
     size = len(state)
     outputs = [bytes(state)]
@@ -384,13 +401,13 @@ def test_hash_chain():
         
 if __name__ == "__main__":
     #test_permutation()
-    #test_chain_cycle()
+    test_chain_cycle()
     #test_hash_object()
-    test_difference()
-    test_bias()
+    #test_difference()
+    #test_bias()
     #test_time()
     #test_encrypt_decrypt()
-    test_collisions()
+    #test_collisions()
     #test_performance()
     #test_randomness()
     #test_hash_chain()

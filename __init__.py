@@ -1,6 +1,7 @@
 """ Stores global objects including instructions and the environment """
 import sys
 import preprocessing
+import traceback
         
 compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decorator, ),
                                   modify_builtins=None)                                    
@@ -127,8 +128,12 @@ alert_handler = Alert_Handler()
 class Finalizer(base.Base):
     
     mutable_defaults = {"_callbacks" : list}
-        
+    verbosity = {"execute_callback" : 'v', "callback_success" : 'v',
+                 "unable_to_load_object" : 0, "unable_to_get_method" : 0,
+                 "callback_exception" : 0}
+                 
     def run(self):
+        verbosity = self.verbosity
         for callback, args, kwargs in self._callbacks:
             try:
                 reference, method = callback
@@ -138,14 +143,21 @@ class Finalizer(base.Base):
                 try:
                     callback = getattr(objects[reference], method)
                 except KeyError:
-                    self.alert("Unable to load object for callback: '{}'".format(reference), level=0)
+                    self.alert("Unable to load object for callback: '{}'".format(reference), 
+                               level=verbosity["unable_to_load_object"])
                 except AttributeError:
-                    self.alert("Unable to call method: '{}.{}'".format(reference, method), level=0)
+                    self.alert("Unable to get method: '{}.{}'".format(reference, method), 
+                               level=verbosity["unable_to_get_method"])
+            self.alert("Executing finalizer callback: {}({}, {})", (callback, args, kwargs), 
+                       level=verbosity["execute_callback"])
             try:
                 callback(*args, **kwargs)
             except Exception as error:
                 self.alert("Unhandled exception running finalizer method '{}.{}'\n{}",
-                           (reference, method, error), level=0)        
+                           (reference, method, traceback.format_exc()),
+                           level=verbosity["callback_exception"]) 
+            else:
+                self.alert("Finalizer callback success", level=verbosity["callback_success"])
         self._callbacks = []    
         
     def add_callback(self, callback, *args, **kwargs):

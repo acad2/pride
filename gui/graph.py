@@ -10,7 +10,7 @@ class Graph(pride.gui.gui.Window):
         super(Graph, self).__init__(**kwargs)
         self.x_spacing = self.w / self.x_axis_range[1]
         self.y_spacing = self.h / self.y_axis_range[1]        
-        self.points = self.points or [0 for counter in range(self.x_axis_range[1])]
+        self.points = self.points or [[] for counter in range(self.x_axis_range[1])]
         
     def left_click(self, mouse):
     #    points = self.points
@@ -24,7 +24,7 @@ class Graph(pride.gui.gui.Window):
     #    points[x] = new_value
     #    self.texture_invalid = True
         x = (mouse.x - self.x) / self.x_spacing        
-        self.points[x] = (((mouse.y - self.y) / self.y_spacing) + self.points[x]) / 2
+        self.points[x].append((mouse.y - self.y) / self.y_spacing) #+ self.points[x]) / 2
         self.texture_invalid = True
         
     def draw_texture(self):
@@ -35,8 +35,9 @@ class Graph(pride.gui.gui.Window):
         self_x, self_y, self_w, self_h = self.area        
         x_spacing = self.x_spacing
         y_spacing = self.y_spacing
-        for x_coord, y_coord in enumerate(self.points):
-            coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
-            if y_coord:
-                self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
+        for x_coord, y_points in enumerate(self.points):
+            for y_coord in y_points:
+                coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
+                if y_coord:
+                    self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
         self.draw("point", coordinates, color=self.color)

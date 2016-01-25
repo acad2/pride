@@ -292,7 +292,7 @@ class Base(object):
             notes the reference location."""    
         self.alert("Adding: {}", (instance, ), level=self.verbosity["add"])
         self_objects = self.objects
-        instance_class = instance.__class__.__name__         
+        instance_class = type(instance).__name__#.__class__.__name__         
         try:
             siblings = self_objects[instance_class]
         except KeyError:
@@ -317,7 +317,7 @@ class Base(object):
             and instance.references_to."""    
         self.alert("Removing {}", [instance], level=self.verbosity["remove"])        
         try:
-            storage = self.objects[instance.__class__.__name__]
+            storage = self.objects[type(instance).__name__]#instance.__class__.__name__]
             index = storage.index(instance)
         except (KeyError, ValueError):            
             raise

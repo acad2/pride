@@ -198,7 +198,7 @@ class Rpc_Client(Packet_Client):
                                                 
     def handle_exception(self, _call, callback, response):   
         if (isinstance(response, SystemExit) or 
-            isinstance(response, KeyboardInterrupt)):        
+            isinstance(response, KeyboardInterrupt)):            
             raise response
         else:
             self.alert("\nRemote Traceback: Exception calling {}\n{}: {}\nUnable to proceed with callback {}",
@@ -213,7 +213,7 @@ class Rpc_Client(Packet_Client):
 class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
     
-    verbosity = {"request_exception" : "rpc_exception", "request_result" : "vv"}
+    verbosity = {"request_exception" : 0, "request_result" : "vv"}
         
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
@@ -230,7 +230,7 @@ class Rpc_Socket(Packet_Socket):
             except BaseException as result:
                 if ((isinstance(result, KeyError) and component_name not in pride.objects) or
                     (isinstance(result, AttributeError) and not hasattr(objects[component_name], "validate"))):
-                    result = UnauthorizedError()
+                    result = UnauthorizedError()                
                 elif not isinstance(result, UnauthorizedError):
                     stack_trace = traceback.format_exc()
                     self.alert("Exception processing request {}.{}: \n{}",

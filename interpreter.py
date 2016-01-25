@@ -105,15 +105,16 @@ class Interpreter(authentication2.Authenticated_Service):
             with sys.stdout.switched(self._logger):
                 try:
                     exec code in globals()
-                except Exception: # we explicitly really do want to catch everything here
-                    if type(result) == SystemExit:
-                        raise
-                    result = traceback.format_exc()
-                    #result.traceback = traceback.format_exc()
+                except SystemExit:             
+                    raise
+                except: # we explicitly really do want to catch everything here   
+                    result = traceback.format_exc()                    
                 else:
                     self.user_session[username] += source                
                     sys.stdout.seek(0)
                     result = sys.stdout.read() + result
+                    sys.__stdout__.write("\nResult:\n\n" + result)
+                    sys.__stdout__.flush()
                 log.write("{}\n".format(result))                    
                 sys.stdout.truncate(0)                                                 
         log.flush()        
@@ -209,8 +210,7 @@ class Python(base.Base):
         processor = pride.objects[self.processor]
         processor.running = True
         processor.run()
-        print "Finished running"
-        
+                
     def exit(self, exit_code=0):
         raise SystemExit(exit_code)
         

@@ -11,10 +11,10 @@ if __name__ == "__main__":
         python = pride.interpreter.Python(parse_args=True)                
         try:            
             python.start_machine()                
-        except Exception as error:            
-            running = False
+        except BaseException as error:                        
+            running = False            
             pride.objects["->Finalizer"].run()            
-            if isinstance(Exception, SystemExit):
+            if isinstance(error, SystemExit):
                 python.alert("System shutdown intiated. Running finalizer... ", 
                             level=python.verbosity["shutdown"])                
                 if error.code == "Restart":
@@ -32,4 +32,3 @@ if __name__ == "__main__":
             else:
                 python.alert("Unhandled exception caused a fatal error", level=0)
                 raise     
-            

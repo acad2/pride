@@ -325,7 +325,7 @@ class SDL_User_Input(vmlibrary.Process):
                          "sdl2.SDL_TEXTINPUT" : self.handle_textinput,
                          "sdl2.SDL_USEREVENT" : unhandled,
                          "sdl2.SDL_WINDOWEVENT" : self.parent.window_handler.handle_event}        
-        self.event_names = dict((value, key) for key, value in self.handlers.items())
+        self.event_names = dict((resolve_string(key), key) for key, value in self.handlers.items())
         self.handlers = dict((resolve_string(key), value) for key, value in self.handlers.items())
         
     def run(self):

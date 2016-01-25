@@ -559,17 +559,17 @@ class Network(vmlibrary.Process):
         while read_progress < readable_count:
             try:
                 for read_counter, _socket in enumerate(readable[read_progress:]):
-                    _socket.on_select()                        
-            except socket.error as error:
+                    _socket.on_select()                             
+            except socket.error as error:                
                 read_progress += (read_counter + 1)                               
                 error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower())
-            except Exception as error:
+            except Exception as error:                
                 _socket = readable[read_progress + read_counter]
                 _socket.alert("Caught non socket.error during recv: {}", (error, ), level=0)                
                 _socket.delete()
                 read_progress += (read_counter + 1)
                 readable_count -= 1                
-            else:
+            else:                
                 break        
         
         if connecting and writable:                            

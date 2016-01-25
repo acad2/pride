@@ -28,7 +28,7 @@ def delete(reference):
 #pride.audio.enable()
 import pride.gui
 pride.gui.enable()
-objects["->Python->SDL_Window"].create("pride.gui.graph.Graph")
+graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Graph")
 """}
 
 pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}

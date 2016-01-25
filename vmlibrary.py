@@ -189,10 +189,10 @@ class Processor(Process):
                 else:
                     component_alert((str(instruction), error))   
                     
-            except BaseException as error:                
-                if type(error) in reraise_exceptions:                    
+            except BaseException as error:                   
+                if type(error) in reraise_exceptions:                                        
                     raise
-                else:                    
+                else:                                        
                     if callback and result is not null_result:
                         callback_exception_alert((callback, ))
                     else:
