@@ -34,5 +34,3 @@ graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Graph")
 pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}
 
 pride_user_User_defaults = {'username' : 'localhost'}
-
-pride_user_User_defaults = {'username' : 'localhost'}

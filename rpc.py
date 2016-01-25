@@ -233,15 +233,16 @@ class Rpc_Socket(Packet_Socket):
                     result = UnauthorizedError()                
                 elif not isinstance(result, UnauthorizedError):
                     stack_trace = traceback.format_exc()
-                    self.alert("Exception processing request {}.{}: \n{}",
-                               [component_name, method, stack_trace],
-                               level=self.verbosity["request_exception"])                                
                     result.traceback = stack_trace  
+                    if not isinstance(result, SystemExit):
+                        self.alert("Exception processing request {}.{}: \n{}",
+                                   [component_name, method, stack_trace],
+                                   level=self.verbosity["request_exception"])                    
             else:                
                 self.alert("Sending result of {}.{}: {}",
                            (component_name, method, result), 
-                           level=self.verbosity["request_result"])                     
-            
+                           level=self.verbosity["request_result"])               
+                           
             self.send(self.serialize(result))
       
     def serialize(self, result):
@@ -254,9 +255,6 @@ class Rpc_Worker(pride.base.Base):
                  
     def handle_request(self, peername, session_id, component_name, method,
                        serialized_arguments): 
-      #  with pride.objects[component_name] as network_service:
-      #      return network_service.remote_procedure_call(session_id, peername, 
-      #                                                   method, serialized_arguments)
         instance = pride.objects[component_name]
         if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()

@@ -33,7 +33,7 @@ def find_locations(_object):
 def search_iterable_for_memory_address(_object, memory_addresses, locations):    
     try:
         for _key, _value in _object.items():
-            if id(value) in memory_addresses:
+            if id(_value) in memory_addresses:
                 locations.append((_object, _key))
             else:
                 try:

@@ -1,6 +1,6 @@
 import pride.gui.gui
 
-class Graph(pride.gui.gui.Window):
+class Graph(pride.gui.gui.Application):
     
     defaults = {"background_color" : (0, 0, 0), "color" : (255, 255, 255),
                 "x_axis_range" : (0, 100), "y_axis_range" : (0, 100)}
@@ -24,7 +24,8 @@ class Graph(pride.gui.gui.Window):
     #    points[x] = new_value
     #    self.texture_invalid = True
         x = (mouse.x - self.x) / self.x_spacing        
-        self.points[x].append((mouse.y - self.y) / self.y_spacing) #+ self.points[x]) / 2
+        self.points[x].append((mouse.y - self.y) / self.y_spacing)
+        self.alert("Inserted point at: ({}, {})", (x, self.points[x][-1]), level=0)
         self.texture_invalid = True
         
     def draw_texture(self):
@@ -36,8 +37,9 @@ class Graph(pride.gui.gui.Window):
         x_spacing = self.x_spacing
         y_spacing = self.y_spacing
         for x_coord, y_points in enumerate(self.points):
-            for y_coord in y_points:
-                coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
-                if y_coord:
-                    self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
+            if y_points:
+                for y_coord in y_points:
+                    coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
+#                if y_coord:
+#                    self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
         self.draw("point", coordinates, color=self.color)

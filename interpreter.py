@@ -113,8 +113,6 @@ class Interpreter(authentication2.Authenticated_Service):
                     self.user_session[username] += source                
                     sys.stdout.seek(0)
                     result = sys.stdout.read() + result
-                    sys.__stdout__.write("\nResult:\n\n" + result)
-                    sys.__stdout__.flush()
                 log.write("{}\n".format(result))                    
                 sys.stdout.truncate(0)                                                 
         log.flush()        

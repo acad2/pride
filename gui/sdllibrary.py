@@ -183,10 +183,9 @@ class SDL_Window(SDL_Component):
             
     def delete(self):
         # delete window objects before sdl components
-        for children in self.objects.values():
-            for child in children:
-                if hasattr(child, "pack"):
-                    child.delete()
+        for child in self.children:
+            if hasattr(child, "pack"):
+                child.delete()
         super(SDL_Window, self).delete()
         
         
