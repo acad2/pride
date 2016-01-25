@@ -338,8 +338,11 @@ class SDL_User_Input(vmlibrary.Process):
                 else:
                     self.alert("Unhandled event: {}".format(event.type))
             except BaseException as error:
-                self.alert("Exception handling {};\n{}", 
-                           (self.event_names[event.type], error), level=0)
+                if event.type == sdl2.SDL_QUIT:
+                    self.parent.delete()
+                else:
+                    self.alert("Exception handling {};\n{}", 
+                              (self.event_names[event.type], error), level=0)
                 
     def _update_coordinates(self, item, area, z):
         try:

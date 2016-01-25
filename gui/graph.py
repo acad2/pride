@@ -13,33 +13,23 @@ class Graph(pride.gui.gui.Application):
         self.points = self.points or [[] for counter in range(self.x_axis_range[1])]
         
     def left_click(self, mouse):
-    #    points = self.points
-    #    x, y = mouse.x, mouse.y
-    #    old_value = points[x]
-    #    if old_value:
-    #        new_value = (y + old_value) / 2
-    #    else:
-    #        new_value = y
-    #        
-    #    points[x] = new_value
-    #    self.texture_invalid = True
         x = (mouse.x - self.x) / self.x_spacing        
-        self.points[x].append((mouse.y - self.y) / self.y_spacing)
+        self.points[x].append((mouse.y - self.y))
         self.alert("Inserted point at: ({}, {})", (x, self.points[x][-1]), level=0)
         self.texture_invalid = True
         
     def draw_texture(self):
         self.draw("fill", self.area, self.background_color)
         coordinates = []
-        # (0, 0) = self.x, (self.y - self.h)
-        # (1, 1) = (self.x + (item[0] * x_spacing), (self.y - self.h - (item[1] * y_spacing)))
         self_x, self_y, self_w, self_h = self.area        
         x_spacing = self.x_spacing
         y_spacing = self.y_spacing
+        last_point = (self_x, self_y + self_h)
         for x_coord, y_points in enumerate(self.points):
-            if y_points:
+            if y_points:                
                 for y_coord in y_points:
-                    coordinates.extend((self_x + (x_coord * x_spacing), y_coord))
-#                if y_coord:
-#                    self.alert("Drawing point at: {}", (coordinates[-2:], ), level=0)
+                    point = (self_x + (x_coord * x_spacing), y_coord)
+                    coordinates.extend(point)
+                    self.draw("line", last_point + point, color=self.color)
+                    last_point = point
         self.draw("point", coordinates, color=self.color)
