@@ -164,7 +164,10 @@ class Finalizer(base.Base):
         self._callbacks.append((callback, args, kwargs))
         
     def remove_callback(self, callback, *args, **kwargs):
-        self._callbacks.remove((callback, args, kwargs))
+        try:
+            self._callbacks.remove((callback, args, kwargs))
+        except ValueError:
+            pass
         
 finalizer = Finalizer()        
 

@@ -187,6 +187,11 @@ class SDL_Window(SDL_Component):
             if hasattr(child, "pack"):
                 child.delete()
         super(SDL_Window, self).delete()
+        objects["->Finalizer"].remove_callback((self.reference, "delete"))
+        for entry in pride.Instruction.instructions[:]:
+            if entry[3] == self.reference:
+                pride.Instruction.instructions.remove(entry)
+        pride.Instruction.instructions.sort()
         
         
 class Window_Handler(pride.base.Base):
