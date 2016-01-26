@@ -452,7 +452,7 @@ class Base(object):
                                  self.__dict__.items() if key not in
                                  self.__class__.__dict__):
             setattr(new_self, attribute, value)
-                    
+        assert new_self.reference == self.reference         
         for reference in self.references_to[:]:
             _object = pride.objects[reference]
             _object.remove(self)

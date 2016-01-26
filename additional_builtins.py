@@ -122,8 +122,7 @@ def restart():
 def system_update():
     for reference, root_object in ((reference, _object) for reference, _object in 
                                     objects.items() if reference.count("->") == 1):      
-        if reference not in ("->Finalizer", "->Alert_Handler"):
-            print "Updating root object: ", reference
+        if reference not in ("->Finalizer", "->Alert_Handler"):            
             root_object.update(True)
     
 def shutdown():

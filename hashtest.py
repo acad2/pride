@@ -145,7 +145,7 @@ def permute_state(_bytes):
     byte_length = len(_bytes)
     state = (45 + sum(_bytes)) * byte_length * 2    
     for counter, byte in enumerate(_bytes):
-        psuedorandom_byte = pow(251, state ^ byte, 257) % 256
+        psuedorandom_byte = pow(251, state ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
         _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)             
     return _bytes        
 
@@ -345,12 +345,13 @@ def test_chain_cycle(state="\x00", key=""):
         output = bytes(state)
         if output in outputs:
             max_length = max(max_length, len(outputs))
+            break
             print "Cycle length: ", cycle_length, max_length, len(outputs)
             outputs = [output]
         else:
      #       print cycle_length, len(output)
             outputs.append(output)
-    print "Cycle length: ", cycle_length, len(output)
+    print "Cycle length: ", cycle_length, len(outputs)
     
 def test_permutation():
     _input = "\x00"
@@ -401,7 +402,9 @@ def test_hash_chain():
         
 if __name__ == "__main__":
     #test_permutation()
+    #test_hash_chain()
     test_chain_cycle()
+    
     #test_hash_object()
     #test_difference()
     #test_bias()
@@ -410,4 +413,4 @@ if __name__ == "__main__":
     #test_collisions()
     #test_performance()
     #test_randomness()
-    #test_hash_chain()
+    

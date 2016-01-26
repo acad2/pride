@@ -89,6 +89,7 @@ class Average(object):
         self._meta_average = value
 
         self.name = name
+        size = len(values) if values else size
         self.values = collections.deque(values, size)
         self.max_size = size
         self.size = float(len(self.values))
