@@ -180,7 +180,7 @@ class Audio_Input(Audio_Device):
                          frame_count * channels * sample_size)
         if self.mute:
             self.handle_audio_output(self.silence[:byte_count])
-        else:           
+        else:                       
             self.handle_audio_output(stream.read(frame_count)[-byte_count:])
             
         #assert len(data) == byte_count
@@ -191,8 +191,7 @@ class Audio_Input(Audio_Device):
             for _file in self.playing_files:
                 file_data = _file.read(byte_count)
                 for listener in self.playing_to[_file]:
-                    objects[listener].handle_audio_input(file_data)
-                    
+                    objects[listener].handle_audio_input(file_data)        
         self.refresh_instruction.execute(self.priority)
         
 

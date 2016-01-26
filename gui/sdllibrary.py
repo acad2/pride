@@ -140,10 +140,10 @@ class SDL_Window(SDL_Component):
                # srcrect = (x + instance.texture_window_x, y + instance.texture_window_y,
                #            w, h)
                 if instance.texture_invalid:
-                    #self.alert("Redrawing {} texture", [instance], level=0)
+           #         self.alert("Redrawing {} texture", [instance], level=0)
                     _texture = instance.texture.texture
                     instance.draw_texture()
-                    renderer.set_render_target(_texture)
+                    renderer.set_render_target(_texture)                    
                     for operation, args, kwargs in instance._draw_operations:
                         if operation == "text":
                             if not args[0]:

@@ -12,7 +12,8 @@ class Shape(pride.base.Base):
         for coordinate in self.coordinates:
             setattr(self, "_" + coordinate, 0)
         super(Shape, self).__init__(**kwargs)
-  
+       # self._color = sdl2.ext.Color(self.r, self.g, self.b, self.a)
+        
     def _on_set(self, coordinate, value):
         setattr(self, "_" + coordinate, value)
     
@@ -47,45 +48,50 @@ class Shape(pride.base.Base):
         return self._r
     def _set_r(self, value):
         self._on_set('r', value)
-        r, g, b, a = self.color
-        self._color = sdl2.ext.Color(value, g, b, a)
+        self._color.r = value
+        #r, g, b, a = self.color
+        #self._color = sdl2.ext.Color(value, g, b, a)
     r = property(_get_r, _set_r)
     
     def _get_g(self):
         return self._g
     def _set_g(self, value):
         self._on_set('g', value)
-        r, g, b, a = self.color
-        self._color = sdl2.ext.Color(r, value, b, a)
+        self._color.g = value
+        #r, g, b, a = self.color
+        #self._color = sdl2.ext.Color(r, value, b, a)
     g = property(_get_g, _set_g)
     
     def _get_b(self):
         return self._b
     def _set_b(self, value):
         self._on_set('b', value)
-        r, g, b, a = self.color
-        self._color = sdl2.ext.Color(r, g, value, a)
+        self._color.b = value
+        #r, g, b, a = self.color        
+        #self._color = sdl2.ext.Color(r, g, value, a)
     b = property(_get_b, _set_b)
      
     def _get_a(self):
         return self._a
     def _set_a(self, value):
         self._on_set('a', value)
-        r, g, b, a = self.color
-        self._color = sdl2.ext.Color(r, g, b, value)
+        self._color.a = value
+        #r, g, b, a = self.color
+        #self._color = sdl2.ext.Color(r, g, b, value)
     a = property(_get_a, _set_a)
     
     def _get_color(self):
         return self._color
     def _set_color(self, colors):
-        self.r = colors[0]
-        self.g = colors[1]
-        self.b = colors[2]
+        color = self._color
+        color.r = colors[0]
+        color.g = colors[1]
+        color.b = colors[2]
         try:
-            self.a = colors[3]
+            color.a = colors[3]
         except IndexError:
-            self.a = 255
-        self._color = sdl2.ext.Color(self.r, self.g, self.b, self.a)        
+            color.a = 255
+        #self._color = sdl2.ext.Color(self.r, self.g, self.b, self.a)        
     color = property(_get_color, _set_color)  
     
             
