@@ -53,19 +53,14 @@ class HKDF(object):
         self.hash_length = OUTPUT_SIZES[hash_function]
         
     def extract(self, input_keying_material, salt=''):
-        psuedorandom_key = self.hash_function(salt + input_keying_material).digest()
-        return psuedorandom_key
+        return extract(input_keying_material, salt, self.hash_function)        
         
     def expand(self, psuedorandom_key, length, info=''):
-        n = int(math.ceil(length / self.hash_length))
-        t = r''
-        for counter in xrange(n):
-            t += self.hash_function(psuedorandom_key + t + info + six.int2byte(counter)).digest()
-        output_keying_material = t[:length]
-        return output_keying_material
+        return expand(psuedorandom_key, length=length, info=info, self.hash_function)
         
     def hkdf(self, input_keying_material, length, info='', salt=''):
-        return self.expand(self.extract(input_keying_material, salt), length, info)
+        return hkdf(input_keying_material, length, info, salt)
+        
         
 if __name__ == "__main__":
     print expand("testing", info="testing")

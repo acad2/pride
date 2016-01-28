@@ -25,12 +25,16 @@ def unpack_data(packed_bytes, size_count): # copied from pride.utilities
     return data
     
 def hmac_rng(key, seed, hash_function="sha512"):
+    """ Generates psuedorandom bytes via HMAC. Implementation could be improved to
+        a compliant scheme like HMAC-DRBG. """
     hasher = hmac.HMAC(key, seed, getattr(hashlib, hash_function))
     for counter in (str(number) for number in itertools.count()):
         yield hasher.digest()
         hasher.update(key + counter)
     
-def psuedorandom_bytes(key, seed, count, hash_function="sha512"):    
+def psuedorandom_bytes(key, seed, count, hash_function="sha512"): 
+    """ Generates count psuedorandom bytes, based on key and seed,
+        generated using hash_function with HMAC. """
     generator = hmac_rng(key, seed, hash_function)
     output = ''
     output_size = getattr(hashlib, hash_function)().digest_size    
@@ -40,6 +44,7 @@ def psuedorandom_bytes(key, seed, count, hash_function="sha512"):
     return output[:count]       
         
 def xor(input1, input2):
+    """ Returns the XOR of input1 and input2, where input1 and input2 are bytestrings """
     assert len(input1) == len(input2)
     output = bytearray(input1)
     for index, byte in enumerate(bytearray(input2)):
@@ -47,16 +52,24 @@ def xor(input1, input2):
     return bytes(output)
     
 def hash_stream_cipher(data, key, nonce, hash_function="sha512"):    
+    """ Generates key material and XORs with data. Provides confidentiality,
+        but not authenticity or integrity. As such, this should seldom be used alone. """
     data_size = len(data)
     key_material = psuedorandom_bytes(key, nonce, data_size, hash_function)
     return xor(key_material, data)
         
 def encrypt(data, key, nonce, extra_data='', hash_function="sha512",):
+    """ Provides authenticated encryption of data, and authentication of 
+        nonce and any extra data as well. Encryption is performed by hash_stream_cipher
+        and integrity/authenticity via HMAC. """
     encrypted_data = hash_stream_cipher(data, key, nonce, hash_function)
     mac_tag = hmac.HMAC(key, extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
     return pack_data(encrypted_data, nonce, mac_tag, extra_data)
         
 def decrypt(data, key, hash_function="sha512"):
+    """ Returns (extra_data, plaintext) when extra data is available, otherwise
+        returns plaintext. Authenticity and integrity of the plaintext is
+        (effectively) guaranteed. """
     hasher = getattr(hashlib, hash_function)
     encrypted_data, nonce, mac_tag, extra_data = unpack_data(data, 4)
     if hmac.HMAC(key, extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:

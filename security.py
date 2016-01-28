@@ -1,3 +1,8 @@
+""" Provides security related functions such as encryption and decryption.
+    Two backends are available: Ideally, the cryptography package has been
+    installed, and that will be used. In situations where that is not feasible,
+    usually due to permissions, the pride.cryptographyless module will be used
+    instead. """
 import os
 
 class SecurityError(Exception): pass
