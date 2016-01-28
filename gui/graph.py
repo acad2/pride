@@ -40,32 +40,34 @@ class Graph(pride.gui.gui.Application):
         self.alert("Inserted point at: ({}, {})", (x, y), level=0)
         self.texture_invalid = True
         
-    def draw_texture(self):        
-        self.draw("fill", self.area, self.background_color)
+    def draw_texture(self):   
+        super(Graph, self).draw_texture()        
         lines, coordinates = [], []
-        points = self.points
-        
-        self_x, self_y, self_w, self_h = self.area      
-       # x_axis_range = (0, len(points))
-        #y_axis_range = (0, max(points))
-                
-        x_spacing = self_w / (len(points) or 1) #self.x_spacing
-        max_point = max(points)
-        y_spacing = (max_point / self_h) or 1 #self.y_spacing
-        if not y_spacing:
-            y_spacing, extra = divmod(max_point, self_h)
-            y_spacing += 1 if extra else 0
-        print len(points), x_spacing, y_spacing
-        
+        scalar = 1.0 / ((max(self.points) / self.h) or 1)    
+        assert scalar <= 1.0, (scalar, max(self.points), self.h)
+        if scalar < 1.0:
+            points = [int(point * scalar) for point in self.points[::self.step_size]]
+        else:
+            points = self.points[::self.step_size]
+                 
+        self_x, self_y, self_w, self_h = self.area          
+        point_count = len(points)
+        if point_count > self_w:        
+            x_spacing, extra = divmod(len(points), self_w)
+            x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
+        else:
+            x_spacing = 1
+            
         last_point = (self_x, self_y + self_h)
         color = self.color
-        for x_coord, y_coord in enumerate(point for point in points[::self.step_size] if point):            
+        for x_coord, y_coord in enumerate(point for point in points if point):            
             point = (self_x + (x_coord * x_spacing), y_coord)
             coordinates.extend(point)
             lines.extend(last_point + point)
             last_point = point
             
-        window = self#self.application_window
+        window = self.application_window
+        window.draw("fill", self.area, self.background_color)
         if self.draw_points:
             window.draw("point", coordinates, color=color)
         if self.draw_lines:

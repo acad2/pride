@@ -159,14 +159,20 @@ def serialize(python_object):
     
 def deserialize(stream):
     struct = unpack_structure(stream)
-    print type(struct).__name__, struct, dir(struct)
-    return struct
+    _type, count = struct.__class__.__name__.split('_', 1)
+    if _type == "dict":
+        output = {}
+        for attribute, __type in struct._fields_:
+            output[attribute] = getattr(struct, attribute)
+    else:
+        raise ValueError()    
+    return output
     
 def test_serialize_deserialize():
     data = {"int" : 1, "bool" : True, "float" : 0.0, "str" : "str", "None" : None}
     stream = serialize(data)
     _data = deserialize(stream)
-    
+    assert _data == data
         
 class Persistent_Object(pride.base.Base):
     

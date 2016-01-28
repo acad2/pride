@@ -513,8 +513,13 @@ class Button(Window_Object):
 
 class Application(Window):
     
-    defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", )}
+    defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", 
+                                        "pride.gui.gui.Window")}
     def _get_application_window(self):
         return self.objects["Window"][0]
     application_window = property(_get_application_window)
     
+    def draw_texture(self):
+        super(Application, self).draw_texture()
+        self.application_window.texture_invalid = True
+        

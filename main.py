@@ -15,10 +15,9 @@ if __name__ == "__main__":
         except BaseException as error:                        
             running = False            
             pride.objects["->Finalizer"].run()            
-            if isinstance(error, SystemExit):
-                python.alert("System shutdown intiated. Running finalizer... ", 
-                            level=python.verbosity["shutdown"])                
-                if error.code == "Restart":
+            if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
+                python.alert("Session shutdown intiated... ", level=python.verbosity["shutdown"])                
+                if getattr(error, "code", '') == "Restart":
                     try:
                         pride.objects["->User"].delete()
                     except KeyError:
