@@ -24,14 +24,4 @@ def create(instance_type, *args, **kwargs):
 
 def delete(reference):
     objects[reference].delete()       
-import pride.audio
-pride.audio.enable()
-import pride.gui
-pride.gui.enable()
-
-graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Unpack_Factors_Graph")
 """}
-
-pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}
-
-pride_user_User_defaults = {'username' : 'localhost'}
