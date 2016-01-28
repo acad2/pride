@@ -394,7 +394,7 @@ def test_hash_chain():
     output = ''
     from hashlib import sha256
     for cycle_length in itertools.count():
-        output = hash_function(output, output_size=4)
+        output = hash_function(output, output_size=1)
         if output in outputs:
             print "Cycle length: ", cycle_length
             break

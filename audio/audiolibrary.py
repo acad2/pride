@@ -32,6 +32,7 @@ def wav_file_info(parse_args=True, **kwargs):
 class Audio_Reactor(base.Base):
     
     defaults = {"source_name" : ''}
+    verbosity = {"remove_listener_error" : 0}
     
     def __init__(self, **kwargs):
         self.listeners = []
@@ -64,7 +65,11 @@ class Audio_Reactor(base.Base):
         self.listeners.append(reference)
             
     def remove_listener(self, reference):
-        self.listeners.remove(reference)    
+        try:
+            self.listeners.remove(reference)
+        except ValueError:
+            self.alert("Failed to remove listener '{}'; Not in listeners list",
+                       (reference, ), level=self.verbosity["remove_listener_error"])
                     
 
 class Wav_File(Audio_Reactor):

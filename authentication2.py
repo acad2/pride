@@ -510,28 +510,6 @@ class Authenticated_Client(pride.base.Base):
         super(Authenticated_Client, self).delete()
         
         
-class Authenticated_Peer(Authenticated_Service):
-    
-    defaults = {"authenticated_client_type" : "pride.authentication2.Authenticated_Client",
-                "peer_ip" : "localhost", "peer_port" : 40022, "username" : '',
-                "target_service" : ''}
-                            
-    remotely_available_procedures = ("test_method", )
-        
-  #  def __init__(self, **kwargs):
-  #      super(Authenticated_Peer, self).__init__(**kwargs)
-  #      self.create(self.authenticated_client_type, ip=self.peer_ip, port=self.peer_port,
-  #                  username=self.username, target_service=self.target_service)
-        
-    def on_login(self):
-        session_id, peername = self.current_session
-        client_config = self.client_configuration
-        client_config["ip"] = peername[0]
-        self.create(self.authenticated_client_type, **client_config)
-        
-    def test_method(self, *args):
-        self.alert("Test method has been called {}".format(args), level=0)
-        
 def test_Authenticated_Service2():
     service = objects["->Python"].create(Authenticated_Service)
     client = objects["->Python"].create(Authenticated_Client, auto_login=False)

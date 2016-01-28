@@ -498,7 +498,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         
 class Window(Window_Object):
 
-    defaults = {"pack_mode" : "z", "size" : pride.gui.SCREEN_SIZE}
+    defaults = {"pack_mode" : "main", "size" : pride.gui.SCREEN_SIZE}
 
     
 class Container(Window_Object):
@@ -514,4 +514,7 @@ class Button(Window_Object):
 class Application(Window):
     
     defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", )}
+    def _get_application_window(self):
+        return self.objects["Window"][0]
+    application_window = property(_get_application_window)
     

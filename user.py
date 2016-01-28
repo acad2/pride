@@ -116,8 +116,8 @@ class User(pride.base.Base):
             raise ValueError("Invalid key length supplied ({})".format(key_length))
         
         kdf = invoke("pride.security.key_derivation_function", 
-                          algorithm=self.hash_function, length=key_length, 
-                          salt=salt, iterations=self.kdf_iteration_count)
+                     algorithm=self.hash_function, length=key_length, 
+                     salt=salt, iterations=self.kdf_iteration_count)
         master_key = kdf.derive(self.username + ':' + self.password)
         
         hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,

@@ -1,4 +1,7 @@
+import itertools
+
 import pride.gui.gui
+import pride.vmlibrary
 
 class Graph(pride.gui.gui.Application):
     
@@ -17,10 +20,18 @@ class Graph(pride.gui.gui.Application):
         self.texture_invalid = True
     points = property(_get_points, _set_points)
     
+    @pride.preprocess
+    def _generate_draw_x_descriptors():
+        source = []
+        for draw_type in ("lines", "points", "average"):
+            source.append("    def _get_draw_{}(self): return self._draw_{}\n".format(draw_type, draw_type))
+            source.append("    def _set_draw_{}(self, value):".format(draw_type))
+            source.append("        self._draw_{} = value; self.texture_invalid = True".format(draw_type))
+            source.append("    draw_{} = property(_get_draw_{}, _set_draw_{})\n".format(draw_type, draw_type, draw_type))
+        return '\n'.join(source)
+        
     def __init__(self, **kwargs):
-        super(Graph, self).__init__(**kwargs)
-        self.x_spacing = self.w / self.x_axis_range[1]
-        self.y_spacing = self.h / self.y_axis_range[1]        
+        super(Graph, self).__init__(**kwargs)     
         self.points = self.points or [0 for counter in range(self.x_axis_range[1])]             
         
     def left_click(self, mouse):
@@ -32,28 +43,41 @@ class Graph(pride.gui.gui.Application):
     def draw_texture(self):        
         self.draw("fill", self.area, self.background_color)
         lines, coordinates = [], []
-        self_x, self_y, self_w, self_h = self.area        
-        x_spacing = self.x_spacing
-        y_spacing = self.y_spacing
+        points = self.points
+        
+        self_x, self_y, self_w, self_h = self.area      
+       # x_axis_range = (0, len(points))
+        #y_axis_range = (0, max(points))
+                
+        x_spacing = self_w / (len(points) or 1) #self.x_spacing
+        max_point = max(points)
+        y_spacing = (max_point / self_h) or 1 #self.y_spacing
+        if not y_spacing:
+            y_spacing, extra = divmod(max_point, self_h)
+            y_spacing += 1 if extra else 0
+        print len(points), x_spacing, y_spacing
+        
         last_point = (self_x, self_y + self_h)
         color = self.color
-        for x_coord, y_coord in enumerate(point for point in self.points[::self.step_size] if point):            
+        for x_coord, y_coord in enumerate(point for point in points[::self.step_size] if point):            
             point = (self_x + (x_coord * x_spacing), y_coord)
             coordinates.extend(point)
             lines.extend(last_point + point)
             last_point = point
+            
+        window = self#self.application_window
         if self.draw_points:
-            self.draw("point", coordinates, color=color)
+            window.draw("point", coordinates, color=color)
         if self.draw_lines:
-            self.draw("line", lines, color=color)            
+            window.draw("line", lines, color=color)            
         if self.draw_average:
             average_object = pride.datastructures.Average(values=self.points)
             minimum, _average, maximum = average_object.range
             _average = int(average_object.meta_average)
             right_side = self_x + self_w            
-            self.draw("line", (self_x, minimum, right_side, minimum), color=self.color)
-            self.draw("line", (self_x, _average, right_side, _average), color=self.color)
-            self.draw("line", (self_x, maximum, right_side, maximum), color=self.color)
+            window.draw("line", (self_x, minimum, right_side, minimum), color=self.color)
+            window.draw("line", (self_x, _average, right_side, _average), color=self.color)
+            window.draw("line", (self_x, maximum, right_side, maximum), color=self.color)
         
             
 class Audio_Visualizer(Graph):
@@ -71,4 +95,27 @@ class Audio_Visualizer(Graph):
     def delete(self):
         objects[self.audio_input].remove_listener(self.reference)
         super(Audio_Visualizer, self).delete()
+                
+                
+class Grapher(pride.vmlibrary.Process):
+    
+    defaults = {"priority" : .02}
+    mutable_defaults = {"counter" : itertools.count, "graph" : Graph}
+    
+    def run(self):
+        graph = self.graph
+        graph.points.append(self.function(next(self.counter)))
+        del graph.points[0]
+        graph.texture_invalid = True        
+
+    def function(self, function_input):
+        raise NotImplementedError
+        
+        
+from hashtest import *
+        
+class Unpack_Factors_Graph(Grapher):
+            
+    def function(self, function_input):        
+        return unpack_factors(binary_form(function_input) + '1')
         
