@@ -75,7 +75,7 @@ class Socket(base.Wrapper):
                 
                 # if timeout is not 0, then settimeout is called when initializing
                 # otherwise setblocking is called.
-                "blocking" : 0, "timeout" : 0,
+                "blocking" : 0, "timeout" : 0,                                
                 
                 # connect_timeout is how long, in seconds, to wait before giving up when
                 # when attempting to establish a new connection to a server. 
@@ -144,7 +144,7 @@ class Socket(base.Wrapper):
         kwargs.setdefault("wrapped_object", socket.socket(family, type, proto))        
         super(Socket, self).__init__(**kwargs)
         
-        if self.timeout:
+        if self.timeout:            
             self.settimeout(self.timeout) 
         else:
             self.setblocking(self.blocking)           
@@ -215,6 +215,7 @@ class Socket(base.Wrapper):
         sockname = self.sockname
         peername = self.peername
         byte_count = len(data)
+#        assert not self.deleted 
 #        assert not self.closed
         if self.bypass_network_stack:
             if not self._endpoint_reference:                
@@ -370,7 +371,7 @@ class Tcp_Socket(Socket):
         connection_manager.socket_reference[sockname] = self.reference
         connection_manager.inbound_connections[sockname] = self.peername
         self._saved_in_attribute = "inbound_connections"
-        
+            
         
 class Server(Tcp_Socket):
 

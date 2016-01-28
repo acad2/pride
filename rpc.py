@@ -7,6 +7,7 @@ import traceback
 import json
 import pickle
 import itertools
+import time
 
 import pride
 import pride.base
@@ -139,6 +140,15 @@ class Rpc_Connection_Manager(pride.base.Base):
                 raise            
             host = self.hosts[host_info] = self.create(self.requester_type, host_info=host_info)  
             return host
+    
+    def add(self, _object):
+        self.hosts[_object.host_info] = _object
+        super(Rpc_Connection_Manager, self).add(_object)
+        
+    def remove(self, _object):
+        super(Rpc_Connection_Manager, self).remove(_object)
+        del self.hosts[_object.host_info]
+        
         
 class Rpc_Server(pride.networkssl.SSL_Server):
     """ Creates Rpc_Sockets for handling rpc requests. By default, this
@@ -213,12 +223,26 @@ class Rpc_Client(Packet_Client):
 class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
     
+    defaults = {"idle_after" : 600}
     verbosity = {"request_exception" : 0, "request_result" : "vv"}
         
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
         self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])
         
+    def on_ssl_authentication(self):
+        if self.idle_after:
+            self._idle_timer = time.time()
+            pride.Instruction(self.reference, "check_idle").execute(priority=self.idle_after)
+        return super(Rpc_Socket, self).on_ssl_authentication()
+        
+    def check_idle(self):
+        if time.time() - self._idle_timer >= self.idle_after:            
+            self.delete()
+        else:
+            print "Relaunching idle instruction"
+            pride.Instruction(self.reference, "check_idle").execute(priority=self.idle_after)
+            
     def recv(self, packet_count=0):
         peername = self.peername
         for (session_id, component_name, method, 

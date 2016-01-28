@@ -144,17 +144,43 @@ def unpack_structure(packed_data):
     struct_type = new_struct_type_from_ctypes(name, *fields)
     return struct_type(*values)   
     
+def serialize(python_object):
+    try:
+        attributes = python_object.__reduce__()
+    except (TypeError, AttributeError):
+        if not isinstance(python_object, dict):
+            attributes = python_object.__dict__
+        else:
+            attributes = python_object
+    attribute_types = dict((key, type(value)) for key, value in attributes.items())
+    struct_type = new_struct_type(python_object.__class__.__name__, **attribute_types)
+    struct = struct_type(**attributes)
+    return pack_structure(struct)
+    
+def deserialize(stream):
+    struct = unpack_structure(stream)
+    print type(struct).__name__, struct, dir(struct)
+    return struct
+    
+def test_serialize_deserialize():
+    data = {"int" : 1, "bool" : True, "float" : 0.0, "str" : "str", "None" : None}
+    stream = serialize(data)
+    _data = deserialize(stream)
+    
+        
 class Persistent_Object(pride.base.Base):
     
     store_in_dict = ("memory", "size", "defaults", "flags", "mutable_defaults", "verbosity",
                      "startup_components", "required_attributes", "alert", "reference",
-                     "store_in_dict", "objects", "struct_size", "references_to", "parent_name")    
+                     "store_in_dict", "objects", "struct_size", "references_to", "parent_name",
+                     "references_to")    
         
     def __setattr__(self, attribute, value):
         print "Setting attribute: ", attribute, value
         if attribute[:2] == "__" or attribute in self.store_in_dict:
             super(Persistent_Object, self).__setattr__(attribute, value)
         else:
+            print "Storing on disk: ", attribute
             try:
                 packed_struct = self.memory[:self.struct_size]
             except AttributeError:
@@ -281,5 +307,7 @@ if __name__ == "__main__":
     print "\n\nPassed new struct test\n\n"
     test_pack_structure()  
     print "\n\nPassed pack_structure test\n\n"
-    test_Persistent_Object()  
-    print "\n\nPassed Persistent_Object test\n\n"
+    test_serialize_deserialize()
+    print "\n\nPassed serialize/deserialize test\n\n"
+    #test_Persistent_Object()  
+    #print "\n\nPassed Persistent_Object test\n\n"

@@ -8,6 +8,7 @@ import pride.interpreter
 if __name__ == "__main__":
     running = True
     while running:
+        assert "->Python" not in objects
         python = pride.interpreter.Python(parse_args=True)                
         try:            
             python.start_machine()                

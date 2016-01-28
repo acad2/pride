@@ -56,7 +56,7 @@ class HKDF(object):
         return extract(input_keying_material, salt, self.hash_function)        
         
     def expand(self, psuedorandom_key, length, info=''):
-        return expand(psuedorandom_key, length=length, info=info, self.hash_function)
+        return expand(psuedorandom_key, length=length, info=info, hash_function=self.hash_function)
         
     def hkdf(self, input_keying_material, length, info='', salt=''):
         return hkdf(input_keying_material, length, info, salt)

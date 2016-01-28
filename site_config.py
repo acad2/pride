@@ -24,4 +24,12 @@ def create(instance_type, *args, **kwargs):
 
 def delete(reference):
     objects[reference].delete()       
+#import pride.audio
+#pride.audio.enable()
+#import pride.gui
+#pride.gui.enable()
+
+#graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Unpack_Factors_Graph")
 """}
+
+

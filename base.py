@@ -189,10 +189,7 @@ class Base(object):
             name = _name + str(instance_count)
         self._instance_count = instance_count
         self.reference = name
-        objects[self.reference] = self
-        
-        if self.parent:            
-            self.parent.add(self) 
+        objects[self.reference] = self        
             
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
@@ -223,7 +220,10 @@ class Base(object):
                         raise ArgumentError("Required argument {} not supplied".format(attribute))
                 except AttributeError:
                     raise ArgumentError("Required argument {} not supplied".format(attribute))
-                 
+         
+        if self.parent:            
+            self.parent.add(self)
+            
         if self.startup_components:
             for component_type in self.startup_components:
                 component = self.create(component_type)
