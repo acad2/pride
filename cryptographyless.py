@@ -6,8 +6,12 @@ import hashlib
 import hmac
 import os
 
+__all__ = ("InvalidTag", "psuedorandom_bytes", "encrypt", "decrypt")
+
 TEST_KEY = "\x00" * 16
 TEST_MESSAGE = "This is a sweet test message :)"
+
+class InvalidTag(Exception): pass
 
 def pack_data(*args): # copied from pride.utilities
     sizes = []
@@ -33,8 +37,12 @@ def _hmac_rng(key, seed, hash_function="sha512"):
         hasher.update(key + counter)
     
 def psuedorandom_bytes(key, seed, count, hash_function="sha512"): 
-    """ Generates count psuedorandom bytes, based on key and seed,
-        generated using hash_function with HMAC. """
+    """ usage: psuedorandom_bytes(key, seed, count, 
+                           hash_function="sha512") => psuedorandom bytes
+                
+        Generates count cryptographically secure psuedorandom bytes. 
+        Bytes are produced deterministically based on key and seed, using 
+        hash_function with _hmac_rng. """
     generator = _hmac_rng(key, seed, hash_function)
     output = ''
     output_size = getattr(hashlib, hash_function)().digest_size    
@@ -43,7 +51,7 @@ def psuedorandom_bytes(key, seed, count, hash_function="sha512"):
         output += next(generator)
     return output[:count]       
             
-def hash_stream_cipher(data, key, nonce, hash_function="sha512"):    
+def _hash_stream_cipher(data, key, nonce, hash_function="sha512"):    
     """ Generates key material and XORs with data. Provides confidentiality,
         but not authenticity or integrity. As such, this should seldom be used alone. """    
     output = bytearray(data)
@@ -52,28 +60,42 @@ def hash_stream_cipher(data, key, nonce, hash_function="sha512"):
     return bytes(output)    
         
 def encrypt(data, key, extra_data='', nonce='', hash_function="sha512", nonce_size=32):
-    """ Provides authenticated encryption of data, and authentication of 
-        nonce and any extra data as well. Encryption is performed by hash_stream_cipher
-        and integrity/authenticity via HMAC. """    
+    """ usage: encrypt(data, key, extra_data='', nonce='', 
+                hash_function="sha512", nonce_size=32) => encrypted_packet
+    
+        Encrypts data using key. 
+        Returns a packet of encrypted data, nonce, mac_tag, extra_data
+        Authentication and integrity of data, nonce, and extra data are assured
+        Confidentiality of data is assured.
+        
+        Encryption is provided by _hash_stream_cipher.
+        Integrity/authenticity are provided via HMAC. 
+        nonce is randomly generated when not supplied (recommended)
+        nonce_size defaults to 32; decreasing below 16 may destroy security"""    
     nonce = nonce or os.urandom(nonce_size)
-    encrypted_data = hash_stream_cipher(data, key, nonce, hash_function)
+    encrypted_data = _hash_stream_cipher(data, key, nonce, hash_function)
     mac_tag = hmac.HMAC(key, extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
     return pack_data(encrypted_data, nonce, mac_tag, extra_data)
         
 def decrypt(data, key, hash_function="sha512"):
-    """ Returns (extra_data, plaintext) when extra data is available, otherwise
-        returns plaintext. Authenticity and integrity of the plaintext is
-        (effectively) guaranteed. """
+    """ usage: decrypt(data, key, 
+                hash_function) => (extra_data, plaintext)
+                                   or
+                                   plaintext
+                                          
+        Returns (extra_data, plaintext) when extra data is available
+        Otherwise, just returns plaintext data. 
+        Authenticity and integrity of the plaintext/extra data is guaranteed. """
     hasher = getattr(hashlib, hash_function)
     encrypted_data, nonce, mac_tag, extra_data = unpack_data(data, 4)
     if hmac.HMAC(key, extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:
-        plaintext = hash_stream_cipher(encrypted_data, key, nonce, hash_function)
+        plaintext = _hash_stream_cipher(encrypted_data, key, nonce, hash_function)
         if extra_data:
             return (extra_data, plaintext)
         else:
             return plaintext
     else:
-        raise ValueError("Invalid tag")
+        raise InvalidTag("Invalid tag")
         
 def test_hmac_rng():
     output = ''
@@ -94,6 +116,17 @@ def test_encrypt_decrypt():
     packet = encrypt(TEST_MESSAGE, TEST_KEY, "extra_data")
     #print "Encrypted packet: \n\n\n", packet
     assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
+    
+    encrypted_data, nonce, mac_tag, extra_data = unpack_data(packet, 4)
+    extra_data = "Changed"
+    packet = pack_data(encrypted_data, nonce, mac_tag, extra_data)
+    try:
+        decrypt(packet, TEST_KEY)
+    except InvalidTag:
+        pass
+    else:
+        print "Failed to protect authenticity/integrity of extra_data"
+        assert False
     
 if __name__ == "__main__":
     test_hmac_rng()
