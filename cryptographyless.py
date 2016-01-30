@@ -4,10 +4,10 @@
 import itertools
 import hashlib
 import hmac
+import os
 
 TEST_KEY = "\x00" * 16
 TEST_MESSAGE = "This is a sweet test message :)"
-TEST_NONCE = "\x00"
 
 def pack_data(*args): # copied from pride.utilities
     sizes = []
@@ -24,7 +24,7 @@ def unpack_data(packed_bytes, size_count): # copied from pride.utilities
         packed_bytes = packed_bytes[size:]
     return data
     
-def hmac_rng(key, seed, hash_function="sha512"):
+def _hmac_rng(key, seed, hash_function="sha512"):
     """ Generates psuedorandom bytes via HMAC. Implementation could be improved to
         a compliant scheme like HMAC-DRBG. """
     hasher = hmac.HMAC(key, seed, getattr(hashlib, hash_function))
@@ -35,33 +35,27 @@ def hmac_rng(key, seed, hash_function="sha512"):
 def psuedorandom_bytes(key, seed, count, hash_function="sha512"): 
     """ Generates count psuedorandom bytes, based on key and seed,
         generated using hash_function with HMAC. """
-    generator = hmac_rng(key, seed, hash_function)
+    generator = _hmac_rng(key, seed, hash_function)
     output = ''
     output_size = getattr(hashlib, hash_function)().digest_size    
     iterations, extra = divmod(count, output_size)
     for round in range(iterations + 1 if extra else iterations):
         output += next(generator)
     return output[:count]       
-        
-def xor(input1, input2):
-    """ Returns the XOR of input1 and input2, where input1 and input2 are bytestrings """
-    assert len(input1) == len(input2)
-    output = bytearray(input1)
-    for index, byte in enumerate(bytearray(input2)):
-        output[index] ^= byte
-    return bytes(output)
-    
+            
 def hash_stream_cipher(data, key, nonce, hash_function="sha512"):    
     """ Generates key material and XORs with data. Provides confidentiality,
-        but not authenticity or integrity. As such, this should seldom be used alone. """
-    data_size = len(data)
-    key_material = psuedorandom_bytes(key, nonce, data_size, hash_function)
-    return xor(key_material, data)
+        but not authenticity or integrity. As such, this should seldom be used alone. """    
+    output = bytearray(data)
+    for index, key_byte in enumerate(bytearray(psuedorandom_bytes(key, nonce, len(data), hash_function))):
+        output[index] ^= key_byte
+    return bytes(output)    
         
-def encrypt(data, key, nonce, extra_data='', hash_function="sha512",):
+def encrypt(data, key, extra_data='', nonce='', hash_function="sha512", nonce_size=32):
     """ Provides authenticated encryption of data, and authentication of 
         nonce and any extra data as well. Encryption is performed by hash_stream_cipher
-        and integrity/authenticity via HMAC. """
+        and integrity/authenticity via HMAC. """    
+    nonce = nonce or os.urandom(nonce_size)
     encrypted_data = hash_stream_cipher(data, key, nonce, hash_function)
     mac_tag = hmac.HMAC(key, extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
     return pack_data(encrypted_data, nonce, mac_tag, extra_data)
@@ -84,22 +78,23 @@ def decrypt(data, key, hash_function="sha512"):
 def test_hmac_rng():
     output = ''
     one_megabyte = 1024 * 1024
-    for random_data in hmac_rng(TEST_KEY, TEST_NONCE):
+    for random_data in _hmac_rng(TEST_KEY, TEST_MESSAGE):
         output += random_data
         if len(output) >= one_megabyte: 
             break
     
     outputs = dict((x, output.count(chr(x))) for x in xrange(256))
     import pprint
-    pprint.pprint(sorted(outputs.items()))
-        
-    output2 = psuedorandom_bytes(TEST_KEY, TEST_NONCE, one_megabyte)
+    #pprint.pprint(sorted(outputs.items()))
+    
+    output2 = psuedorandom_bytes(TEST_KEY, TEST_MESSAGE, one_megabyte)
     assert output == output2, (len(output), len(output2))
     
 def test_encrypt_decrypt():        
-    packet = encrypt(TEST_MESSAGE, TEST_KEY, TEST_NONCE, "extra_data")
+    packet = encrypt(TEST_MESSAGE, TEST_KEY, "extra_data")
+    #print "Encrypted packet: \n\n\n", packet
     assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
     
 if __name__ == "__main__":
-   # test_hmac_rng()
+    test_hmac_rng()
     test_encrypt_decrypt()

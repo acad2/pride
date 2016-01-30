@@ -20,7 +20,7 @@ format_character = {ctypes.c_longlong : 'q', ctypes.c_longdouble : 'd',
 format_to_type = dict((value, key) for key, value in format_character.items())
              
 def new_struct_type(struct_name, *_fields, **fields):
-#    print "Making new struct with fields: ", _fields, fields.items()
+    print "Making new struct with fields: ", _fields, fields.items()
     if not (_fields or fields):
         return type(struct_name, (ctypes.Structure, ), {"_fields_" : []})
     else:
@@ -67,9 +67,9 @@ def get_structure_bytestream(structure):
     #return packed_data
 
     name = "{}_{}".format(type(structure).__name__, len(structure._fields_))
-    print "Packing values: ", ([name, fields_format, struct.pack(format_string, *values)] + 
-                               [get_structure_bytestream(getattr(structure, attribute)) for 
-                                attribute, _type in _values])
+  # print "Packing values: ", ([name, fields_format, struct.pack(format_string, *values)] + 
+  #                            [get_structure_bytestream(getattr(structure, attribute)) for 
+  #                             attribute, _type in _values])
     return utilities.pack_data(*[name, fields_format, struct.pack(format_string, *values)] + 
                                 [(attribute, get_structure_bytestream(getattr(structure, attribute))) for 
                                  attribute, _type in _values])
@@ -122,7 +122,8 @@ def pack_structure(structure):
                                
 def unpack_structure(packed_data):
     name, fields, packed_bytes = utilities.unpack_data(packed_data, 3)
-    print "\nUnpacking structure"
+    print "\nUnpacking structure", packed_data
+    print
     print "Name: ", name
     print "Fields: ", fields
     print "Packed data: ", packed_bytes
@@ -143,35 +144,73 @@ def unpack_structure(packed_data):
             _values.append(value)
     struct_type = new_struct_type_from_ctypes(name, *fields)
     return struct_type(*values)   
-    
+        
 def serialize(python_object):
-    try:
-        attributes = python_object.__reduce__()
-    except (TypeError, AttributeError):
-        if not isinstance(python_object, dict):
-            attributes = python_object.__dict__
-        else:
-            attributes = python_object
+    if isinstance(python_object, dict):
+        attributes = python_object.copy()
+    elif isinstance(python_object, list):
+        attributes = dict((str(index), item) for index, item in enumerate(python_object))
+    else:        
+        try:
+            attributes = python_object.__reduce__()
+        except (TypeError, AttributeError):
+            attributes = python_object.__dict__.copy()
+
+    sub_structs = []
+    for attribute, value in attributes.items():
+        if isinstance(value, dict) or isinstance(value, tuple) or isinstance(value, list):
+            attributes[attribute] = serialize(value)
+            print "Serealized nested object: ", len(attributes[attribute])
+            print
+            print attributes[attribute]
+            print
+            sub_structs.append(attribute)
+        
     attribute_types = dict((key, type(value)) for key, value in attributes.items())
     struct_type = new_struct_type(python_object.__class__.__name__, **attribute_types)
     struct = struct_type(**attributes)
-    return pack_structure(struct)
+    
+    for _sub in sub_structs:
+        print "\n\n\nSubstructure info: ", len(getattr(struct, _sub)), getattr(struct, _sub)
+    return utilities.pack_data(sub_structs, pack_structure(struct))
     
 def deserialize(stream):
-    struct = unpack_structure(stream)
+    sub_structs, packed_structure = utilities.unpack_data(stream, 2)
+    sub_structs = ast.literal_eval(sub_structs)
+    struct = unpack_structure(packed_structure)
     _type, count = struct.__class__.__name__.split('_', 1)
     if _type == "dict":
         output = {}
         for attribute, __type in struct._fields_:
             output[attribute] = getattr(struct, attribute)
+    elif _type == "tuple":
+        output = tuple(getattr(struct, attribute) for attribute, __type in struct._fields_)
+    elif _type == "list":
+        output = list(getattr(struct, attribute) for attribute, __type in struct._fields_)    
     else:
         raise ValueError()    
+        
+    for key in sub_structs:
+        print "Deserealizing: "
+        print
+        print output[key]
+        output[key] = deserialize(output[key])
+        
     return output
     
 def test_serialize_deserialize():
-    data = {"int" : 1, "bool" : True, "float" : 0.0, "str" : "str", "None" : None}
+    data = {"int" : 1, "bool" : True, "float" : 0.0, "str" : "str", "None" : None,
+            "list" : [1, 2, 3]}
     stream = serialize(data)
+    print "Serialized data:\n\n\n", stream
     _data = deserialize(stream)
+    print "Correct data: "
+    print
+    print data
+    print
+    print "Deserealized data: "
+    print
+    print _data
     assert _data == data
         
 class Persistent_Object(pride.base.Base):
@@ -292,8 +331,8 @@ def test_pack_structure():
     
     structure = struct_type(*(attributes[field_name] for field_name in field_names))
     saved_structure = pack_structure(structure)
-    print "Saved structure: "#, saved_structure
-    print utilities.unpack_data(saved_structure, 3)
+   # print "Saved structure: "#, saved_structure
+   # print utilities.unpack_data(saved_structure, 3)
     loaded_structure = unpack_structure(saved_structure)
     for name, value in attributes.items():
         assert getattr(loaded_structure, name) == value
@@ -303,16 +342,16 @@ def test_Persistent_Object():
     for attribute, value in {"test_string" : "test!", "test_int" : 1,
                              "test_float" : 1000.0, "test_bool" : True,
                              "test_none" : None, "test_tuple" : (1, 'test', None)}.items():
-        print "Setting: ", attribute, value
+  #      print "Setting: ", attribute, value
         setattr(persistent_object, attribute, value)
-        print "Testing: ", attribute
+  #      print "Testing: ", attribute
         assert getattr(persistent_object, attribute) == value
 
 if __name__ == "__main__":
-    test_new_struct()
-    print "\n\nPassed new struct test\n\n"
-    test_pack_structure()  
-    print "\n\nPassed pack_structure test\n\n"
+    #test_new_struct()
+    #print "\n\nPassed new struct test\n\n"
+    #test_pack_structure()  
+    #print "\n\nPassed pack_structure test\n\n"
     test_serialize_deserialize()
     print "\n\nPassed serialize/deserialize test\n\n"
     #test_Persistent_Object()  
