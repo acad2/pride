@@ -162,7 +162,7 @@ class User(pride.base.Base):
             does not encrypt, any extra_data. The data is encrypted using the 
             Users encryption key. Returns packed encrypted bytes. 
             
-            Encryption is done via AES-256-GCM. """
+            Encryption is done via AES-256-GCM. """        
         return pride.security.encrypt(data=data, key=self.encryption_key, iv=random._urandom(self.iv_size),
                                       extra_data=extra_data, algorithm=self.encryption_algorithm, 
                                       mode=self.encryption_mode)
@@ -170,8 +170,7 @@ class User(pride.base.Base):
     def decrypt(self, packed_encrypted_data):
         """ Decrypts packed encrypted data as returned by encrypt. The Users 
             encryption key is used to decrypt the data. """
-        return pride.security.decrypt(packed_encrypted_data, self.encryption_key, 
-                                      self.encryption_algorithm, self.encryption_mode)
+        return pride.security.decrypt(packed_encrypted_data, self.encryption_key)
     
     def authenticate(self, data):
         """ Authenticates and provides integrity to a piece of data. 

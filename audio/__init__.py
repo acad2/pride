@@ -23,7 +23,10 @@ if "Linux" == platform.system():
         if pride.shell.get_permission('\n'.join(source) + "\n\n" +
                                      "allow the above commands? "):        
             [os.system(command) for command in source]
-            
+else:
+    def install_pyaudio():
+        os.system("pip install pyaudio")
+                
 def enable():
     """ Creates an instance of pride.audio.audiolibrary.Audio_Manager if
         one does not already exist. """

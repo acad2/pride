@@ -1,32 +1,8 @@
 import itertools   
 import binascii
 
-ASCII = ''.join(chr(x) for x in range(256))
 # helper functions
 
-def rotate(input_string, amount):
-    """ Rotate input_string by amount. Amount may be positive or negative.
-        Example:
-            
-            >>> data = "0001"
-            >>> rotated = rotate(data, -1) # shift left one
-            >>> print rotated
-            >>> 0010
-            >>> print rotate(rotated, 1) # shift right one, back to original
-            >>> 0001 """
-    if not amount or not input_string:            
-        return input_string    
-    else:
-        amount = amount % len(input_string)
-        return input_string[-amount:] + input_string[:-amount]
-        
-def slide(iterable, x=16):
-    """ Yields x bytes at a time from iterable """
-    slice_count, remainder = divmod(len(iterable), x)
-    for position in range((slice_count + 1 if remainder else slice_count)):
-        _position = position * x
-        yield iterable[_position:_position + x]   
-        
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """
     try:
@@ -60,6 +36,29 @@ _type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bi
 def cast(input_data, _type):
     return _type_resolver[_type](input_data)
     
+def rotate(input_string, amount):
+    """ Rotate input_string by amount. Amount may be positive or negative.
+        Example:
+            
+            >>> data = "0001"
+            >>> rotated = rotate(data, -1) # shift left one
+            >>> print rotated
+            >>> 0010
+            >>> print rotate(rotated, 1) # shift right one, back to original
+            >>> 0001 """
+    if not amount or not input_string:            
+        return input_string    
+    else:
+        amount = amount % len(input_string)
+        return input_string[-amount:] + input_string[:-amount]
+        
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x]   
+            
 def prime_generator():
     """ Generates prime numbers in successive order. """
     primes = [2]
@@ -112,43 +111,58 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
     output *= variable ** power       
     return output                       
                             
-# key permutation, rotate key, cryptanalyze  2 byte permutation                    
-def hash_function(hash_input, key='', output_size=32, capacity=32, rate=32):  
-    state_size = capacity + rate
-    hash_input += str(len(hash_input))# + '1'
-    if len(hash_input) > state_size:
-        state = bytearray(hash_input[:state_size])
-        permute_state(state)
-        for _bytes in slide(bytearray(hash_input[state_size:]), state_size):    
-            for index, byte in enumerate(_bytes):
-                state[index] ^= byte
-            permute_state(state)                
-    else:        
-        state = hash_input
-        while len(state) < state_size:
-            state = byte_form(unpack_factors(binary_form(state)))        
-        state = bytearray(one_way_compression(state, state_size))
-        permute_state(state)
+def mixing_subroutine(_bytes):    
+    byte_length = len(_bytes)
+    key = (45 + sum(_bytes)) * byte_length * 2    
+    for counter, byte in enumerate(_bytes):
+        psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
+        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)             
+    return _bytes  
     
+def confusion_shuffle(input_data):
+    key_material = binary_form(input_data)       
+    for index, byte in enumerate(bytearray(input_data)):
+        key_material = rotate(key_material[:index * 8], (index + 1) * (1 + byte)) + key_material[index * 8:]     
+    return xor_compression(input_data + byte_form(key_material), len(input_data))
+    
+def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
+                    mix_state_function=mixing_subroutine):  
+    state_size = capacity + rate
+    state = bytearray(state_size)
     if key:
         for index, value in enumerate(bytearray(key)):
-            state[index % capacity] ^= value
-        permute_state(state)
-        
+            state[capacity + (index % rate)] ^= value
+        mix_state_function(state)
+            
+    if len(hash_input) > state_size:
+        for _bytes in slide(bytearray(hash_input), state_size):    
+            for index, byte in enumerate(_bytes):
+                state[index] ^= byte
+            mix_state_function(state)                
+    else:        
+        state = hash_input + '1'
+        while len(state) < state_size:
+            state = byte_form(unpack_factors(binary_form(state)))        
+        state = bytearray(xor_compression(state, state_size))
+        mix_state_function(state)
+            
     output = state[-rate:]
     while len(output) < output_size:
-        permute_state(state)
+        mix_state_function(state)
         output += state[-rate:]
-    return bytes(output[:output_size])
-    
-def permute_state(_bytes):    
-    byte_length = len(_bytes)
-    state = (45 + sum(_bytes)) * byte_length * 2    
-    for counter, byte in enumerate(_bytes):
-        psuedorandom_byte = pow(251, state ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
-        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)             
-    return _bytes        
+    return bytes(output[:output_size])    
+      
 
+#def permute_state(input_data):
+#    data = bytearray(input_data)    
+#    key = (45 + sum(data)) * 2 * len(data)
+#    for index, byte in enumerate(data):
+#        prf_input = sum(data[:index] + data[index:]) + key + index
+#        psuedorandom_byte = pow(251, prf_input, 257) % 256
+#        data[index] ^= psuedorandom_byte
+#        key ^= index ^ psuedorandom_byte
+#    return bytes(data)
+                    
 def invert_permutation(_bytes):
     import itertools
     length = len(_bytes)
@@ -175,7 +189,7 @@ def invert_permutation(_bytes):
             print "ambiguous recovery: ", psuedorandom_byte, possible_inputs
     return recovered
     
-def one_way_compression(data, state_size=64):    
+def xor_compression(data, state_size=64):    
     output = bytearray('\x00' * state_size)
     for _bytes in slide(data, state_size):
         for index, byte in enumerate(bytearray(_bytes)):
@@ -188,17 +202,17 @@ def stream_cipher(data, key, iv):
         Encryption and decryption are the same operation. """
     assert isinstance(iv, bytes)
     data_size = len(data)
-    key_material = hash_function(key + iv, output_size=data_size)
-    return one_way_compression(data + key_material, data_size)        
+    key_material = sponge_function(key + iv, output_size=data_size)
+    return xor_compression(data + key_material, data_size)        
         
 def encrypt(data, key, iv, mac_size=16):
     """ Authenticated encryption function. Similar to stream_cipher, but with 
         authentication/integrity included. Returns mac + ciphertext. """
     assert isinstance(iv, bytes)
     data_size = len(data)
-    key_material = hash_function(key + iv, output_size=data_size + mac_size)
-    ciphertext = one_way_compression(data + key_material[:-mac_size], data_size)
-    mac = hash_function(key_material[-mac_size:] + ciphertext, output_size=mac_size)
+    key_material = sponge_function(key + iv, output_size=data_size + mac_size)
+    ciphertext = xor_compression(data + key_material[:-mac_size], data_size)
+    mac = sponge_function(key_material[-mac_size:] + ciphertext, output_size=mac_size)
     return mac + ciphertext
     
 def decrypt(data, key, iv, mac_size=16):
@@ -207,11 +221,11 @@ def decrypt(data, key, iv, mac_size=16):
     assert isinstance(iv, bytes)
     mac, ciphertext = data[:mac_size], data[mac_size:]#pride.utilities.unpack_data(data, 2)
     data_size = len(ciphertext)
-    key_material = hash_function(key + iv, output_size=data_size + mac_size)
-    if hash_function(key_material[-mac_size:] + ciphertext, output_size=mac_size) != mac:
+    key_material = sponge_function(key + iv, output_size=data_size + mac_size)
+    if sponge_function(key_material[-mac_size:] + ciphertext, output_size=mac_size) != mac:
         raise ValueError("Invalid mac")
     else:
-        return one_way_compression(ciphertext + key_material[:-mac_size], data_size)   
+        return xor_compression(ciphertext + key_material[:-mac_size], data_size)   
         
 class Hash_Object(object):
                         
@@ -230,10 +244,10 @@ class Hash_Object(object):
                 self.state = self.hash(hash_input)
         
     def hash(self, hash_input, key=''):
-        return hash_function(hash_input, key, self.output_size, self.capacity, self.rate)
+        return sponge_function(hash_input, key, self.output_size, self.capacity, self.rate)
        
     def update(self, hash_input):
-        self.state = one_way_compression(self.state + self.hash(hash_input), self.state_size)
+        self.state = xor_compression(self.state + self.hash(hash_input), self.state_size)
         
     def digest(self):
         return self.state
@@ -243,94 +257,17 @@ class Hash_Object(object):
                            rate=self.rate, state=self.state)
 
 # test functions        
-def hamming_distance(input_one, input_two):
-    size = len(input_one)
-    if len(input_two) != size:
-        raise ValueError("Inputs must be same length")
-    count = 0
-    for index, bit in enumerate(input_one):
-        if input_two[index] == bit:
-            count += 1
-    return count
-    #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
-         
-def print_hash_comparison(output1, output2):
-    output1_binary = binary_form(output1)
-    output2_binary = binary_form(output2)
-    _distance = hamming_distance(binary_form(output1), binary_form(output2))
-    bit_count = len(output1_binary)
-    print "bit string length: ", bit_count
-    print "Hamming weights: ", output1_binary.count('1'), output2_binary.count('1')
-    print "Hamming distance and ratio: ", _distance, _distance / float(bit_count)
-    print output1_binary
-    print output2_binary    
-    print output1
-    print output2
-    
-def test_difference():
-    from hashlib import sha256
-    #output1 = sha256("The quick brown fox jumps over the lazy dog").digest()
-    #output2 = sha256("The quick brown fox jumps over the lazy dog").digest()
-    output1 = hash_function("The quick brown fox jumps over the lazy dog" * 100, output_size=32)
-    output2 = hash_function("The quick brown fox jumps over the lazy cog" * 100, output_size=32)    
-    
-   # for x in xrange(10):
-   #     output1 = hash_function(output1, output_size=32)
-   #     output2 = hash_function(output2, output_size=32)
-    print_hash_comparison(output1, output2)
-    
-def test_time():
-    from pride.decorators import Timed
-    from hashlib import sha256
-    print Timed(sha256, 100)("Timing test hash input" * 1000)
-    print Timed(hash_function, 100)("Timing test hash input" * 1000)
-    #hash_function("Timing test hash input" * 10000)
-    
-def test_bias():
-    biases = [[] for x in xrange(8)]    
-    outputs2 = []
-    from hashlib import sha256
-    for x in xrange(256):
-        output = hash_function(chr(x), output_size=32)
-        for index, byte in enumerate(output[:8]):
-            biases[index].append(ord(byte))
-        outputs2.extend(output[:8])
-        #outputs.append(ord(output[0]))    
-    import pprint
-    print "Byte bias: ", [len(set(_list)) for _list in biases]
-  #  for _list in biases:
-  #      print sorted(_list)    
-    print "Symbols out of 256 that appeared anywhere: ", len(set(outputs2))
-    
-def test_collisions():      
-    outputs = {}    
-    from hashlib import sha256
-    for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
-        hash_input = ''.join(possibility)        
-        hash_output = hash_function(hash_input, output_size=4)
-        assert hash_output not in outputs, ("Collision", count, hash_output, binary_form(outputs[hash_output]), binary_form(hash_input))
-        outputs[hash_output] = hash_input
-    #    print hash_input, hash_output
-        
+            
 def test_hash_object():
     hasher = Hash_Object("Test data")
-    assert hasher.digest() == hash_function("Test data")
+    assert hasher.digest() == sponge_function("Test data")
     
 def test_encrypt_decrypt():
     message = "I am an awesome test message, for sure :)"
     key = "Super secret key"
     ciphertext = encrypt(message, key, '0')
     assert decrypt(ciphertext, key, '0') == message
-    
-def test_performance():
-    from pride.decorators import Timed
-    print Timed(hash_function, 1)('', output_size=1024 * 1024)
-    
-    output = '\x00' * 1024 * 1024
-    print Timed(hash_function, 1)(output)
-    from hashlib import sha256
-    print Timed(sha256, 100)(output)
-    
+        
 def test_chain_cycle(state="\x00", key=""):
     state = bytearray(key + state)
     size = len(state)
@@ -378,39 +315,19 @@ def test_permutation():
     print best# [char for char in reversed(cycle)]
     #print
     print [char for char in _outputs], "\n"
-    print set(ASCII).difference(_outputs)
-    
-def test_randomness():
-    import random
-    from hashlib import sha512
-    #random_bytes = random._urandom(1024 * 1024)
-    random_bytes = hash_function('', output_size=1024 * 1024)
-    outputs = dict((x, random_bytes.count(chr(x))) for x in xrange(256))
-    import pprint
-    pprint.pprint(sorted(outputs.items()))
-        
-def test_hash_chain():
-    outputs = ['']
-    output = ''
-    from hashlib import sha256
-    for cycle_length in itertools.count():
-        output = hash_function(output, output_size=1)
-        if output in outputs:
-            print "Cycle length: ", cycle_length
+    print set(''.join(chr(x) for x in xrange(256))).difference(_outputs)
+            
+def test_mixing_function2():
+    data = "\x00"
+    outputs = [data]
+    while True:
+        data = mixing_function2(data)
+        if data in outputs:
             break
-        outputs.append(output)
-        
-if __name__ == "__main__":
-    #test_permutation()
-    #test_hash_chain()
-    test_chain_cycle()
+        outputs.append(data)
+    print len(outputs)
     
-    #test_hash_object()
-    #test_difference()
-    #test_bias()
-    #test_time()
-    #test_encrypt_decrypt()
-    #test_collisions()
-    #test_performance()
-    #test_randomness()
+if __name__ == "__main__":
+    from hashtests import test_hash_function
+    test_hash_function(sponge_function)
     

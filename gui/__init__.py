@@ -1,4 +1,5 @@
 import os
+import platform
 
 if "__file__" not in globals():
     __file__ = os.getcwd()
@@ -10,6 +11,10 @@ R = 0
 G = 115
 B = 10
 
+def install_pysdl2():
+    command = "pip install PySDL2" if platform.system() == "Windows" else "sudo pip install PySDL2"
+    os.system(command)
+    
 def point_in_area(area, position):
     x, y, w, h = area
     point_x, point_y = position

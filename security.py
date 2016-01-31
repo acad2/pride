@@ -38,7 +38,7 @@ def unpack_data(packed_bytes, size_count):
     
 try:
     import cryptography
-    raise ImportError
+   # raise ImportError
 except ImportError:
     # use an alternative file when the cryptography package is not installed
     import hashlib
@@ -124,7 +124,7 @@ except ImportError:
 
     def encrypt(data='', key='', iv=None, extra_data='', algorithm="sha512",
                 mode=None, backend=None, iv_size=16):        
-        iv = iv or random_bytes(iv_size)
+        iv = iv or random_bytes(iv_size)        
         return cryptographyless.encrypt(data, key, iv, extra_data)      
         
     def decrypt(packed_encrypted_data, key, algorithm="sha512",
@@ -206,7 +206,7 @@ else:
             return True
                                 
     def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
-                mode="GCM", backend=BACKEND, iv_size=16):
+                mode="GCM", backend=BACKEND, iv_size=16, mac_key=''):
         """ Encrypts data with the specified key. Returns packed encrypted bytes.
             If an iv is not supplied a random one of iv_size will be generated.
             By default, the GCM mode of operation is used and the iv is 
@@ -217,26 +217,26 @@ else:
                         getattr(modes, mode)(iv), 
                         backend=BACKEND).encryptor()
         if mode == "GCM":        
-            encryptor.authenticate_additional_data(extra_data)
-        ciphertext = encryptor.update(data) + encryptor.finalize()
+            encryptor.authenticate_additional_data(extra_data)            
+        ciphertext = encryptor.update(data) + encryptor.finalize()  
+        header = algorithm + '_' + mode
         try:
-            return pack_data(ciphertext, iv, encryptor.tag, extra_data)
+            return pack_data(header, ciphertext, iv, encryptor.tag, extra_data)
         except AttributeError:
-            return pack_data(ciphertext, iv)
+            return pack_data(header, ciphertext, iv, '', '')
         
-    def decrypt(packed_encrypted_data, key, algorithm="AES",
-                mode="GCM", backend=BACKEND):
+    def decrypt(packed_encrypted_data, key, backend=BACKEND):
         """ Decrypts packed encrypted data as returned by encrypt with the same key. 
             If extra data is present, returns plaintext, extra_data. If not,
             returns plaintext. Raises InvalidTag on authentication failure. """
-        ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data,
-                                                    4 if mode == "GCM" else 2)
+        header, ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data, 5)        
+        algorithm, mode = header.split('_', 1)
         if mode == "GCM" and not tag:
             raise ValueError("Tag not supplied for GCM mode")
         mode_args = (iv, tag) if mode == "GCM" else (iv, )
         decryptor = Cipher(getattr(algorithms, algorithm)(key), 
-                        getattr(modes, mode)(*mode_args), 
-                        backend=BACKEND).decryptor()
+                           getattr(modes, mode)(*mode_args), 
+                           backend=BACKEND).decryptor()
         if mode == "GCM":
             decryptor.authenticate_additional_data(extra_data)
         if extra_data:

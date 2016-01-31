@@ -59,7 +59,7 @@ def _hash_stream_cipher(data, key, nonce, hash_function="sha512"):
         output[index] ^= key_byte
     return bytes(output)    
         
-def encrypt(data, key, extra_data='', nonce='', hash_function="sha512", nonce_size=32):
+def encrypt(data, key, nonce='', extra_data='', hash_function="sha512", nonce_size=32):
     """ usage: encrypt(data, key, extra_data='', nonce='', 
                 hash_function="sha512", nonce_size=32) => encrypted_packet
     
@@ -74,8 +74,9 @@ def encrypt(data, key, extra_data='', nonce='', hash_function="sha512", nonce_si
         nonce_size defaults to 32; decreasing below 16 may destroy security"""    
     nonce = nonce or os.urandom(nonce_size)
     encrypted_data = _hash_stream_cipher(data, key, nonce, hash_function)
-    mac_tag = hmac.HMAC(key, extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
-    return pack_data(encrypted_data, nonce, mac_tag, extra_data)
+    header = hash_function + '_' + hash_function
+    mac_tag = hmac.HMAC(key, header + extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
+    return pack_data(header, encrypted_data, nonce, mac_tag, extra_data)
         
 def decrypt(data, key, hash_function="sha512"):
     """ usage: decrypt(data, key, 
@@ -86,9 +87,14 @@ def decrypt(data, key, hash_function="sha512"):
         Returns (extra_data, plaintext) when extra data is available
         Otherwise, just returns plaintext data. 
         Authenticity and integrity of the plaintext/extra data is guaranteed. """
-    hasher = getattr(hashlib, hash_function)
-    encrypted_data, nonce, mac_tag, extra_data = unpack_data(data, 4)
-    if hmac.HMAC(key, extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:
+    header, encrypted_data, nonce, mac_tag, extra_data = unpack_data(data, 5)
+    hash_function, _ = header.split('_', 1)
+    try:
+        hasher = getattr(hashlib, hash_function)
+    except AttributeError:
+        raise ValueError("Unsupported mode {}".format(header))
+        
+    if hmac.HMAC(key, header + extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:
         plaintext = _hash_stream_cipher(encrypted_data, key, nonce, hash_function)
         if extra_data:
             return (extra_data, plaintext)
@@ -113,7 +119,7 @@ def test_hmac_rng():
     assert output == output2, (len(output), len(output2))
     
 def test_encrypt_decrypt():        
-    packet = encrypt(TEST_MESSAGE, TEST_KEY, "extra_data")
+    packet = encrypt(TEST_MESSAGE, TEST_KEY, extra_data="extra_data")
     #print "Encrypted packet: \n\n\n", packet
     assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
     

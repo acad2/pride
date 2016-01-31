@@ -568,6 +568,7 @@ class Network(vmlibrary.Process):
                 _socket = readable[read_progress + read_counter]
                 _socket.alert("Caught non socket.error during recv: {}", (error, ), level=0)                
                 _socket.delete()
+              #  raise
                 read_progress += (read_counter + 1)
                 readable_count -= 1                
             else:                
