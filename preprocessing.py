@@ -35,12 +35,20 @@ special_symbols = misc + unused + DELIMITERS + OPERATORS
 class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
-        sys.meta_path as the first entry when pride is imported. """
+        sys.meta_path as the first entry when pride is imported.
+
+        Preprocessed source is stored in a file on disk. This is done via the
+        anydbm module, which doesn't offer the same consistency of data as a 
+        proper database. The cache can become corrupted and must be deleted, 
+        Caching is a performance optimization and not functionality critical. """
+        
     def __init__(self, preprocessors=tuple(), modify_builtins=None, cache_filename=".py.cache"):
         self._loading = ''
+        self.cache_filename = cache_filename
+        self._database_finalizer = lambda: self.database.close()
+        atexit.register(self._database_finalizer)
         
-        self.database = anydbm.open(cache_filename, 'c') # for caching preprocessed source
-        atexit.register(lambda: self.database.close())
+        self.database = anydbm.open(cache_filename, 'c') # for caching preprocessed source        
         
         self._outdated = set()
         sys.meta_path.insert(0, self)
@@ -90,6 +98,12 @@ class Compiler(object):
                         old_entry = self.database[module_name]
                     except KeyError:
                         old_entry = ''
+                    except anydbm._errors[1]: # bsddb.db.DBError
+                        atexit._exithandlers.remove(self._database_finalizer)
+                        self.database.close()
+                        os.remove(self.cache_filename)
+                        print "Source cache corrupted; Please restart pride."
+                        raise SystemExit()
                         
                     if old_entry[:64] != source_hash:
                         self._outdated.add(module_name)

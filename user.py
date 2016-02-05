@@ -55,7 +55,7 @@ class User(pride.base.Base):
                      "salt_size", "salt_filetype", "salt")
     
     flags = {"_password_verifier_size" : 32, "_reset_encryption_key" : False,
-             "_reset_file_system_key" : False}
+             "_reset_file_system_key" : False, "_reset_mac_key" : False}
     
     verbosity = {"password_verified" : 'v', "invalid_password" : 0, "login_success" : 0}
     
@@ -83,6 +83,8 @@ class User(pride.base.Base):
                 self.username = ''
                 if self._reset_encryption_key:
                     self.encryption_key = bytes()
+                if self._reset_mac_key:
+                    self.mac_key = bytes()
                 self.alert("Login failed", level=self.verbosity["invalid_password"])
                 continue
             else:
@@ -127,7 +129,11 @@ class User(pride.base.Base):
             encryption_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.encryption_key = encryption_kdf.derive(master_key)                
             self._reset_encryption_key = True
-                        
+        if not self.mac_key:
+            hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
+            mac_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
+            self.mac_key = mac_kdf.derive(master_key)
+            self._reset_mac_key = True
         # Create a password verifier by creating/finding a nonindexable 
         # encrypted file.
         with self.create(self.verifier_filetype,
@@ -151,11 +157,6 @@ class User(pride.base.Base):
             self.file_system_key = file_system_kdf.derive(master_key)            
         else:
             self.file_system_key = backup
-            
-        if not self.mac_key:
-            hkdf_options["info"] = self.hkdf_mac_info_string.format(self.username + salt)        
-            mac_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
-            self.mac_key = mac_kdf.derive(master_key)
                                 
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 
@@ -165,7 +166,7 @@ class User(pride.base.Base):
             Encryption is done via AES-256-GCM. """        
         return pride.security.encrypt(data=data, key=self.encryption_key, iv=random._urandom(self.iv_size),
                                       extra_data=extra_data, algorithm=self.encryption_algorithm, 
-                                      mode=self.encryption_mode)
+                                      mode=self.encryption_mode, mac_key=self.mac_key)
                                       
     def decrypt(self, packed_encrypted_data):
         """ Decrypts packed encrypted data as returned by encrypt. The Users 

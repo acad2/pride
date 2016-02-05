@@ -80,7 +80,7 @@ def encrypt(data, key, nonce='', extra_data='', hash_function="sha512", nonce_si
         
 def decrypt(data, key, hash_function="sha512"):
     """ usage: decrypt(data, key, 
-                hash_function) => (extra_data, plaintext)
+                hash_function) => (plaintext, extra_data)
                                    or
                                    plaintext
                                           
@@ -97,7 +97,7 @@ def decrypt(data, key, hash_function="sha512"):
     if hmac.HMAC(key, header + extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:
         plaintext = _hash_stream_cipher(encrypted_data, key, nonce, hash_function)
         if extra_data:
-            return (extra_data, plaintext)
+            return (plaintext, extra_data)
         else:
             return plaintext
     else:

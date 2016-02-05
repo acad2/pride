@@ -116,14 +116,14 @@ def mixing_subroutine(_bytes):
     key = (45 + sum(_bytes)) * byte_length * 2    
     for counter, byte in enumerate(_bytes):
         psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
-        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)             
-    return _bytes  
+        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)        
+    return _bytes
     
 def confusion_shuffle(input_data):
-    key_material = binary_form(input_data)       
+    output = binary_form(bytes(input_data))             
     for index, byte in enumerate(bytearray(input_data)):
-        key_material = rotate(key_material[:index * 8], (index + 1) * (1 + byte)) + key_material[index * 8:]     
-    return xor_compression(input_data + byte_form(key_material), len(input_data))
+        output = rotate(output[:index * 8], (index + 1) * (1 + byte)) + output[index * 8:]  
+    return byte_form(output)
     
 def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
                     mix_state_function=mixing_subroutine):  
@@ -153,7 +153,7 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     return bytes(output[:output_size])    
       
 
-#def permute_state(input_data):
+#def mixing_subroutine(input_data):
 #    data = bytearray(input_data)    
 #    key = (45 + sum(data)) * 2 * len(data)
 #    for index, byte in enumerate(data):
@@ -268,7 +268,7 @@ def test_encrypt_decrypt():
     ciphertext = encrypt(message, key, '0')
     assert decrypt(ciphertext, key, '0') == message
         
-def test_chain_cycle(state="\x00", key=""):
+def test_chain_cycle(state="\x00\x00", key=""):
     state = bytearray(key + state)
     size = len(state)
     outputs = [bytes(state)]
@@ -276,19 +276,23 @@ def test_chain_cycle(state="\x00", key=""):
     import random
     max_length = 0
     for cycle_length in itertools.count():
-        state = permute_state(state)        
-      #  assert len(state) == 2, len(state)
-        #state, key = state[:1], bytes(state[1:])
+        mixing_subroutine(state)   
+        #  assert len(state) == 2, len(state)
+        #state, key = state[:1], bytes(state[1:])                
         output = bytes(state)
+        if not state[0]:
+            state = bytearray(confusion_shuffle(state))
+           #  print index, len(state), state[index], len(mixing_subroutine(bytearray(state[index])))
+      #  print cycle_length
         if output in outputs:
             max_length = max(max_length, len(outputs))
-            break
+            #break
             print "Cycle length: ", cycle_length, max_length, len(outputs)
             outputs = [output]
         else:
      #       print cycle_length, len(output)
-            outputs.append(output)
-    print "Cycle length: ", cycle_length, len(outputs)
+            outputs.append(output)            
+    #print "Cycle length: ", cycle_length, len(outputs)
     
 def test_permutation():
     _input = "\x00"
@@ -298,7 +302,7 @@ def test_permutation():
     for initial_state in xrange(256):  
         outputs = []
         for y in xrange(256):
-            _input = permutation_function(_input, initial_state)
+            _input = mixing_subroutine(_input)
             outputs.append(_input)  
                 
         start = cycle = outputs.pop()
@@ -329,5 +333,5 @@ def test_mixing_function2():
     
 if __name__ == "__main__":
     from hashtests import test_hash_function
-    test_hash_function(sponge_function)
-    
+    #test_hash_function(sponge_function)
+    test_chain_cycle()
