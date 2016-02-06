@@ -77,7 +77,8 @@ from pride.errors import *
 #objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
-_NULL_SPACE = []
+_blank_spaces = {}
+_NULL_SPACE = []#Placeholder()
 
 def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
@@ -105,7 +106,7 @@ def load(attributes='', _file=None):
             
     new_self.on_load(attributes)
     return new_self
-        
+                
 class Base(object):
 
     __metaclass__ = pride.metaclass.Metaclass
@@ -275,8 +276,8 @@ class Base(object):
             raise DeleteError("{} has already been deleted".format(self.reference))
                     
         for child in self.children:
-            if child:
-                child.delete()            
+            child.delete()
+            
         if self.references_to:
             # make a copy, as remove will mutate self.references_to
             references = self.references_to[:]
@@ -299,14 +300,16 @@ class Base(object):
             self_objects[instance_class] = siblings = [instance]                         
         else:
             if instance in siblings:
-                raise AddError                
-            try:
-                next_free_space = heapq.heappop(self._blank_spaces)
-            except IndexError:
-                siblings.append(instance)
-            else:                 
-                siblings.insert(next_free_space, instance)
-                del siblings[next_free_space + 1]
+                raise AddError    
+            siblings.append(instance)
+            
+            #try:
+            #    next_free_space = heapq.heappop(self._blank_spaces)
+            #except IndexError:
+            #    siblings.append(instance)
+            #else:                 
+            #    siblings.insert(next_free_space, instance)
+            #    del siblings[next_free_space + 1]
                  
         instance.references_to.append(self.reference)          
         
@@ -315,17 +318,20 @@ class Base(object):
         
             Removes an instance from self.objects. Modifies object.objects
             and instance.references_to."""    
-        self.alert("Removing {}", [instance], level=self.verbosity["remove"])        
-        try:
-            storage = self.objects[type(instance).__name__]#instance.__class__.__name__]
-            index = storage.index(instance)
-        except (KeyError, ValueError):            
-            raise
-        else:            
-            heapq.heappush(self._blank_spaces, index)        
-            storage.insert(index, _NULL_SPACE)
-            del storage[index + 1]
-        instance.references_to.remove(self.reference)        
+        self.alert("Removing {}", [instance], level=self.verbosity["remove"])  
+        self.objects[type(instance).__name__].remove(instance)
+        instance.references_to.remove(self.reference)      
+        
+        #try:
+        #    storage = self.objects[type(instance).__name__]#instance.__class__.__name__]
+        #    index = storage.index(instance)
+        #except (KeyError, ValueError):            
+        #    raise
+        #else:            
+        #    heapq.heappush(self._blank_spaces, index)        
+        #    storage.insert(index, _NULL_SPACE)
+        #    del storage[index + 1]
+        #instance.references_to.remove(self.reference)        
     
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -451,8 +457,8 @@ class Base(object):
         for attribute, value in ((key, value) for key, value in
                                  self.__dict__.items() if key not in
                                  self.__class__.__dict__):
-            setattr(new_self, attribute, value)
-        assert new_self.reference == self.reference         
+            setattr(new_self, attribute, value)        
+        assert "reference" not in self.__class__.__dict__, self.__class__.__dict__ 
         for reference in self.references_to[:]:
             _object = pride.objects[reference]
             _object.remove(self)

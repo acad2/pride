@@ -27,7 +27,7 @@ def delete(reference):
 import pride.audio
 pride.audio.enable()
 import pride.gui
-pride.gui.enable()
+window = pride.gui.enable()
 
 graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
 """}

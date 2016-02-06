@@ -250,7 +250,9 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._texture_invalid
     def _set_texture_invalid(self, value):
         if not self._texture_invalid and value:
-            objects[self.sdl_window].invalidate_layer(self.z)
+            objects[self.sdl_window].invalidate_object(self)
+            #window.running = True
+            #objects[self.sdl_window].invalidate_layer(self.z)
         self._texture_invalid = value
     texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
     
@@ -259,10 +261,10 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             self.texture_invalid = True           
         super(Window_Object, self)._on_set(coordinate, value)
                                                                  
-    def _set_z(self, value):
-        objects[self.sdl_window].set_layer(self, value)
-        super(Window_Object, self)._set_z(value)
-    z = property(pride.gui.shapes.Bounded_Shape._get_z, _set_z)
+    #def _set_z(self, value):
+    #    objects[self.sdl_window].set_layer(self, value)
+    #    super(Window_Object, self)._set_z(value)
+    #z = property(pride.gui.shapes.Bounded_Shape._get_z, _set_z)
     
     def _get_text(self):
         return self._text
@@ -423,12 +425,39 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         # draw operations are enqueued and processed in batches by Renderer.draw
         self._draw_operations.append((figure, args, kwargs))
                                                                
-    def _draw_texture(self):
-        self.draw_texture()  
-        objects[self.sdl_window + "->Renderer"].draw(self.texture.texture, self._draw_operations)
-        self._draw_operations = []
-        self.texture_invalid = False            
-        return self.texture.texture
+    def _draw_texture(self):          
+        self.draw_texture()
+        instructions = self._draw_operations[:]
+        for child in self.children:
+            instructions.extend(child._draw_texture())
+        if self._texture_window_x != 0 or self._texture_window_y != 0:
+            x, y, w, h = self.area
+            #source_rect = [x + instance.texture_window_x,
+            #               y + instance.texture_window_y, w, h]    
+            #
+            #if x + w > screen_width:
+            #    w = screen_width - x
+            #if y + h > screen_height:
+            #    h = screen_height - y
+            #destination = (x, y, w, h)            
+            #instructions.append(("copy", source_rect, destination))
+            
+            # less readable, less code though, need to find way to do this automagically
+            instructions.append(("copy", (x + instance.texture_window_x,
+                                          y + instance.texture_window_y, 
+                                          w, h), 
+                                          (x, y,
+                                           screen_width - x if x + w > screen_width else w,
+                                           screen_height - y if y + h > screen_height else h)))
+                                          
+        self.texture_invalid = False
+        del self._draw_operations[:]
+        return instructions
+        
+        #objects[self.sdl_window + "->Renderer"].draw(self.texture.texture, self._draw_operations)
+        #self._draw_operations = []
+        #self.texture_invalid = False            
+        #return self.texture.texture
         
     def draw_texture(self):
         area = self.area
@@ -490,8 +519,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 
     def delete(self):
         self.pack_mode = None # clear Organizer cache
-        super(Window_Object, self).delete()
-        objects[self.sdl_window].remove_from_layer(self, self.z)
+        super(Window_Object, self).delete()                
         objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
         
@@ -515,11 +543,12 @@ class Application(Window):
     
     defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", 
                                         "pride.gui.gui.Window")}
-    def _get_application_window(self):
+    def _get_application_window(self):        
         return self.objects["Window"][0]
     application_window = property(_get_application_window)
     
     def draw_texture(self):
+      #  assert not self.deleted
         super(Application, self).draw_texture()
         self.application_window.texture_invalid = True
         
