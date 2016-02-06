@@ -73,7 +73,8 @@ class SDL_Window(SDL_Component):
             self.running = True                        
             self.run_instruction.execute(priority=self.priority)
                 
-    def add(self, instance):        
+    def create(self, *args, **kwargs):  
+        instance = super(SDL_Window, self).create(*args, **kwargs)
         if hasattr(instance, 'pack'):
             try:
                 instance.pack()
@@ -81,8 +82,8 @@ class SDL_Window(SDL_Component):
                 if instance.__class__.__name__ != "Organizer":
                     raise
             else:
-                self.on_screen.append(instance)
-        super(SDL_Window, self).add(instance)
+                self.on_screen.append(instance)        
+        return instance
         
     def remove(self, instance):
         try:

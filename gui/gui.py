@@ -467,7 +467,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             self.draw("text", area, self.text, 
                       bg_color=self.background_color, color=self.text_color)
         
-    def pack(self, modifiers=None):
+    def pack(self, modifiers=None):        
         organizer = objects[self.sdl_window + "->Organizer"]
         organizer.pack(self)
         if modifiers:
