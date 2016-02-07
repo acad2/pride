@@ -340,7 +340,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def __init__(self, **kwargs):               
         super(Window_Object, self).__init__(**kwargs)        
         self.texture_window_x = self.texture_window_y = 0
-        self.texture = create_texture(self.texture_size)
+        self.texture = None #create_texture(self.texture_size)
         self.texture_invalid = True
         
     def create(self, *args, **kwargs):
@@ -430,25 +430,24 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         instructions = self._draw_operations[:]
         for child in self.children:
             instructions.extend(child._draw_texture())
-        if self._texture_window_x != 0 or self._texture_window_y != 0:
+        if self._texture_window_x or self._texture_window_y:
             x, y, w, h = self.area
-            #source_rect = [x + instance.texture_window_x,
-            #               y + instance.texture_window_y, w, h]    
-            #
-            #if x + w > screen_width:
-            #    w = screen_width - x
-            #if y + h > screen_height:
-            #    h = screen_height - y
-            #destination = (x, y, w, h)            
-            #instructions.append(("copy", source_rect, destination))
+            source_rect = (x + self.texture_window_x,
+                           y + self.texture_window_y, w, h)  
             
-            # less readable, less code though, need to find way to do this automagically
-            instructions.append(("copy", (x + instance.texture_window_x,
-                                          y + instance.texture_window_y, 
-                                          w, h), 
-                                          (x, y,
-                                           screen_width - x if x + w > screen_width else w,
-                                           screen_height - y if y + h > screen_height else h)))
+            if x + w > MAX_W:
+                w = MAX_W - x
+            if y + h > MAX_H:
+                h = MAX_H - y
+            destination = (x, y, w, h)              
+            instructions.append(("copy", (objects[self.sdl_window]._texture.texture, source_rect, destination), {}))
+            
+            # less readable, less code though, need to find way to do this automagically            
+            #instructions.append(("copy", (self.texture.texture,
+            #                              (x + self.texture_window_x, y + self.texture_window_y, w, h), 
+            #                              (x, y, MAX_W - x if x + w > MAX_W else w,
+            #                                     MAX_H - y if y + h > MAX_H else h)), 
+            #                     {})) # empty kwargs
                                           
         self.texture_invalid = False
         del self._draw_operations[:]

@@ -24,5 +24,5 @@ def point_in_area(area, position):
             
 def enable():
     import pride
-    return pride.objects["->Python"].create("pride.gui.sdllibrary.SDL_Window")
+    return pride.objects["->Python"].create("pride.gui.sdllibrary.SDL_Window").reference
     

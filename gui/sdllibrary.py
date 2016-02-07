@@ -527,6 +527,7 @@ class Renderer(SDL_Component):
         self.instructions = dict((name, getattr(self, "draw_" + name)) for 
                                   name in ("point", "line", "rect", "rect_width", "text"))
         self.instructions["fill"] = self.fill
+        self.instructions["copy"] = self.copy
         self.clear()
     
     def _get_text_size(self, area, text, **kwargs):
