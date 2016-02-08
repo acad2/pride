@@ -27,10 +27,10 @@ def delete(reference):
 import pride.audio
 pride.audio.enable()
 import pride.gui
-#window = pride.gui.enable()
+window = pride.gui.enable()
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
-#objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
+objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 """}
 
 pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}

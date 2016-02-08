@@ -105,8 +105,8 @@ class Directory_Viewer(pride.gui.gui.Window):
         super(Directory_Viewer, self).__init__(**kwargs)
         self.create(Places_Bar)
         viewer = self.create(Column_Viewer)
-    #    self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
-    #                target=(viewer.reference, "texture_window_y"))
+        self.create("pride.gui.widgetlibrary.Scroll_Bar", pack_mode="right",
+                    target=(viewer.reference, "texture_window_y"))
                 
     
 class Column_Viewer(pride.gui.gui.Window):
@@ -118,7 +118,7 @@ class Column_Viewer(pride.gui.gui.Window):
     def __init__(self, **kwargs):
         super(Column_Viewer, self).__init__(**kwargs)
         for column_name in self.default_columns:
-            container = self.create("pride.gui.gui.Container", pack_mode="left", scroll_bars_enabled=True)
+            container = self.create("pride.gui.gui.Container", pack_mode="left", scroll_bars_enabled=False)
             container.create(Sort_Button, text=column_name, h_range=(20, 20))
             if column_name == "Name":
                 button_type = Filename_Button

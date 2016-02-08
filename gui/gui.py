@@ -433,13 +433,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         if self._texture_window_x or self._texture_window_y:
             x, y, w, h = self.area
             source_rect = (x + self.texture_window_x,
-                           y + self.texture_window_y, w, h)  
+                           min(y + self.texture_window_y, MAX_H - h), w, h)  
             
             if x + w > MAX_W:
                 w = MAX_W - x
             if y + h > MAX_H:
                 h = MAX_H - y
-            destination = (x, y, w, h)              
+            destination = (x, y, w, h)     
+            print source_rect, destination
             instructions.append(("copy", (objects[self.sdl_window]._texture.texture, source_rect, destination), {}))
             
             # less readable, less code though, need to find way to do this automagically            
