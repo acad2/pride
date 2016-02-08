@@ -58,9 +58,10 @@ class Shell(authentication2.Authenticated_Client):
     def result(self, packet):
         if not packet:
             return
-        else:            
-            sys.stdout.write('\b' * 4 + packet)# + "\n>>> ")
-        
+        else:                
+            print "Wtf?"
+            sys.stdout.write('\r' + packet)            
+            
 
 class Interpreter(authentication2.Authenticated_Service):
     """ Executes python source. Requires authentication from remote hosts. 

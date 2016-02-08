@@ -173,8 +173,8 @@ class Command_Line(pride.vmlibrary.Process):
                     component, method = self.default_program
                     program_input = input  
         pride.Instruction(component, method, program_input).execute()
-        if self.write_prompt:
-            sys.stdout.write(self.prompt)
+        #if self.write_prompt:
+        #    sys.stdout.write(self.prompt)
                 
     def handle_idle(self):
         if self._idle and not self.screensaver and not self.thread_started:
@@ -266,6 +266,8 @@ class Python_Shell(Program):
         else:
             self.lines = ''
         objects["->User->Command_Line"].set_prompt(self.prompt)        
+        sys.stdout.write("\b" * 4 + self.prompt)
+        sys.stdout.flush()
         
         
 class OS_Shell(Program):
