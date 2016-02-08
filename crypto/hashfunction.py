@@ -1,6 +1,7 @@
 import itertools   
 import binascii
 
+from utilities import cast, slide
 # helper functions
 
 def pack_data(*args): # copied from pride.utilities
@@ -17,63 +18,7 @@ def unpack_data(packed_bytes, size_count):
     for size in (int(size) for size in sizes):
         data.append(packed_bytes[:size])
         packed_bytes = packed_bytes[size:]
-    return data
-    
-def binary_form(_string):
-    """ Returns the a string representation of the binary bits that constitute _string. """
-    try:
-        return ''.join(format(ord(character), 'b').zfill(8) for character in _string)
-    except TypeError:        
-        bits = format(_string, 'b')
-        bit_length = len(bits)
-        if bit_length % 8:
-            bits = bits.zfill(bit_length + (8 - (bit_length % 8)))                
-        return bits
-        
-def byte_form(bitstring):
-    """ Returns the ascii equivalent string of a string of bits. """
-    try:
-        _hex = hex(int(bitstring, 2))[2:]
-    except TypeError:
-        _hex = hex(bitstring)[2:]
-        bitstring = binary_form(bitstring)
-    try:
-        output = binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
-    except TypeError:
-        output = binascii.unhexlify('0' + _hex[:-1 if _hex[-1] == 'L' else None])
-        
-    if len(output) == len(bitstring) / 8:
-        return output
-    else:
-        return ''.join(chr(int(bits, 2)) for bits in slide(bitstring, 8))
-        
-_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bits: int(bits, 2)}
-    
-def cast(input_data, _type):
-    return _type_resolver[_type](input_data)
-    
-def rotate(input_string, amount):
-    """ Rotate input_string by amount. Amount may be positive or negative.
-        Example:
-            
-            >>> data = "0001"
-            >>> rotated = rotate(data, -1) # shift left one
-            >>> print rotated
-            >>> 0010
-            >>> print rotate(rotated, 1) # shift right one, back to original
-            >>> 0001 """
-    if not amount or not input_string:            
-        return input_string    
-    else:
-        amount = amount % len(input_string)
-        return input_string[-amount:] + input_string[:-amount]
-        
-def slide(iterable, x=16):
-    """ Yields x bytes at a time from iterable """
-    slice_count, remainder = divmod(len(iterable), x)
-    for position in range((slice_count + 1 if remainder else slice_count)):
-        _position = position * x
-        yield iterable[_position:_position + x]   
+    return data 
             
 def prime_generator():
     """ Generates prime numbers in successive order. """
@@ -134,13 +79,7 @@ def mixing_subroutine(_bytes):
         psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
         _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)        
     return _bytes
-    
-def confusion_shuffle(input_data):
-    output = binary_form(bytes(input_data))             
-    for index, byte in enumerate(bytearray(input_data)):
-        output = rotate(output[:index * 8], (index + 1) * (1 + byte)) + output[index * 8:]  
-    return byte_form(output)
-    
+        
 def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
                     mix_state_function=mixing_subroutine):  
     state_size = capacity + rate
@@ -295,8 +234,8 @@ def test_hash_object():
 def test_encrypt_decrypt():
     message = "I am an awesome test message, for sure :)"
     key = "Super secret key"
-    ciphertext = encrypt(message, key, '0')
-    assert decrypt(ciphertext, key) == message
+    ciphertext = encrypt(message, key, '0', "This is some extra awesome test extra data")
+    assert decrypt(ciphertext, key) == (message, "This is some extra awesome test extra data")
         
 def test_chain_cycle(state="\x00\x00", key=""):
     state = bytearray(key + state)
@@ -350,18 +289,13 @@ def test_permutation():
     #print
     print [char for char in _outputs], "\n"
     print set(''.join(chr(x) for x in xrange(256))).difference(_outputs)
-            
-def test_mixing_function2():
-    data = "\x00"
-    outputs = [data]
-    while True:
-        data = mixing_function2(data)
-        if data in outputs:
-            break
-        outputs.append(data)
-    print len(outputs)
-    
+                
 def encrypt(data, key, iv, extra_data='', block_size=32):
+    """ Ella's Hash Cipher 0 - EHC0 (encrypt)
+        
+        Returns packet of encrypted data + meta data. 
+        Encrypted data is authenticated and has assurance of integrity.
+        extra_data is authenticated and integrity assured, but not encrypted. """
     sponge = sponge_encryptor(extra_data + iv, key, rate=block_size)
     next(sponge)
     ciphertext = ''
@@ -371,6 +305,11 @@ def encrypt(data, key, iv, extra_data='', block_size=32):
     return pack_data("EHC0_EHC0", ciphertext, iv, mac_tag, extra_data)
     
 def decrypt(data, key, block_size=32):
+    """ Ella's Hash Cipher 0 - EHC0 (decrypt)
+    
+        Returns (plaintext, extra data) when extra data is available
+        Returns plaintext when extra data is not available
+        Raises ValueError if an invalid mac tag is encountered. """
     header, ciphertext, iv, mac_tag, extra_data = unpack_data(data, 5)
     sponge = sponge_decryptor(extra_data + iv, key, rate=block_size)
     next(sponge)
@@ -404,12 +343,6 @@ def test_duplex():
     _mac_tag = sponge.send(None)
     assert _message == message
     assert mac_tag == _mac_tag    
-    
-    #print mac_tag
-    #print
-    #print output
-    #print
-    #print _message
     
 if __name__ == "__main__":
     from hashtests import test_hash_function

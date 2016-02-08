@@ -1,20 +1,18 @@
+import binascii
 
-def autokey_function(input_data):
-    data = bytearray(input_data)    
-    key = (45 + sum(data)) * 2 * len(data)
-    for index, byte in enumerate(data):
-        prf_input = sum(data[:index] + data[index:]) + key + index
-        psuedorandom_byte = pow(251, prf_input, 257) % 256
-        data[index] ^= psuedorandom_byte
-        key ^= index ^ psuedorandom_byte
-    return bytes(data)
-    
 def rotate(input_string, amount):
     if not amount or not input_string:            
         return input_string    
     else:
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
+                
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x] 
         
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """
@@ -34,7 +32,6 @@ def byte_form(bitstring):
     except TypeError:
         _hex = hex(bitstring)[2:]
         bitstring = binary_form(bitstring)
-    import binascii
     try:
         output = binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
     except TypeError:
@@ -45,23 +42,7 @@ def byte_form(bitstring):
     else:
         return ''.join(chr(int(bits, 2)) for bits in slide(bitstring, 8))
         
-def rotation_function(input_data):
-    output_data = binary_form(input_data)
-    rotation_width = len(input_data)
-   # output_data = bytearray(input_data)
-    for index, byte in enumerate(bytearray(input_data)):
-        output_data = output_data[:index * 8] + rotate(output_data[index * 8:], (index + 1) * (1 + byte))
-    return byte_form(output_data)
+_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bits: int(bits, 2)}
     
-def test_autokey_function():
-    data = "\x00"
-    outputs = [data]
-    while True:
-        data = autokey_function(data)
-        if data in outputs:
-            break
-        outputs.append(data)
-    print len(outputs)
-    
-if __name__ == "__main__":
-    test_autokey_function()
+def cast(input_data, _type):
+    return _type_resolver[_type](input_data)
