@@ -59,7 +59,7 @@ class Shell(authentication2.Authenticated_Client):
         if not packet:
             return
         else:            
-            sys.stdout.write('\b' * 4 + packet + objects["->User->Command_Line"].prompt)
+            sys.stdout.write('\b' * 4 + packet)# + "\n>>> ")
         
 
 class Interpreter(authentication2.Authenticated_Service):

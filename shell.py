@@ -246,6 +246,7 @@ class Python_Shell(Program):
             except (SyntaxError, OverflowError, ValueError) as error:
                 sys.stdout.write(traceback.format_exc())
                 self.prompt = ">>> "
+                sys.stdout.write(self.prompt)
                 self.lines = ''
             else:
                 if code:

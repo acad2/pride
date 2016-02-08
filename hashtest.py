@@ -3,6 +3,22 @@ import binascii
 
 # helper functions
 
+def pack_data(*args): # copied from pride.utilities
+    sizes = []
+    for arg in args:
+        sizes.append(str(len(arg)))
+    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
+    
+def unpack_data(packed_bytes, size_count):
+    """ Unpack a stream according to its size header """
+    sizes = packed_bytes.split(' ', size_count)
+    packed_bytes = sizes.pop(-1)
+    data = []
+    for size in (int(size) for size in sizes):
+        data.append(packed_bytes[:size])
+        packed_bytes = packed_bytes[size:]
+    return data
+    
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """
     try:
@@ -131,39 +147,84 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     state = bytearray(state_size)
     if key:
         for index, value in enumerate(bytearray(key)):
-            state[capacity + (index % rate)] ^= value
+            state[index % rate] ^= value
         mix_state_function(state)
-            
-    if len(hash_input) > state_size:
-        for _bytes in slide(bytearray(hash_input), state_size):    
-            for index, byte in enumerate(_bytes):
-                state[index] ^= byte
-            mix_state_function(state)                
-    else:        
-        state = hash_input + '1'
-        while len(state) < state_size:
-            state = byte_form(unpack_factors(binary_form(state)))        
-        state = bytearray(xor_compression(state, state_size))
+    
+    hash_input += '1'
+    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+        
+    for _bytes in slide(hash_input, rate):
+        for index, byte in enumerate(bytearray(_bytes)):
+            state[index] ^= byte
         mix_state_function(state)
-            
-    output = state[-rate:]
+    
+    mix_state_function(state)
+    output = state[:rate]
     while len(output) < output_size:
         mix_state_function(state)
-        output += state[-rate:]
-    return bytes(output[:output_size])    
-      
+        output += state[:rate]
+    return bytes(output[:output_size])
+           
+def sponge_encryptor(hash_input, key='', capacity=32, rate=32, 
+                     mix_state_function=mixing_subroutine):  
+    state_size = capacity + rate
+    state = bytearray(state_size)
+    if key:
+        for index, value in enumerate(bytearray(key)):
+            state[index % rate] ^= value
+        mix_state_function(state)
+    
+    hash_input += '1'
+    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+        
+    for _bytes in slide(hash_input, rate):
+        for index, byte in enumerate(bytearray(_bytes)):
+            state[index] ^= byte
+        mix_state_function(state)
+    
+    mix_state_function(state)        
+    input_block = yield None        
+    while input_block is not None:
+        for index, value in enumerate(bytearray(input_block)):
+            state[index] ^= value     
+        input_block = yield state[:len(input_block)]         
+        mix_state_function(state)        
+    yield state[:rate]
+    
+def sponge_decryptor(hash_input, key='', capacity=32, rate=32, 
+                     mix_state_function=mixing_subroutine):      
+    state_size = capacity + rate
+    state = bytearray(state_size)
+    if key:
+        for index, value in enumerate(bytearray(key)):
+            state[index % rate] ^= value
+        mix_state_function(state)
+    
+    hash_input += '1'
+    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+        
+    for _bytes in slide(hash_input, rate):
+        for index, byte in enumerate(bytearray(_bytes)):
+            state[index] ^= byte
+        mix_state_function(state)
+    
+    mix_state_function(state)        
+    input_block = yield None       
+    while input_block is not None:
+        last_block = state[:len(input_block)]
+        for index, value in enumerate(bytearray(input_block)):
+            state[index] ^= value     
+        input_block = yield state[:len(input_block)]
+        for index, value in enumerate(last_block):
+            state[index] ^= value           
+        mix_state_function(state)    
 
-#def mixing_subroutine(input_data):
-#    data = bytearray(input_data)    
-#    key = (45 + sum(data)) * 2 * len(data)
-#    for index, byte in enumerate(data):
-#        prf_input = sum(data[:index] + data[index:]) + key + index
-#        psuedorandom_byte = pow(251, prf_input, 257) % 256
-#        data[index] ^= psuedorandom_byte
-#        key ^= index ^ psuedorandom_byte
-#    return bytes(data)
-                    
-def invert_permutation(_bytes):
+    yield state[:rate]
+                        
+def invert_mixing_function(_bytes):
     import itertools
     length = len(_bytes)
     recovered = bytearray()
@@ -195,38 +256,7 @@ def xor_compression(data, state_size=64):
         for index, byte in enumerate(bytearray(_bytes)):
             output[index] ^= byte
     return bytes(output)                              
-                
-def stream_cipher(data, key, iv):
-    """ Cipher that is more or less equivalent to CTR mode with a hash function.
-        Secure under the random oracle model. iv must never repeat.
-        Encryption and decryption are the same operation. """
-    assert isinstance(iv, bytes)
-    data_size = len(data)
-    key_material = sponge_function(key + iv, output_size=data_size)
-    return xor_compression(data + key_material, data_size)        
-        
-def encrypt(data, key, iv, mac_size=16):
-    """ Authenticated encryption function. Similar to stream_cipher, but with 
-        authentication/integrity included. Returns mac + ciphertext. """
-    assert isinstance(iv, bytes)
-    data_size = len(data)
-    key_material = sponge_function(key + iv, output_size=data_size + mac_size)
-    ciphertext = xor_compression(data + key_material[:-mac_size], data_size)
-    mac = sponge_function(key_material[-mac_size:] + ciphertext, output_size=mac_size)
-    return mac + ciphertext
-    
-def decrypt(data, key, iv, mac_size=16):
-    """ Authenticated decryption function. Raises ValueError when an invalid 
-        tag is encountered. Otherwise returns plaintext bytes. """
-    assert isinstance(iv, bytes)
-    mac, ciphertext = data[:mac_size], data[mac_size:]#pride.utilities.unpack_data(data, 2)
-    data_size = len(ciphertext)
-    key_material = sponge_function(key + iv, output_size=data_size + mac_size)
-    if sponge_function(key_material[-mac_size:] + ciphertext, output_size=mac_size) != mac:
-        raise ValueError("Invalid mac")
-    else:
-        return xor_compression(ciphertext + key_material[:-mac_size], data_size)   
-        
+             
 class Hash_Object(object):
                         
     def __init__(self, hash_input='', output_size=32, capacity=32, rate=32, state=None):  
@@ -266,7 +296,7 @@ def test_encrypt_decrypt():
     message = "I am an awesome test message, for sure :)"
     key = "Super secret key"
     ciphertext = encrypt(message, key, '0')
-    assert decrypt(ciphertext, key, '0') == message
+    assert decrypt(ciphertext, key) == message
         
 def test_chain_cycle(state="\x00\x00", key=""):
     state = bytearray(key + state)
@@ -331,7 +361,59 @@ def test_mixing_function2():
         outputs.append(data)
     print len(outputs)
     
+def encrypt(data, key, iv, extra_data='', block_size=32):
+    sponge = sponge_encryptor(extra_data + iv, key, rate=block_size)
+    next(sponge)
+    ciphertext = ''
+    for _bytes in slide(data, block_size):
+        ciphertext += sponge.send(_bytes)
+    mac_tag = sponge.send(None)
+    return pack_data("EHC0_EHC0", ciphertext, iv, mac_tag, extra_data)
+    
+def decrypt(data, key, block_size=32):
+    header, ciphertext, iv, mac_tag, extra_data = unpack_data(data, 5)
+    sponge = sponge_decryptor(extra_data + iv, key, rate=block_size)
+    next(sponge)
+    plaintext = ''
+    for _bytes in slide(ciphertext, block_size):
+        plaintext += sponge.send(_bytes)
+    _mac_tag = sponge.send(None)
+
+    if _mac_tag != mac_tag:
+        raise ValueError("Invalid mac tag")
+    else:
+        if extra_data:
+            return plaintext, extra_data
+        else:
+            return plaintext
+    
+def test_duplex():
+    sponge = sponge_encryptor("testing", "key")    
+    next(sponge)
+    message = "This is an excellent message!"
+    output = ''
+    for _bytes in slide(message, 32):
+        output += sponge.send(_bytes)
+    mac_tag = sponge.send(None)
+    
+    sponge = sponge_decryptor("testing", "key")
+    next(sponge)
+    _message = ''
+    for _bytes in slide(output, 32):
+        _message += sponge.send(_bytes)
+    _mac_tag = sponge.send(None)
+    assert _message == message
+    assert mac_tag == _mac_tag    
+    
+    #print mac_tag
+    #print
+    #print output
+    #print
+    #print _message
+    
 if __name__ == "__main__":
     from hashtests import test_hash_function
+    #test_duplex()
+    test_encrypt_decrypt()
     #test_hash_function(sponge_function)
-    test_chain_cycle()
+    #test_chain_cycle()
