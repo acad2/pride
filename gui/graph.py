@@ -56,12 +56,13 @@ class Graph(pride.gui.gui.Application):
             x_spacing, extra = divmod(len(points), self_w)
             x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
         else:
-            x_spacing = 1
+            x_spacing, extra = divmod(self_w, len(points))
+            x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
             
         last_point = (self_x, self_y + self_h)
         color = self.color
         for x_coord, y_coord in enumerate(point for point in points if point):            
-            point = (self_x + (x_coord * x_spacing), y_coord)
+            point = (self_x + (x_coord * x_spacing), self_h - y_coord)
             coordinates.extend(point)
             lines.extend(last_point + point)
             last_point = point
@@ -75,7 +76,9 @@ class Graph(pride.gui.gui.Application):
         if self.draw_average:
             average_object = pride.datastructures.Average(values=self.points)
             minimum, _average, maximum = average_object.range
-            _average = int(average_object.meta_average)
+            _average = self_h - int(average_object.meta_average)
+            minimum = self_h - minimum
+            maximum = self_h - maximum
             right_side = self_x + self_w            
             window.draw("line", (self_x, minimum, right_side, minimum), color=self.color)
             window.draw("line", (self_x, _average, right_side, _average), color=self.color)

@@ -10,9 +10,22 @@ import types
 import pprint
 import traceback
 import timeit
+import ast
 
 timer_function = timeit.default_timer    
      
+_TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2), 
+                bool : chr(3), list : chr(4), dict : chr(5),
+                tuple : chr(6), set : chr(7), None : chr(8),
+                unicode : chr(9)}
+                
+_TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: True if value == "True" else False,
+                  _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[None] : lambda value: None, 
+                  _TYPE_SYMBOL[list] : ast.literal_eval, _TYPE_SYMBOL[tuple] : ast.literal_eval, 
+                  _TYPE_SYMBOL[dict] : ast.literal_eval, _TYPE_SYMBOL[set] : ast.literal_eval,
+                  _TYPE_SYMBOL[str] : lambda value: value,
+                  _TYPE_SYMBOL[unicode] : unicode}
+                         
 def rotate(input_string, amount):
     """ Rotate input_string by amount. Amount may be positive or negative.
         Example:
@@ -28,7 +41,7 @@ def rotate(input_string, amount):
     else:
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
-        
+                
 def pack_data(*args):
     """ Pack arguments into a stream, prefixed by size headers.
         Resulting bytestream takes the form:
@@ -39,21 +52,28 @@ def pack_data(*args):
         return the original contents, in order. """
     sizes = []
     arg_strings = []
+    types = []
     for arg in args:
         arg_string = str(arg)
         arg_strings.append(arg_string)
         sizes.append(str(len(arg_string)))
-    return ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
+        types.append(_TYPE_SYMBOL[type(arg)])
+    return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
     
-def unpack_data(packed_bytes, size_count):
-    """ Unpack a stream according to its size header """
-    sizes = packed_bytes.split(' ', size_count)
+def unpack_data(packed_bytes):
+    """ Unpack a stream according to its size header.
+        The second argument should be either an integer indicating the quantity
+        of items to unpack, or an iterable of types whose length indicates the
+        quantity of items to unpack. """
+    types, packed_bytes = packed_bytes.split(' ', 1)    
+    size_count = len(types)    
+    sizes = packed_bytes.split(' ', size_count)    
     packed_bytes = sizes.pop(-1)
     data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-    return data
+    for index, size in enumerate((int(size) for size in sizes)):
+        data.append(_TYPE_RESOLVER[types[index]](packed_bytes[:size]))
+        packed_bytes = packed_bytes[size:]                  
+    return data if len(data) > 1 else data[0]
             
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')
@@ -273,7 +293,7 @@ def test_pack_unpack():
     extra_data = "1x897=a[19njkS"
     
     packed = pack_data(ciphertext, iv, tag, extra_data)
-    _ciphertext, _iv, _tag, _extra_data = unpack_data(packed, 4)
+    _ciphertext, _iv, _tag, _extra_data = unpack_data(packed)
     assert _ciphertext == ciphertext
     assert _iv == iv
     assert _tag == tag

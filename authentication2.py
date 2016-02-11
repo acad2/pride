@@ -461,7 +461,7 @@ class Authenticated_Client(pride.base.Base):
                 self.alert("Login attempt failed; Already logged in.", 
                            level=self.verbosity["login_failed_already_logged_in"])
             else:
-                new_key, login_message = pride.utilities.unpack_data(packed_key_and_message, 2)
+                new_key, login_message = pride.utilities.unpack_data(packed_key_and_message)
                 self.shared_key = new_key
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
                                     length=self.authentication_table_size,

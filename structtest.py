@@ -121,7 +121,7 @@ def pack_structure(structure):
     return get_structure_bytestream(structure)
                                
 def unpack_structure(packed_data):
-    name, fields, packed_bytes = utilities.unpack_data(packed_data, 3)
+    name, fields, packed_bytes = utilities.unpack_data(packed_data)
     print "\nUnpacking structure", packed_data
     print
     print "Name: ", name
@@ -175,7 +175,7 @@ def serialize(python_object):
     return utilities.pack_data(sub_structs, pack_structure(struct))
     
 def deserialize(stream):
-    sub_structs, packed_structure = utilities.unpack_data(stream, 2)
+    sub_structs, packed_structure = utilities.unpack_data(stream)
     sub_structs = ast.literal_eval(sub_structs)
     struct = unpack_structure(packed_structure)
     _type, count = struct.__class__.__name__.split('_', 1)
@@ -332,7 +332,7 @@ def test_pack_structure():
     structure = struct_type(*(attributes[field_name] for field_name in field_names))
     saved_structure = pack_structure(structure)
    # print "Saved structure: "#, saved_structure
-   # print utilities.unpack_data(saved_structure, 3)
+   # print utilities.unpack_data(saved_structure)
     loaded_structure = unpack_structure(saved_structure)
     for name, value in attributes.items():
         assert getattr(loaded_structure, name) == value

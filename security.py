@@ -5,40 +5,17 @@
     instead. """
 import os
 
+from pride.utilities import pack_data, unpack_data
+
 class SecurityError(Exception): pass
 class InvalidPassword(SecurityError): pass
 
 def random_bytes(count):
     """ Generates count cryptographically secure random bytes """
-    return os.urandom(count)
-
-def pack_data(*args): # copied from pride.utilities
-    """ Pack arguments into a stream, prefixed by size headers.
-        Resulting bytestream takes the form:
-            
-            size1 size2 size3 ... sizeN data1data2data3...dataN
-            
-        The returned bytestream can be unpacked via unpack_data to
-        return the original contents, in order. """
-    sizes = []
-    for arg in args:
-        sizes.append(str(len(arg)))
-    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
-    
-def unpack_data(packed_bytes, size_count):
-    """ Unpack a stream according to its size header """
-    sizes = packed_bytes.split(' ', size_count)
-    packed_bytes = sizes.pop(-1)
-    data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-    return data
-    
+    return os.urandom(count) 
     
 try:
     import cryptography
-#    raise ImportError
 except ImportError:
     # use an alternative file when the cryptography package is not installed
     import hashlib
@@ -112,7 +89,7 @@ except ImportError:
     def verify_mac(key, packed_data, algorithm="SHA256", backend=None):
         """ Verifies a message authentication code as obtained by apply_mac.
             Successful comparison indicates integrity and authenticity of the data. """
-        mac, data = unpack_data(packed_data, 2)
+        mac, data = unpack_data(packed_data)
         calculated_mac = hmac.HMAC(key, data, hash_function(algorithm)).digest()        
         try:
             if not hmac.HMAC.compare_digest(mac, calculated_mac):
@@ -195,7 +172,7 @@ else:
     def verify_mac(key, packed_data, algorithm="SHA256", backend=BACKEND):
         """ Verifies a message authentication code as obtained by apply_mac.
             Successful comparison indicates integrity and authenticity of the data. """        
-        mac, data = unpack_data(packed_data, 2)
+        mac, data = unpack_data(packed_data)
         hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
         hasher.update(data)
         try:
@@ -246,7 +223,7 @@ else:
         """ Decrypts packed encrypted data as returned by encrypt with the same key. 
             If extra data is present, returns plaintext, extra_data. If not,
             returns plaintext. Raises InvalidTag on authentication failure. """
-        header, ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data, 5)        
+        header, ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data)        
         algorithm, mode = header.split('_', 1)        
         mode_args = (iv, tag) if mode == "GCM" else (iv, )
         decryptor = Cipher(getattr(algorithms, algorithm)(key), 

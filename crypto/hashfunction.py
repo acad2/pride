@@ -1,24 +1,10 @@
 import itertools   
 import binascii
 
-from utilities import cast, slide
+from utilities import cast, slide, pack_data, unpack_data, byte_form, binary_form
 # helper functions
-
-def pack_data(*args): # copied from pride.utilities
-    sizes = []
-    for arg in args:
-        sizes.append(str(len(arg)))
-    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
-    
-def unpack_data(packed_bytes, size_count):
-    """ Unpack a stream according to its size header """
-    sizes = packed_bytes.split(' ', size_count)
-    packed_bytes = sizes.pop(-1)
-    data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-    return data 
+            
+SUBSTITUTION = dict((x, pow(251, x, 257) % 256) for x in xrange(1024 * 1024 * 2))
             
 def prime_generator():
     """ Generates prime numbers in successive order. """
@@ -76,8 +62,10 @@ def mixing_subroutine(_bytes):
     byte_length = len(_bytes)
     key = (45 + sum(_bytes)) * byte_length * 2    
     for counter, byte in enumerate(_bytes):
-        psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
-        _bytes[counter % byte_length] = psuedorandom_byte ^ (counter % 256)        
+     #   psuedorandom_byte = SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)]
+#        psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
+  #      assert SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)] == psuedorandom_byte
+        _bytes[counter % byte_length] = SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)] ^ (counter % 256)        
     return _bytes
         
 def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
@@ -310,7 +298,7 @@ def decrypt(data, key, block_size=32):
         Returns (plaintext, extra data) when extra data is available
         Returns plaintext when extra data is not available
         Raises ValueError if an invalid mac tag is encountered. """
-    header, ciphertext, iv, mac_tag, extra_data = unpack_data(data, 5)
+    header, ciphertext, iv, mac_tag, extra_data = unpack_data(data)
     sponge = sponge_decryptor(extra_data + iv, key, rate=block_size)
     next(sponge)
     plaintext = ''
@@ -345,8 +333,9 @@ def test_duplex():
     assert mac_tag == _mac_tag    
     
 if __name__ == "__main__":
-    from hashtests import test_hash_function
+    from hashtests import test_hash_function, test_performance
     #test_duplex()
-    test_encrypt_decrypt()
+    #test_encrypt_decrypt()
     #test_hash_function(sponge_function)
     #test_chain_cycle()
+    test_performance(sponge_function)

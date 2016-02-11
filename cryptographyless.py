@@ -15,18 +15,25 @@ class InvalidTag(Exception): pass
 
 def pack_data(*args): # copied from pride.utilities
     sizes = []
+    arg_strings = []
+    types = []
     for arg in args:
-        sizes.append(str(len(arg)))
-    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
+        arg_string = str(arg)
+        arg_strings.append(arg_string)
+        sizes.append(str(len(arg_string)))
+        types.append(_TYPE_SYMBOL[type(arg)])
+    return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
     
-def unpack_data(packed_bytes, size_count): # copied from pride.utilities    
-    sizes = packed_bytes.split(' ', size_count)
+def unpack_data(packed_bytes): # copied from pride.utilities
+    types, packed_bytes = packed_bytes.split(' ', 1)    
+    size_count = len(types)    
+    sizes = packed_bytes.split(' ', size_count)    
     packed_bytes = sizes.pop(-1)
     data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-    return data
+    for index, size in enumerate((int(size) for size in sizes)):
+        data.append(_TYPE_RESOLVER[types[index]](packed_bytes[:size]))
+        packed_bytes = packed_bytes[size:]                  
+    return data 
     
 def _hmac_rng(key, seed, hash_function="sha512"):
     """ Generates psuedorandom bytes via HMAC. Implementation could be improved to
@@ -87,7 +94,7 @@ def decrypt(data, key, hash_function="sha512"):
         Returns (extra_data, plaintext) when extra data is available
         Otherwise, just returns plaintext data. 
         Authenticity and integrity of the plaintext/extra data is guaranteed. """
-    header, encrypted_data, nonce, mac_tag, extra_data = unpack_data(data, 5)
+    header, encrypted_data, nonce, mac_tag, extra_data = unpack_data(data)
     hash_function, _ = header.split('_', 1)
     try:
         hasher = getattr(hashlib, hash_function)
@@ -123,7 +130,7 @@ def test_encrypt_decrypt():
     #print "Encrypted packet: \n\n\n", packet
     assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
     
-    encrypted_data, nonce, mac_tag, extra_data = unpack_data(packet, 4)
+    encrypted_data, nonce, mac_tag, extra_data = unpack_data(packet)
     extra_data = "Changed"
     packet = pack_data(encrypted_data, nonce, mac_tag, extra_data)
     try:

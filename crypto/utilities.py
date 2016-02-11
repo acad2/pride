@@ -1,5 +1,48 @@
 import binascii
 
+def pack_data(*args): # copied from pride.utilities
+    sizes = []
+    for arg in args:
+        sizes.append(str(len(arg)))
+    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
+    
+def unpack_data(packed_bytes, count_or_types):
+    """ Unpack a stream according to its size header.
+    The second argument should be either an integer indicating the quantity
+    of items to unpack, or an iterable of types whose length indicates the
+    quantity of items to unpack. """
+    try:
+        size_count = len(count_or_types)
+    except TypeError:
+        unpack_types = False
+        size_count = count
+    else:
+        unpack_types = True
+    sizes = packed_bytes.split(' ', size_count)
+    packed_bytes = sizes.pop(-1)
+    data = []
+    for size in (int(size) for size in sizes):
+        data.append(packed_bytes[:size])
+        packed_bytes = packed_bytes[size:]
+        
+    if unpack_types:
+        _data = []
+        for index, _type in enumerate(count_or_types):
+            value = data[index]
+            if _type == bool:
+                value = True if value == "True" else False
+            elif _type == int:
+                value = int(value)
+            elif _type == float:
+                value = float(value)
+            elif _type is None:
+                value = None
+            elif _type in (list, tuple, dict, set):
+                value = ast.literal_eval(value)
+            _data.append(value)
+        data = _data
+    return data 
+    
 def rotate(input_string, amount):
     if not amount or not input_string:            
         return input_string    
@@ -19,6 +62,8 @@ def binary_form(_string):
     try:
         return ''.join(format(ord(character), 'b').zfill(8) for character in _string)
     except TypeError:        
+        if isinstance(_string, bytearray):
+            raise
         bits = format(_string, 'b')
         bit_length = len(bits)
         if bit_length % 8:

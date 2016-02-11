@@ -12,7 +12,7 @@ class Attribute_Modifier_Button(gui.Button):
 
     defaults = {"amount" : 0, "operation" : "",  "target" : None}
                 
-    verbosity = {"left_click" : 0}
+    verbosity = {"left_click" : 'v'}
     
     def left_click(self, mouse):        
         reference, attribute = self.target

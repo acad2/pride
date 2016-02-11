@@ -64,7 +64,7 @@ class SDL_Window(SDL_Component):
         if self.showing:
             self.show()  
 
-        self._texture = invoke("pride.gui.gui.create_texture", self.size)
+        self._texture = invoke("pride.gui.gui.create_texture", (self.size[0] * 10, self.size[1] * 10))
         objects["->Finalizer"].add_callback((self.reference, "delete"))
         
     def invalidate_object(self, instance):
@@ -111,7 +111,8 @@ class SDL_Window(SDL_Component):
             draw_instructions[operation](*args, **kwargs)        
         
         renderer.set_render_target(None)
-        renderer.copy(texture)
+        area = (0, 0, self.size[0], self.size[1])
+        renderer.copy(texture, area, area)
         renderer.present()
         self.running = False
            #  
@@ -138,7 +139,7 @@ class SDL_Window(SDL_Component):
     def delete(self):
         # delete window objects before sdl components
         for child in self.children:
-            if hasattr(child, "pack"):
+            if hasattr(child, "pack") and child is not self.organizer:
                 child.delete()
         super(SDL_Window, self).delete()
         objects["->Finalizer"].remove_callback((self.reference, "delete"))
@@ -296,7 +297,7 @@ class SDL_User_Input(vmlibrary.Process):
                     raise
                 else:
                     self.alert("Unhandled event: {}".format(event.type))
-            except BaseException as error:
+            except Exception as error:
                 self.alert("Exception handling {};\n{}", (self.event_names[event.type], 
                                                           traceback.format_exc()), 
                            level=0)
@@ -338,7 +339,9 @@ class SDL_User_Input(vmlibrary.Process):
 
     def handle_quit(self, event):
         self.parent.delete()
-        
+        if "->User->Shell" not in pride.objects:
+            raise SystemExit()
+            
     def handle_mousebuttondown(self, event):        
         mouse = event.button
         mouse_position = (mouse.x, mouse.y)
@@ -360,7 +363,7 @@ class SDL_User_Input(vmlibrary.Process):
                 active_item = possible[0][0]
             if active_item:
                 break
-
+                
         self.active_item = active_item
         if active_item:
             if self._ignore_click:

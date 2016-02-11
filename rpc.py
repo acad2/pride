@@ -1,11 +1,6 @@
-""" pride.rpc - Remote Procedure Call portal built on top of pride.networkssl ssl sockets
-
-    SECURITY NOTE: the current implementation uses pickle for serialization 
-                   and is to be considered completely insecure """
+""" pride.rpc - Remote Procedure Call portal built on top of pride.networkssl ssl sockets. """
 import struct
 import traceback
-import json
-import pickle
 import itertools
 import time
 
@@ -15,7 +10,17 @@ import pride.utilities
 import pride.networkssl
 #objects = pride.objects
 
-default_serializer = pickle
+class Serializer(object):
+    
+    @staticmethod
+    def dumps(py_object):
+        return pride.utilities.pack_data(py_object)
+     
+    @staticmethod
+    def loads(stream):        
+        return pride.utilities.unpack_data(stream)
+        
+default_serializer = Serializer
 _old_data, _hosts = {}, {}
 
 class UnauthorizedError(Warning): pass  
@@ -246,7 +251,7 @@ class Rpc_Socket(Packet_Socket):
     def recv(self, packet_count=0):
         peername = self.peername
         for (session_id, component_name, method, 
-             serialized_arguments) in (pride.utilities.unpack_data(packet, 4) for 
+             serialized_arguments) in (pride.utilities.unpack_data(packet) for 
                                        packet in super(Rpc_Socket, self).recv()):          
             try:
                 result = next(self.rpc_workers).handle_request(peername, session_id, component_name,

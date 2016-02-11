@@ -30,7 +30,7 @@ class File_Explorer(pride.gui.gui.Application):
                 
         self.create(Navigation_Bar)
         self.create(Info_Bar, pack_mode="bottom")
-        self.create(File_Open_Prompt)
+  #      self.create(File_Open_Prompt)
         self.create(Directory_Viewer)        
         
 

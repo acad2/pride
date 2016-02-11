@@ -3,41 +3,9 @@ import random
 
 from pride.decorators import Timed
 from pride.datastructures import Average
+from utilities import cast, binary_form
 
 ASCII = ''.join(chr(x) for x in range(256))
-
-def binary_form(_string):
-    """ Returns the a string representation of the binary bits that constitute _string. """
-    try:
-        return ''.join(format(ord(character), 'b').zfill(8) for character in _string)
-    except TypeError:        
-        bits = format(_string, 'b')
-        bit_length = len(bits)
-        if bit_length % 8:
-            bits = bits.zfill(bit_length + (8 - (bit_length % 8)))                
-        return bits
-        
-def byte_form(bitstring):
-    """ Returns the ascii equivalent string of a string of bits. """
-    try:
-        _hex = hex(int(bitstring, 2))[2:]
-    except TypeError:
-        _hex = hex(bitstring)[2:]
-        bitstring = binary_form(bitstring)
-    try:
-        output = binascii.unhexlify(_hex[:-1 if _hex[-1] == 'L' else None])
-    except TypeError:
-        output = binascii.unhexlify('0' + _hex[:-1 if _hex[-1] == 'L' else None])
-        
-    if len(output) == len(bitstring) / 8:
-        return output
-    else:
-        return ''.join(chr(int(bits, 2)) for bits in slide(bitstring, 8))
-        
-_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bits: int(bits, 2)}
-    
-def cast(input_data, _type):
-    return _type_resolver[_type](input_data)
     
 def hamming_distance(input_one, input_two):
     size = len(input_one)
@@ -51,6 +19,7 @@ def hamming_distance(input_one, input_two):
     #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
          
 def print_hamming_info(output1, output2):
+    print output1
     output1_binary = binary_form(output1)
     output2_binary = binary_form(output2)
     _distance = hamming_distance(binary_form(output1), binary_form(output2))
@@ -61,8 +30,8 @@ def print_hamming_info(output1, output2):
     
 def test_avalanche(hash_function):        
     print "Testing diffusion and avalanche"
-    output1 = hash_function("The quick brown fox jumps over the lazy dog" * 100)
-    output2 = hash_function("The quick brown fox jumps over the lazy cog" * 100)    
+    output1 = hash_function("The quick brown fox jumps over the lazy dog")
+    output2 = hash_function("The quick brown fox jumps over the lazy cog")    
     print_hamming_info(output1, output2)
     
 def test_randomness(hash_function):    
@@ -126,3 +95,5 @@ def test_hash_function(hash_function):
     test_collisions(hash_function)
     test_performance(hash_function)
     
+def test_prf(psuedorandom_function):
+    test_avalanche(lambda data: psuedorandom_function(data, "\x00" * 16))

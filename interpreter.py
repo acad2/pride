@@ -58,8 +58,7 @@ class Shell(authentication2.Authenticated_Client):
     def result(self, packet):
         if not packet:
             return
-        else:                
-            print "Wtf?"
+        else:                            
             sys.stdout.write('\r' + packet)            
             
 

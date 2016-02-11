@@ -221,8 +221,7 @@ class Organizer(base.Base):
                      SCREEN_SIZE[0] / 5, min(120, SCREEN_SIZE[1] / length))
         item.z = parent.z + 1
         
-        
-        
+              
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
@@ -422,25 +421,31 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
             form appropriate for the figure specified (i.e. an area for a rect, a
             pair of points for a point). For a full list of arguments for a 
             particular figure, see the appropriate draw method of the renderer. """
-        # draw operations are enqueued and processed in batches by Renderer.draw
+        # draw operations are enqueued and processed in batches by the Renderer
         self._draw_operations.append((figure, args, kwargs))
                                                                
-    def _draw_texture(self):          
+    def _draw_texture(self):
+    #    if self._texture_invalid:
         self.draw_texture()
         instructions = self._draw_operations[:]
+     #   else:
+     #       area = self.area
+     #       instructions = [("copy", (objects[self.sdl_window]._texture.texture, area, area), {})]
+            
         for child in self.children:
             instructions.extend(child._draw_texture())
+            
         if self._texture_window_x or self._texture_window_y:
             x, y, w, h = self.area
             source_rect = (x + self.texture_window_x,
-                           min(y + self.texture_window_y, MAX_H - h), w, h)  
+                           y + self.texture_window_y, w, h)  
             
             if x + w > MAX_W:
                 w = MAX_W - x
             if y + h > MAX_H:
                 h = MAX_H - y
-            destination = (x, y, w, h)     
-            print source_rect, destination
+            destination = (x, y, w, h)        
+          #  assert destination == self.area
             instructions.append(("copy", (objects[self.sdl_window]._texture.texture, source_rect, destination), {}))
             
             # less readable, less code though, need to find way to do this automagically            
@@ -483,15 +488,15 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         else:
             total_height = sum((objects[name].h for name in pack_modes["top"] + pack_modes["bottom"]))
             total_width = sum((objects[name].w for name in pack_modes["right"] + pack_modes["left"]))
-            if total_height > self.h:
-                if total_width > self.w:
-                    self.texture_size = (total_width, total_height)
-                else:
-                    self.texture_size = (self.texture_size[0], total_height)
-                self.texture = create_texture(self.texture_size)
-                self.alert("Resized texture to: {}".format(self.texture_size), level=0)
-            elif total_width > self.w:
-                self.texture_size = (total_width, self.texture_size[1])
+         #   if total_height > self.h:
+         #       if total_width > self.w:
+         #           self.texture_size = (total_width, total_height)
+         #       else:
+         #           self.texture_size = (self.texture_size[0], total_height)
+         #       self.texture = create_texture(self.texture_size)
+         #       self.alert("Resized texture to: {}".format(self.texture_size), level=0)
+         #   elif total_width > self.w:
+         #       self.texture_size = (total_width, self.texture_size[1])
                 
             if self.scroll_bars_enabled:
                 excess_height = total_height > self.h

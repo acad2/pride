@@ -6,6 +6,8 @@ import random
 import hashlib
 import functools
 
+from utilities import pack_data, unpack_data, slide
+
 RANGE_256 = tuple([chr(x) for x in range(256)])
 PRINTABLE_ASCII = tuple(chr(x) for x in xrange(32, 127))
 
@@ -21,39 +23,7 @@ def hmac_factory(algorithm):
     
 HMAC_SHA256 = hmac_factory("sha256")    
 HMAC_SHA512 = hmac_factory("sha512")
-    
-def pack_data(*args):
-    """ Pack arguments into a stream, prefixed by size headers.
-        Resulting bytestream takes the form:
             
-            size1 size2 size3 ... sizeN data1data2data3...dataN
-            
-        The returned bytestream can be unpacked via unpack_data to
-        return the original contents, in order. """
-    sizes = []
-    arg_strings = []
-    for arg in args:
-        arg_string = str(arg)
-        arg_strings.append(arg_string)
-        sizes.append(str(len(arg_string)))        
-    return ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
-    
-def unpack_data(packed_bytes, size_count):
-    """ Unpack a stream according to its size header """
-    sizes = packed_bytes.split(' ', size_count)
-    packed_bytes = sizes.pop(-1)
-    data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-    return data
-    
-def slide(iterable, x=16):
-    """ Yields x bytes at a time from iterable """
-    slice_count, remainder = divmod(len(iterable), x)
-    for position in range((slice_count + 1 if remainder else slice_count)):
-        yield iterable[position * x:x * (position + 1)]  
-        
 def generate_mac(key, data, algorithm="SHA256"):
     return hmac.new(key, data, getattr(hashlib, algorithm.lower())).digest()
 
@@ -100,13 +70,13 @@ def solve_challenge(packed_challenge, key, mac_key):
         
         Raises InvalidSignature in the event of a message authentication 
         code mismatch. """
-    mac, hash_function, package = unpack_data(packed_challenge, 3)
+    mac, hash_function, package = unpack_data(packed_challenge)
     if verify_mac(mac_key, package, mac, hash_function):
-        challenge, bytes_per_hash, unencrypted_data = unpack_data(package, 3)
+        challenge, bytes_per_hash, unencrypted_data = unpack_data(package)
         
         return (decrypt(challenge, key, hmac_factory(hash_function),
                         getattr(hashlib, hash_function)().digestsize, 
-                        output_block_size=int(bytes_per_hash)), 
+                        output_block_size=bytes_per_hash), 
                 unencrypted_data)
     else:
         raise InvalidSignature("Message authentication code mismatch")
