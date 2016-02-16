@@ -50,17 +50,18 @@ def pack_data(*args):
     sizes = []
     arg_strings = []
     types = []    
-  #  print "Packing: ", args
+    print "Packing: ", args
+    output = ''
     for arg in args:
         if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
             arg_string = pack_data(*arg) if arg else ''
         elif isinstance(arg, dict):
             arg_string = pack_data(*arg.items()) if arg else ''
         else:
-            arg_string = str(arg)
+            arg_string = str(arg)    
         arg_strings.append(arg_string)
         sizes.append(str(len(arg_string)))
-        types.append(_TYPE_SYMBOL[type(arg)])
+        types.append(_TYPE_SYMBOL[type(arg)])    
     return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
         
 def _dispatch(_type, packed_bytes, size):        
@@ -84,17 +85,17 @@ def unpack_data(packed_bytes):
     """ Unpack a stream according to its size header.
         The second argument should be either an integer indicating the quantity
         of items to unpack, or an iterable of types whose length indicates the
-        quantity of items to unpack. """
+        quantity of items to unpack. """       
     types, packed_bytes = packed_bytes.split(' ', 1)    
     size_count = len(types)    
     sizes = packed_bytes.split(' ', size_count)    
     packed_bytes = sizes.pop(-1)
     data = []        
     for index, size in enumerate((int(size) for size in sizes)):              
-        data.append(_dispatch(types[index], packed_bytes, size))
+        data.append(_dispatch(types[index], packed_bytes, size))                    
         #print "Unpacking: ", packed_bytes[:size]
         packed_bytes = packed_bytes[size:]    
-  #  print "Unpacked data: ", data
+    print "Unpacked data: ", tuple(data)
     return tuple(data)
     
 def print_in_place(_string):

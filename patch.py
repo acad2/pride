@@ -25,8 +25,7 @@ class Patched_Module(pride.base.Wrapper):
 class Stdout(pride.base.Base):
     
     defaults = {"file" : None, "log_type" : "StringIO.StringIO", 
-                "limit_log_size" : 1024 * 1024, "logging_enabled" : True}
-   # wrapped_object_name = "file"
+                "limit_log_size" : 1024 * 1024, "logging_enabled" : True}    
     
     def __init__(self, **kwargs):
         super(Stdout, self).__init__(**kwargs)
@@ -69,7 +68,6 @@ class Sys(Patched_Module):
     def __init__(self, **kwargs):
         super(Sys, self).__init__(**kwargs)
         self._logger = self.create(Stdout, file=self.wrapped_object.__stdout__)
-        self.stdout_log = self._logger.log    
-        #print self._logger, self.wrapped_object.stdout
+        self.stdout_log = self._logger.log            
         self.wrapped_object.stdout = self._logger
         

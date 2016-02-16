@@ -2,20 +2,38 @@ import itertools
 
 from utilities import cast, rotate, slide 
         
-def permutation(input_data, key, mode="forward"):        
-    if mode == "forward":
-        index_function = lambda index: (1 + index) * 8        
-    else:
-        assert mode == "invert"
-        data_size = len(input_data)
-        index_function = lambda index: (data_size - index) * 8
-       # key = [-number for number in reversed(key)]
-        
-    output = cast(bytes(input_data), "binary") 
-    for index, key_byte in enumerate(key):        
+def bit_mixer(input_data, key):        
+    index_function = lambda index: (1 + index) * 8                
+    output = cast(bytes(input_data), "binary")     
+    for index, key_byte in enumerate(key):     
         output = rotate(output[:index_function(index)], key_byte) + output[index_function(index):]
-    return cast(output, "bytes")
-              
+        
+    for index, byte in enumerate(cast(output, "bytes")):
+        input_data[index] = byte
+        
+def bit_mixer_inverse(input_data, key):
+    data_size = len(input_data)
+    index_function = lambda index: (data_size - index) * 8    
+    output = cast(reversed(bytes(input_data)), "binary")         
+    for index, key_byte in ((index, -byte) for index, byte in enumerate(key)):           
+        output = rotate(output[:index_function(index)], key_byte) + output[index_function(index):]
+        
+    for index, byte in enumerate(reversed(cast(output, "bytes"))):
+        input_data[index] = byte    
+             
+def diffusion_shuffle(input_data, key=None):         
+    for index_scalar, block in enumerate(slide(input_data, 8)):
+        bits = cast(bytes(block), "binary")
+        block_size = len(block)
+        for index in range(8):           
+            input_data[(index_scalar * block_size) + index] = int(bits[index::8], 2)    
+        
+def diffusion_shuffle_inverse(input_data, key=None):    
+    new_data = bytearray(reversed(input_data))
+    diffusion_shuffle(new_data, key)        
+    for index, byte in enumerate(reversed(new_data)):
+        input_data[index] = byte
+    
 def substitution(data, key):      
     modifier = sum(key)    
     for index, byte in enumerate(data):                        
@@ -52,17 +70,17 @@ def cipher(data, iv, round_keys, round_functions, rounds=1):
 def encrypt(data, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):        
     return cipher(bytearray(data), iv,
                   generate_round_keys(bytearray(key), bytearray(key), rounds),
-                  (xor, substitution, permutation))                  
+                  (xor, diffusion_shuffle, substitution, bit_mixer))                  
                    
 def decrypt(data, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):
     # same as encryption, with the data, keys, and operations reversed    
     round_keys = [bytearray(reversed(round_key)) for round_key in 
                   reversed(generate_round_keys(bytearray(key), bytearray(key), rounds))]      
-    return ''.join(reversed(cipher(bytearray(reversed(data)), iv, round_keys, (permutation, substitution, xor))))
+    return ''.join(reversed(cipher(bytearray(reversed(data)), iv, round_keys, (bit_mixer_inverse, substitution, diffusion_shuffle_inverse, xor))))
                             
 def test_block_cipher():
     data = "\x00" * 16
-    iv = key = "\x00" * 16  
+    iv = key = "Test" * 4#"\x00" * 16  
     #assert len(data) == len(key), (len(data), len(key))
     ciphertext = encrypt(data, key, iv)
     _data = decrypt(ciphertext, key, iv)

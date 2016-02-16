@@ -72,7 +72,7 @@ class Command_Line(pride.vmlibrary.Process):
                 "default_programs" : ("pride.shell.Python_Shell",
                                       "pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
-                "idle_threshold" : 100, 
+                "idle_threshold" : 10000, 
                 "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):

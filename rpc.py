@@ -20,8 +20,7 @@ class Serializer(object):
     def loads(stream):        
         return pride.utilities.unpack_data(stream)
 
-import pickle        
-default_serializer = pickle#Serializer
+default_serializer = Serializer
 _old_data, _hosts = {}, {}
 
 class UnauthorizedError(Warning): pass  
