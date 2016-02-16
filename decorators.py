@@ -5,7 +5,6 @@ import time
 import inspect
 import StringIO
 from functools import wraps
-from weakref import ref
 
 if "win" in sys.platform:
     timer = time.clock

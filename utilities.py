@@ -10,7 +10,6 @@ import types
 import pprint
 import traceback
 import timeit
-import ast
 
 timer_function = timeit.default_timer    
      
@@ -20,12 +19,10 @@ _TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2),
                 unicode : chr(9)}
                 
 _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: True if value == "True" else False,
-                  _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[None] : lambda value: None, 
-                  _TYPE_SYMBOL[list] : ast.literal_eval, _TYPE_SYMBOL[tuple] : ast.literal_eval, 
-                  _TYPE_SYMBOL[dict] : ast.literal_eval, _TYPE_SYMBOL[set] : ast.literal_eval,
+                  _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[None] : lambda value: None,                                   
                   _TYPE_SYMBOL[str] : lambda value: value,
-                  _TYPE_SYMBOL[unicode] : unicode}
-                         
+                  _TYPE_SYMBOL[unicode] : unicode}                         
+                    
 def rotate(input_string, amount):
     """ Rotate input_string by amount. Amount may be positive or negative.
         Example:
@@ -52,14 +49,37 @@ def pack_data(*args):
         return the original contents, in order. """
     sizes = []
     arg_strings = []
-    types = []
+    types = []    
+  #  print "Packing: ", args
     for arg in args:
-        arg_string = str(arg)
+        if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
+            arg_string = pack_data(*arg) if arg else ''
+        elif isinstance(arg, dict):
+            arg_string = pack_data(*arg.items()) if arg else ''
+        else:
+            arg_string = str(arg)
         arg_strings.append(arg_string)
         sizes.append(str(len(arg_string)))
         types.append(_TYPE_SYMBOL[type(arg)])
     return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
-    
+        
+def _dispatch(_type, packed_bytes, size):        
+    if _type == _TYPE_SYMBOL[tuple]:          
+        data = unpack_data(packed_bytes[:size]) if size else tuple()
+    elif _type == _TYPE_SYMBOL[list]:   
+        data = [unpack_data(packed_bytes[:size])] if size else []
+    elif _type == _TYPE_SYMBOL[set]:
+        data = set(unpack_data(packed_bytes[:size])) if size else set()
+    elif _type == _TYPE_SYMBOL[dict]:
+        items = unpack_data(packed_bytes[:size]) if size else []        
+        try:
+            data = dict(items)
+        except TypeError:                
+            data = {items[0] : items[1]}
+    else:            
+        data = _TYPE_RESOLVER[_type](packed_bytes[:size])    
+    return data
+            
 def unpack_data(packed_bytes):
     """ Unpack a stream according to its size header.
         The second argument should be either an integer indicating the quantity
@@ -69,12 +89,14 @@ def unpack_data(packed_bytes):
     size_count = len(types)    
     sizes = packed_bytes.split(' ', size_count)    
     packed_bytes = sizes.pop(-1)
-    data = []
-    for index, size in enumerate((int(size) for size in sizes)):
-        data.append(_TYPE_RESOLVER[types[index]](packed_bytes[:size]))
-        packed_bytes = packed_bytes[size:]                  
-    return data if len(data) > 1 else data[0]
-            
+    data = []        
+    for index, size in enumerate((int(size) for size in sizes)):              
+        data.append(_dispatch(types[index], packed_bytes, size))
+        #print "Unpacking: ", packed_bytes[:size]
+        packed_bytes = packed_bytes[size:]    
+  #  print "Unpacked data: ", data
+    return tuple(data)
+    
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')
     sys.stdout.flush()

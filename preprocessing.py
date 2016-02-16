@@ -108,7 +108,13 @@ class Compiler(object):
                     if old_entry[:64] != source_hash:
                         self._outdated.add(module_name)
                         preprocessed_source = self.preprocess(source)
-                        self.database[module_name] = source_hash + preprocessed_source
+                        try:
+                            self.database[module_name] = source_hash + preprocessed_source
+                        except anydbm._errors[1]:
+                            atexit._exithandlers.remove(self._database_finalizer)
+                            self.database.close()
+                            os.remove(self.cache_filename)                        
+                            print "Source cache corrupted; Please restart pride."
                     else:
                         preprocessed_source = old_entry[64:]
                     self.module_source[module_name] = (preprocessed_source, _path)

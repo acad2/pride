@@ -72,7 +72,7 @@ class Command_Line(pride.vmlibrary.Process):
                 "default_programs" : ("pride.shell.Python_Shell",
                                       "pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
-                "idle_threshold" : 10000, 
+                "idle_threshold" : 100, 
                 "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):
@@ -124,9 +124,11 @@ class Command_Line(pride.vmlibrary.Process):
                 pride.objects[self.screensaver].delete()
                 self.screensaver = None
                 self.clear()
-                #line_width, line_count = pride._termsize.getTerminalSize()
-                sys.stdout.write(sys.stdout_log[:self._position])
-               # sys.stdout.write(self.prompt)
+                previous_log_contents = sys.stdout_log[:self._position]                                                           
+                sys.stdout.write(previous_log_contents)
+                sys.stdout.flush()
+                sys.stdout.logging_enabled = True
+                
             if not self.thread_started:
                 self._new_thread()    
                 self.thread.start()
@@ -177,8 +179,9 @@ class Command_Line(pride.vmlibrary.Process):
         #    sys.stdout.write(self.prompt)
                 
     def handle_idle(self):
-        if self._idle and not self.screensaver and not self.thread_started:
-            self._position = sys.stdout_log.tell()
+        if self._idle and not self.screensaver and not self.thread_started:            
+            self._position = sys.stdout_log.tell()        
+            sys.stdout.logging_enabled = False
             self.screensaver = self.create(self.screensaver_type).reference            
         self._idle = True        
         priority = self.idle_threshold * self.priority

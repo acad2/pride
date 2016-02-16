@@ -58,7 +58,7 @@ class Shell(authentication2.Authenticated_Client):
     def result(self, packet):
         if not packet:
             return
-        else:                            
+        else:                         
             sys.stdout.write('\r' + packet)            
             
 
@@ -94,28 +94,31 @@ class Interpreter(authentication2.Authenticated_Service):
         session_id, sender = self.current_session
                 
         username = self.session_id[session_id]
-        log.write("{} {} from {}:\n".format(time.asctime(), username, 
-                                            sender) + source)           
-        result = ''         
+        log.write("{}\n{} {} from {}:\n".format('-' * 80, time.asctime(), username, 
+                                                sender) + source)                       
         try:
             code = pride.compiler.compile(source)
         except (SyntaxError, OverflowError, ValueError):
             result = traceback.format_exc()           
-        else:               
-            with sys.stdout.switched(self._logger):
-                try:
-                    exec code in globals()
-                except SystemExit:             
-                    raise
-                except: # we explicitly really do want to catch everything here   
-                    result = traceback.format_exc()                    
-                else:
-                    self.user_session[username] += source                
-                    sys.stdout.seek(0)
-                    result = sys.stdout.read() + result
-                log.write("{}\n".format(result))                    
-                sys.stdout.truncate(0)                                                 
-        log.flush()        
+        else:          
+            _logger = self._logger
+            backup = sys.stdout            
+            sys.stdout = _logger            
+            try:
+                exec code in globals()
+            except SystemExit:             
+                raise
+            except: # we explicitly really do want to catch everything here   
+                result = traceback.format_exc()                    
+            else:
+                self.user_session[username] += source                
+                _logger.seek(0)
+                result = _logger.read() 
+            
+            log.write("{}\n".format(result))                    
+            _logger.truncate(0)      
+            sys.stdout = backup
+        log.flush()                 
         return result
         
     def _exec_command(self, source):

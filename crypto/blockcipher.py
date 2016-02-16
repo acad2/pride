@@ -2,79 +2,71 @@ import itertools
 
 from utilities import cast, rotate, slide 
         
-#def permutation(input_data, key, mode="forward"):    
-#    key = bytearray(key)
-#    if mode == "forward":
-#        index_function = lambda index: (1 + index) * 8        
-#    else:
-#        assert mode == "invert"
-#        data_size = len(input_data)
-#        index_function = lambda index: (data_size - index) * 8
-#        key = [-number for number in reversed(key)]
-#        
-#    output = cast(bytes(input_data), "binary")
-#    key_material = itertools.cycle(key)
-#    key_byte = lambda: next(key_material)  
-# 
-#    for index, byte in enumerate(input_data):
-#        _key_byte = key_byte()        
-#        output = rotate(output[:index_function(index)], _key_byte) + output[index_function(index):]
-#    return cast(output, "bytes")
+def permutation(input_data, key, mode="forward"):        
+    if mode == "forward":
+        index_function = lambda index: (1 + index) * 8        
+    else:
+        assert mode == "invert"
+        data_size = len(input_data)
+        index_function = lambda index: (data_size - index) * 8
+       # key = [-number for number in reversed(key)]
+        
+    output = cast(bytes(input_data), "binary") 
+    for index, key_byte in enumerate(key):        
+        output = rotate(output[:index_function(index)], key_byte) + output[index_function(index):]
+    return cast(output, "bytes")
               
 def substitution(data, key):      
-    modifier = sum(key)
-    for index, byte in enumerate(data):                
-        data[index] ^= pow(251, modifier ^ sum(data[:index]) ^ sum(data[index + 1:]) ^ key[index], 257) % 256      
+    modifier = sum(key)    
+    for index, byte in enumerate(data):                        
+        data[index] ^= pow(251, (sum(data[:index]) ^ sum(data[index + 1:])) + 
+                                (modifier ^ key[index]), 
+                           257) % 256                              
  
-# data_i = data_i XOR S(k_m XOR k_i XOR data1 XOR data2)
-#1 = 0 XOR 1 = S(k_m XOR k_i XOR data1 XOR data2) = k_m XOR k_i XOR data1 XOR data2
+# data_i = ROTATE(KM_i XOR data_i XOR (251 POWER ((ciphertext_i XOR plaintext_i) PLUS (modifier XOR key_i)) MODULO 257) MODULO 256)
 
-def apply_round(data, key):        
-    substitution(data, key)
-    substitution(data, key)
-          
-def crypt_block(data_block, round_keys):  
-    for round_key in round_keys:  
-        apply_round(data_block, round_key)                    
-            
-def generate_round_keys(key, rounds):
-    round_keys = [key[:]]
-    round_key = key   
+def generate_round_keys(seed, key, rounds):
+    round_keys = []     
     for round in range(rounds):
-        apply_round(round_key, key)   
-        round_keys.append(round_key[:])
+        substitution(seed, key)
+        round_keys.append(seed[:])
     return round_keys
-    
-def cipher(data, key, iv, rounds=1, mode="encrypt",
-           mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):
+        
+def xor(data, key):
+    for index in range(len(data)):
+        data[index] ^= key[index]
+        
+def crypt_block(block, round_keys, instructions):
+    for round_key in round_keys:
+        for instruction in instructions:
+            instruction(block, round_key)
+                       
+def cipher(data, iv, round_keys, round_functions, rounds=1):
+    block_size = len(round_keys[0])
     output = ''
-    block_size = len(key)
-    key = bytearray(key)
-    round_keys = generate_round_keys(key, rounds)
-    if mode == "decrypt":
-        round_keys = [bytearray(reversed(round_key)) for round_key in reversed(round_keys)]
-        data = reversed(data)
-                
-    for block in slide(bytearray(data), block_size):
-        crypt_block(block, round_keys)
+    for block in slide(data, block_size):
+        crypt_block(block, round_keys, round_functions)
         output += bytes(block)
-        block, output, key, iv = mode_of_operation(block, output, key, iv)
     return output
     
-def encrypt(data, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):
-    return cipher(data, key, iv, rounds, mode_of_operation)
-
-def decrypt(ciphertext, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):
-    return cipher(ciphertext, key, iv, rounds, "decrypt", mode_of_operation)
+def encrypt(data, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):        
+    return cipher(bytearray(data), iv,
+                  generate_round_keys(bytearray(key), bytearray(key), rounds),
+                  (xor, substitution, permutation))                  
+                   
+def decrypt(data, key, iv, rounds=1, mode_of_operation=lambda input_block, output_block, key, iv: (input_block, output_block, key, iv)):
+    # same as encryption, with the data, keys, and operations reversed    
+    round_keys = [bytearray(reversed(round_key)) for round_key in 
+                  reversed(generate_round_keys(bytearray(key), bytearray(key), rounds))]      
+    return ''.join(reversed(cipher(bytearray(reversed(data)), iv, round_keys, (permutation, substitution, xor))))
                             
 def test_block_cipher():
-    data = (("\x00" * 15) + "\x00")
-    iv = key = "0123456789ABCDEF"    
+    data = "\x00" * 16
+    iv = key = "\x00" * 16  
     #assert len(data) == len(key), (len(data), len(key))
     ciphertext = encrypt(data, key, iv)
     _data = decrypt(ciphertext, key, iv)
-    print ciphertext
-    print
+    print ciphertext    
     print _data
     assert data == _data
     
@@ -110,11 +102,11 @@ def test_metrics():
             input_data = output[-keysize:]     
         return output
     from metrics import test_hash_function, test_performance
-    test_performance(_hash_function)
-    #test_hash_function(_hash_function)
+    #test_performance(_hash_function)
+    test_hash_function(_hash_function)
     
 if __name__ == "__main__":
     #test_substitution()
     #test_permutation()
     test_block_cipher()
-    test_metrics()
+    #test_metrics()

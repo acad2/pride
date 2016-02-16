@@ -13,6 +13,7 @@ class Patched_Module(pride.base.Wrapper):
     """ The base class for patching modules """
     
     defaults = {"module_name" : ''}
+    wrapped_object_name = "module"
     
     def __init__(self, **kwargs):
         super(Patched_Module, self).__init__(**kwargs)
@@ -21,11 +22,11 @@ class Patched_Module(pride.base.Wrapper):
         globals()[self.module_name] = self
             
  
-class Stdout(pride.base.Wrapper):
+class Stdout(pride.base.Base):
     
     defaults = {"file" : None, "log_type" : "StringIO.StringIO", 
-                "limit_log_size" : 1024 * 1024 }
-    wrapped_object_name = "file"
+                "limit_log_size" : 1024 * 1024, "logging_enabled" : True}
+   # wrapped_object_name = "file"
     
     def __init__(self, **kwargs):
         super(Stdout, self).__init__(**kwargs)
@@ -34,17 +35,22 @@ class Stdout(pride.base.Wrapper):
     def write(self, data):
         if self.limit_log_size and self.log.tell() > self.limit_log_size:
             self.log.truncate()
-        self.log.write(data)
+        if self.logging_enabled:            
+            self.log.write(data)
+            self.log.flush()        
         self.file.write(data)
         self.file.flush()
-     
+    
+    def flush(self):
+        sys.module.__stdout__.flush()
+        
     @contextlib.contextmanager
     def switched(self, _file):
         backup = self.file
-        sys.stdout = _file
+        sys.stdout = _file        
         try:
             yield self
-        finally:            
+        finally: 
             sys.stdout = backup        
         
         
@@ -57,12 +63,13 @@ class Sys(Patched_Module):
     def _set_stdout(self, value):
         if value is None or value is self._logger:
             value = self.wrapped_object.__stdout__
-        self._logger.wraps(value)         
+        self._logger.file = value
     stdout = property(_get_stdout, _set_stdout)               
     
     def __init__(self, **kwargs):
         super(Sys, self).__init__(**kwargs)
-        self._logger = self.create(Stdout, file=sys.stdout)
-        Sys.stdout_log = self._logger.log        
-        self.stdout = self.wrapped_object.stdout
+        self._logger = self.create(Stdout, file=self.wrapped_object.__stdout__)
+        self.stdout_log = self._logger.log    
+        #print self._logger, self.wrapped_object.stdout
+        self.wrapped_object.stdout = self._logger
         
