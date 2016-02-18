@@ -54,19 +54,20 @@ def pack_data(*args):
     output = ''
     for arg in args:
         if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
-            arg_string = pack_data(*arg) if arg else ''
+            arg_string = pack_data(*arg)[1:] if arg else ''
         elif isinstance(arg, dict):
-            arg_string = pack_data(*arg.items()) if arg else ''
+            arg_string = pack_data(*arg.items())[1:] if arg else ''
         else:
             arg_string = str(arg)    
         arg_strings.append(arg_string)
         sizes.append(str(len(arg_string)))
         types.append(_TYPE_SYMBOL[type(arg)])    
-    return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
+    return chr(255) + ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
         
 def _dispatch(_type, packed_bytes, size):        
     if _type == _TYPE_SYMBOL[tuple]:          
         data = unpack_data(packed_bytes[:size]) if size else tuple()
+        print data
     elif _type == _TYPE_SYMBOL[list]:   
         data = [unpack_data(packed_bytes[:size])] if size else []
     elif _type == _TYPE_SYMBOL[set]:
@@ -85,18 +86,24 @@ def unpack_data(packed_bytes):
     """ Unpack a stream according to its size header.
         The second argument should be either an integer indicating the quantity
         of items to unpack, or an iterable of types whose length indicates the
-        quantity of items to unpack. """       
-    types, packed_bytes = packed_bytes.split(' ', 1)    
+        quantity of items to unpack. """  
+    print [ord(byte) for byte in packed_bytes], packed_bytes
+    if packed_bytes[0] == chr(255):
+        print "Is first item!"
+        unpack_if_single_item = False
+    else:
+        unpack_if_single_item = True    
+    types, packed_bytes = packed_bytes[1:].split(' ', 1)    
     size_count = len(types)    
     sizes = packed_bytes.split(' ', size_count)    
     packed_bytes = sizes.pop(-1)
     data = []        
     for index, size in enumerate((int(size) for size in sizes)):              
         data.append(_dispatch(types[index], packed_bytes, size))                    
-        #print "Unpacking: ", packed_bytes[:size]
+        print "Unpacking: ", packed_bytes[:size], data[-1]
         packed_bytes = packed_bytes[size:]    
-    print "Unpacked data: ", tuple(data)
-    return tuple(data)
+    print "Unpacked data: ", types, sizes, tuple(data)
+    return data[0] if unpack_if_single_item and len(sizes) == 1 else tuple(data)
     
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')

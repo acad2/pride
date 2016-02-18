@@ -1,0 +1,208 @@
+Cipher description
+--------------
+
+Rotation
+--------
+The i bit from each byte is grouped into a byte. The result is equivalent
+to arranging the bits into an 8 x 8 grid and taking the columns instead of the
+rows:
+
+# input_block 
+--|----|----|----|----|----|----|----|----|
+B0|M0_0|M0_1|M0_2|M0_3|M0_4|M0_5|M0_6|M0_7|
+--|----|----|----|----|----|----|----|----|
+B1|M1_0|M1_1|M1_2|M1_3|M1_4|M1_5|M1_6|M1_7|
+--|----|----|----|----|----|----|----|----|
+B2|M2_0|M2_1|M2_2|M2_3|M2_4|M2_5|M2_6|M2_7|
+--|----|----|----|----|----|----|----|----|
+B3|M3_0|M3_1|M3_2|M3_3|M3_4|M3_5|M3_6|M3_7|
+--|----|----|----|----|----|----|----|----|
+B4|M4_0|M4_1|M4_2|M4_3|M4_4|M4_5|M4_6|M4_7|
+--|----|----|----|----|----|----|----|----|
+B5|M5_0|M5_1|M5_2|M5_3|M5_4|M5_5|M5_6|M5_7|
+--|----|----|----|----|----|----|----|----|
+B6|M6_0|M6_1|M6_2|M6_3|M6_4|M6_5|M6_6|M6_7|
+--|----|----|----|----|----|----|----|----|
+B7|M7_0|M7_1|M7_2|M7_3|M7_4|M7_5|M7_6|M7_7|
+--|----|----|----|----|----|----|----|----|
+
+Put simply: read the columns instead of the rows; the bytes are read down as
+opposed to across.
+
+  B0   B1   B2   B3   B4   B5   B6   B7
+|----|----|----|----|----|----|----|----| ||
+|M0_0|M0_1|M0_2|M0_3|M0_4|M0_5|M0_6|M0_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M1_0|M1_1|M1_2|M1_3|M1_4|M1_5|M1_6|M1_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M2_0|M2_1|M2_2|M2_3|M2_4|M2_5|M2_6|M2_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M3_0|M3_1|M3_2|M3_3|M3_4|M3_5|M3_6|M3_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M4_0|M4_1|M4_2|M4_3|M4_4|M4_5|M4_6|M4_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M5_0|M5_1|M5_2|M5_3|M5_4|M5_5|M5_6|M5_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M6_0|M6_1|M6_2|M6_3|M6_4|M6_5|M6_6|M6_7| ||
+|----|----|----|----|----|----|----|----| ||
+|M7_0|M7_1|M7_2|M7_3|M7_4|M7_5|M7_6|M7_7| ||
+|----|----|----|----|----|----|----|----| \/
+
+Bi = b0_i b1_i b2_i b3_i b4_i b5_i b6_i b7_i
+
+Each byte of the rotated inputs consists of 1 bit from each input byte.
+Manipulating a single byte after rotation manipulates 1 bit from each original input byte
+For example, xoring the rotated block with a key results in each byte of the key acting on 1/8 of each input byte
+
+  B0   B1   B2   B3   B4   B5   B6   B7
+  K0   K1   K2   K3   K4   K5   K6   K7  
+|----|----|----|----|----|----|----|----| ||
+|M0_0|M0_1|M0_2|M0_3|M0_4|M0_5|M0_6|M0_7| ||
+|K0_0|K1_0|K2_0|K3_0|K4_0|K5_0|K6_0|K7_0| ||
+|----|----|----|----|----|----|----|----| ||
+|M1_0|M1_1|M1_2|M1_3|M1_4|M1_5|M1_6|M1_7| ||
+|K0_1|K1_1|K2_1|K3_1|K4_1|K5_1|K6_1|K7_1| ||
+|----|----|----|----|----|----|----|----| ||
+|M2_0|M2_1|M2_2|M2_3|M2_4|M2_5|M2_6|M2_7| ||
+|K0_2|K1_2|K2_2|K3_2|K4_2|K5_2|K6_2|K7_2| ||
+|----|----|----|----|----|----|----|----| ||
+|M3_0|M3_1|M3_2|M3_3|M3_4|M3_5|M3_6|M3_7| ||
+|K0_3|K1_3|K2_3|K3_3|K4_3|K5_3|K6_3|K7_3| ||
+|----|----|----|----|----|----|----|----| ||
+|M4_0|M4_1|M4_2|M4_3|M4_4|M4_5|M4_6|M4_7| ||
+|K0_4|K1_4|K2_4|K3_4|K4_4|K5_4|K6_4|K7_4| ||
+|----|----|----|----|----|----|----|----| ||
+|M5_0|M5_1|M5_2|M5_3|M5_4|M5_5|M5_6|M5_7| ||
+|K0_5|K1_5|K2_5|K3_5|K4_5|K5_5|K6_5|K7_5| ||
+|----|----|----|----|----|----|----|----| ||
+|M6_0|M6_1|M6_2|M6_3|M6_4|M6_5|M6_6|M6_7| ||
+|K0_6|K1_6|K2_6|K3_6|K4_6|K5_6|K6_6|K7_6| ||
+|----|----|----|----|----|----|----|----| ||
+|M7_0|M7_1|M7_2|M7_3|M7_4|M7_5|M7_6|M7_7| ||
+|K0_7|K1_7|K2_7|K3_7|K4_7|K5-7|K6_7|K7_7| ||
+|----|----|----|----|----|----|----|----| \/
+
+
+The rotation can add resistant to known plaintext attacks when the attacker
+knows less then entire message block.
+
+
+Substitution
+-------------
+For each byte of input, generate a psuedorandom byte and XOR it with the input byte.
+The psuedorandom byte is generated from the combination of each other input byte.
+
+input bytes: 
+    
+    B0 B1 B2 B3 B4 B5 B6 B7
+
+output bytes:    
+
+    C0 = B0 xor S-BOX[B1 xor B2 xor B3 xor B4 xor B5 xor B6 xor B7]
+    C1 = B1 xor S-BOX[C0 xor B2 xor B3 xor B4 xor B5 xor B6 xor B7]
+    C2 = B2 xor S-BOX[C0 xor C1 xor B3 xor B4 xor B5 xor B6 xor B7]
+    C3 = B3 xor S-BOX[C0 xor C1 xor C2 xor B4 xor B5 xor B6 xor B7]
+    C4 = B4 xor S-BOX[C0 xor C1 xor C2 xor C3 xor B5 xor B6 xor B7]
+    C5 = B5 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor B6 xor B7]
+    C6 = B6 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor B7]
+    C7 = B7 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor C6]
+
+Decryption is the reverse process; Each psuedorandom byte is generated as above
+and xored with each byte of C to recover each B. Each byte must be present in 
+order to begin decryption, and each byte must be decrypted in order. For 
+example, C7 must be decrypted first using C0-C6; It would not be possible to
+decrypt C6 without decrypting C7 first, as the input to the sbox for C6 makes
+use of B7.
+
+If the rotation phase was applied first, then each B_i is equal to P_i xor K_i, 
+where P is the original input byte of the plaintext. 
+    
+    C0 = B0 xor K0 xor S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C1 = B1 xor K1 xor S-BOX[C0 xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C2 = B2 xor K2 xor S-BOX[C0 xor C1 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C3 = B3 xor K3 xor S-BOX[C0 xor C1 xor C2 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C4 = B4 xor K4 xor S-BOX[C0 xor C1 xor C2 xor C3 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C5 = B5 xor K5 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor B6 xor K6 xor B7 xor K7]
+    C6 = B6 xor K6 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor B7 xor K7]
+    C7 = B7 xor K7 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor C6]
+    
+    
+If the key is xored with the data again after the substitution, then all K_i 
+disappear from the left and enough information to begin decryption is no
+longer present. Key information is still indirectly present in the form 
+of the psuedorandom byte from the S-BOX.
+    
+    # after final xor with key
+    C_k0 = B0 xor S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C_k1 = B1 xor S-BOX[C0 xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C_k2 = B2 xor S-BOX[C0 xor C1 xor B3 xor K3 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C_k3 = B3 xor S-BOX[C0 xor C1 xor C2 xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C_k4 = B4 xor S-BOX[C0 xor C1 xor C2 xor C3 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]
+    C_k5 = B5 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor B6 xor K6 xor B7 xor K7]
+    C_k6 = B6 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor B7 xor K7]
+    C_k7 = B7 xor S-BOX[C0 xor C1 xor C2 xor C3 xor C4 xor C5 xor C6]
+    
+Note that each C_i term inside the S-BOX still consists of B_i xor K_i, but the
+ciphertext bytes that are actually output only consists of B_i xor S-BOX[...].
+
+
+    
+    # with each C_i unencapsulated
+    C0 = (B0 xor K0 xor # C0
+          S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C0
+    
+    C1 = (B1 xor K1 xor # C1
+          S-BOX[B0 xor K0 xor # C0
+                S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                      B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7] # end C0
+                xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 
+                xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C1
+                             
+    C2 = (B2 xor K2 xor 
+          S-BOX[(B0 xor K0 xor # C0
+                 S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                         B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C0
+                 xor (B1 xor K1 xor # C1
+                      S-BOX[B0 xor K0 xor # C0
+                              S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                                  B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7] # end C0
+                              xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 
+                              xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]])) # end C1                
+                
+    C3 = B3 xor K3 xor # C3
+         S-BOX[(B0 xor K0 xor # C0
+               S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                       B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C0
+               xor (B1 xor K1 xor # C1
+                    S-BOX[B0 xor K0 xor # C0
+                            S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                                B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7] # end C0
+                            xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 
+                            xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C1
+               xor (B2 xor K2 xor 
+                    S-BOX[(B0 xor K0 xor # C0
+                            S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                                  B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]) # end C0
+                            xor (B1 xor K1 xor # C1
+                                S-BOX[B0 xor K0 xor # C0
+                                      S-BOX[B1 xor K1 xor B2 xor K2 xor B3 xor K3 xor 
+                                          B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7] # end C0
+                                      xor B2 xor K2 xor B3 xor K3 xor B4 xor K4 
+                                      xor B5 xor K5 xor B6 xor K6 xor B7 xor K7]])) # end C1 
+               xor B4 xor K4 xor B5 xor K5 xor B6 xor K6 xor B7 xor K7] # end C3
+     
+    ...
+    
+    
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     

@@ -21,7 +21,20 @@ def bit_mixer_inverse(input_data, key):
     for index, byte in enumerate(reversed(cast(output, "bytes"))):
         input_data[index] = byte    
              
-def diffusion_shuffle(input_data, key=None):         
+#((a * M) + b) % p
+             
+def diffusion_shuffle(input_data, key=None):  
+    # supposing each row is a byte of input, the output is the columns
+    # 1 0 0 1 1 0 0 1
+    # 0 1 0 1 0 1 0 1
+    # 1 0 1 0 1 0 1 0
+    # 1 1 0 0 1 1 0 0 
+    # 0 0 1 0 0 1 0 0
+    # 1 1 0 1 0 0 1 0
+    # 1 1 1 0 1 1 1 0
+    # 0 1 0 1 0 1 0 1
+    # inverse is the same operation! # above are random demo bytes
+    # note key is not used or required.
     for index_scalar, block in enumerate(slide(input_data, 8)):
         bits = cast(bytes(block), "binary")
         block_size = len(block)

@@ -10,17 +10,18 @@ import pride.utilities
 import pride.networkssl
 #objects = pride.objects
 
-class Serializer(object):
-    
-    @staticmethod
-    def dumps(py_object):
-        return pride.utilities.pack_data(py_object)
-     
-    @staticmethod
-    def loads(stream):        
-        return pride.utilities.unpack_data(stream)
+#class Serializer(object):
+#    
+#    @staticmethod
+#    def dumps(py_object):
+#        return pride.utilities.pack_data(py_object)
+#     
+#    @staticmethod
+#    def loads(stream):        
+#        return pride.utilities.unpack_data(stream)
 
-default_serializer = Serializer
+DEFAULT_SERIALIZER = type("Serializer", (object, ), {"dumps" : staticmethod(pride.utilities.pack_data),
+                                                     "loads" : staticmethod(pride.utilities.unpack_data)})
 _old_data, _hosts = {}, {}
 
 class UnauthorizedError(Warning): pass  
@@ -90,7 +91,7 @@ class Session(pride.base.Base):
         _call = component, method = instruction.component_name, instruction.method
         #print "Pickling: ", instruction.args, instruction.kwargs
         request = pride.utilities.pack_data(self.id, component, method, 
-                                            default_serializer.dumps((instruction.args, 
+                                            DEFAULT_SERIALIZER.dumps((instruction.args, 
                                                                       instruction.kwargs)))
         host = pride.objects["->Python->Rpc_Connection_Manager"].get_host(self.host_info) 
         # we have to insert at the beginning things will happen inline, and
@@ -222,7 +223,7 @@ class Rpc_Client(Packet_Client):
                         level=self.verbosity["handle_exception"])            
             
     def deserealize(self, response):
-        return default_serializer.loads(response)
+        return DEFAULT_SERIALIZER.loads(response)
         
         
 class Rpc_Socket(Packet_Socket):
@@ -275,7 +276,7 @@ class Rpc_Socket(Packet_Socket):
             self.send(self.serialize(result))
       
     def serialize(self, result):
-        return default_serializer.dumps(result)  
+        return DEFAULT_SERIALIZER.dumps(result)  
 
         
 class Rpc_Worker(pride.base.Base):
@@ -288,10 +289,11 @@ class Rpc_Worker(pride.base.Base):
         if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()
         else:
+            print "Rpc deserealized: ", self.deserealize(serialized_arguments)
             args, kwargs = self.deserealize(serialized_arguments)
             with pride.contextmanagers.backup(instance, "current_session"):
                 instance.current_session = (session_id, peername)
                 return getattr(instance, method)(*args, **kwargs) 
         
     def deserealize(self, serialized_arguments):
-        return default_serializer.loads(serialized_arguments)        
+        return DEFAULT_SERIALIZER.loads(serialized_arguments)        
