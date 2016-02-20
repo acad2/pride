@@ -41,7 +41,7 @@ def _hmac_rng(key, seed, hash_function="sha512"):
     hasher = hmac.HMAC(key, seed, getattr(hashlib, hash_function))
     for counter in (str(number) for number in itertools.count()):
         yield hasher.digest()
-        hasher.update(key + counter)
+        hasher.update(key + seed + counter)
     
 def psuedorandom_bytes(key, seed, count, hash_function="sha512"): 
     """ usage: psuedorandom_bytes(key, seed, count, 

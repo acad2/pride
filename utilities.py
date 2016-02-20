@@ -39,7 +39,7 @@ def rotate(input_string, amount):
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
                 
-def pack_data(*args):
+def pack_object(data):
     """ Pack arguments into a stream, prefixed by size headers.
         Resulting bytestream takes the form:
             
@@ -47,23 +47,20 @@ def pack_data(*args):
             
         The returned bytestream can be unpacked via unpack_data to
         return the original contents, in order. """
-    sizes = []
-    arg_strings = []
-    types = []    
-    print "Packing: ", args
-    output = ''
-    for arg in args:
-        if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
-            arg_string = pack_data(*arg)[1:] if arg else ''
-        elif isinstance(arg, dict):
-            arg_string = pack_data(*arg.items())[1:] if arg else ''
-        else:
-            arg_string = str(arg)    
-        arg_strings.append(arg_string)
-        sizes.append(str(len(arg_string)))
-        types.append(_TYPE_SYMBOL[type(arg)])    
-    return chr(255) + ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
+    if isinstance(data, tuple) or isinstance(data, list) or isinstance(data, set):          
+        arg_string = '' if not data else ' '.join([_TYPE_SYMBOL[type(data)], str(len(data))] + 
+                                                  [pack_object(value) for value in data])                
+    elif isinstance(data, dict):
+        arg_string = '' if not data else ' '.join((_TYPE_SYMBOL[type(data)], str(len(data)),
+                                                   pack_data(data.items())))
+    else:
+        arg_string = ' '.join((_TYPE_SYMBOL[type(data)], '0', str(data)))
+    return arg_string
         
+def unpack_object(packed_data):
+    type, size, packed_data = packed_data.split(' ', 2)
+    return _dispatch(type, packed_data, int(size))
+            
 def _dispatch(_type, packed_bytes, size):        
     if _type == _TYPE_SYMBOL[tuple]:          
         data = unpack_data(packed_bytes[:size]) if size else tuple()

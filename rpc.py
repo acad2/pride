@@ -10,16 +10,6 @@ import pride.utilities
 import pride.networkssl
 #objects = pride.objects
 
-#class Serializer(object):
-#    
-#    @staticmethod
-#    def dumps(py_object):
-#        return pride.utilities.pack_data(py_object)
-#     
-#    @staticmethod
-#    def loads(stream):        
-#        return pride.utilities.unpack_data(stream)
-
 DEFAULT_SERIALIZER = type("Serializer", (object, ), {"dumps" : staticmethod(pride.utilities.pack_data),
                                                      "loads" : staticmethod(pride.utilities.unpack_data)})
 _old_data, _hosts = {}, {}
