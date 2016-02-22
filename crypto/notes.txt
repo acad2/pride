@@ -205,4 +205,38 @@ ciphertext bytes that are actually output only consists of B_i xor S-BOX[...].
      
      
      
-     
+    # K0 K1 K2 K3 K4 K5 K6 K7
+    # M0 M1 M2 M3 M4 M5 M6 M7    
+    
+    # psuedorandom_byte0 = S-BOX[K0 K1 K2 K3 K4 K5 K6 K7
+    #                            I0 M1 M2 M3 M4 M5 M6 M7]
+
+    # K0 K1 K2 K3 K4 K5 K6 K7
+    # M0 M1 M2 M3 M4 M5 M6 M7 
+    # R0
+    
+    # psuedorandom_byte1 = S-BOX[K0 K1 K2 K3 K4 K5 K6 K7
+    #                            M0 I1 M2 M3 M4 M5 M6 M7
+    #                            R0                     ]
+
+    # K0 K1 K2 K3 K4 K5 K6 K7
+    # M0 M1 M2 M3 M4 M5 M6 M7 
+    # R0 R1
+   
+    # psuedorandom_byte2 = S-BOX[K0 K1 K2 K3 K4 K5 K6 K7
+    #                            M0 M1 I2 M3 M4 M5 M6 M7
+    #                            R0 R1                  ]
+    
+    # K0 K1 K2 K3 K4 K5 K6 K7
+    # M0 M1 M2 M3 M4 M5 M6 M7 
+    # R0 R1 R2
+   
+    # psuedorandom_byte3 = S-BOX[K0 K1 K2 K3 K4 K5 K6 K7
+    #                            M0 M1 M2 I3 M4 M5 M6 M7
+    #                            R0 R1 R2               ]
+    
+    # K0 K1 K2 K3 K4 K5 K6 K7
+    # M0 M1 M2 M3 M4 M5 M6 M7 
+    # R0 R1 R2
+    
+    # ...     
