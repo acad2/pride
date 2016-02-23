@@ -1,5 +1,5 @@
 import itertools
-from utilities import cast
+from utilities import cast, slide
 
 S_BOX = bytearray(256)
 INVERSE_S_BOX = bytearray(256)
@@ -12,9 +12,21 @@ for number in range(256):
     INVERSE_S_BOX[output] = number
     
 def block_rotation(input_bytes):    
-    bits = cast(bytes(input_bytes), "binary")    
-    for index, byte in enumerate(int(bits[index::8], 2) for index in range(8)):
-        input_bytes[index] = byte    
+    bits = cast(bytes(input_bytes), "binary")      
+    # if a 64 bit block was acceptable, the operation would be this simple:
+    #   for index, byte in enumerate(int(bits[index::8], 2) for index in range(8)):
+    #       input_bytes[index] = byte  
+    
+    bit_count = len(bits)
+    word_size = bit_count / 8
+    word_size_in_bytes = word_size / 8
+    for index in range(8):#word_size - 1):
+        bits_at_index = bits[index::8]
+        _index = index * word_size_in_bytes    
+        
+        for offset, _bits in enumerate(slide(bits_at_index, 8)):
+   #         print index, _index, offset, word_size, len(bits_at_index), len(bits)
+            input_bytes[_index + offset] = int(_bits, 2)
     
 def xor_sum(data):
     _xor_sum = 0
@@ -28,10 +40,11 @@ def derive_round_key(key):
         key[index] = S_BOX[index ^ xor_sum_of_key ^ key_byte]           
     block_rotation(key)
     
-def substitution(input_bytes, xor_sum_of_data, indices):            
+def substitution(input_bytes, xor_sum_of_data, key, indices):            
     for index in indices:        
-        xor_sum_of_data ^= input_bytes[index]# input_bytes[index] # remove the current byte from the xor sum               
-        input_bytes[index] ^= S_BOX[xor_sum_of_data] # generate a psuedorandom byte from everything but the current byte + combine with current byte
+        xor_sum_of_data ^= input_bytes[index]# input_bytes[index] # remove the current byte from the xor sum         
+    #    print INVERSE_S_BOX[index ^ xor_sum_of_data], S_BOX[index ^ xor_sum_of_data]
+        input_bytes[index] ^= INVERSE_S_BOX[index ^ key[index]] ^ S_BOX[xor_sum_of_data] # generate a psuedorandom byte from everything but the current byte + combine with current byte
         xor_sum_of_data ^= input_bytes[index] # include byte XOR psuedorandom_byte in the xor sum         
        
 def xor_with_key(data, key):    
@@ -51,20 +64,21 @@ def crypt_block(data, key, indices):
     
     derive_round_key(key)                
     xor_with_key(data, key)
-    substitution(data, xor_sum(data), indices)           
+    substitution(data, xor_sum(data), key, indices)           
     xor_with_key(data, key)
    
     return bytes(data)
     
 def test_encrypt_decrypt():
-    data = "\x00" * 7
-    key = ("\x00" * 7) + "\x00"
+    data = "\x00" * 15
+    key = ("\x00" * 15) + "\x00"
     for count in range(5):
         _data = data + chr(count)
         ciphertext = encrypt(_data, key)    
         plaintext = decrypt(ciphertext, key)
         assert plaintext == _data, (ciphertext, plaintext, _data)
-        print ciphertext
+        print ciphertext#, [byte for byte in bytearray(ciphertext)]
+        print
     
 if __name__ == "__main__":
     test_encrypt_decrypt()
