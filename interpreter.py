@@ -106,7 +106,7 @@ class Interpreter(authentication2.Authenticated_Service):
             sys.stdout = _logger            
             try:
                 exec code in globals()
-            except SystemExit:             
+            except SystemExit:                    
                 raise
             except: # we explicitly really do want to catch everything here   
                 result = traceback.format_exc()                    

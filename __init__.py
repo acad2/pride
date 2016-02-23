@@ -1,20 +1,13 @@
 """ Stores global objects including instructions and the environment """
 import sys
-import preprocessing
 import traceback
+        
+import preprocessing
         
 compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decorator, ),
                                   modify_builtins=None)                                    
 
 import heapq
-import inspect
-import mmap
-import itertools
-import pprint
-import pickle
-import contextlib
-import copy
-import types
 import timeit
 timer_function = timeit.default_timer
         

@@ -566,7 +566,7 @@ class Network(vmlibrary.Process):
                 error_handler.dispatch(_socket, error, ERROR_CODES[error.errno].lower())
             except Exception as error:                
                 _socket = readable[read_progress + read_counter]
-                _socket.alert("Caught non socket.error during recv: {}", (error, ), level=0)                
+                _socket.alert("Caught non socket.error during recv: {}", (traceback.format_exc(), ), level=0)                
                 _socket.delete()
               #  raise
                 read_progress += (read_counter + 1)

@@ -10,13 +10,14 @@ import types
 import pprint
 import traceback
 import timeit
+import exceptions
 
 timer_function = timeit.default_timer    
      
 _TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2), 
                 bool : chr(3), list : chr(4), dict : chr(5),
                 tuple : chr(6), set : chr(7), type(None) : chr(8),
-                unicode : chr(9)}
+                unicode : chr(9), BaseException : chr(10)}
                 
 _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: True if value == "True" else False,
                   _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[type(None)] : lambda value: None,                                   
@@ -63,7 +64,10 @@ def pack_data(arg):
             
         The returned bytestream can be unpacked via unpack_data to
         return the original contents, in order. """       
-    if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
+    if isinstance(arg, BaseException):
+        print "Packing exception: ", arg
+        arg_string = _TYPE_SYMBOL[BaseException] + type(arg).__name__
+    elif isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
         types = []
         sizes = []
         packed_values = []
@@ -85,7 +89,11 @@ def pack_data(arg):
         
 def unpack_data(packed_data):    
     _type = packed_data[0]
-    if _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
+    if _type == _TYPE_SYMBOL[BaseException]:
+        print "Getting exception:"
+        data = getattr(exceptions, packed_data[1:])()
+        print data
+    elif _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
         data = []
         _types, packed_data = packed_data[1:].split(' ', 1)           
         sizes = packed_data.split(' ', len(_types))      

@@ -69,7 +69,6 @@ import heapq
        
 import pride
 import pride.metaclass
-import pride.persistence
 import pride.utilities
 import pride.datastructures
 import pride.contextmanagers
@@ -82,10 +81,10 @@ _NULL_SPACE = []#Placeholder()
 
 def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
-        This is a higher level method then pride.persistence.load."""
+        Currently being reimplemented"""
     assert attributes or _file
-        
-    new_self, attributes = pride.persistence.load(attributes, _file)
+    raise NotImplementedError()
+    #new_self, attributes = pride.persistence.load(attributes, _file)
     print "Loading: ", repr(new_self)
     saved_objects = attributes["objects"]
     objects = attributes["objects"] = {}
@@ -406,7 +405,7 @@ class Base(object):
             elif hasattr(value, "save") and not getattr(value, "dont_save"):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"      
-        return pride.persistence.save(self, attributes, _file)    
+        #return pride.persistence.save(self, attributes, _file)    
             
     load = staticmethod(load) # see base.load at beginning of file
         
