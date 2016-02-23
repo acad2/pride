@@ -6,7 +6,7 @@ import random
 import hashlib
 import functools
 
-from utilities import pack_data, unpack_data, slide
+from utilities import save_data, load_data, slide
 
 RANGE_256 = tuple([chr(x) for x in range(256)])
 PRINTABLE_ASCII = tuple(chr(x) for x in xrange(32, 127))
@@ -60,8 +60,8 @@ def generate_challenge(key, mac_key, challenge_size=32, bytes_per_hash=1,
         random challenge. If supplied, the challenge_size argument has no effect. """        
     answer = answer or random._urandom(challenge_size)
     challenge = encrypt(answer, key, hmac_factory(hash_function), input_block_size=bytes_per_hash)
-    package = pack_data(challenge, bytes_per_hash, unencrypted_data)
-    return (pack_data(generate_mac(mac_key, package, hash_function), hash_function, package), 
+    package = save_data(challenge, bytes_per_hash, unencrypted_data)
+    return (save_data(generate_mac(mac_key, package, hash_function), hash_function, package), 
             answer)
     
 def solve_challenge(packed_challenge, key, mac_key):
@@ -70,9 +70,9 @@ def solve_challenge(packed_challenge, key, mac_key):
         
         Raises InvalidSignature in the event of a message authentication 
         code mismatch. """
-    mac, hash_function, package = unpack_data(packed_challenge)
+    mac, hash_function, package = load_data(packed_challenge)
     if verify_mac(mac_key, package, mac, hash_function):
-        challenge, bytes_per_hash, unencrypted_data = unpack_data(package)
+        challenge, bytes_per_hash, unencrypted_data = load_data(package)
         
         return (decrypt(challenge, key, hmac_factory(hash_function),
                         getattr(hashlib, hash_function)().digestsize, 

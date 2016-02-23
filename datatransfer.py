@@ -82,7 +82,7 @@ class File_Transfer(Data_Transfer_Client):
             filesize = _file.tell()
             if filesize < 65535:
                 _file.seek(0)
-                packet = pride.utilities.pack_data(self.filename, 0, _file.read())
+                packet = pride.utilities.save_data(self.filename, 0, _file.read())
                 ip = self.ip
                 port = self.port
                 for receiver in self.receivers:
@@ -96,7 +96,7 @@ class File_Transfer(Data_Transfer_Client):
             
     def receive(self, messages):
         for sender, message in messages:
-            filename, offset, data = pride.utilities.unpack_data(message)
+            filename, offset, data = pride.utilities.load_data(message)
             if pride.shell.get_permission(self.permission_string.format(self.username, self.reference, 
                                                                         sender, filename, len(data))):
                 filename = raw_input("Please enter the filename or press enter to use '{}': ".format(filename)) or filename
@@ -110,8 +110,8 @@ class File_Storage_Daemon(Data_Transfer_Client):
     
     def receive(self, message):
         for sender, message in message:
-            request_type, packet = pride.utilities.unpack_data(message)
-            filename, offset, data = pride.utilities.unpack_data(packet)             
+            request_type, packet = pride.utilities.load_data(message)
+            filename, offset, data = pride.utilities.load_data(packet)             
             if request_type == "save":
                 file_operation(filename, "a+b", "write", self.file_type, offset, data)
                 try:
@@ -133,7 +133,7 @@ class Proxy(Data_Transfer_Client):
     
     def receive(self, messages):
         for sender, message in messages:
-            target, packet = pride.utilities.unpack_data(message)
+            target, packet = pride.utilities.load_data(message)
             self.send_to(target, packet)
             
             

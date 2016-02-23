@@ -20,12 +20,11 @@ def block_rotation(input_bytes):
     bit_count = len(bits)
     word_size = bit_count / 8
     word_size_in_bytes = word_size / 8
-    for index in range(8):#word_size - 1):
+    for index in range(8):
         bits_at_index = bits[index::8]
         _index = index * word_size_in_bytes    
         
-        for offset, _bits in enumerate(slide(bits_at_index, 8)):
-   #         print index, _index, offset, word_size, len(bits_at_index), len(bits)
+        for offset, _bits in enumerate(slide(bits_at_index, 8)):   
             input_bytes[_index + offset] = int(_bits, 2)
     
 def xor_sum(data):
@@ -40,10 +39,10 @@ def derive_round_key(key):
         key[index] = S_BOX[index ^ xor_sum_of_key ^ key_byte]           
     block_rotation(key)
     
-def substitution(input_bytes, xor_sum_of_data, key, indices):            
+def substitution(input_bytes, key, indices):   
+    xor_sum_of_data = xor_sum(input_bytes)
     for index in indices:        
-        xor_sum_of_data ^= input_bytes[index]# input_bytes[index] # remove the current byte from the xor sum         
-    #    print INVERSE_S_BOX[index ^ xor_sum_of_data], S_BOX[index ^ xor_sum_of_data]
+        xor_sum_of_data ^= input_bytes[index]# input_bytes[index] # remove the current byte from the xor sum             
         input_bytes[index] ^= INVERSE_S_BOX[index ^ key[index]] ^ S_BOX[xor_sum_of_data] # generate a psuedorandom byte from everything but the current byte + combine with current byte
         xor_sum_of_data ^= input_bytes[index] # include byte XOR psuedorandom_byte in the xor sum         
        
@@ -64,7 +63,7 @@ def crypt_block(data, key, indices):
     
     derive_round_key(key)                
     xor_with_key(data, key)
-    substitution(data, xor_sum(data), key, indices)           
+    substitution(data, key, indices)           
     xor_with_key(data, key)
    
     return bytes(data)

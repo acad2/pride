@@ -61,7 +61,7 @@ def get_structure_bytestream(structure):
         values.append(value)  
     
     # this is a potentially more readable form of the code that follows
-    #packed_data = utilities.pack_data(format_string) + struct.pack(format_string, *values)
+    #packed_data = utilities.save_data(format_string) + struct.pack(format_string, *values)
     #for attribute, _type in _values:
     #    packed_data += get_structure_bytestream(getattr(structure, attribute))
     #return packed_data
@@ -70,7 +70,7 @@ def get_structure_bytestream(structure):
   # print "Packing values: ", ([name, fields_format, struct.pack(format_string, *values)] + 
   #                            [get_structure_bytestream(getattr(structure, attribute)) for 
   #                             attribute, _type in _values])
-    return utilities.pack_data(*[name, fields_format, struct.pack(format_string, *values)] + 
+    return utilities.save_data(*[name, fields_format, struct.pack(format_string, *values)] + 
                                 [(attribute, get_structure_bytestream(getattr(structure, attribute))) for 
                                  attribute, _type in _values])
         
@@ -117,11 +117,11 @@ def pack_structure(structure):
     #name = structure.__class__.__name__
     #fields = [(name, character) for name, character in get_fields_format(structure)]
     #packed_bytes = get_structure_bytestream(structure)
-    #return utilities.pack_data(name, fields, packed_bytes)
+    #return utilities.save_data(name, fields, packed_bytes)
     return get_structure_bytestream(structure)
                                
 def unpack_structure(packed_data):
-    name, fields, packed_bytes = utilities.unpack_data(packed_data)
+    name, fields, packed_bytes = utilities.load_data(packed_data)
     print "\nUnpacking structure", packed_data
     print
     print "Name: ", name
@@ -172,10 +172,10 @@ def serialize(python_object):
     
     for _sub in sub_structs:
         print "\n\n\nSubstructure info: ", len(getattr(struct, _sub)), getattr(struct, _sub)
-    return utilities.pack_data(sub_structs, pack_structure(struct))
+    return utilities.save_data(sub_structs, pack_structure(struct))
     
 def deserialize(stream):
-    sub_structs, packed_structure = utilities.unpack_data(stream)
+    sub_structs, packed_structure = utilities.load_data(stream)
     sub_structs = ast.literal_eval(sub_structs)
     struct = unpack_structure(packed_structure)
     _type, count = struct.__class__.__name__.split('_', 1)
@@ -332,7 +332,7 @@ def test_pack_structure():
     structure = struct_type(*(attributes[field_name] for field_name in field_names))
     saved_structure = pack_structure(structure)
    # print "Saved structure: "#, saved_structure
-   # print utilities.unpack_data(saved_structure)
+   # print utilities.load_data(saved_structure)
     loaded_structure = unpack_structure(saved_structure)
     for name, value in attributes.items():
         assert getattr(loaded_structure, name) == value

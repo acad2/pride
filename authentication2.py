@@ -224,7 +224,7 @@ class Authenticated_Service(pride.base.Base):
                 self.session_id[authentication_table_hash] = username
                 login_message = self.on_login()
                 new_key = pride.security.random_bytes(self.shared_key_size)
-                login_packet = pride.utilities.pack_data(new_key, login_message)                                                    
+                login_packet = pride.utilities.save_data(new_key, login_message)                                                    
                 encrypted_key = pride.security.encrypt(login_packet, session_key)
                 
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
@@ -461,7 +461,7 @@ class Authenticated_Client(pride.base.Base):
                 self.alert("Login attempt failed; Already logged in.", 
                            level=self.verbosity["login_failed_already_logged_in"])
             else:
-                new_key, login_message = pride.utilities.unpack_data(packed_key_and_message)
+                new_key, login_message = pride.utilities.load_data(packed_key_and_message)
                 self.shared_key = new_key
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
                                     length=self.authentication_table_size,

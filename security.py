@@ -5,7 +5,7 @@
     instead. """
 import os
 
-from pride.utilities import pack_data, unpack_data
+from pride.utilities import save_data, load_data
 
 class SecurityError(Exception): pass
 class InvalidPassword(SecurityError): pass
@@ -84,12 +84,12 @@ except ImportError:
         return hmac.HMAC(key, data, hash_function(algorithm)).digest()
         
     def apply_mac(key, data, algorithm="SHA256", backend=None):
-        return pack_data(generate_mac(key, data, algorithm, backend), data)
+        return save_data(generate_mac(key, data, algorithm, backend), data)
                         
     def verify_mac(key, packed_data, algorithm="SHA256", backend=None):
         """ Verifies a message authentication code as obtained by apply_mac.
             Successful comparison indicates integrity and authenticity of the data. """
-        mac, data = unpack_data(packed_data)
+        mac, data = load_data(packed_data)
         calculated_mac = hmac.HMAC(key, data, hash_function(algorithm)).digest()        
         try:
             if not hmac.HMAC.compare_digest(mac, calculated_mac):
@@ -143,7 +143,7 @@ else:
     
     def apply_mac(key, data, algorithm="SHA256", backend=BACKEND):
         """ Generates a message authentication code and prepends it to data.
-            Mac and data are packed via pride.utilities.pack_data. 
+            Mac and data are packed via pride.utilities.save_data. 
             
             Applying a message authentication code facilitates the goals
             of authenticity and integrity. Note it does not protect
@@ -155,7 +155,7 @@ else:
             block cipher mode of operation, such as GCM. If this is
             not possible, encrypt-then-mac is most secure solution in
             general. """
-        return pack_data(generate_mac(key, data, algorithm, backend), data)
+        return save_data(generate_mac(key, data, algorithm, backend), data)
                 
     def generate_mac(key, data, algorithm="SHA256", backend=BACKEND):
         """ Returns a message authentication code for verifying the integrity and
@@ -172,7 +172,7 @@ else:
     def verify_mac(key, packed_data, algorithm="SHA256", backend=BACKEND):
         """ Verifies a message authentication code as obtained by apply_mac.
             Successful comparison indicates integrity and authenticity of the data. """        
-        mac, data = unpack_data(packed_data)
+        mac, data = load_data(packed_data)
         hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
         hasher.update(data)
         try:
@@ -217,13 +217,13 @@ else:
             mac_tag = encryptor.tag
         else:
             mac_tag = generate_mac(mac_key, header + ciphertext + iv + extra_data)        
-        return pack_data(header, ciphertext, iv, mac_tag, extra_data)
+        return save_data(header, ciphertext, iv, mac_tag, extra_data)
         
     def decrypt(packed_encrypted_data, key, mac_key='', backend=BACKEND):
         """ Decrypts packed encrypted data as returned by encrypt with the same key. 
             If extra data is present, returns plaintext, extra_data. If not,
             returns plaintext. Raises InvalidTag on authentication failure. """
-        header, ciphertext, iv, tag, extra_data = unpack_data(packed_encrypted_data)        
+        header, ciphertext, iv, tag, extra_data = load_data(packed_encrypted_data)        
         algorithm, mode = header.split('_', 1)        
         mode_args = (iv, tag) if mode == "GCM" else (iv, )
         decryptor = Cipher(getattr(algorithms, algorithm)(key), 
@@ -231,7 +231,7 @@ else:
                            backend=BACKEND).decryptor()
         if mode == "GCM":
             decryptor.authenticate_additional_data(extra_data)
-        elif not verify_mac(mac_key, pack_data(tag, header + ciphertext + iv + extra_data)):
+        elif not verify_mac(mac_key, save_data(tag, header + ciphertext + iv + extra_data)):
             raise InvalidTag("Failed to authenticate data")
             
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()

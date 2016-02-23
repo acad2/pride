@@ -15,11 +15,11 @@ timer_function = timeit.default_timer
      
 _TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2), 
                 bool : chr(3), list : chr(4), dict : chr(5),
-                tuple : chr(6), set : chr(7), None : chr(8),
+                tuple : chr(6), set : chr(7), type(None) : chr(8),
                 unicode : chr(9)}
                 
 _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: True if value == "True" else False,
-                  _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[None] : lambda value: None,                                   
+                  _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[type(None)] : lambda value: None,                                   
                   _TYPE_SYMBOL[str] : lambda value: value,
                   _TYPE_SYMBOL[unicode] : unicode}                         
                     
@@ -38,51 +38,141 @@ def rotate(input_string, amount):
     else:
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
-                
-def pack_object(data):
+      
+def save_data(*args):
+    output = []
+    for arg in args:
+        packed_data = pack_data(arg)
+        output.append(str(len(packed_data)) + ' ' + packed_data)
+    return ''.join(output)
+
+def load_data(packed_data):
+    output = []
+    while packed_data:
+        size, packed_data = packed_data.split(' ', 1)
+        size = int(size)
+        output.append(unpack_data(packed_data[:size]))
+        packed_data = packed_data[size:]
+    return tuple(output) if len(output) >1 else output[0]
+        
+def pack_data(arg):
     """ Pack arguments into a stream, prefixed by size headers.
         Resulting bytestream takes the form:
             
             size1 size2 size3 ... sizeN data1data2data3...dataN
             
         The returned bytestream can be unpacked via unpack_data to
-        return the original contents, in order. """
-    if isinstance(data, tuple) or isinstance(data, list) or isinstance(data, set):
-        packed_objects = ''.join([pack_object(value) for value in data])
-        arg_string = ('' if not data else 
-                      _TYPE_SYMBOL[type(data)] + str(len(packed_objects)) + ' ' + packed_objects)
-    elif isinstance(data, dict):
-        packed_objects = pack_object(data.items())
-        arg_string = '' if not data else ' '.join((_TYPE_SYMBOL[type(data)], str(len(packed_objects)) + ' ' + packed_objects))
+        return the original contents, in order. """       
+    if isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
+        types = []
+        sizes = []
+        packed_values = []
+        for value in arg:
+            arg_string = pack_data(value)
+            types.append(_TYPE_SYMBOL[type(value)])
+            sizes.append(str(len(arg_string)))
+            packed_values.append(arg_string)
+        arg_string = _TYPE_SYMBOL[type(arg)] + ''.join(types) + ' ' + ' '.join(sizes) + ' ' + ''.join(packed_values)
+        #packed_values = ''.join(packed_values)
+        #arg_string = _TYPE_SYMBOL[type(arg)] + "{} {} {}".format(len(arg), len(packed_values), packed_values)        
+    elif isinstance(arg, dict):
+        packed_values = pack_data(arg.items())
+        arg_string = _TYPE_SYMBOL[type(arg)] + "{} {} {}".format(len(arg), len(packed_values), packed_values)
     else:
-        arg_string = _TYPE_SYMBOL[type(data)] + '0' + ' ' + str(data)
+        _arg = str(arg)
+        arg_string = _TYPE_SYMBOL[type(arg)] + '0 {} {}'.format(len(_arg), _arg)
     return arg_string
         
-def unpack_object(packed_bytes):
-    _type = packed_bytes[0]
-    size, packed_bytes = packed_bytes[1:].split(' ', 1)
-    size = int(size)
-    print "Type: ", _type, "Size: ", size, "Packed bytes: ", packed_bytes[:size]
-    #return _dispatch(type, packed_bytes, int(size))
+def unpack_data(packed_data):    
+    _type = packed_data[0]
+    if _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
+        data = []
+        _types, packed_data = packed_data[1:].split(' ', 1)           
+        sizes = packed_data.split(' ', len(_types))      
+        packed_data = sizes.pop(-1)
+        for size in (int(size) for size in sizes):     
+            data.append(unpack_data(packed_data[:size]))
+            packed_data = packed_data[size:]
             
-#def _dispatch(_type, packed_bytes, size):        
-    if _type == _TYPE_SYMBOL[tuple]:     
-        print size, packed_bytes
-        data = unpack_object(packed_bytes[:size]) if size else tuple()
-        print data
-    elif _type == _TYPE_SYMBOL[list]:   
-        data = [unpack_data(packed_bytes[:size])] if size else []
-    elif _type == _TYPE_SYMBOL[set]:
-        data = set(unpack_data(packed_bytes[:size])) if size else set()
+        if _type == _TYPE_SYMBOL[tuple]:
+            data = tuple(data)                    
+        elif _type == _TYPE_SYMBOL[set]:
+            data = set(data)
+            
     elif _type == _TYPE_SYMBOL[dict]:
-        items = unpack_data(packed_bytes[:size]) if size else []        
+        item_count, item_size, packed_data = packed_data.split(' ', 2)
+        items = unpack_data(packed_data[:int(item_size)])
         try:
             data = dict(items)
         except TypeError:                
             data = {items[0] : items[1]}
-    else:                 
-        data = _TYPE_RESOLVER[_type](packed_bytes)    
+    else:            
+        null, item_size, packed_data = packed_data.split(' ', 2)
+        data = _TYPE_RESOLVER[_type](packed_data[:int(item_size)])    
     return data
+            
+#def unpack_data(packed_bytes):
+#    """ Unpack a stream according to its size header.
+#        The second argument should be either an integer indicating the quantity
+#        of items to unpack, or an iterable of types whose length indicates the
+#        quantity of items to unpack. """       
+#    types, packed_bytes = packed_bytes.split(' ', 1)    
+#    size_count = len(types)    
+#    sizes = packed_bytes.split(' ', size_count)    
+#    packed_bytes = sizes.pop(-1)
+#    data = []        
+#    for index, size in enumerate((int(size) for size in sizes)):              
+#        data.append(_dispatch(types[index], packed_bytes, size))                    
+#        #print "Unpacking: ", packed_bytes[:size]
+#        packed_bytes = packed_bytes[size:]    
+#    print "Unpacked data: ", tuple(data)
+#    return tuple(data)
+#    
+#    
+#def pack_object(data):
+#    """ Pack arguments into a stream, prefixed by size headers.
+#        Resulting bytestream takes the form:
+#            
+#            size1 size2 size3 ... sizeN data1data2data3...dataN
+#            
+#        The returned bytestream can be unpacked via unpack_data to
+#        return the original contents, in order. """
+#    if isinstance(data, tuple) or isinstance(data, list) or isinstance(data, set):    
+#        packed_objects = ''.join([pack_object(value) for value in data])
+#        arg_string = ('' if not data else 
+#                      _TYPE_SYMBOL[type(data)] + str(len(packed_objects)) + ' ' + packed_objects)
+#    elif isinstance(data, dict):
+#        packed_objects = pack_object(data.items())
+#        arg_string = '' if not data else ' '.join((_TYPE_SYMBOL[type(data)], str(len(packed_objects)) + ' ' + packed_objects))
+#    else:
+#        arg_string = _TYPE_SYMBOL[type(data)] + '0' + ' ' + str(data)
+#    return arg_string
+#        
+#def unpack_object(packed_bytes):
+#    _type = packed_bytes[0]
+#    size, packed_bytes = packed_bytes[1:].split(' ', 1)
+#    size = int(size)
+#    print "Type: ", _type, "Size: ", size, "Packed bytes: ", packed_bytes[:size]
+#    #return _dispatch(type, packed_bytes, int(size))
+#            
+##def _dispatch(_type, packed_bytes, size):        
+#    if _type == _TYPE_SYMBOL[tuple]:     
+#        print size, packed_bytes
+#        data = unpack_object(packed_bytes[:size]) if size else tuple()
+#        print data
+#    elif _type == _TYPE_SYMBOL[list]:   
+#        data = [unpack_data(packed_bytes[:size])] if size else []
+#    elif _type == _TYPE_SYMBOL[set]:
+#        data = set(unpack_data(packed_bytes[:size])) if size else set()
+#    elif _type == _TYPE_SYMBOL[dict]:
+#        items = unpack_data(packed_bytes[:size]) if size else []        
+#        try:
+#            data = dict(items)
+#        except TypeError:                
+#            data = {items[0] : items[1]}
+#    else:                 
+#        data = _TYPE_RESOLVER[_type](packed_bytes)    
+#    return data
             
 #def unpack_data(packed_bytes):
 #    """ Unpack a stream according to its size header.
@@ -324,7 +414,7 @@ def test_pack_unpack():
     tag = "zpx98yvzclkj"
     extra_data = "1x897=a[19njkS"
     
-    packed = pack_data(ciphertext, iv, tag, extra_data)
+    packed = save_data(ciphertext, iv, tag, extra_data)
     _ciphertext, _iv, _tag, _extra_data = unpack_data(packed)
     assert _ciphertext == ciphertext
     assert _iv == iv

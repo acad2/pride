@@ -1,7 +1,7 @@
 import itertools   
 import binascii
 
-from utilities import cast, slide, pack_data, unpack_data, byte_form, binary_form
+from utilities import cast, slide, save_data, load_data, byte_form, binary_form
 # helper functions
             
 SUBSTITUTION = dict((x, pow(251, x, 257) % 256) for x in xrange(1024 * 1024 * 2))
@@ -290,7 +290,7 @@ def encrypt(data, key, iv, extra_data='', block_size=32):
     for _bytes in slide(data, block_size):
         ciphertext += sponge.send(_bytes)
     mac_tag = sponge.send(None)
-    return pack_data("EHC0_EHC0", ciphertext, iv, mac_tag, extra_data)
+    return save_data("EHC0_EHC0", ciphertext, iv, mac_tag, extra_data)
     
 def decrypt(data, key, block_size=32):
     """ Ella's Hash Cipher 0 - EHC0 (decrypt)
@@ -298,7 +298,7 @@ def decrypt(data, key, block_size=32):
         Returns (plaintext, extra data) when extra data is available
         Returns plaintext when extra data is not available
         Raises ValueError if an invalid mac tag is encountered. """
-    header, ciphertext, iv, mac_tag, extra_data = unpack_data(data)
+    header, ciphertext, iv, mac_tag, extra_data = load_data(data)
     sponge = sponge_decryptor(extra_data + iv, key, rate=block_size)
     next(sponge)
     plaintext = ''

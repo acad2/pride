@@ -10,8 +10,8 @@ import pride.utilities
 import pride.networkssl
 #objects = pride.objects
 
-DEFAULT_SERIALIZER = type("Serializer", (object, ), {"dumps" : staticmethod(pride.utilities.pack_data),
-                                                     "loads" : staticmethod(pride.utilities.unpack_data)})
+DEFAULT_SERIALIZER = type("Serializer", (object, ), {"dumps" : staticmethod(pride.utilities.save_data),
+                                                     "loads" : staticmethod(pride.utilities.load_data)})
 _old_data, _hosts = {}, {}
 
 class UnauthorizedError(Warning): pass  
@@ -80,7 +80,7 @@ class Session(pride.base.Base):
             information regarding the callback is included in the request. """
         _call = component, method = instruction.component_name, instruction.method
         #print "Pickling: ", instruction.args, instruction.kwargs
-        request = pride.utilities.pack_data(self.id, component, method, 
+        request = pride.utilities.save_data(self.id, component, method, 
                                             DEFAULT_SERIALIZER.dumps((instruction.args, 
                                                                       instruction.kwargs)))
         host = pride.objects["->Python->Rpc_Connection_Manager"].get_host(self.host_info) 
@@ -235,14 +235,13 @@ class Rpc_Socket(Packet_Socket):
     def check_idle(self):
         if time.time() - self._idle_timer >= self.idle_after:            
             self.delete()
-        else:
-            print "Relaunching idle instruction"
+        else:            
             pride.Instruction(self.reference, "check_idle").execute(priority=self.idle_after)
             
     def recv(self, packet_count=0):
         peername = self.peername
         for (session_id, component_name, method, 
-             serialized_arguments) in (pride.utilities.unpack_data(packet) for 
+             serialized_arguments) in (pride.utilities.load_data(packet) for 
                                        packet in super(Rpc_Socket, self).recv()):          
             try:
                 result = next(self.rpc_workers).handle_request(peername, session_id, component_name,
@@ -278,8 +277,7 @@ class Rpc_Worker(pride.base.Base):
         instance = pride.objects[component_name]
         if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()
-        else:
-            print "Rpc deserealized: ", self.deserealize(serialized_arguments)
+        else:            
             args, kwargs = self.deserealize(serialized_arguments)
             with pride.contextmanagers.backup(instance, "current_session"):
                 instance.current_session = (session_id, peername)

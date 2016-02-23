@@ -13,7 +13,7 @@ TEST_MESSAGE = "This is a sweet test message :)"
 
 class InvalidTag(Exception): pass
 
-def pack_data(*args): # copied from pride.utilities
+def save_data(*args): # copied from pride.utilities
     sizes = []
     arg_strings = []
     types = []
@@ -24,7 +24,7 @@ def pack_data(*args): # copied from pride.utilities
         types.append(_TYPE_SYMBOL[type(arg)])
     return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
     
-def unpack_data(packed_bytes): # copied from pride.utilities
+def load_data(packed_bytes): # copied from pride.utilities
     types, packed_bytes = packed_bytes.split(' ', 1)    
     size_count = len(types)    
     sizes = packed_bytes.split(' ', size_count)    
@@ -83,7 +83,7 @@ def encrypt(data, key, nonce='', extra_data='', hash_function="sha512", nonce_si
     encrypted_data = _hash_stream_cipher(data, key, nonce, hash_function)
     header = hash_function + '_' + hash_function
     mac_tag = hmac.HMAC(key, header + extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
-    return pack_data(header, encrypted_data, nonce, mac_tag, extra_data)
+    return save_data(header, encrypted_data, nonce, mac_tag, extra_data)
         
 def decrypt(data, key, hash_function="sha512"):
     """ usage: decrypt(data, key, 
@@ -94,7 +94,7 @@ def decrypt(data, key, hash_function="sha512"):
         Returns (extra_data, plaintext) when extra data is available
         Otherwise, just returns plaintext data. 
         Authenticity and integrity of the plaintext/extra data is guaranteed. """
-    header, encrypted_data, nonce, mac_tag, extra_data = unpack_data(data)
+    header, encrypted_data, nonce, mac_tag, extra_data = load_data(data)
     hash_function, _ = header.split('_', 1)
     try:
         hasher = getattr(hashlib, hash_function)
@@ -130,9 +130,9 @@ def test_encrypt_decrypt():
     #print "Encrypted packet: \n\n\n", packet
     assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
     
-    encrypted_data, nonce, mac_tag, extra_data = unpack_data(packet)
+    encrypted_data, nonce, mac_tag, extra_data = load_data(packet)
     extra_data = "Changed"
-    packet = pack_data(encrypted_data, nonce, mac_tag, extra_data)
+    packet = save_data(encrypted_data, nonce, mac_tag, extra_data)
     try:
         decrypt(packet, TEST_KEY)
     except InvalidTag:

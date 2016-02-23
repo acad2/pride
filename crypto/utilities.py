@@ -1,12 +1,12 @@
 import binascii
 
-def pack_data(*args): # copied from pride.utilities
+def save_data(*args): # copied from pride.utilities
     sizes = []
     for arg in args:
         sizes.append(str(len(arg)))
     return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
     
-def unpack_data(packed_bytes, count_or_types):
+def load_data(packed_bytes, count_or_types):
     """ Unpack a stream according to its size header.
     The second argument should be either an integer indicating the quantity
     of items to unpack, or an iterable of types whose length indicates the

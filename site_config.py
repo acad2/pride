@@ -29,6 +29,8 @@ import pride.audio
 import pride.gui
 #window = pride.gui.enable()
 
+#objects[window].create("pride.crypto.Illustrator")
+
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
 #explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #objects[window].create("pride.gui.boardgame.Checkers")
