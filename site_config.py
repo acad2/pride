@@ -1,7 +1,7 @@
 # site_config 
 # defaults specified here will override defaults defined in the source code
 import os
-PRIDE_DIRECTORY = os.path.split(__file__)[0]
+PRIDE_DIRECTORY = os.path.split(os.path.abspath(__file__))[0]
 SITE_CONFIG_FILE = __file__ if __file__[-1] != 'c' else __file__[:-1]
 del os
 
@@ -27,9 +27,9 @@ def delete(reference):
 import pride.audio
 #pride.audio.enable()
 import pride.gui
-#window = pride.gui.enable()
+window = pride.gui.enable()
 
-#objects[window].create("pride.crypto.Illustrator")
+pbox = objects[window].create("pride.crypto.illustrator.P_Box")
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
 #explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
@@ -37,6 +37,6 @@ import pride.gui
 
 """}
 
-pride_rpc_Rpc_Server_defaults ={'certfile' : 'rpc_server.crt', 'keyfile' : 'rpc_server.key'}
+pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}
 
 pride_user_User_defaults = {'username' : 'localhost'}

@@ -115,12 +115,5 @@ class Grapher(pride.vmlibrary.Process):
 
     def function(self, function_input):
         raise NotImplementedError
-        
-        
-from hashtest import *
-        
-class Unpack_Factors_Graph(Grapher):
-            
-    def function(self, function_input):        
-        return unpack_factors(binary_form(function_input) + '1')
+                
         

@@ -1,6 +1,7 @@
 """ Provides a Object oriented interface for working with sqlite3 databases """
 import sqlite3
 import contextlib
+import os
 
 import pride
 import pride.base
@@ -44,14 +45,15 @@ class Database(pride.base.Wrapper):
                  "drop_table" : "v", "table_info" : "vvv",
                  "update_table" : "vvv"}
     
-    mutable_defaults = {"from_memory" : dict}
+    mutable_defaults = {"in_memory" : dict}
     
     database_structure = {}
     primary_key = {}
         
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
-        self.database_name = self.database_name or (self.reference.replace("->", '_') + ".db")
+        self.database_name = self.database_name or os.path.join(pride.site_config.PRIDE_DIRECTORY,
+                                                                (self.reference.replace("->", '_') + ".db"))
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)
@@ -87,7 +89,7 @@ class Database(pride.base.Wrapper):
                    level=self.verbosity["create_table"])        
         result = self.cursor.execute(query)
         
-        self.from_memory[table_name] = {}
+        self.in_memory[table_name] = {}
         if self.auto_commit:
             self.commit()        
         if table_name not in self.database_structure:
@@ -111,7 +113,7 @@ class Database(pride.base.Wrapper):
 
         if primary_key in (where or {}) and not self.return_cursor:
             try:
-                return self.from_memory[table_name][where[primary_key]]
+                return self.in_memory[table_name][where[primary_key]]
             except KeyError:
                 pass                  
         retrieve_fields = ", ".join(retrieve_fields or (field.split()[0] for
@@ -171,7 +173,7 @@ class Database(pride.base.Wrapper):
         else:
             cursor = self.cursor.execute(query, values)
         #primary_key = values[[value for value in values if "primary_key" in value.lower()][0].split()[0]
-        #self.from_memory[table_name][primary_key] = values
+        #self.in_memory[table_name][primary_key] = values
         if self.auto_commit:
             self.commit()
         return cursor            
@@ -197,7 +199,7 @@ class Database(pride.base.Wrapper):
         self.alert("Updating data in table {}; {} {}".format(table_name, query, values),
                    level=self.verbosity["update_table"])
         cursor = self.cursor.execute(query, values)
-        self.from_memory[table_name][primary_key] = _values
+        self.in_memory[table_name][primary_key] = _values
         if self.auto_commit:
             self.commit()
         return cursor

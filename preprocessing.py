@@ -13,9 +13,11 @@ import anydbm
 import hashlib
 import atexit
 import textwrap
+import os
 
 import additional_builtins
 import additional_keywords
+import site_config
 import contextmanagers
 resolve_string = additional_builtins.resolve_string
 
@@ -42,7 +44,8 @@ class Compiler(object):
         proper database. The cache can become corrupted and must be deleted, 
         Caching is a performance optimization and not functionality critical. """
         
-    def __init__(self, preprocessors=tuple(), modify_builtins=None, cache_filename=".py.cache"):
+    def __init__(self, preprocessors=tuple(), modify_builtins=None, 
+                 cache_filename=os.path.join(site_config.PRIDE_DIRECTORY, ".py.cache")):
         self._loading = ''
         self.cache_filename = cache_filename
         self._database_finalizer = lambda: self.database.close()

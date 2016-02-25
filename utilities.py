@@ -89,10 +89,11 @@ def pack_data(arg):
         
 def unpack_data(packed_data):    
     _type = packed_data[0]
-    if _type == _TYPE_SYMBOL[BaseException]:
-        print "Getting exception:"
+    if _type == _TYPE_SYMBOL[BaseException]:        
+        # is it safe to do this? I feel like it should be; if an attacker has
+        # control over the exceptions module, we've probably already lost
         data = getattr(exceptions, packed_data[1:])()
-        print data
+        
     elif _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
         data = []
         _types, packed_data = packed_data[1:].split(' ', 1)           
@@ -118,92 +119,6 @@ def unpack_data(packed_data):
         null, item_size, packed_data = packed_data.split(' ', 2)
         data = _TYPE_RESOLVER[_type](packed_data[:int(item_size)])    
     return data
-            
-#def unpack_data(packed_bytes):
-#    """ Unpack a stream according to its size header.
-#        The second argument should be either an integer indicating the quantity
-#        of items to unpack, or an iterable of types whose length indicates the
-#        quantity of items to unpack. """       
-#    types, packed_bytes = packed_bytes.split(' ', 1)    
-#    size_count = len(types)    
-#    sizes = packed_bytes.split(' ', size_count)    
-#    packed_bytes = sizes.pop(-1)
-#    data = []        
-#    for index, size in enumerate((int(size) for size in sizes)):              
-#        data.append(_dispatch(types[index], packed_bytes, size))                    
-#        #print "Unpacking: ", packed_bytes[:size]
-#        packed_bytes = packed_bytes[size:]    
-#    print "Unpacked data: ", tuple(data)
-#    return tuple(data)
-#    
-#    
-#def pack_object(data):
-#    """ Pack arguments into a stream, prefixed by size headers.
-#        Resulting bytestream takes the form:
-#            
-#            size1 size2 size3 ... sizeN data1data2data3...dataN
-#            
-#        The returned bytestream can be unpacked via unpack_data to
-#        return the original contents, in order. """
-#    if isinstance(data, tuple) or isinstance(data, list) or isinstance(data, set):    
-#        packed_objects = ''.join([pack_object(value) for value in data])
-#        arg_string = ('' if not data else 
-#                      _TYPE_SYMBOL[type(data)] + str(len(packed_objects)) + ' ' + packed_objects)
-#    elif isinstance(data, dict):
-#        packed_objects = pack_object(data.items())
-#        arg_string = '' if not data else ' '.join((_TYPE_SYMBOL[type(data)], str(len(packed_objects)) + ' ' + packed_objects))
-#    else:
-#        arg_string = _TYPE_SYMBOL[type(data)] + '0' + ' ' + str(data)
-#    return arg_string
-#        
-#def unpack_object(packed_bytes):
-#    _type = packed_bytes[0]
-#    size, packed_bytes = packed_bytes[1:].split(' ', 1)
-#    size = int(size)
-#    print "Type: ", _type, "Size: ", size, "Packed bytes: ", packed_bytes[:size]
-#    #return _dispatch(type, packed_bytes, int(size))
-#            
-##def _dispatch(_type, packed_bytes, size):        
-#    if _type == _TYPE_SYMBOL[tuple]:     
-#        print size, packed_bytes
-#        data = unpack_object(packed_bytes[:size]) if size else tuple()
-#        print data
-#    elif _type == _TYPE_SYMBOL[list]:   
-#        data = [unpack_data(packed_bytes[:size])] if size else []
-#    elif _type == _TYPE_SYMBOL[set]:
-#        data = set(unpack_data(packed_bytes[:size])) if size else set()
-#    elif _type == _TYPE_SYMBOL[dict]:
-#        items = unpack_data(packed_bytes[:size]) if size else []        
-#        try:
-#            data = dict(items)
-#        except TypeError:                
-#            data = {items[0] : items[1]}
-#    else:                 
-#        data = _TYPE_RESOLVER[_type](packed_bytes)    
-#    return data
-            
-#def unpack_data(packed_bytes):
-#    """ Unpack a stream according to its size header.
-#        The second argument should be either an integer indicating the quantity
-#        of items to unpack, or an iterable of types whose length indicates the
-#        quantity of items to unpack. """  
-#    print [ord(byte) for byte in packed_bytes], packed_bytes
-#    if packed_bytes[0] == chr(255):
-#        print "Is first item!"
-#        unpack_if_single_item = False
-#    else:
-#        unpack_if_single_item = True    
-#    types, packed_bytes = packed_bytes[1:].split(' ', 1)    
-#    size_count = len(types)    
-#    sizes = packed_bytes.split(' ', size_count)    
-#    packed_bytes = sizes.pop(-1)
-#    data = []        
-#    for index, size in enumerate((int(size) for size in sizes)):              
-#        data.append(_dispatch(types[index], packed_bytes, size))                    
-#        print "Unpacking: ", packed_bytes[:size], data[-1]
-#        packed_bytes = packed_bytes[size:]    
-#    print "Unpacked data: ", types, sizes, tuple(data)
-#    return data[0] if unpack_if_single_item and len(sizes) == 1 else tuple(data)
     
 def print_in_place(_string):
     sys.stdout.write(_string + '\r')

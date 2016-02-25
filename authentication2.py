@@ -1,6 +1,7 @@
 import sys
 import random
 import hashlib
+import os
 
 from pride import Instruction
 import pride.security
@@ -156,7 +157,8 @@ class Authenticated_Service(pride.base.Base):
     def _load_database(self):
         if not self.database_name:
             _reference = '_'.join(name for name in self.reference.split("->") if name)
-            name = self.database_name = "{}.db".format(_reference)
+            name = self.database_name = os.path.join(pride.site_config.PRIDE_DIRECTORY,
+                                                     "{}.db".format(_reference))
         else:
             name = self.database_name
         self.database = self.create(self.database_type, database_name=name,

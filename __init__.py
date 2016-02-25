@@ -1,7 +1,8 @@
 """ Stores global objects including instructions and the environment """
 import sys
 import traceback
-        
+import os
+
 import preprocessing
         
 compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decorator, ),
@@ -84,8 +85,8 @@ class Alert_Handler(base.Base):
                 'vvvv' : "extremely verbose notification "}
 
     defaults = {"log_level" : '0+v', "print_level" : '0',
-                "log_name" : "Alerts.log", "log_is_persistent" : False,
-                "parse_args" : True}
+                "log_name" : os.path.join(site_config.PRIDE_DIRECTORY, "Alerts.log"), 
+                "log_is_persistent" : False, "parse_args" : True}
 
     parser_ignore = ("parse_args", "log_is_persistent", "verbosity")
     parser_modifiers = {"exit_on_help" : False}

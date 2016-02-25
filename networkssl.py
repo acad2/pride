@@ -37,22 +37,21 @@ def generate_self_signed_certificate(name=""): # to do: pass in ssl commands and
     """ Creates a name.key, name.csr, and name.crt file. These files can
         be used for the keyfile and certfile options for an ssl server socket"""
     name = name or raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
-    OPENSSL = r"C:\\OpenSSL-Win32\\bin\\openssl"
-    OPENSSL64 = r"C:\\OpenSSL_Win64\\bin\openssl"
+    OPENSSL = r"C:\\OpenSSL-Win32\\bin\\openssl.exe"# {} genrsa -aes256 -passout pass:x -out {}.pass.key 2048"
+    OPENSSL64 = r"C:\\OpenSSL_Win64\\bin\openssl.exe"
     if os.path.exists(OPENSSL):
         openssl = OPENSSL 
     elif os.path.exists(OPENSSL64):
         openssl = OPENSSL64
     else:
         openssl = "openssl"
-    delete_program = "del" if openssl == r"C:\\OpenSSL-Win32\\bin\\openssl" else "rm" # rm on linux, del on windows
-    shell = pride.utilities.shell
-    
-    shell("{} genrsa -aes256 -passout pass:x -out {}.pass.key 2048".format(openssl, name))
-    shell("{} rsa -passin pass:x -in {}.pass.key -out {}.key".format(openssl, name, name))
-    shell("{} req -new -key {}.key -out {}.csr".format(openssl, name, name))
-    shell("{} x509 -req -days 365 -in {}.csr -signkey {}.key -out {}.crt".format(openssl, name, name, name))
-    shell("{} {}.pass.key".format(delete_program, name), True)
+        
+    shell = pride.utilities.shell        
+    shell("{} genrsa -aes256 -passout pass:x -out {}.pass.key 2048".format(openssl, name), True)
+    shell("{} rsa -passin pass:x -in {}.pass.key -out {}.key".format(openssl, name, name), True)
+    shell("{} req -new -key {}.key -out {}.csr".format(openssl, name, name), True)
+    shell("{} x509 -req -days 365 -in {}.csr -signkey {}.key -out {}.crt".format(openssl, name, name, name), True)
+    os.remove("{}.pass.key".format(name))    
                
 def generate_rsa_keypair(name=''):
     shell = pride.utilities.shell
@@ -165,20 +164,26 @@ class SSL_Server(pride.network.Server):
         
         # some stuff to streamline the first run/install process
         if not os.path.exists(self.certfile) or not os.path.exists(self.keyfile):
-            self.alert("Certificate/Key file not found: '{}'\n", (self.certfile, ),
-                       level=self.verbosity["certfile_not_found"])
+            if self.certfile or self.keyfile:
+                self.alert("Certificate/Key file not found: '{}''{}'\n", (self.certfile, self.keyfile),
+                           level=self.verbosity["certfile_not_found"])
+            else:
+                self.alert("Usage of ssl requires certificates and key files.", level=0)
             if pride.shell.get_permission("{}: Generate a new self signed certificate and key now?: ".format(self.reference)):
                 filename = raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
+                if not os.path.split(filename)[0]: # no directory supplied
+                    filename = os.path.join(pride.site_config.PRIDE_DIRECTORY, filename)
+                
                 self.create("pride.programs.create_self_signed_certificate.Self_Signed_Certificate", name=filename)
                 self.alert("Self signed certificate generated; Continuing.", 
                            level=self.verbosity["certfile_generated"])
                 self.certfile = filename + ".crt"
                 self.keyfile = filename + ".key"
-                if self.update_site_config_on_new_certfile:
+                if self.update_site_config_on_new_certfile:                    
                     with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
-                        print "Writing certfile info to site config"
-                        _file.write("\npride_rpc_Rpc_Server_defaults =" +
-                                    '{' + "'certfile' : '{}.crt', 'keyfile' : '{}.key'".format(filename, filename) + "}\n")                              
+                        print "Writing certfile info to site config"                        
+                        _file.write("\npride_rpc_Rpc_Server_defaults = " +
+                                    '{' + "'certfile' : r'{}.crt', 'keyfile' : r'{}.key'".format(filename, filename) + "}\n")                              
                         _file.flush()          
             else:
                 raise ValueError("pride.network.SSL_Server requires a certificate and key;" +

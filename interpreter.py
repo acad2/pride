@@ -76,7 +76,8 @@ class Interpreter(authentication2.Authenticated_Service):
     
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
-        filename = '_'.join(word for word in self.reference.split("->") if word)
+        filename = os.path.join(pride.site_config.PRIDE_DIRECTORY, 
+                                '_'.join(word for word in self.reference.split("->") if word))
         self.log = self.create("pride.fileio.File", 
                                "{}.log".format(filename), 'a+',
                                persistent=False).reference
