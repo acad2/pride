@@ -511,12 +511,13 @@ class Authenticated_Client(pride.base.Base):
             self.logout()
         super(Authenticated_Client, self).delete()
         
-    #def __getstate__(self):
-    #    attributes = super(Authenticated_Client, self).__getstate__()
-    #    del attributes["session"]
-    #    attributes["logged_in"] = False
-    #    attributes["session_id"] = '0'
-    #    
+    def __getstate__(self):
+        attributes = super(Authenticated_Client, self).__getstate__()
+        del attributes["session"]
+        attributes["objects"] = {}
+        attributes["logged_in"] = False
+        attributes["session_id"] = '0'
+        return attributes
     
         
 def test_Authenticated_Service2():

@@ -106,7 +106,7 @@ class Interpreter(authentication2.Authenticated_Service):
             backup = sys.stdout            
             sys.stdout = _logger            
             try:
-                exec code# in globals()
+                exec code in globals()
             except SystemExit:                    
                 raise
             except: # we explicitly really do want to catch everything here   
