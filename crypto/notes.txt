@@ -243,21 +243,48 @@ ciphertext bytes that are actually output only consists of B_i xor S-BOX[...].
     
     
 Using data to encrypt itself
+-----------
 
 Consider the following transformation on a block of bytes:
 
-    xor_sum = Byte_i XOR Byte_i+1 XOR Byte_i+2 XOR Byte_i+3 ... XOR Byte_i+N
+    xor_sum = Byte_i XOR Byte_i+1 XOR Byte_i+2 XOR Byte_i+3 ... XOR Byte_i+N-1
     
     for each Byte_ix in Bytes:
         xor_sum = xor_sum XOR Byte_ix
-        Byte_ix = Byte_ix XOR S_BOX[xor_sum]
+        Byte_ix = Byte_ix XOR F(xor_sum)
         xor_sum = xor_sum XOR Byte_ix
-        
-Each byte is XORd with a "psuedorandom byte" generated from supplying the
-xor sum of every other byte through an appropriate S-Box (or function).
 
+Or, in more plain english:
+
+First, each byte of input is XORd into a cumulative sum which acts like a key.
+For each byte of input:
+    
+    - remove the current byte from the xor sum
+    - generate a psuedorandom byte via a function F and xor it with the current byte
+    - include the current byte XOR psuedorandom_byte into the xor sum    
+    
+The inclusion of the psuedorandom byte into the xor sum creates an output 
+feedback effect which influences bytes to the right of the current byte. This
+helps to create more psuedorandom output even from an input string such as 
+"00000000"
+    
 The transformation can be inverted by performing the operation in reverse.        
+In the basic form proposed here, the transformation is unkeyed and can be
+inverted by anyone.
 
+Consider if a byte of random data was combined with the message to be encrypted.
+The change propagates immediately and completely changes the output. 
+
+Consider the following cipher:
+    
+    xor_with_key(data, key)
+    encrypt_with_self(data)
+    xor_with_key(data, key)
+    
+Random data is mixed into the plaintext data, then the transformation is
+applied. After the transformation, the random data is removed from the
+ciphertext data, and the transformation cannot be inverted until the random
+data is reapplied to the ciphertext.
         
 # ((2 ** index) % 256) produces 00000001, 00000010, 00000100, 00001000, ..., which doesn't leave the high/low order bits so biased
 # using just the index produces 00000001, 00000010, 00000011, 00000100, ..., which would leave a bias as the low order bits shuffle more often then the higher order bits    

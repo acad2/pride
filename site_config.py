@@ -26,10 +26,13 @@ def delete(reference):
     objects[reference].delete()       
 import pride.audio
 #pride.audio.enable()
-import pride.gui
-window = pride.gui.enable()
-
-pbox = objects[window].create("pride.crypto.illustrator.P_Box")
+#import pride.gui
+#window = pride.gui.enable()
+#
+#pbox = objects[window].create("pride.crypto.illustrator.P_Box")
+#data = bytearray("\x00" * 8)
+#from pride.crypto.ciphertest import block_rotation
+#pbox.permute(data, block_rotation)
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
 #explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")

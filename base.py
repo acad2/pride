@@ -9,8 +9,8 @@
           to new instances; Any attribute specified via keyword argument
           will override a default
         
-        - An instance name, which provides a reference to the component from any context. 
-          Instance names are mapped to instance objects in pride.objects.
+        - A reference attribute, which provides access to the object from any context. 
+          References are mapped to objects in the pride.objects dictionary.
           
         - The flag parse_args=True may be passed to the call to 
           instantiate a new object. If so, then the metaclass
@@ -35,19 +35,6 @@
         
         - The alert method, which makes logging and statements 
           of varying verbosity simple and straight forward.
-                    
-        - Decorator(s) and monkey patches may be specified via
-          keyword argument to any method call. Note that this
-          functionality does not apply to python objects
-          builtin magic methods (i.e. __init__). The syntax
-          for this is:
-          
-            - component.method(decorator='module.Decorator')
-            - component.method(decorators=['module.Decorator', ...])
-            - component.method(monkey_patch='module.Method')
-          
-          The usage of these does not permanently wrap/replace the
-          method. The decorator/patch is only applied when specified.
         
         - Augmented docstrings. Information about class defaults
           and method names + argument signatures + method docstrings (if any)
@@ -56,7 +43,7 @@
     Note that some features are facilitated by the metaclass. These include
     the argument parser, runtime decoration, and documentation.
     
-    Instances of Base classes are counted and have an reference attribute.
+    Instances of Base classes are counted and have a reference attribute.
     This is equal to type(instance).__name__ + str(instance_count). There
     is an exception to this; The first instance is number 0 and
     its name is simply type(instance).__name__, without 0 at the end.
@@ -382,8 +369,7 @@ class Base(object):
             
             If the calling object is one that has been created via the update
             method, the returned state will include any required source code
-            to rebuild the object."""
-        raise NotImplementedError()
+            to rebuild the object."""        
         self.alert("Saving")
         attributes = self.__getstate__()
         objects = attributes.pop("objects", {})
@@ -394,7 +380,7 @@ class Base(object):
             for value in sorted(values, key=operator.attrgetter("reference")):
                 if hasattr(value, "save"):
                     found_objects.append(value)
-                    if not getattr(value, "dont_save", False):   
+                    if not getattr(value, "dont_save", False):                           
                         new_values.append(value.save())
 
         attribute_type = attributes["_attribute_type"] = {}
@@ -404,8 +390,17 @@ class Base(object):
                 attribute_type[key] = "reference"
             elif hasattr(value, "save") and not getattr(value, "dont_save"):
                 attributes[key] = value.save()
-                attribute_type[key] = "saved"      
-        #return pride.persistence.save(self, attributes, _file)    
+                attribute_type[key] = "saved"  
+        
+        try:
+            saved_data = pride.utilities.save_data(attributes)
+        except TypeError:
+            self.alert("Unable to save attributes", level=0)
+            raise
+            
+        if _file:
+            _file.write(saved_data)
+        return saved_data            
             
     load = staticmethod(load) # see base.load at beginning of file
         

@@ -45,10 +45,9 @@ recently done:
 
 known bugs:
     fix z layer issue with multiple objects on the same space
-    # just wait for new serialization fix save/load mechanism. load is broken because of rpc mechanisms. references need further consideration. - this means json stuff
-        
+            
 things that could be done:
-    improve struct serialization
+    fix save/load
     preemptive multiprocessing?
     develop the gui
     improve executable
@@ -66,11 +65,7 @@ things other people could do:
 -------------------------
 security related:
     - penetration testing and security auditing of rpc/authentication
-        - try to break your way in!
-    
-    - secure serialization format
-        - json implementation already started
-        - struct implementation already started        
+        - try to break your way in!      
         
 gui design:
     - need cool looking themes!
@@ -109,24 +104,7 @@ source code manipulation:
         
         
 scratch space
-------------------          
-class System_Restore(mpre.vmlibrary.Process):
-    defaults = defaults.Process.copy()
-    System_Restore.update({"priority" : 300,
-                           "backup_limit" : 100})
-    
-    def __init__(self, **kwargs):        
-        super(System_Restore, self).__init__(**kwargs)
-        self.backups = collections.Deque([], self.backup_limit)
-        
-    def run(self):
-        self.backups.append(components["Metapython"].save())
-        
-    def restore(self, time_period=0):
-        if len(self.backups) < time_period:
-            raise ValueError("time_period too long; no backup old enough")
-        self.load(self.backups.pop(time_period))
-            
+------------------                      
             
 class Reliable_Udp(network.Udp_Socket):
     
@@ -308,31 +286,4 @@ def preprocess_package(package_name='', package=None):
     assert xor(package_name, package)
     if package_name:
         package = importlib.import_module(package_name)
-    
-    
-crypto_hash = hashlib.sha1
-_hashes = {}
-
-class HashFailure(Exception):
-    meaning = "The calculated hash did not match the hash on record"
-    
-def hash_function(function):
-    try:
-        _function = function.im_func
-    except AttributeError:
-        pass
-    try:
-        _hash = crypto_hash(_function.func_code.co_code).digest()
-    except AttributeError:
-        _hash = hash(function)
-    return _hash
-    
-def cryptographic_id(function):
-    _hashes[function] = hash_function(function)
-    def _hash_test(*args, **kwargs):
-        if hash_function(function) == _hashes[function]:
-            return function(*args, **kwargs)
-        else:
-            raise HashFailure(function)
-    return _hash_test    
-    
+           

@@ -1,6 +1,13 @@
 import os
 import platform
 
+try:
+    import sdl2.ext
+except ImportError:
+    raise
+else:
+    Color = sdl2.ext.Color
+    
 if "__file__" not in globals():
     __file__ = os.getcwd()
 PACKAGE_LOCATION = os.path.dirname(os.path.abspath(__file__))

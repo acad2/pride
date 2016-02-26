@@ -64,8 +64,7 @@ def pack_data(arg):
             
         The returned bytestream can be unpacked via unpack_data to
         return the original contents, in order. """       
-    if isinstance(arg, BaseException):
-        print "Packing exception: ", arg
+    if isinstance(arg, BaseException):        
         arg_string = _TYPE_SYMBOL[BaseException] + type(arg).__name__
     elif isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
         types = []
@@ -84,7 +83,10 @@ def pack_data(arg):
         arg_string = _TYPE_SYMBOL[type(arg)] + "{} {} {}".format(len(arg), len(packed_values), packed_values)
     else:
         _arg = str(arg)
-        arg_string = _TYPE_SYMBOL[type(arg)] + '0 {} {}'.format(len(_arg), _arg)
+        try:
+            arg_string = _TYPE_SYMBOL[type(arg)] + '0 {} {}'.format(len(_arg), _arg)
+        except KeyError:
+            raise TypeError("Unsupported type: '{}'".format(type(arg)))
     return arg_string
         
 def unpack_data(packed_data):    

@@ -33,7 +33,7 @@ def xor_sum(data):
     for byte in data:
         _xor_sum ^= byte
     return _xor_sum
-    
+       
 def generate_round_key(data):   
     return bytearray(S_BOX[byte ^ (2 ** (index % 8))] for index, byte in enumerate(data))        
         
@@ -57,7 +57,12 @@ def substitution(input_bytes, key, indices):
 def xor_with_key(data, key):    
     for index, byte in enumerate(key):
         data[index] ^= byte    
-                
+      
+def bit_shuffle(data, key, indices):
+    for index in indices:
+        data = rotate(data[:index], key[index]) + data[index:]
+    return data
+    
 def encrypt(plaintext, key, rounds=1):  
     # indices = INDICES[len(key)] # (0, 1, 2, ..., N) where N = length of key or the blocksize       
     return crypt_block(plaintext, key, INDICES[len(key)], [index for index in range(rounds)])
@@ -78,7 +83,7 @@ def crypt_block(data, key, indices, rounds):
         round_key = round_keys[round_key_index]
         
         extract_round_key(round_key)                
-        xor_with_key(data, round_key) # add key to data
+        xor_with_key(data, round_key) # add key to data        
         substitution(data, round_key, indices) # encrypt data with itself  
         xor_with_key(data, round_key) # remove key from data
    
@@ -102,26 +107,44 @@ def test_encrypt_decrypt():
         print ciphertext#, [byte for byte in bytearray(ciphertext)]
         print
     
-def test_linear_cryptanalysis():
-    data = "\x00" * 6
-    key = ("\x00" * 7)    
-    outputs = []
-    for key_count, key_byte in enumerate(range(256)):
-        _key = key + chr(key_byte)
-        key_parity = xor_parity(_key)
-        pride.utilities.print_in_place(str(key_count / 256.0) + '% complete; Current bias: {}'.format(float(outputs.count(1)) / (outputs.count(0) or 1)))
-        for count in range(65535):
-            _data = data + cast(cast(count, "binary").zfill(16), "bytes")#chr(count) 
-          #  print len(_data), count
-            ciphertext = encrypt(_data, _key)
-            
-            plaintext_parity = xor_parity(_data)        
-            ciphertext_parity = xor_parity(ciphertext)
-            outputs.append(1 if plaintext_parity ^ ciphertext_parity == key_parity else 0)
-    zero_bits = outputs.count(0)
-    one_bits = outputs.count(1)
-    print float(one_bits) / zero_bits, one_bits, zero_bits    
+def test_linear_cryptanalysis():       
+    
+    def _test_random_data():
+        import os
+        outputs = []
+        for key_count, key in enumerate(slide(os.urandom(16 * 256), 16)):
+            ciphertext = os.urandom(16 * 65535)        
+            pride.utilities.print_in_place(str(key_count / 256.0) + '% complete; Current bias: {}'.format(float(outputs.count(1)) / (outputs.count(0) or 1)))
+            for index, block in enumerate(slide(os.urandom(16 * 65535), 16)):
+                outputs.append(1 if xor_parity(block) ^ xor_parity(ciphertext[index * 16:(index + 1) * 16]) else 0)
+
+        zero_bits = outputs.count(0)
+        one_bits = outputs.count(1)
+        print float(one_bits) / zero_bits, one_bits, zero_bits                
+        
+    def _test_encrypt():
+        data = "\x00" * 14
+        key = ("\x00" * 15)  
+        outputs = []
+        for key_count, key_byte in enumerate(range(256)):
+            _key = key + chr(key_byte)
+            key_parity = xor_parity(_key)
+            pride.utilities.print_in_place(str(key_count / 256.0) + '% complete; Current bias: {}'.format(float(outputs.count(1)) / (outputs.count(0) or 1)))
+            for count in range(65535):            
+                _data = data + cast(cast(count, "binary").zfill(16), "bytes")#chr(count) 
+            #  print len(_data), count
+                ciphertext = encrypt(_data, _key)
+                
+                plaintext_parity = xor_parity(_data)        
+                ciphertext_parity = xor_parity(ciphertext)
+                outputs.append(1 if plaintext_parity ^ ciphertext_parity == key_parity else 0)
+    
+        zero_bits = outputs.count(0)
+        one_bits = outputs.count(1)
+        print float(one_bits) / zero_bits, one_bits, zero_bits    
+    
+    _test_encrypt()
     
 if __name__ == "__main__":
-    #test_encrypt_decrypt()
+    test_encrypt_decrypt()
     test_linear_cryptanalysis()
