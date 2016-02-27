@@ -128,7 +128,7 @@ class File_Attributes(pride.base.Adapter):
         if self.filename and not self.wrapped_object:
             self.wraps(os.stat(self.filename))
 
-        
+            
 class File(base.Wrapper):
     """ usage: File(path='', mode='', 
                     file=None, file_type='file', **kwargs) => file
@@ -163,8 +163,7 @@ class File(base.Wrapper):
                 self.filesize = 0
             #    self.properties = self.create("pride.filefio.File_Attributes",
             #                                  wrapped_object=self.file, filename=path)
-        self.wraps(self.file)        
-
+        self.wraps(self.file)      
                                       
     def __enter__(self):
         return self
@@ -230,12 +229,15 @@ class File(base.Wrapper):
             attributes["_file_data"] = ''
         del attributes["wrapped_object"]
         del attributes["file"]
+        del attributes["properties"]
+        del attributes["objects"]["File_Attributes"]
         return attributes
         
     def on_load(self, attributes):
         super(File, self).on_load(attributes)
         if self.file_type == "file":
             self.file = _file = open(self.filename, self.mode)
+            self.properties = self.create("pride.fileio.File_Attributes", filename=path)             
         else:
             self.file = _file = resolve_string(self.file_type)()
         self.wraps(_file)

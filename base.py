@@ -53,6 +53,7 @@ import operator
 import itertools
 import sys
 import heapq
+import pprint
        
 import pride
 import pride.metaclass
@@ -395,7 +396,7 @@ class Base(object):
         try:
             saved_data = pride.utilities.save_data(attributes)
         except TypeError:
-            self.alert("Unable to save attributes", level=0)
+            self.alert("Unable to save attributes '{}'".format(pprint.pformat(attributes)), level=0)
             raise
             
         if _file:

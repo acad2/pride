@@ -17,12 +17,12 @@ timer_function = timeit.default_timer
 _TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2), 
                 bool : chr(3), list : chr(4), dict : chr(5),
                 tuple : chr(6), set : chr(7), type(None) : chr(8),
-                unicode : chr(9), BaseException : chr(10)}
+                unicode : chr(9), BaseException : chr(10), long : chr(11)}
                 
 _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: True if value == "True" else False,
                   _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[type(None)] : lambda value: None,                                   
                   _TYPE_SYMBOL[str] : lambda value: value,
-                  _TYPE_SYMBOL[unicode] : unicode}                         
+                  _TYPE_SYMBOL[unicode] : unicode, _TYPE_SYMBOL[long] : long}                         
                     
 def rotate(input_string, amount):
     """ Rotate input_string by amount. Amount may be positive or negative.

@@ -599,18 +599,9 @@ class Network(vmlibrary.Process):
                 
     def __getstate__(self):
         state = super(Network, self).__getstate__()
-        state["connecting"] = None
-     #   state["sockets"] = []
-     #   state["objects"] = {}
-        state["_slice_mapping"] = None
+        state["connecting"] = set()
+        state["sockets"] = []             
         return state
     
     def __contains__(self, _socket):
-        return _socket in self.sockets
-        
-    def on_load(self, attributes):
-        super(Network, self).on_load(attributes)
-        self._slice_mapping = dict((x, slice(x * 500, (500 + x * 500))) for 
-                                    x in xrange(100))
-        self.connecting = set()
-        #self.sockets = []
+        return _socket in self.sockets        

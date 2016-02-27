@@ -180,8 +180,8 @@ class Authenticated_Service(pride.base.Base):
         client_challenge = Authentication_Table.generate_challenge(self.challenge_size)
         try:
             (saved_table,
-            session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
-                                                                        "session_key"),
+             session_key) = self.database.query("Users", retrieve_fields=("authentication_table",
+                                                                          "session_key"),
                                                 where={"authentication_table_hash" : authentication_table_hash})
         except ValueError:
             response = pride.security.random_bytes(32)
@@ -240,6 +240,7 @@ class Authenticated_Service(pride.base.Base):
                                            arguments={"authentication_table_hash" : new_table_hash,
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
+                del self.session_id[authentication_table_hash]                
                 self.session_id[new_table_hash] = username or new_table_hash                
             else:
                 self.alert("Authentication Failure: {} '{}'",
@@ -487,7 +488,8 @@ class Authenticated_Client(pride.base.Base):
                       [(instruction.component_name, instruction.method)],
                       level=self.verbosity["delayed_request_sent"])
             self.session.execute(instruction, callback)
-            
+        self._delayed_requests = []
+        
     def _reset_login_flags(self):
         self.logged_in = False
         self.session.id = '0'

@@ -145,6 +145,11 @@ class Rpc_Connection_Manager(pride.base.Base):
         super(Rpc_Connection_Manager, self).remove(_object)
         del self.hosts[_object.host_info]
         
+    def __getstate__(self):
+        attributes = super(Rpc_Connection_Manager, self).__getstate__()
+        attributes["hosts"] = {}
+        return attributes
+        
         
 class Rpc_Server(pride.networkssl.SSL_Server):
     """ Creates Rpc_Sockets for handling rpc requests. By default, this

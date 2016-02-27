@@ -48,7 +48,7 @@ class Shell(authentication2.Authenticated_Client):
                        [traceback.format_exc()],
                        level=0)
         else:
-            self.startup_definitions = ''
+            self.startup_definitions = ''            
             self.execute_source(source)
                         
     @pride.authentication2.remote_procedure_call(callback_name="result")
