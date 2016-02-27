@@ -133,6 +133,13 @@ class Interpreter(authentication2.Authenticated_Service):
         """ Executes the supplied instruction with the specified priority and callback """
         instruction.execute(priority=priority, callback=callback)
         
+    def __getstate__(self):
+        attributes = super(Interpreter, self).__getstate__()
+        log = attributes["_logger"]
+        log.seek(0)
+        attributes["_logger"] = log.read()
+        return attributes
+        
         
 class Python(base.Base):
     """ The "main" class. Provides an entry point to the environment. 
