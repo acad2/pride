@@ -6,9 +6,9 @@ import os
 from pride import Instruction
 import pride.security
 import pride.decorators
-from pride.security import hash_function, SecurityError
-                    
-class UnauthorizedError(SecurityError): pass
+from pride.security import hash_function
+from pride.errors import SecurityError, UnauthorizedError             
+
                     
 @pride.decorators.required_arguments(no_args=True)
 def remote_procedure_call(callback_name='', callback=None):
@@ -121,9 +121,11 @@ class Authenticated_Service(pride.base.Base):
                 # non security related configuration options
                 "database_type" : "pride.database.Database", 
                 "validation_failure_string" :\
-                   ".validate: Authorization Failure:\n   ip_blacklisted: {}" +
-                   "    session_id logged in: {}\n    method_name: '{}'\n    " +
-                   "login allowed: {}    registration allowed: {}",
+                   ".validate: Authorization Failure:\n" +
+                   "    ip blacklisted: {}    ip whitelisted: {}\n" +
+                   "    session_id logged in: {}\n" + 
+                   "    method_name: '{}'    method available remotely: {}\n" +                   
+                   "    login allowed: {}    registration allowed: {}",
                 "allow_login" : True, "allow_registration" : True,
                 "login_message" : "Welcome to the {}, {} from {}"}              
     
@@ -149,6 +151,12 @@ class Authenticated_Service(pride.base.Base):
                         
     inherited_attributes = {"database_structure" : dict, "database_flags" : dict,
                             "remotely_available_procedures" : tuple, "rate_limit" : dict}
+    
+    def _get_current_user(self):
+        return self.session_id[self.current_session[0]]
+    def _del_current_user(self):
+        del self.session_id[self.current_session[0]]
+    current_user = property(_get_current_user, fdel=_del_current_user)
     
     def __init__(self, **kwargs):
         super(Authenticated_Service, self).__init__(**kwargs)
@@ -250,11 +258,10 @@ class Authenticated_Service(pride.base.Base):
         
     def on_login(self):
         session_id, ip = self.current_session
-        return self.login_message.format(self.reference, self.session_id[session_id], ip)
+        return self.login_message.format(self.reference, self.current_user, ip)
     
     def logout(self):
-        authentication_table_hash, ip = self.current_session
-        del self.session_id[authentication_table_hash]        
+        del self.current_user     
         
     def validate(self, session_id, peername, method_name):
         """ Determines whether or not the peer with the supplied
@@ -267,9 +274,15 @@ class Authenticated_Service(pride.base.Base):
             (session_id == '0' and method_name != "register") or
             (session_id not in self.session_id and method_name not in ("register", "login", "login_stage_two"))):
             
+       #     print session_id
+       #     print
+       #     print self.session_id.keys()[0]
+       #     return False
             self.alert(self.validation_failure_string,
-                      (peername[0] in self.ip_blacklist, session_id in self.session_id,
-                       method_name, self.allow_login, self.allow_registration),
+                      (peername[0] in self.ip_blacklist, peername[0] in self.ip_whitelist,
+                       session_id in self.session_id,
+                       method_name, method_name in self.remotely_available_procedures,
+                       self.allow_login, self.allow_registration),
                        level=self.verbosity["validate_failure"])
             return False         
        # if self.rate_limit and method_name in self.rate_limit:
@@ -292,7 +305,7 @@ class Authenticated_Service(pride.base.Base):
        #             return False        
         self.alert("Authorizing: {} for {}", 
                   (peername, method_name), 
-                  level=self.verbosity["validate_success"])
+                  level=0)#self.verbosity["validate_success"])
         return True        
                         
     def __getstate__(self):

@@ -9,7 +9,7 @@ pride_interpreter_Shell_defaults = {"startup_definitions" : \
 r"""import pride.base
 import pride
 
-from pride.utilities import documentation
+from pride.utilities import documentation, usage
 
 def open_firefox():
     try:

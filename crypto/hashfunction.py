@@ -4,7 +4,7 @@ import binascii
 from utilities import cast, slide, save_data, load_data, byte_form, binary_form
 # helper functions
             
-SUBSTITUTION = dict((x, pow(251, x, 257) % 256) for x in xrange(1024 * 1024 * 2))
+SUBSTITUTION = dict((x, pow(251, x, 257) % 256) for x in xrange(1024 * 1024))
             
 def prime_generator():
     """ Generates prime numbers in successive order. """
@@ -65,91 +65,93 @@ def mixing_subroutine(_bytes):
      #   psuedorandom_byte = SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)]
 #        psuedorandom_byte = pow(251, key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 257) % 256
   #      assert SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)] == psuedorandom_byte
-        _bytes[counter % byte_length] = SUBSTITUTION[key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter)] ^ (counter % 256)        
+        _bytes[counter % byte_length] = counter ^ (pow(251, 
+                                                       key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 
+                                                       257) % 256)
     return _bytes
         
-def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
-                    mix_state_function=mixing_subroutine):  
-    state_size = capacity + rate
-    state = bytearray(state_size)
-    if key:
-        for index, value in enumerate(bytearray(key)):
-            state[index % rate] ^= value
-        mix_state_function(state)
-    
-    hash_input += '1'
-    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
-        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
-        
-    for _bytes in slide(hash_input, rate):
-        for index, byte in enumerate(bytearray(_bytes)):
-            state[index] ^= byte
-        mix_state_function(state)
-    
-    mix_state_function(state)
-    output = state[:rate]
-    while len(output) < output_size:
-        mix_state_function(state)
-        output += state[:rate]
-    return bytes(output[:output_size])
-           
-def sponge_encryptor(hash_input, key='', capacity=32, rate=32, 
-                     mix_state_function=mixing_subroutine):  
-    state_size = capacity + rate
-    state = bytearray(state_size)
-    if key:
-        for index, value in enumerate(bytearray(key)):
-            state[index % rate] ^= value
-        mix_state_function(state)
-    
-    hash_input += '1'
-    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
-        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
-        
-    for _bytes in slide(hash_input, rate):
-        for index, byte in enumerate(bytearray(_bytes)):
-            state[index] ^= byte
-        mix_state_function(state)
-    
-    mix_state_function(state)        
-    input_block = yield None        
-    while input_block is not None:
-        for index, value in enumerate(bytearray(input_block)):
-            state[index] ^= value     
-        input_block = yield state[:len(input_block)]         
-        mix_state_function(state)        
-    yield state[:rate]
-    
-def sponge_decryptor(hash_input, key='', capacity=32, rate=32, 
-                     mix_state_function=mixing_subroutine):      
-    state_size = capacity + rate
-    state = bytearray(state_size)
-    if key:
-        for index, value in enumerate(bytearray(key)):
-            state[index % rate] ^= value
-        mix_state_function(state)
-    
-    hash_input += '1'
-    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
-        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
-        
-    for _bytes in slide(hash_input, rate):
-        for index, byte in enumerate(bytearray(_bytes)):
-            state[index] ^= byte
-        mix_state_function(state)
-    
-    mix_state_function(state)        
-    input_block = yield None       
-    while input_block is not None:
-        last_block = state[:len(input_block)]
-        for index, value in enumerate(bytearray(input_block)):
-            state[index] ^= value     
-        input_block = yield state[:len(input_block)]
-        for index, value in enumerate(last_block):
-            state[index] ^= value           
-        mix_state_function(state)    
-
-    yield state[:rate]
+#def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
+#                    mix_state_function=mixing_subroutine):  
+#    state_size = capacity + rate
+#    state = bytearray(state_size)
+#    if key:
+#        for index, value in enumerate(bytearray(key)):
+#            state[index % rate] ^= value
+#        mix_state_function(state)
+#    
+#    hash_input += '1'
+#    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+#        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+#        
+#    for _bytes in slide(hash_input, rate):
+#        for index, byte in enumerate(bytearray(_bytes)):
+#            state[index] ^= byte
+#        mix_state_function(state)
+#    
+#    mix_state_function(state)
+#    output = state[:rate]
+#    while len(output) < output_size:
+#        mix_state_function(state)
+#        output += state[:rate]
+#    return bytes(output[:output_size])
+#           
+#def sponge_encryptor(hash_input, key='', capacity=32, rate=32, 
+#                     mix_state_function=mixing_subroutine):  
+#    state_size = capacity + rate
+#    state = bytearray(state_size)
+#    if key:
+#        for index, value in enumerate(bytearray(key)):
+#            state[index % rate] ^= value
+#        mix_state_function(state)
+#    
+#    hash_input += '1'
+#    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+#        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+#        
+#    for _bytes in slide(hash_input, rate):
+#        for index, byte in enumerate(bytearray(_bytes)):
+#            state[index] ^= byte
+#        mix_state_function(state)
+#    
+#    mix_state_function(state)        
+#    input_block = yield None        
+#    while input_block is not None:
+#        for index, value in enumerate(bytearray(input_block)):
+#            state[index] ^= value     
+#        input_block = yield state[:len(input_block)]         
+#        mix_state_function(state)        
+#    yield state[:rate]
+#    
+#def sponge_decryptor(hash_input, key='', capacity=32, rate=32, 
+#                     mix_state_function=mixing_subroutine):      
+#    state_size = capacity + rate
+#    state = bytearray(state_size)
+#    if key:
+#        for index, value in enumerate(bytearray(key)):
+#            state[index % rate] ^= value
+#        mix_state_function(state)
+#    
+#    hash_input += '1'
+#    while len(hash_input) < rate: # expanding small inputs is good for diffusion/byte bias
+#        hash_input = byte_form(unpack_factors(binary_form(hash_input)))
+#        
+#    for _bytes in slide(hash_input, rate):
+#        for index, byte in enumerate(bytearray(_bytes)):
+#            state[index] ^= byte
+#        mix_state_function(state)
+#    
+#    mix_state_function(state)        
+#    input_block = yield None       
+#    while input_block is not None:
+#        last_block = state[:len(input_block)]
+#        for index, value in enumerate(bytearray(input_block)):
+#            state[index] ^= value     
+#        input_block = yield state[:len(input_block)]
+#        for index, value in enumerate(last_block):
+#            state[index] ^= value           
+#        mix_state_function(state)    
+#
+#    yield state[:rate]
                         
 def invert_mixing_function(_bytes):
     import itertools

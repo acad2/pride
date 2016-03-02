@@ -63,17 +63,14 @@ def bit_shuffle(data, key, indices):
         data = rotate(data[:index], key[index]) + data[index:]
     return data
     
-def encrypt(plaintext, key, rounds=1):  
+def encrypt_block(plaintext, key, rounds=1):  
     # indices = INDICES[len(key)] # (0, 1, 2, ..., N) where N = length of key or the blocksize       
     return crypt_block(plaintext, key, INDICES[len(key)], [index for index in range(rounds)])
 
-def decrypt(ciphertext, key, rounds=1):    
+def decrypt_block(ciphertext, key, rounds=1):    
     return crypt_block(ciphertext, key, REVERSE_INDICES[len(key)], list(reversed([index for index in range(rounds)])))
     
 def crypt_block(data, key, indices, rounds):    
-    key = bytearray(key)
-    data = bytearray(data)    
-    
     round_keys = []
     for round in rounds:
         key = generate_round_key(key)
@@ -85,9 +82,7 @@ def crypt_block(data, key, indices, rounds):
         extract_round_key(round_key)                
         xor_with_key(data, round_key) # add key to data        
         substitution(data, round_key, indices) # encrypt data with itself  
-        xor_with_key(data, round_key) # remove key from data
-   
-    return bytes(data)
+        xor_with_key(data, round_key) # remove key from data      
     
 def xor_parity(data):
     bits = [int(bit) for bit in cast(bytes(data), "binary")]
@@ -96,14 +91,17 @@ def xor_parity(data):
         parity ^= bit
     return parity
     
-def test_encrypt_decrypt():
+def test_encrypt_decrypt_block():
     data = "\x00" * 7
-    key = ("\x00" * 7) + "\x00"
+    key = bytearray(("\x00" * 7) + "\x00")
     for count in range(5):
-        _data = data + chr(count)
-        ciphertext = encrypt(_data, key)    
-        plaintext = decrypt(ciphertext, key)
-        assert plaintext == _data, (ciphertext, plaintext, _data)
+        _data = bytearray(data + chr(count))
+        plaintext = bytes(_data)
+        encrypt_block(_data, key)    
+        ciphertext = bytes(_data)
+        decrypt_block(_data, key)
+        _plaintext = bytes(_data)
+        assert plaintext == _plaintext, (plaintext, _plaintext)
         print ciphertext#, [byte for byte in bytearray(ciphertext)]
         print
     
@@ -127,15 +125,16 @@ def test_linear_cryptanalysis():
         key = ("\x00" * 15)  
         outputs = []
         for key_count, key_byte in enumerate(range(256)):
-            _key = key + chr(key_byte)
+            _key = bytearray(key + chr(key_byte))
             key_parity = xor_parity(_key)
             pride.utilities.print_in_place(str(key_count / 256.0) + '% complete; Current bias: {}'.format(float(outputs.count(1)) / (outputs.count(0) or 1)))
             for count in range(65535):            
-                _data = data + cast(cast(count, "binary").zfill(16), "bytes")#chr(count) 
+                _data = bytearray(data + cast(cast(count, "binary").zfill(16), "bytes"))
+                plaintext = _data[:]
             #  print len(_data), count
-                ciphertext = encrypt(_data, _key)
-                
-                plaintext_parity = xor_parity(_data)        
+                encrypt_block(_data, _key)
+                ciphertext = _data[:]
+                plaintext_parity = xor_parity(plaintext)        
                 ciphertext_parity = xor_parity(ciphertext)
                 outputs.append(1 if plaintext_parity ^ ciphertext_parity == key_parity else 0)
     
@@ -146,5 +145,5 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 if __name__ == "__main__":
-    test_encrypt_decrypt()
+    test_encrypt_decrypt_block()
     test_linear_cryptanalysis()

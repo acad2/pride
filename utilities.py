@@ -94,7 +94,11 @@ def unpack_data(packed_data):
     if _type == _TYPE_SYMBOL[BaseException]:        
         # is it safe to do this? I feel like it should be; if an attacker has
         # control over the exceptions module, we've probably already lost
-        data = getattr(exceptions, packed_data[1:])()
+        try:
+            data = getattr(exceptions, packed_data[1:])()
+        except AttributeError:
+            import pride.errors
+            data = getattr(pride.errors, packed_data[1:])()
         
     elif _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
         data = []

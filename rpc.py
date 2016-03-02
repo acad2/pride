@@ -175,7 +175,8 @@ class Rpc_Client(Packet_Client):
             self.alert("Making delayed request {}/{}: {}".format(count, length, request)[:128], 
                        level=self.verbosity["delayed_request_sent"])
             self._callbacks.append(callback)  
-            self.send(request)
+            self.send(request)            
+            count += 1
             
     def make_request(self, request, callback_owner):
         """ Send request to remote host and queue callback_owner for callback """
@@ -204,7 +205,7 @@ class Rpc_Client(Packet_Client):
             else:
                 if isinstance(_response, BaseException):
                     self.handle_exception(_call, callback, _response)
-                elif callback is not None:                    
+                elif callback is not None:      
                     callback(_response)                                
                                                 
     def handle_exception(self, _call, callback, response):   
@@ -280,12 +281,14 @@ class Rpc_Worker(pride.base.Base):
     def handle_request(self, peername, session_id, component_name, method,
                        serialized_arguments): 
         instance = pride.objects[component_name]
+        print "\n\n", instance.session_id, method
         if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()
         else:            
             args, kwargs = self.deserealize(serialized_arguments)
             with pride.contextmanagers.backup(instance, "current_session"):
                 instance.current_session = (session_id, peername)
+           #     print "Set session: ", instance, session_id, peername, instance.current_session
                 return getattr(instance, method)(*args, **kwargs) 
         
     def deserealize(self, serialized_arguments):

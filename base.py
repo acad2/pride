@@ -339,7 +339,11 @@ class Base(object):
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments.""" 
         alert_handler = objects["->Alert_Handler"]               
-        message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
+        try:
+            message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
+        except TypeError:
+            print message
+            raise
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
             sys.stdout.flush()

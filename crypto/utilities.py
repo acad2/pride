@@ -1,6 +1,14 @@
 import binascii
 
-def save_data(*args): # copied from pride.utilities
+# copied from pride so this module could conceivably be used independently
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x] 
+        
+def save_data(*args): 
     sizes = []
     for arg in args:
         sizes.append(str(len(arg)))
@@ -42,20 +50,22 @@ def load_data(packed_bytes, count_or_types):
             _data.append(value)
         data = _data
     return data 
+# end copied code
     
 def rotate(input_string, amount):
     if not amount or not input_string:            
         return input_string    
     else:
         amount = amount % len(input_string)
-        return input_string[-amount:] + input_string[:-amount]
-                
-def slide(iterable, x=16):
-    """ Yields x bytes at a time from iterable """
-    slice_count, remainder = divmod(len(iterable), x)
-    for position in range((slice_count + 1 if remainder else slice_count)):
-        _position = position * x
-        yield iterable[_position:_position + x] 
+        return input_string[-amount:] + input_string[:-amount]                
+
+def xor_subroutine(bytearray1, bytearray2):    
+    for index, byte in enumerate(bytearray2):
+        bytearray1[index] ^= byte  
+               
+def replacement_subroutine(bytearray1, bytearray2):    
+    for index, byte in enumerate(bytearray2):
+        bytearray1[index] = byte
         
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """
@@ -86,8 +96,11 @@ def byte_form(bitstring):
         return output
     else:
         return ''.join(chr(int(bits, 2)) for bits in slide(bitstring, 8))
+      
+def integer_form(_string):
+    return int(binary_form(_string), 2)
         
-_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "int" : lambda bits: int(bits, 2)}
+_type_resolver = {"bytes" : byte_form, "binary" : binary_form, "integer" : lambda bits: int(bits, 2)}
     
 def cast(input_data, _type):
     return _type_resolver[_type](input_data)

@@ -6,6 +6,7 @@ import inspect
 import StringIO
 from functools import wraps
 
+from pride import errors
 if "win" in sys.platform:
     timer = time.clock
 else:
@@ -17,8 +18,11 @@ def required_arguments(no_args=False, no_kwargs=False, requires_args=False,
         def new_call(*args, **kwargs):
             raise_error = False
             if ((no_args and args) or (requires_args and not args) or
-                (no_kwargs and kwargs) or (requires_kwargs and kwargs)):
-                raise pride.errors.ArgumentError("Unable to call {}".format(function))
+                (no_kwargs and kwargs) or (requires_kwargs and kwargs)):                
+                raise errors.ArgumentError("Unable to call {};\n".format(function) +
+                                           "args supplied : {}    kwargs supplied : {}\n".format(bool(args), bool(kwargs)) +
+                                           "args_prohibited : {}    kwargs prohibited : {}\n".format(no_args, no_kwargs) +
+                                           "requires_args : {}    requires_kwargs : {}".format(requires_args, requires_kwargs))
             if _kwargs:
                 for key, value in _kwargs.items():
                     if kwargs[key] != value:
