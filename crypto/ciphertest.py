@@ -1,16 +1,17 @@
 import pride.utilities
 
 import itertools
-from utilities import cast, slide
+from utilities import cast, slide, xor_sum
 
 S_BOX, INVERSE_S_BOX = bytearray(256), bytearray(256)
-INDICES = dict((key_size, range(key_size)) for key_size in (8, 16, 32, 64, 128))
-REVERSE_INDICES = dict((key_size, tuple(reversed(INDICES[key_size]))) for key_size in (8, 16, 32, 64, 128))
+INDICES = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
+REVERSE_INDICES = dict((key_size, zip(reversed(range(key_size)), reversed(range(key_size))))
+                        for key_size in (8, 16, 32, 64, 128, 256))
 
 for number in range(256):
     output = pow(251, number, 257) % 256
     S_BOX[number] = (output)
-    INVERSE_S_BOX[output] = number
+    INVERSE_S_BOX[output] = number  
     
 def block_rotation(input_bytes):    
     bits = cast(bytes(input_bytes), "binary")      
@@ -27,36 +28,39 @@ def block_rotation(input_bytes):
         
         for offset, _bits in enumerate(slide(bits_at_index, 8)):   
             input_bytes[_index + offset] = int(_bits, 2)
-    
-def xor_sum(data):
-    _xor_sum = 0
-    for byte in data:
-        _xor_sum ^= byte
-    return _xor_sum
-       
-def generate_round_key(data):   
+           
+def generate_round_key(data):       
     return bytearray(S_BOX[byte ^ (2 ** (index % 8))] for index, byte in enumerate(data))        
         
-def extract_round_key(key):    
+def extract_round_key(key):        
     xor_sum_of_key = xor_sum(key)
     for index, key_byte in enumerate(key):        
-        key[index] = S_BOX[(2 ** (index % 8)) ^ xor_sum_of_key ^ key_byte]           
+        key[index] = S_BOX[(2 ** (index % 8)) ^ xor_sum_of_key]           
     block_rotation(key)
     
-def substitution(input_bytes, key, indices):   
-    xor_sum_of_data = xor_sum(input_bytes)
-    key_xor = xor_sum(key)
-    for index in indices:        
+def substitution(input_bytes, key, indices): 
+    size = len(input_bytes)
+    xor_sum_of_data = xor_sum(input_bytes) ^ xor_sum(key)    
+    for time, place in indices:
+        # the steps are:
         # remove the current byte from the xor sum; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from everything but the current plaintext byte then XOR it with current byte
-        # include current byte XOR psuedorandom_byte into the xor sum         
-        xor_sum_of_data ^= input_bytes[index]        
-        input_bytes[index] ^= INVERSE_S_BOX[key_xor ^ INVERSE_S_BOX[index << 1]] ^ S_BOX[key[index] ^ xor_sum_of_data]     
-        xor_sum_of_data ^= input_bytes[index] 
-       
-def xor_with_key(data, key):    
-    for index, byte in enumerate(key):
-        data[index] ^= byte    
+        # include current byte XOR psuedorandom_byte into the xor sum 
+        # ; This is done in a random place, in the current place, then in the random place again
+        random_place = S_BOX[key[time] ^ place] % size
+        random_place_now = random_place ^ time
+        
+        xor_sum_of_data ^= input_bytes[random_place]
+        input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place_now]
+        xor_sum_of_data ^= input_bytes[random_place]
+        
+        xor_sum_of_data ^= input_bytes[place]
+        input_bytes[place] ^= S_BOX[xor_sum_of_data ^ S_BOX[place] ^ time]
+        xor_sum_of_data ^= input_bytes[place]                
+        
+        xor_sum_of_data ^= input_bytes[random_place]
+        input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place_now]
+        xor_sum_of_data ^= input_bytes[random_place]   
       
 def bit_shuffle(data, key, indices):
     for index in indices:
@@ -79,21 +83,12 @@ def crypt_block(data, key, indices, rounds):
     for round_key_index in rounds:
         round_key = round_keys[round_key_index]
         
-        extract_round_key(round_key)                
-        xor_with_key(data, round_key) # add key to data        
-        substitution(data, round_key, indices) # encrypt data with itself  
-        xor_with_key(data, round_key) # remove key from data      
-    
-def xor_parity(data):
-    bits = [int(bit) for bit in cast(bytes(data), "binary")]
-    parity = bits[0]
-    for bit in bits[1:]:
-        parity ^= bit
-    return parity
-    
+        extract_round_key(round_key)                       
+        substitution(data, round_key, indices) 
+        
 def test_encrypt_decrypt_block():
-    data = "\x00" * 7
-    key = bytearray(("\x00" * 7) + "\x00")
+    data = "\x01" * 127
+    key = bytearray(("\x00" * 127) + "\x00")
     for count in range(5):
         _data = bytearray(data + chr(count))
         plaintext = bytes(_data)
@@ -106,6 +101,7 @@ def test_encrypt_decrypt_block():
         print
     
 def test_linear_cryptanalysis():       
+    from pride.crypto.utilities import xor_parity
     
     def _test_random_data():
         import os
@@ -146,4 +142,4 @@ def test_linear_cryptanalysis():
     
 if __name__ == "__main__":
     test_encrypt_decrypt_block()
-    test_linear_cryptanalysis()
+    #test_linear_cryptanalysis()

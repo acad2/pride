@@ -82,23 +82,28 @@ def sponge_factory(key='', output_size=32, capacity=32, rate=32,
                                               mode_of_operation=mode_of_operation, 
                                               absorb=absorb)                       
                     
-def _test():
-    from ciphertest import encrypt_block, substitution
-    from modes import encrypt
+def test_cipher_metrics():
     from metrics import test_hash_function, test_performance
     from os import urandom
-  #  from pride.security import encrypt
+    from ciphertest import encrypt_block, substitution
+    from modes import encrypt    
+    from pride.security import encrypt as aes_encrypt
     from pride.utilities import load_data
     from utilities import replacement_subroutine
         
-    def test_mixer(input_bytes):        
-        size = len(input_bytes)
-    #    ciphertext = encrypt(bytes(input_bytes), "\x00" * 16, bytes(input_bytes[:16]))
-    #    header, ciphertext, iv, tag, extra_data = load_data(ciphertext)   
-    #    replacement_subroutine(input_bytes, bytearray(ciphertext))                      
+    def test_aes(input_bytes):
+        ciphertext = aes_encrypt(bytes(input_bytes), "\x00" * 16, bytes(input_bytes[:16]))
+        header, ciphertext, iv, tag, extra_data = load_data(ciphertext)   
+        replacement_subroutine(input_bytes, bytearray(ciphertext))   
+        
+    def test_ciphertest(input_bytes):        
+        size = len(input_bytes)                   
         encrypt(input_bytes, bytearray("\x00" * size), bytearray("\x00" * size), encrypt_block, "cbc")
-    test_performance(sponge_factory(mix_state_subroutine=test_mixer))
-    #test_hash_function(sponge_factory(mix_state_subroutine=test_mixer))    
+        
+    def test_random_data(input_bytes):    
+        replacement_subroutine(input_bytes, bytearray(urandom(len(input_bytes))))
+    #test_performance(sponge_factory(mix_state_subroutine=test_mixer))
+    test_hash_function(sponge_factory(mix_state_subroutine=test_ciphertest))    
     
 def test_hash():
     print sponge_function('')
@@ -117,4 +122,4 @@ def test_encrypt_decrypt():
 if __name__ == "__main__":
     #test_hash()
     #test_encrypt_decrypt()
-    _test()
+    test_cipher_metrics()

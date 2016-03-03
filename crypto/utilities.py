@@ -52,6 +52,19 @@ def load_data(packed_bytes, count_or_types):
     return data 
 # end copied code
     
+def xor_parity(data):
+    bits = [int(bit) for bit in cast(bytes(data), "binary")]
+    parity = bits[0]
+    for bit in bits[1:]:
+        parity ^= bit
+    return parity
+
+def xor_sum(data):
+    _xor_sum = 0
+    for byte in data:
+        _xor_sum ^= byte
+    return _xor_sum
+    
 def rotate(input_string, amount):
     if not amount or not input_string:            
         return input_string    
