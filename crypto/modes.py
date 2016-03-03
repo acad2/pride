@@ -41,18 +41,47 @@ def encrypt(data, key, iv, cipher, mode_of_operation):
     
 def decrypt(data, key, iv, cipher, mode_of_operation):
     crypt(data, key, iv, cipher, DECRYPTION_MODES[mode_of_operation])    
+
+class Cipher(object):
+                
+    def encrypt_block(self, plaintext, key):
+        raise NotImplementedError()
     
-def test_encrypt_decrypt_cbc():
+    def decrypt_block(self, ciphertext, key):
+        raise NotImplementedError()
+        
+    def generate_round_key(self, key):
+        raise NotImplementedError()
+        
+    def extract_round_key(self, key):
+        raise NotImplementedError()
+        
+    def p_box(self, data):
+        raise NotImplementedError()
+        
+    def substitution_round(self, data, key):
+        raise NotImplementedError()
+
+    def encrypt(self, data, key, iv, mode):        
+        return encrypt(data, key, iv, self.encrypt_block, mode)
+        
+    def decrypt(self, data, key, iv, mode):
+        cipher = self.decrypt_block if mode == "cbc" else self.encrypt_block
+        return decrypt(data, key, iv, cipher, mode)    
+        
+def test_encrypt_decrypt():
     data = bytearray("TestData" * 4)
     _data = data[:]
     key = bytearray("\x00" * 16)
     iv = key[:]
     from ciphertest import encrypt_block, decrypt_block
-    encrypt(data, key, iv, encrypt_block, "ctr")
-    print data
-    decrypt(data, key, iv, encrypt_block, "ctr")
-    print data
-    assert _data == data, (_data, data)
+    for mode in ("ctr", "ofb", "cbc"):
+        encrypt(data, key, iv, encrypt_block, mode)
+        print data
+        decrypt(data, key, iv, encrypt_block, mode)
+        print data
+        assert _data == data, (_data, data)
     
 if __name__ == "__main__":
-    test_encrypt_decrypt_cbc()
+    test_encrypt_decrypt()
+    

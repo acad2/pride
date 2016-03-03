@@ -13,7 +13,7 @@ def variable_length_hash(state, rate, output_size, mix_state_subroutine):
     output = state[:rate]
     while len(output) < output_size:
         mix_state_subroutine(state)        
-        output += state[:rate]
+        output += state[:rate]      
     return bytes(output[:output_size])
     
 def encryption_generator(state, rate, output_size, mix_state_subroutine):    
@@ -62,16 +62,22 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     mix_state_subroutine(state)
     return mode_of_operation(state, rate, output_size, mix_state_subroutine)               
 
-def encrypt(data, key, iv, rate=32):
-    encryptor = sponge_function(iv, key, mode_of_operation=encryption_generator)
+def encrypt(data, key, iv, mix_state_subroutine=mixing_subroutine, rate=32):
+    encryptor = sponge_function(iv, key, mix_state_subroutine=mix_state_subroutine,
+                                mode_of_operation=encryption_generator)
     next(encryptor)
     return ''.join(encryptor.send(block) for block in slide(data, rate))
 
-def decrypt(data, key, iv, rate=32):
-    decryptor = sponge_function(iv, key, mode_of_operation=decryption_generator)
+def decrypt(data, key, iv, mix_state_subroutine=mixing_subroutine, rate=32):
+    decryptor = sponge_function(iv, key, mix_state_subroutine=mix_state_subroutine,
+                                mode_of_operation=decryption_generator)
     next(decryptor)    
     return ''.join(decryptor.send(block) for block in slide(data, rate))                    
                
+def psuedorandom_data(quantity, seed, key, mix_state_subroutine=mixing_subroutine, rate=32):
+    return sponge_function(seed, key, mix_state_subroutine=mix_state_subroutine, 
+                           output_size=quantity, rate=rate)
+    
 def sponge_factory(key='', output_size=32, capacity=32, rate=32, 
                    mix_state_subroutine=mixing_subroutine,
                    mode_of_operation=variable_length_hash,
@@ -81,30 +87,7 @@ def sponge_factory(key='', output_size=32, capacity=32, rate=32,
                                               mix_state_subroutine=mix_state_subroutine,
                                               mode_of_operation=mode_of_operation, 
                                               absorb=absorb)                       
-                    
-def test_cipher_metrics():
-    from metrics import test_hash_function, test_performance
-    from os import urandom
-    from ciphertest import encrypt_block, substitution
-    from modes import encrypt    
-    from pride.security import encrypt as aes_encrypt
-    from pride.utilities import load_data
-    from utilities import replacement_subroutine
-        
-    def test_aes(input_bytes):
-        ciphertext = aes_encrypt(bytes(input_bytes), "\x00" * 16, bytes(input_bytes[:16]))
-        header, ciphertext, iv, tag, extra_data = load_data(ciphertext)   
-        replacement_subroutine(input_bytes, bytearray(ciphertext))   
-        
-    def test_ciphertest(input_bytes):        
-        size = len(input_bytes)                   
-        encrypt(input_bytes, bytearray("\x00" * size), bytearray("\x00" * size), encrypt_block, "cbc")
-        
-    def test_random_data(input_bytes):    
-        replacement_subroutine(input_bytes, bytearray(urandom(len(input_bytes))))
-    #test_performance(sponge_factory(mix_state_subroutine=test_mixer))
-    test_hash_function(sponge_factory(mix_state_subroutine=test_ciphertest))    
-    
+                        
 def test_hash():
     print sponge_function('')
     for x in xrange(5):
@@ -120,6 +103,6 @@ def test_encrypt_decrypt():
     assert plaintext == _plaintext, (plaintext, _plaintext)
     
 if __name__ == "__main__":
-    #test_hash()
-    #test_encrypt_decrypt()
-    test_cipher_metrics()
+    test_hash()
+    test_encrypt_decrypt()
+        

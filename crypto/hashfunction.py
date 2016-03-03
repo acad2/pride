@@ -1,7 +1,8 @@
 import itertools   
 import binascii
 
-from utilities import cast, slide, save_data, load_data, byte_form, binary_form
+from utilities import cast, slide, byte_form, binary_form
+from pride.utilities import save_data, load_data
 # helper functions
             
 SUBSTITUTION = dict((x, pow(251, x, 257) % 256) for x in xrange(1024 * 1024))

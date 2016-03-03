@@ -6,50 +6,7 @@ def slide(iterable, x=16):
     slice_count, remainder = divmod(len(iterable), x)
     for position in range((slice_count + 1 if remainder else slice_count)):
         _position = position * x
-        yield iterable[_position:_position + x] 
-        
-def save_data(*args): 
-    sizes = []
-    for arg in args:
-        sizes.append(str(len(arg)))
-    return ' '.join(sizes + [args[0]]) + ''.join(str(arg) for arg in args[1:])
-    
-def load_data(packed_bytes, count_or_types):
-    """ Unpack a stream according to its size header.
-    The second argument should be either an integer indicating the quantity
-    of items to unpack, or an iterable of types whose length indicates the
-    quantity of items to unpack. """
-    try:
-        size_count = len(count_or_types)
-    except TypeError:
-        unpack_types = False
-        size_count = count
-    else:
-        unpack_types = True
-    sizes = packed_bytes.split(' ', size_count)
-    packed_bytes = sizes.pop(-1)
-    data = []
-    for size in (int(size) for size in sizes):
-        data.append(packed_bytes[:size])
-        packed_bytes = packed_bytes[size:]
-        
-    if unpack_types:
-        _data = []
-        for index, _type in enumerate(count_or_types):
-            value = data[index]
-            if _type == bool:
-                value = True if value == "True" else False
-            elif _type == int:
-                value = int(value)
-            elif _type == float:
-                value = float(value)
-            elif _type is None:
-                value = None
-            elif _type in (list, tuple, dict, set):
-                value = ast.literal_eval(value)
-            _data.append(value)
-        data = _data
-    return data 
+        yield iterable[_position:_position + x]         
 # end copied code
     
 def xor_parity(data):
