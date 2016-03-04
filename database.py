@@ -31,7 +31,8 @@ class Database(pride.base.Wrapper):
         Database objects may be simpler and safer then directly
         working with sqlite3 queries. Note that database methods
         do not commit automatically."""
-        
+    IntegrityError = sqlite3.IntegrityError
+    
     defaults = {"database_name" : '', "connection" : None, 
                 "cursor" : None, "text_factory" : str, "auto_commit" : True,
                 "detect_types_flags" : sqlite3.PARSE_DECLTYPES,

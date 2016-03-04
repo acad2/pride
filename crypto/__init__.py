@@ -30,8 +30,7 @@ def ctr_mode(block, iv, key, cipher, output):
     
 def crypt(data, key, iv, cipher, mode_of_operation):    
     output = bytearray()
-    blocksize = len(key)    
-    iv = bytearray(iv)
+    blocksize = len(key)        
     for block in slide(data, blocksize):  
         mode_of_operation(block, iv, key, cipher, output)
     
@@ -40,10 +39,10 @@ def crypt(data, key, iv, cipher, mode_of_operation):
 ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode}
 DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode}
     
-def encrypt(data, key, iv, cipher, mode_of_operation):
+def encrypt(data, key, iv, cipher, mode_of_operation, tweak=None):
     crypt(data, key, iv, cipher, ENCRYPTION_MODES[mode_of_operation])
     
-def decrypt(data, key, iv, cipher, mode_of_operation):
+def decrypt(data, key, iv, cipher, mode_of_operation, tweak=None):
     crypt(data, key, iv, cipher, DECRYPTION_MODES[mode_of_operation])    
 
 class Cipher(object):
@@ -92,7 +91,7 @@ def test_encrypt_decrypt():
     _data = data[:]
     key = bytearray("\x00" * 16)
     iv = "\x00" * 16
-    from ciphertest import Test_Cipher
+    from blockcipher import Test_Cipher
     
     for mode in ("ctr", "ofb", "cbc"):
         cipher = Test_Cipher(key, mode)

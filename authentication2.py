@@ -21,11 +21,11 @@ def remote_procedure_call(callback_name='', callback=None):
                 _callback = callback or None
                 
             instruction = Instruction(self.target_service, call_name, *args, **kwargs)
-            if not (self.logged_in or self._logging_in) and call_name not in ("register", "login", "login_stage_two"):
-                self.handle_not_logged_in(instruction, _callback)
+            if not self.logged_in and call_name not in ("register", "login", "login_stage_two"):                 
+                self.handle_not_logged_in(instruction, _callback)            
             else:
                 self.alert("Making request '{}.{}'", (self.target_service, call_name),
-                        level=self.verbosity[call_name])            
+                           level=self.verbosity[call_name])    
                 self.session.execute(instruction, _callback)
         return _make_rpc
     return decorate
@@ -129,9 +129,9 @@ class Authenticated_Service(pride.base.Base):
                 "allow_login" : True, "allow_registration" : True,
                 "login_message" : "Welcome to the {}, {} from {}"}              
     
-    verbosity = {"register" : 'vv', "login_stage_two" : 'vv', "validate_success" : 'vv',
-                 "on_login" : 0, "login" : 'v', "authentication_success" : 'vv',
-                 "authentication_failure" : 'v', "validate_failure" : "validate_failure",
+    verbosity = {"register" : "vv", "login_stage_two" : "vv", "validate_success" : 'vv',
+                 "on_login" : "vv", "login" : "vv", "authentication_success" : "vv",
+                 "authentication_failure" : "v", "validate_failure" : "validate_failure",
                  "login_stage_two_hash_not_found" : "v"}
     
     flags = {"current_session" : ('', None)}
@@ -228,14 +228,11 @@ class Authenticated_Service(pride.base.Base):
         else:         
             if (authentication_table_hash not in self.session_id and
                 Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer)):
-                del self._challenge_answer[authentication_table_hash]
+                del self._challenge_answer[authentication_table_hash]                
                 self.alert("Authentication success: {} '{}'",
                            (ip, username), level=self.verbosity["authentication_success"])
-                self.session_id[authentication_table_hash] = username
-                login_message = self.on_login()
+                
                 new_key = pride.security.random_bytes(self.shared_key_size)
-                login_packet = pride.utilities.save_data(new_key, login_message)                                                    
-                encrypted_key = pride.security.encrypt(login_packet, session_key)
                 
                 hkdf = invoke("pride.security.hkdf_expand", self.hash_function,
                               length=self.authentication_table_size,
@@ -244,12 +241,16 @@ class Authenticated_Service(pride.base.Base):
                 table_hasher = hash_function(self.hash_function)
                 table_hasher.update(new_table + ':' + new_key)
                 new_table_hash = table_hasher.finalize()      
+                
                 self.database.update_table("Users", where=user_id, 
                                            arguments={"authentication_table_hash" : new_table_hash,
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
-                del self.session_id[authentication_table_hash]                
-                self.session_id[new_table_hash] = username or new_table_hash                
+                self.session_id[new_table_hash] = username or new_table_hash    
+                self.current_session = (new_table_hash, ip)
+                login_message = self.on_login()                
+                login_packet = pride.utilities.save_data(new_key, login_message)                                                    
+                encrypted_key = pride.security.encrypt(login_packet, session_key)                                            
             else:
                 self.alert("Authentication Failure: {} '{}'",
                            (ip, username), 
@@ -258,7 +259,7 @@ class Authenticated_Service(pride.base.Base):
         
     def on_login(self):
         session_id, ip = self.current_session
-        return self.login_message.format(self.reference, self.current_user, ip)
+        return self.login_message.format(self.reference, self.session_id[session_id], ip)
     
     def logout(self):
         del self.current_user     
@@ -274,9 +275,9 @@ class Authenticated_Service(pride.base.Base):
             (session_id == '0' and method_name != "register") or
             (session_id not in self.session_id and method_name not in ("register", "login", "login_stage_two"))):
             
-       #     print session_id
-       #     print
-       #     print self.session_id.keys()[0]
+        #    print session_id
+        #    print
+        #    print self.session_id.keys()[0]
        #     return False
             self.alert(self.validation_failure_string,
                       (peername[0] in self.ip_blacklist, peername[0] in self.ip_whitelist,
@@ -305,7 +306,7 @@ class Authenticated_Service(pride.base.Base):
        #             return False        
         self.alert("Authorizing: {} for {}", 
                   (peername, method_name), 
-                  level=0)#self.verbosity["validate_success"])
+                  level=self.verbosity["validate_success"])
         return True        
                         
     def __getstate__(self):
@@ -495,7 +496,7 @@ class Authenticated_Client(pride.base.Base):
     def on_login(self, login_message):
         self.logged_in = True
         self._logging_in = False
-        self.alert("{}", [login_message], level=self.verbosity["login_message"])
+        self.alert("{}", [login_message], level=self.verbosity["login_message"])        
         for instruction, callback in self._delayed_requests:
             self.alert("Making delayed request: {}",
                       [(instruction.component_name, instruction.method)],
@@ -515,11 +516,12 @@ class Authenticated_Client(pride.base.Base):
             the logged_in flag will be set to False and the session.id set to '0'.
             If the user is not logged in, this is a no-op. """
     
-    def handle_not_logged_in(self, instruction, callback):
-        self.alert("Not logged in")        
+    def handle_not_logged_in(self, instruction, callback):        
         if self.auto_login or pride.shell.get_permission("Login now? :"):
             self._delayed_requests.append((instruction, callback))
-            self.login()            
+            if not self._logging_in:
+                self.alert("Not logged in")       
+                self.login()            
                 
     def delete(self):
         if self.logged_in:

@@ -78,8 +78,7 @@ class Session(pride.base.Base):
             request consists of session id information (size and id#), 
             followed by the information from the supplied instruction. No
             information regarding the callback is included in the request. """
-        _call = component, method = instruction.component_name, instruction.method
-        #print "Pickling: ", instruction.args, instruction.kwargs
+        _call = component, method = instruction.component_name, instruction.method        
         request = pride.utilities.save_data(self.id, component, method, 
                                             DEFAULT_SERIALIZER.dumps((instruction.args, 
                                                                       instruction.kwargs)))
@@ -281,7 +280,7 @@ class Rpc_Worker(pride.base.Base):
     def handle_request(self, peername, session_id, component_name, method,
                        serialized_arguments): 
         instance = pride.objects[component_name]
-        print "\n\n", instance.session_id, method
+    #    print "\n\n", instance.session_id, method
         if not instance.validate(session_id, peername, method):            
             raise UnauthorizedError()
         else:            

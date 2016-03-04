@@ -12,6 +12,7 @@ def file_operation(filename, mode, method, file_type="open", offset=None, data=N
             _file.seek(offset)
         if method == "write":
             assert data is not None
+            print data
             _file.write(data)
             _file.flush()
         else:
@@ -75,14 +76,12 @@ class File_Transfer(Data_Transfer_Client):
                                        "\n'{}' ({} bytes) ")}
         
     def __init__(self, **kwargs):
-        super(File_Transfer, self).__init__(**kwargs)
+        super(File_Transfer, self).__init__(**kwargs)        
         if self.file or self.filename:
             _file = self.file or open(self.filename, "a+b")
-            _file.seek(-1, 2) # seek to end
-            filesize = _file.tell()
-            if filesize < 65535:
-                _file.seek(0)
-                packet = pride.utilities.save_data(self.filename, 0, _file.read())
+            data = _file.read()
+            if len(data) < 65535:                
+                packet = pride.utilities.save_data(self.filename, 0, data)
                 ip = self.ip
                 port = self.port
                 for receiver in self.receivers:
@@ -101,7 +100,7 @@ class File_Transfer(Data_Transfer_Client):
                                                                         sender, filename, len(data))):
                 filename = raw_input("Please enter the filename or press enter to use '{}': ".format(filename)) or filename
                 file_operation(filename, "a+b", "write", self.file_type, offset, data)
-            
+                            
 
 class File_Storage_Daemon(Data_Transfer_Client):
     
@@ -138,12 +137,14 @@ class Proxy(Data_Transfer_Client):
             
             
 def test_dts():
-    client1 = Data_Transfer_Client(username="Ella")
-    client2 = Data_Transfer_Client(username="Not_Ella")
+    client1 = Data_Transfer_Client(username="Ella", token_file_encrypted=False, token_file_indexable=True)
+    client2 = Data_Transfer_Client(username="Not_Ella", token_file_encrypted=False, token_file_indexable=True)
     return client1, client2
     
 def test_File_Transfer():
-    file_transfer1 = File_Transfer(username="Ella")
+    file_transfer1 = File_Transfer(username="Ella",  token_file_encrypted=False, token_file_indexable=True)                                        
     file_transfer2 = File_Transfer(filename="base_Copy.py", username="Not_Ella",
-                                   receivers=("Not_Ella", "Ella"))
-                              
+                                   receivers=("Not_Ella", "Ella"),  token_file_encrypted=False, token_file_indexable=True)
+    
+if __name__ == "__main__":
+    test_File_Transfer()

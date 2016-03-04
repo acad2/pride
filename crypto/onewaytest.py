@@ -1,13 +1,7 @@
-from utilities import slide
+from utilities import slide, xor_sum
 
 ASCII_CONSTANT = ''.join(chr(x) for x in xrange(256)) + "\x00"
-                            
-def xor_sum(data):
-    output = 0
-    for byte in data:
-        output ^= byte
-    return output
-    
+                                
 def one_way_function(old_value, tweak=ASCII_CONSTANT, output_size=16):
     generator = one_way_function_gen(old_value, tweak)
     return ''.join(next(generator) for count in range(output_size))
