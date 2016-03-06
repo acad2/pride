@@ -86,8 +86,8 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        for entry in pride.Instruction.instructions[:]:
-            if entry[3] == self.reference:
+        for entry in pride.Instruction.instructions[:]:            
+            if entry[3] == self.reference:                
                 pride.Instruction.instructions.remove(entry)
         pride.Instruction.instructions.sort()
         super(Process, self).delete()

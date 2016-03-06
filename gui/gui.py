@@ -139,6 +139,7 @@ class Organizer(base.Base):
             
             item.y = parent.y + sum(top_item.h or min(top_size, top_item.h_range[1]) for
                                     top_item in top_items)
+            print item, item.y
         else:
             item.y = parent.y
         item.x = parent.x
@@ -235,7 +236,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "scroll_bars_enabled" : False, "_scroll_bar_h" : None,
                 "_scroll_bar_w" : None}    
         
-    flags = {"x_range" : (0, MAX_W), "y_range" : (0, MAX_H), "z_range" : (0, pride.gui.MAX_LAYER),
+    flags = {"z_range" : (0, pride.gui.MAX_LAYER),
              "scale_to_text" : False, "_texture_invalid" : False,
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
              "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
@@ -304,14 +305,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _get_texture_window_x(self):
         return self._texture_window_x
     def _set_texture_window_x(self, value):
-        self._texture_window_x = value#max(self.x_range[0], min(value, self.w))
+        self._texture_window_x = value
         self.texture_invalid = True
     texture_window_x = property(_get_texture_window_x, _set_texture_window_x)
     
     def _get_texture_window_y(self):
         return self._texture_window_y
     def _set_texture_window_y(self, value):
-        self._texture_window_y = value#max(self.y_range[0], min(value, self.h))
+        self._texture_window_y = value
         self.texture_invalid = True
     texture_window_y = property(_get_texture_window_y, _set_texture_window_y)
     

@@ -26,18 +26,15 @@ def delete(reference):
     objects[reference].delete()       
 import pride.audio
 #pride.audio.enable()
-#import pride.gui
-#window = pride.gui.enable()
-#
-#pbox = objects[window].create("pride.crypto.illustrator.P_Box")
-#data = bytearray("\x00" * 8)
-#from pride.crypto.ciphertest import block_rotation
-#pbox.permute(data, block_rotation)
+import pride.gui
+window = pride.gui.enable()
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
-#explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
+explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #objects[window].create("pride.gui.boardgame.Checkers")
 
 """}
 
+pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}
 
+pride_user_User_defaults = {'username' : 'localhost'}

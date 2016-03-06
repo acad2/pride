@@ -110,7 +110,7 @@ class Bounded_Shape(Shape):
     def __init__(self, **kwargs):
         max_width, max_height = pride.gui.SCREEN_SIZE
         self._w_range, self._h_range = (0, max_width), (0, max_height)
-        self._x_range, self._y_range = (0, max_width), (0, max_height)
+  #      self._x_range, self._y_range = (0, max_width), (0, max_height)
         super(Bounded_Shape, self).__init__(**kwargs)
         for color in self.colors:
             setattr(self, color + "_range", (0, 255))
