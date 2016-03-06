@@ -23,7 +23,10 @@ _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: Tr
                   _TYPE_SYMBOL[float] : float, _TYPE_SYMBOL[type(None)] : lambda value: None,                                   
                   _TYPE_SYMBOL[str] : lambda value: value,
                   _TYPE_SYMBOL[unicode] : unicode, _TYPE_SYMBOL[long] : long}                         
-                    
+                
+def splice(new_bytes, into='', at=0):
+    return into[:at] + new_bytes + into[at + len(new_bytes):]
+    
 def rotate(input_string, amount):
     """ Rotate input_string by amount. Amount may be positive or negative.
         Example:

@@ -8,7 +8,7 @@
           of name:value pairs. These pairs will be assigned as attributes
           to new instances; Any attribute specified via keyword argument
           will override a default
-        
+                
         - A reference attribute, which provides access to the object from any context. 
           References are mapped to objects in the pride.objects dictionary.
           

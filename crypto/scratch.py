@@ -1,6 +1,6 @@
 import itertools
 
-from pride.additional_builtins import slide
+from utilities import slide, cast
 
 DEFAULT_FUNCTION_NAME = "S-BOX"
 
@@ -40,7 +40,7 @@ def p_box(input_bytes):
     word_size = bit_count / 8
     word_size_in_bytes = word_size / 8
     for index in range(8):
-        bits_at_index = bits[index::8]
+        bits_at_index = bits[index::word_size]
         _index = index * word_size_in_bytes    
         
         for offset, _bits in enumerate(slide(bits_at_index, 8)):   

@@ -59,10 +59,15 @@ HOST = socket.gethostbyname(socket.gethostname())
 class Socket_Error_Handler(pride.base.Base):       
                  
     def dispatch(self, sock, error, error_name):        
-        sock.alert("socket.error: {}".format(error), 
-                  level=sock.verbosity.get(error_name, sock.verbosity["unhandled"]))
-        sock.delete()
-                
+        sock.alert("socket.error: {}".format(error_name), 
+                   level=sock.verbosity.get(error_name, sock.verbosity["unhandled"]))
+        if error_name != "connection_in_progress" or sock.timeout_count <= 0:    
+            sock.delete()
+        else:            
+            sock.timeout_count -= 1
+            sock.alert("Waiting...", level=sock.verbosity["timeout_reset"])
+            objects["->Python->Network"].connecting.add(sock)
+       
        
 class Socket(base.Wrapper):
     """ Provides a mostly transparent asynchronous socket interface by applying a 
@@ -94,16 +99,16 @@ class Socket(base.Wrapper):
     
     flags = {"_byte_count" : 0, "_connecting" : False, "_endpoint_reference" : '',
              "connected" : False, "closed" : False, "_local_data" : '',
-             "_saved_in_attribute" : ''}
+             "_saved_in_attribute" : '', "timeout_count" : 1}
     
     verbosity = {"close" : "socket_close", "network_nonexistant" : "vv",
                  "recv_eof" : "vv", "connected" : "vv",
                  
-                 "call_would_block" : 'vv', "connection_in_progress" : "vv",
+                 "call_would_block" : 0, "connection_in_progress" : "vv",
                  "connection_closed" : "vv", "connection_reset" : "vv",
                  "connection_was_aborted" : "vv", "eagain" : "vv",
-                 "bad_target" : "vv", "unhandled" : 0, "bind_error" : 0,
-                 "getaddrinfo_failed" : 0}
+                 "bad_target" : 0, "unhandled" : 0, "bind_error" : 0,
+                 "getaddrinfo_failed" : 0, "timeout_reset" : 'vv'}
     
     _buffer = bytearray(1024 * 1024)
     _memoryview = memoryview(_buffer)
@@ -550,7 +555,7 @@ class Network(vmlibrary.Process):
                 readable.extend(readable_sockets)                
             if writable_sockets:
                 writable.extend(writable_sockets)
-                
+        
         connecting = self.connecting
         self.connecting = set()                 
         read_progress = 0
@@ -574,10 +579,11 @@ class Network(vmlibrary.Process):
             else:                
                 break        
         
-        if connecting and writable:                            
-            # if a connecting tcp client is now writable, it's connected   
-            for accepted in connecting.intersection(writable):
-                accepted.on_connect()
+        if connecting:
+            if writable:                            
+                # if a connecting tcp client is now writable, it's connected   
+                for accepted in connecting.intersection(writable):                    
+                    accepted.on_connect()
                 
             # if not, then it's still waiting or the connection timed out
             still_connecting = connecting.difference(writable)
@@ -587,11 +593,11 @@ class Network(vmlibrary.Process):
             self._timestamp = now = pride.utilities.timer_function()
             elapsed_time = now - old_timestamp
             
-            for connection in still_connecting:
-                if now - connection._started_connecting_at > connection.connect_timeout:           
+            for connection in still_connecting:                
+                if now - connection._started_connecting_at > connection.connect_timeout:                      
                     try:
                         connection.connect(connection.host_info)
-                    except socket.error as error:                           
+                    except socket.error as error:                                  
                         error_handler.dispatch(connection, error, 
                                                ERROR_CODES[error.errno].lower())           
                 else:

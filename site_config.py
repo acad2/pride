@@ -40,6 +40,4 @@ import pride.audio
 
 """}
 
-pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}
 
-pride_user_User_defaults = {'username' : 'localhost'}

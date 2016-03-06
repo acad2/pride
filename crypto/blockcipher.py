@@ -77,10 +77,10 @@ def substitution(input_bytes, key, indices):
         # remove the current byte from the xor sum; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from everything but the current plaintext byte then XOR it with current byte
         # include current byte XOR psuedorandom_byte into the xor sum 
-        # ; This is done in a random place, in the current place, then in the random place again
-        random_place = S_BOX[key[time] ^ place] % size
+        # ; This is done in a random place, in the current place, then in the random place again        
+        random_place = S_BOX[key[place] ^ time] % size
         random_place_now = random_place ^ time
-             
+                             
         xor_sum_of_data ^= input_bytes[random_place]
         input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place_now]
         xor_sum_of_data ^= input_bytes[random_place]
@@ -88,16 +88,20 @@ def substitution(input_bytes, key, indices):
         xor_sum_of_data ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[xor_sum_of_data ^ S_BOX[place] ^ time]
         xor_sum_of_data ^= input_bytes[place]                
-        
+                
         xor_sum_of_data ^= input_bytes[random_place]
         input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place_now]
         xor_sum_of_data ^= input_bytes[random_place]   
           
-def encrypt_block(plaintext, key, rounds=1, tweak=None):         
-    return _crypt_block(plaintext, key, tweak or INDICES[len(key)], range(rounds))
-
-def decrypt_block(ciphertext, key, rounds=1, tweak=None):    
-    return _crypt_block(ciphertext, key, tweak or REVERSE_INDICES[len(key)], list(reversed(range(rounds))))
+from scratch import p_box
+          
+def encrypt_block(plaintext, key, rounds=1, tweak=None): 
+    p_box(plaintext)
+    _crypt_block(plaintext, key, tweak or INDICES[len(key)], range(rounds))
+    
+def decrypt_block(ciphertext, key, rounds=1, tweak=None):  
+    _crypt_block(ciphertext, key, tweak or REVERSE_INDICES[len(key)], list(reversed(range(rounds))))
+    p_box(ciphertext)
     
 def _crypt_block(data, key, indices, rounds):    
     round_keys = []
@@ -130,20 +134,32 @@ class Test_Cipher(pride.crypto.Cipher):
             
 def test_Cipher():
     import random
-    data = "\x00" * 31
-    iv = key = ("\x00" * 31) + "\x00"
-    tweak = range(32)
+    data = "Mac Code" + "\x00" * 7
+    iv = key = ("\x00" * 15) + "\x00"
+    tweak = range(len(key))
     random.shuffle(tweak)
-    tweak = zip(range(32), tweak)
+    tweak = zip(range(len(tweak)), tweak)
     cipher = Test_Cipher(key, "cbc", 1, tweak)
-    for count in range(5):#256):
+    size = 2
+    for count in range(256):
         plaintext = data + chr(count)
-        ciphertext = cipher.encrypt(plaintext, iv)
-        _plaintext = cipher.decrypt(ciphertext, iv)
-        print ciphertext#, [byte for byte in bytearray(ciphertext)]
-        print        
-        assert plaintext == _plaintext, (plaintext, _plaintext)
-    
+        real_ciphertext = cipher.encrypt(plaintext, iv)  
+        
+    #    for location in range(size):
+    #        correct_bytes = real_ciphertext[location:location +size]
+    #        
+    #        for modification in (''.join(chr(byte) for byte in bytes) for bytes in itertools.product(*(range(256)for count in range(size)))):#, range(256)):
+    #            attacked_ciphertext = pride.utilities.splice(modification, into=real_ciphertext, at=location)            
+    #            invalid_plaintext = cipher.decrypt(attacked_ciphertext, iv) 
+    #            if invalid_plaintext[:8] == "Mac Code" and modification != correct_bytes:
+    #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
+
+        real_plaintext = cipher.decrypt(real_ciphertext, iv)
+        print real_ciphertext
+        print                   
+        assert real_plaintext == plaintext, (plaintext, real_plaintext)
+        
+        
 def test_cipher_metrics():
     from metrics import test_block_cipher
     test_block_cipher(Test_Cipher)          
@@ -189,8 +205,8 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 if __name__ == "__main__":
-    test_Cipher()
+    #test_Cipher()
     #test_linear_cryptanalysis()
-    #test_cipher_metrics()
+    test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()

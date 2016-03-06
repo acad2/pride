@@ -1,4 +1,4 @@
-""" Stores global objects including instructions and the environment """
+""" Stores global objects including instructions, the alert handler, and the finalizer """
 import sys
 import traceback
 import os

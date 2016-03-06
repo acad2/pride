@@ -68,7 +68,7 @@ class Interpreter(authentication2.Authenticated_Service):
     
     defaults = {"help_string" : 'Type "help", "copyright", "credits" or "license" for more information.',
                 "login_message" : "Welcome {} from {}\nPython {} on {}\n{}\n",
-                "_logger_type" : "StringIO.StringIO"}
+                "_logger_type" : "StringIO.StringIO", "allow_registration" : False}
     
     mutable_defaults = {"user_namespaces" : dict, "user_session" : dict}
     

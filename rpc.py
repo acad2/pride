@@ -54,7 +54,12 @@ def packetize_recv(recv):
         
 class Session(pride.base.Base):
     """ Maintains session id information and prepares outgoing requests """
-    defaults = {"requester_type" : "pride.rpc.Rpc_Client"}
+    defaults = {"requester_type" : "pride.rpc.Rpc_Client",
+                "session_id" : None, "host_info" : None}
+    
+    mutable_defaults = {"_callbacks" : list}
+    
+    required_attributes = ("session_id", "host_info")
     
     def _get_id(self):
         return self._id
@@ -66,12 +71,6 @@ class Session(pride.base.Base):
     def _get_context(self):
         return self.id, self.host_info
     context = property(_get_context)
-    
-    def __init__(self, session_id, host_info, **kwargs):
-        self._callbacks = []
-        super(Session, self).__init__(**kwargs)
-        self.id = session_id
-        self.host_info = host_info
                 
     def execute(self, instruction, callback):
         """ Prepare instruction as a request to be sent by an Rpc_Client. A 
@@ -99,26 +98,16 @@ class Packet_Client(pride.networkssl.SSL_Client):
     """ An SSL_Client that uses packetized send and recv (client side) """        
     defaults = {"_old_data" : bytes()}
     
-    @packetize_send
-    def send(self, data):
-        return super(Packet_Client, self).send(data)
+    send = packetize_send(pride.networkssl.SSL_Client.send)
+    recv = packetize_recv(pride.networkssl.SSL_Client.recv)
+
     
-    @packetize_recv
-    def recv(self, buffer_size=0):
-        return super(Packet_Client, self).recv(buffer_size)      
-        
-        
 class Packet_Socket(pride.networkssl.SSL_Socket):
     """ An SSL_Socket that uses packetized send and recv (server side) """        
     defaults = {"_old_data" : bytes()}
     
-    @packetize_send
-    def send(self, data):
-        return super(Packet_Socket, self).send(data)
-    
-    @packetize_recv
-    def recv(self, buffer_size=0):        
-        return super(Packet_Socket, self).recv(buffer_size)
+    send = packetize_send(pride.networkssl.SSL_Socket.send)
+    recv = packetize_recv(pride.networkssl.SSL_Socket.recv)
                        
                         
 class Rpc_Connection_Manager(pride.base.Base):
@@ -162,11 +151,9 @@ class Rpc_Client(Packet_Client):
     """ Client socket for making rpc requests using packetized tcp stream. """  
     verbosity = {"delayed_request_sent" : "vv", "request_delayed" : "vv",
                  "request_sent" : "vv", "unresolved_callback" : 0, "handle_exception" : 0}
-                 
-    def __init__(self, **kwargs):
-        self._requests, self._callbacks = [], []
-        super(Rpc_Client, self).__init__(**kwargs)
-        
+    
+    mutable_defaults = {"_requests" : list, "_callbacks" : list}
+    
     def on_ssl_authentication(self):
         count = 1
         length = len(self._requests)

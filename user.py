@@ -76,7 +76,7 @@ class User(pride.base.Base):
         super(User, self).__init__(**kwargs)        
             
         login_success = self.encryption_key and self.mac_key and self.file_system_key and self.salt
-        while not login_success:
+        while not login_success:    
             try:
                 self.login()
             except (InvalidUsername, pride.security.InvalidTag): # failed to open password verifier file
@@ -89,6 +89,7 @@ class User(pride.base.Base):
                 continue
             else:
                 login_success = True      
+        assert self.encryption_key and self.mac_key and self.file_system_key and self.salt
         self.alert("Logged in successfully", level=self.verbosity["login_success"])
         self.create("pride.shell.Command_Line")       
                         

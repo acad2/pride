@@ -88,11 +88,11 @@ if is_version_two:
             reply = ''
             while not reply:
                 sys.__stdout__.write(prompt)
-                sys.__stdout__.flush()        
+                #sys.__stdout__.flush()        
                 reply = __raw_input('')
         else:
             sys.__stdout__.write(prompt)
-            sys.__stdout__.flush()       
+            #sys.__stdout__.flush()       
             reply = __raw_input('')
         return reply    
 else:

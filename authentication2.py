@@ -6,6 +6,7 @@ import os
 from pride import Instruction
 import pride.security
 import pride.decorators
+import pride.contextmanagers
 from pride.security import hash_function
 from pride.errors import SecurityError, UnauthorizedError             
 
@@ -384,7 +385,7 @@ class Authenticated_Client(pride.base.Base):
     def __init__(self, **kwargs):
         super(Authenticated_Client, self).__init__(**kwargs)
         self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
-        self.session = self.create("pride.rpc.Session", '0', self.host_info)
+        self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
         name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
@@ -427,10 +428,16 @@ class Authenticated_Client(pride.base.Base):
         
     def _token_not_registered(self): # called when login fails because user is not registered
         if not self._registering:
-            self.alert("Login token for '{}' not found", (self.username, ), level=0)
-            if self.auto_register or pride.shell.get_permission("Register now? "):                    
-                self.register()
-                
+            self.alert("Login token for '{}' not found", (self.username, ), level=0)            
+            if self.auto_register or pride.shell.get_permission("Register now? "):     
+                if self.ip in ("localhost", "127.0.0.1"):
+                    local_service = objects[self.target_service]
+                    with pride.contextmanagers.backup(local_service, "allow_registration"):
+                        local_service.allow_registration = True
+                        self.register()
+                else:
+                    self.register()
+                    
     def _get_auth_table_hash(self):        
         with self.create(self.token_file_type, self.authentication_table_file, 
                          'rb', encrypted=self.token_file_encrypted,
@@ -443,7 +450,7 @@ class Authenticated_Client(pride.base.Base):
         table = Authentication_Table.load(auth_table)
         hasher = hash_function(self.hash_function)
         hasher.update(table.get_passcode(*challenge) + ':' + shared_key)
-        self._answer = hasher.finalize()        
+        self._answer = hasher.finalize()    
         return (self, challenge), {}
             
     @pride.decorators.on_exception(IOError, _token_not_registered)
