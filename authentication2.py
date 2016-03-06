@@ -271,10 +271,12 @@ class Authenticated_Service(pride.base.Base):
 
             Sets current_session attribute to (session_id, peername) if validation
             is successful. """
-        if (method_name not in self.remotely_available_procedures or
-            peername[0] in self.ip_blacklist or 
+        if ((method_name not in self.remotely_available_procedures) or
+            (peername[0] in self.ip_blacklist) or 
             (session_id == '0' and method_name != "register") or
-            (session_id not in self.session_id and method_name not in ("register", "login", "login_stage_two"))):
+            (session_id not in self.session_id and method_name not in ("register", "login", "login_stage_two")) or
+            (method_name == "register" and not self.allow_registration) or
+            (method_name == "login" and not self.allow_login)):
             
         #    print session_id
         #    print
@@ -285,7 +287,7 @@ class Authenticated_Service(pride.base.Base):
                        session_id in self.session_id,
                        method_name, method_name in self.remotely_available_procedures,
                        self.allow_login, self.allow_registration),
-                       level=self.verbosity["validate_failure"])
+                       level=0)#self.verbosity["validate_failure"])
             return False         
        # if self.rate_limit and method_name in self.rate_limit:
        #     _new_connection = False
@@ -429,12 +431,11 @@ class Authenticated_Client(pride.base.Base):
     def _token_not_registered(self): # called when login fails because user is not registered
         if not self._registering:
             self.alert("Login token for '{}' not found", (self.username, ), level=0)            
-            if self.auto_register or pride.shell.get_permission("Register now? "):     
+            if self.auto_register or pride.shell.get_permission("Register now? "):                  
                 if self.ip in ("localhost", "127.0.0.1"):
                     local_service = objects[self.target_service]
-                    with pride.contextmanagers.backup(local_service, "allow_registration"):
-                        local_service.allow_registration = True
-                        self.register()
+                    authentication_table = local_service.register(self.username)
+                    self._store_auth_table(authentication_table)                                       
                 else:
                     self.register()
                     

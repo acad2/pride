@@ -57,6 +57,7 @@ class Session(pride.base.Base):
     defaults = {"requester_type" : "pride.rpc.Rpc_Client",
                 "session_id" : None, "host_info" : None}
     
+    flags = {"_id" : None}
     mutable_defaults = {"_callbacks" : list}
     
     required_attributes = ("session_id", "host_info")
