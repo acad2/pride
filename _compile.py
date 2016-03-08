@@ -3,7 +3,7 @@ from sys import platform
 import subprocess
             
 COMPILE_COMMAND = "gcc {} -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o {}." if "win" in platform else "gcc {} -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o {}. "
-#gcc ./crypto/hashfunction.c -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o hashfunction.exe
+#gcc converted.c -IC:\Python27\include -LC:\Python27\libs\ -lpython27 -o converted.exe
 def convert_to_pyx(file_list):
     new_names = []
     

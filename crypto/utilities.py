@@ -29,6 +29,9 @@ def rotate(input_string, amount):
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]                
 
+def byte_rotation(byte, amount):
+    return int(rotate(cast(byte, "binary"), amount), 2)
+    
 def xor_subroutine(bytearray1, bytearray2):    
     for index, byte in enumerate(bytearray2):
         bytearray1[index] ^= byte  

@@ -5,73 +5,30 @@ import itertools
 from utilities import cast, slide, xor_sum
 
 import random
-
-def generate_s_box(function):
-    S_BOX = bytearray(256)
-    for number in range(256):    
-        S_BOX[number] = function(number)        
-    return S_BOX
-
-S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)    
+S_BOX, INVERSE_S_BOX = bytearray(256), bytearray(256)
 INDICES = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
 REVERSE_INDICES = dict((key_size, zip(reversed(range(key_size)), reversed(range(key_size))))
                         for key_size in (8, 16, 32, 64, 128, 256))
-                                           
+                            
+for number in range(256):
+    output = pow(251, number, 257) % 256
+    S_BOX[number] = (output)
+    INVERSE_S_BOX[output] = number  
+               
 def generate_round_key(data):       
-    """ Invertible round key generation function. Using an invertible key 
-        schedule offers a potential advantage to embedded devices. """    
-    return bytearray(S_BOX[byte ^ S_BOX[index]] for index, byte in enumerate(data))        
+    cdef int index, byte
+    return bytearray(S_BOX[byte ^ ((2 ** index) % 256)] for index, byte in enumerate(data))        
         
 def extract_round_key(key): 
     """ Non invertible round key extraction function. """
+    cdef int xor_sum_of_key, index, key_byte
     xor_sum_of_key = xor_sum(key)    
     for index, key_byte in enumerate(key):        
-        key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
+        key[index] = S_BOX[ ((2 ** index) % 256) ^ xor_sum_of_key]               
 
 def substitution(input_bytes, key, indices): 
-    """ Substitution portion of the cipher. Classifies as an even, complete,
-        consistent, homeogenous, source heavy unbalanced feistel network.
-        The basic idea is that each byte of data is encrypted based off 
-        of every other byte of data around it, along with the round key. 
-        The ensures a high level of diffusion, which may indicate resistance
-        towards differential cryptanalysis as indicated by:
-         (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf
-         namely page 14)        
-         
-        The rate of confusion, which is defined in the paper above as:
-         "The  rate  of  confusion  of  a  consistent  UFN2 is  the  minimum
-          number of times per cycle that any bit can occur in the target block"
-          
-        Where a cycle is defined as: 
-         "A cycle is the number of rounds necessary for each bit in the block 
-          to have been part of both the source and target blocks at least once"
-          
-        Each bit is guaranteed to be a part of the source block at least once,
-        as the bytes are simply enumerated. Each bit is part of the target
-        block every time it is not part of the source.
-        
-        In addition to the simple enumeration of bytes, at each step, both
-        before and after the current byte is encrypted, a byte at a random
-        location is encrypted as well. Supposing the distribution of the 
-        random selection is not biased, each bit should on average be
-        part of the source block 3 times per round.
-                        
-        Each random byte used to encrypt the data is fed back into the state 
-        to further modify future outputs.
-        
-        The ideas of time and spatial locality are introduced to modify how
-        the random bytes are generated. Time is represented by the count of
-        how many bytes have been enciphered so far. Space is indicated by the
-        current index being operated upon.
-        
-        By default, the order in which bytes are operated upon is linear.
-        Modification of the indices could be used as to facilitate a tweakable
-        block cipher.
-        
-        The S_BOX lookup could conceivably be replaced with a timing attack
-        resistant non linear function. The default S_BOX is based off of
-        modular exponentiation of 251 ^ x mod 257, which can be computed
-        silently in situations where it is required."""        
+    cdef int size, xor_sum_of_data, time, place, random_place, time_constant
+    
     size = len(input_bytes)
     xor_sum_of_data = xor_sum(input_bytes) ^ xor_sum(key)    
     for time, place in indices:
@@ -84,8 +41,9 @@ def substitution(input_bytes, key, indices):
         # The "time" counter acts like a nonce which will cause distinct output from
         # input that is otherwise identical (i.e. 00000000...)
         # xoring the counter directly would cause the low order bits to shuffle
-        # more then the high order bits, introducing bias.
-        time_constant = S_BOX[time]
+        # more then the high order bits. (2 ** time) % 256 produces power of 2
+        # outputs which will eliminate bias in power of 2 sized inputs.
+        time_constant = (2 ** time) % 256 # could be a table lookup
         
         # Find a random location based off of the entropy in this location at this time
         # The modulo size operation does not bias the S_BOX output if the S_BOX is
@@ -107,9 +65,7 @@ def substitution(input_bytes, key, indices):
         # This could probably be asymmetric at the cost of increased code size
         xor_sum_of_data ^= input_bytes[random_place]
         input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place]
-        xor_sum_of_data ^= input_bytes[random_place]   
-          
-from scratch import p_box
+        xor_sum_of_data ^= input_bytes[random_place]             
           
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
     #p_box(plaintext)
@@ -221,8 +177,8 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 if __name__ == "__main__":
-    test_Cipher()
+    #test_Cipher()
     #test_linear_cryptanalysis()
-    #test_cipher_metrics()
+    test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()

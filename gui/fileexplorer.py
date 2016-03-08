@@ -29,9 +29,9 @@ class File_Explorer(pride.gui.gui.Application):
                 self.file_details["Date_Modified"].append(epoch_to_english(file_information.st_mtime))
                 
         self.create(Navigation_Bar)
-        self.create(Info_Bar, pack_mode="bottom")
-  #      self.create(File_Open_Prompt)
-        self.create(Directory_Viewer)        
+        self.create(Directory_Viewer)                
+        self.create(File_Open_Prompt, background_color=(255, 255, 255, 0))
+     #   self.create(Info_Bar, pack_mode="bottom")
         
 
 class Navigation_Bar(pride.gui.gui.Container):

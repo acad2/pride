@@ -138,8 +138,7 @@ class Organizer(base.Base):
             top_items = (objects[name] for name in self._pack_modes[parent.reference]["top"][:count])
             
             item.y = parent.y + sum(top_item.h or min(top_size, top_item.h_range[1]) for
-                                    top_item in top_items)
-            print item, item.y
+                                    top_item in top_items)            
         else:
             item.y = parent.y
         item.x = parent.x
@@ -175,16 +174,18 @@ class Organizer(base.Base):
         item.z = parent.z + 1       
         assert parent.w
         bottom_size = parent.h / length
+        print bottom_size
         item.size = (parent.w, bottom_size)
         if count:
             pack_modes = self._pack_modes[parent.reference]
             bottom_objects = (objects[name] for name in pack_modes["bottom"][:count])            
             item.y = parent.y + parent.h - sum(item.h or min(bottom_size, item.h_range[1]) for 
-                                               item in bottom_objects)
+                                               item in bottom_objects)            
             if count == length - 1:
                 top_objects = [objects[name] for name in pack_modes["top"]]
                 top_size = parent.h / len(top_objects)
-                item.h = parent.y - sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
+                item.h = min(item.h_range[1], parent.h - sum(item.h or min(top_size, item.h_range[1]) for item in top_objects))
+                print "Adjusted height", item, item.h, item.h_range, parent.y, sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
         else:
             item.y = parent.y + parent.h - item.h         
         item.x = parent.x
