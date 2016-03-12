@@ -24,13 +24,13 @@ def create(instance_type, *args, **kwargs):
 
 def delete(reference):
     objects[reference].delete()       
-import pride.audio
+#import pride.audio
 #pride.audio.enable()
-import pride.gui
-window = pride.gui.enable()
+#import pride.gui
+#window = pride.gui.enable()
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
-explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
+#explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #objects[window].create("pride.gui.boardgame.Checkers")
 
 """}

@@ -133,7 +133,8 @@ class Authenticated_Service(pride.base.Base):
     verbosity = {"register" : "vv", "login_stage_two" : "vv", "validate_success" : 'vv',
                  "on_login" : "vv", "login" : "vv", "authentication_success" : "vv",
                  "authentication_failure" : "v", "validate_failure" : "validate_failure",
-                 "login_stage_two_hash_not_found" : "v"}
+                 "login_stage_two_hash_not_found" : "v",
+                 "authentication_failure_already_logged_in" : 'v'}
     
     flags = {"current_session" : ('', None)}
     
@@ -148,7 +149,7 @@ class Authenticated_Service(pride.base.Base):
     rate_limit = {"login" : 2, "register" : 2}       
     
     mutable_defaults = {"_rate" : dict, "ip_whitelist" : list, "ip_blacklist" : list,
-                        "_challenge_answer" : dict, "session_id" : dict}
+                        "_challenge_answer" : dict, "session_id" : dict, "peer_ip" : dict}
                         
     inherited_attributes = {"database_structure" : dict, "database_flags" : dict,
                             "remotely_available_procedures" : tuple, "rate_limit" : dict}
@@ -156,7 +157,9 @@ class Authenticated_Service(pride.base.Base):
     def _get_current_user(self):
         return self.session_id[self.current_session[0]]
     def _del_current_user(self):
-        del self.session_id[self.current_session[0]]
+        id = self.current_session[0]
+        del self.session_id[id]
+        del self.peer_ip[id]
     current_user = property(_get_current_user, fdel=_del_current_user)
     
     def __init__(self, **kwargs):
@@ -226,9 +229,13 @@ class Authenticated_Service(pride.base.Base):
         except TypeError:
             self.alert("Failed to find authentication_table_hash in database for login_stage_two",
                        level=self.verbosity["login_stage_two_hash_not_found"])             
-        else:         
-            if (authentication_table_hash not in self.session_id and
-                Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer)):
+        else:
+            if authentication_table_hash in self.session_id:
+                self.alert("Authentication Failure: {} '{}';'{}' already logged in at {}",
+                           (ip, username, username, self.peer_ip[authentication_table_hash]),
+                           level=self.verbosity["authentication_failure_already_logged_in"])
+                                
+            elif Authentication_Table.compare(self._challenge_answer[authentication_table_hash], hashed_answer):
                 del self._challenge_answer[authentication_table_hash]                
                 self.alert("Authentication success: {} '{}'",
                            (ip, username), level=self.verbosity["authentication_success"])
@@ -248,21 +255,22 @@ class Authenticated_Service(pride.base.Base):
                                                        "authentication_table" : new_table,
                                                        "session_key" : new_key})
                 self.session_id[new_table_hash] = username or new_table_hash    
-                self.current_session = (new_table_hash, ip)
+                self.current_session = (new_table_hash, ip) 
+                self.peer_ip[new_table_hash] = ip                       
                 login_message = self.on_login()                
                 login_packet = pride.utilities.save_data(new_key, login_message)                                                    
                 encrypted_key = pride.security.encrypt(login_packet, session_key)                                            
-            else:
+            else:                
                 self.alert("Authentication Failure: {} '{}'",
                            (ip, username), 
                            level=self.verbosity["authentication_failure"])
         return encrypted_key
         
     def on_login(self):
-        session_id, ip = self.current_session
+        session_id, ip = self.current_session        
         return self.login_message.format(self.reference, self.session_id[session_id], ip)
     
-    def logout(self):
+    def logout(self):        
         del self.current_user     
         
     def validate(self, session_id, peername, method_name):
@@ -327,7 +335,7 @@ class Authenticated_Client(pride.base.Base):
     verbosity = {"register" : 0, "login" : 'v', "answer_challenge" : 'vv',
                  "login_stage_two" : 'vv', "register_sucess" : 0,
                  "auto_login" : 'v', "logout" : 'v', "login_message" : 0,
-                 "delayed_request_sent" : "vv", "login_failed_already_logged_in" : 0}
+                 "delayed_request_sent" : "vv", "login_failed" : 0}
                  
     defaults = {# security related configuration options
                 "hash_function" : "SHA256", "authentication_table_size" : 256,
@@ -483,8 +491,7 @@ class Authenticated_Client(pride.base.Base):
             try:
                 packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key)
             except ValueError:
-                self.alert("Login attempt failed; Already logged in.", 
-                           level=self.verbosity["login_failed_already_logged_in"])
+                self.alert("Login attempt failed", level=self.verbosity["login_failed"])
             else:
                 new_key, login_message = pride.utilities.load_data(packed_key_and_message)
                 self.shared_key = new_key

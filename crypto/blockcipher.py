@@ -12,7 +12,9 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX
 
-S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)    
+S_BOX = generate_s_box(lambda number: (pow(251, (((17 * number) + 3) % 256), 257)) % 256)    
+
+# These are the default "tweak", two lists of 0...key_size bytes
 INDICES = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
 REVERSE_INDICES = dict((key_size, zip(reversed(range(key_size)), reversed(range(key_size))))
                         for key_size in (8, 16, 32, 64, 128, 256))
@@ -36,7 +38,7 @@ def substitution(input_bytes, key, indices):
         The ensures a high level of diffusion, which may indicate resistance
         towards differential cryptanalysis as indicated by:
          (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf
-         namely page 14)        
+          namely page 14)        
          
         The rate of confusion, which is defined in the paper above as:
          "The  rate  of  confusion  of  a  consistent  UFN2 is  the  minimum
@@ -73,42 +75,41 @@ def substitution(input_bytes, key, indices):
         modular exponentiation of 251 ^ x mod 257, which can be computed
         silently in situations where it is required."""        
     size = len(input_bytes)
-    xor_sum_of_data = xor_sum(input_bytes) ^ xor_sum(key)    
+    state = xor_sum(input_bytes) ^ xor_sum(key)    
     for time, place in indices:
         # the steps are:
-        # remove the current byte from the xor sum; If this is not done, the transformation is uninvertible
-        # generate a psuedorandom byte from everything but the current plaintext byte then XOR it with current byte
-        # include current byte XOR psuedorandom_byte into the xor sum 
-        # ; This is done in a random place, in the current place, then in the random place again     
+        # remove the current byte from the state; If this is not done, the transformation is uninvertible
+        # generate a psuedorandom byte from the state (everything but the current plaintext byte),
+        # then XOR it with current byte; then include current byte XOR psuedorandom_byte into the state 
+        # ; This is done in the current place, then in a random place, then in the current place again.     
         
         # The "time" counter acts like a nonce which will cause distinct output from
         # input that is otherwise identical (i.e. 00000000...)
         # xoring the counter directly would cause the low order bits to shuffle
         # more then the high order bits, introducing bias.
-        time_constant = S_BOX[time]
-        
+        time_constant = S_BOX[time]                             
+        place_constant = S_BOX[place]
+        present_modifier = time_constant ^ place_constant
         # Find a random location based off of the entropy in this location at this time
         # The modulo size operation does not bias the S_BOX output if the S_BOX is
         # a straight 8x8 mapping. The potential outputs are the range 0-256, which
         # modulo a power of 2 results in equally distributed output
-        random_place = S_BOX[key[place] ^ time_constant] % size              
-                
-        # Manipulate the state at the random location
-        xor_sum_of_data ^= input_bytes[random_place]
-        input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place]
-        xor_sum_of_data ^= input_bytes[random_place]
+        random_place = S_BOX[key[place] ^ time_constant] % size 
         
-        # Manipulate the state at the current place and time
-        xor_sum_of_data ^= input_bytes[place]
-        input_bytes[place] ^= S_BOX[xor_sum_of_data ^ S_BOX[place] ^ time_constant]
-        xor_sum_of_data ^= input_bytes[place]                
-                        
-        # Manipulate the random location again - this must be done for symmetry
-        # This could probably be asymmetric at the cost of increased code size
-        xor_sum_of_data ^= input_bytes[random_place]
-        input_bytes[random_place] ^= S_BOX[xor_sum_of_data ^ random_place]
-        xor_sum_of_data ^= input_bytes[random_place]   
-          
+        state ^= input_bytes[place]
+        input_bytes[place] ^= S_BOX[state ^ present_modifier]
+        state ^= input_bytes[place]                                     
+
+        # Manipulate the state at the random place       
+        state ^= input_bytes[random_place]
+        input_bytes[random_place] ^= S_BOX[state ^ random_place]
+        state ^= input_bytes[random_place]                
+      
+        # manipulate the current location again
+        state ^= input_bytes[place]
+        input_bytes[place] ^= S_BOX[state ^ present_modifier]
+        state ^= input_bytes[place]  
+                
 from scratch import p_box
           
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
@@ -151,13 +152,13 @@ class Test_Cipher(pride.crypto.Cipher):
 def test_Cipher():
     import random
     data = "\x00" * 7 #"Mac Code" + "\x00" * 7
-    iv = key = ("\00" * 7) + "\00"
+    iv = key = ("\x00" * 7) + "\00"
     tweak = range(len(key))
    # random.shuffle(tweak)
     tweak = zip(range(len(tweak)), tweak)
     cipher = Test_Cipher(key, "cbc", 1, tweak)
     size = 2
-    for count in range(1):
+    for count in range(5):
         plaintext = data + chr(count)
         real_ciphertext = cipher.encrypt(plaintext, iv)  
         
@@ -223,6 +224,6 @@ def test_linear_cryptanalysis():
 if __name__ == "__main__":
     test_Cipher()
     #test_linear_cryptanalysis()
-    #test_cipher_metrics()
+    test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()

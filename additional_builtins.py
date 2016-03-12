@@ -16,7 +16,7 @@ __all__ = ("slide", "resolve_string", "raw_input" if is_version_two else "input"
 _NUMBERS = ''.join(str(x) for x in xrange(10))
 
 # too generally applicable to have to import, only vaguely appropriate other module is utilities
-def slide(iterable, x=16):
+def slide(iterable, x=1):
     """ Yields x bytes at a time from iterable """
     slice_count, remainder = divmod(len(iterable), x)
     for position in range((slice_count + 1 if remainder else slice_count)):

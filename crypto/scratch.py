@@ -138,3 +138,27 @@ aes_s_box = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
             0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf, 0x8c, 0xa1,
             0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0,
             0x54, 0xbb, 0x16]    
+            
+def invert_sbox(sbox):
+    inverted = bytearray(len(sbox))
+    for index, byte in enumerate(sbox):
+        inverted[byte] = index
+    return inverted
+    
+def generate_sboxes():
+    """ Finds the all N < 256 for N ** exponent mod 257 mod 256 that produce one to one mappings,
+        and their inverses. """
+    sboxes = []
+    for number in range(256):
+        values = bytearray()
+        for exponent in range(256):
+            values.append(pow(number, exponent, 257) % 256)
+        if len(set(values)) == 256:
+            sboxes.append(values)
+    
+    inverses = []
+    for sbox in sboxes:
+        inverses.append(invert_sbox(sbox))
+    sboxes.extend(inverses)
+    return sboxes
+    
