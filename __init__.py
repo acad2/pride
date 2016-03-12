@@ -10,6 +10,9 @@ compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decora
 
 import heapq
 import timeit
+import platform
+import mmap
+CURRENT_PLATFORM = platform.system()
 timer_function = timeit.default_timer
         
 def preprocess(function):    
@@ -117,6 +120,40 @@ class Alert_Handler(base.Base):
         super(Alert_Handler, self).__init__(**kwargs)
         self.log = open(self.log_name, 'a+')
 
+    def dump_log(self, byte_count=0, lines=0):
+        log = self.log
+        backup_position = log.tell()
+        if byte_count:
+            log.seek(backup_position - byte_count)
+            output = log.read(byte_count)
+        elif lines:            
+            mmap_log = self._open_mmap(log)
+            output = self._tail_lines(mmap_log, lines)
+            mmap_log.close()
+        else:
+            log.seek(0)
+            output = log.read()
+        log.seek(backup_position)
+        return output   
+    
+    @staticmethod
+    def _open_mmap(_file):    
+        if CURRENT_PLATFORM == "Windows":
+            mmap_file = mmap.mmap(_file.fileno(), 0, access=mmap.ACCESS_READ)
+        else:
+            # for Windows the mmap parameters are different
+            mmap_file = mmap.mmap(_file.fileno(), 0, mmap.MAP_SHARED, mmap.PROT_READ)           
+        return mmap_file
+    
+    @staticmethod
+    def _tail_lines(string_like_object, line_count):            
+        index = string_like_object.rfind('\n')
+        count = 1        
+        while count < line_count:
+            index = string_like_object.rfind('\n', 0, index - 1)
+            count += 1                    
+        return string_like_object[index:]  
+    
 alert_handler = Alert_Handler()
 
 class Finalizer(base.Base):
