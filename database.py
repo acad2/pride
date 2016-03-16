@@ -40,11 +40,11 @@ class Database(pride.base.Wrapper):
         
     wrapped_object_name = "connection"
     
-    verbosity = {"open_database" : 'v', "create_table" : "vvv",
+    verbosity = {"open_database" : 'v', "create_table" : "vv",
                  "query_issued" : "vvv", "query_result" : "vvv",
                  "insert_into" : "vvv", "delete_from" : "vvv",
                  "drop_table" : "v", "table_info" : "vvv",
-                 "update_table" : "vvv"}
+                 "update_table" : "vvv", "finalizer_unavailable" : 0}
     
     mutable_defaults = {"in_memory" : dict}
     
@@ -61,7 +61,8 @@ class Database(pride.base.Wrapper):
         try:
             pride.objects["->Finalizer"].add_callback((self.reference, "delete"))
         except KeyError:
-            self.alert("Unable to queue finalizer callback", level=0)
+            self.alert("Unable to queue finalizer callback", 
+                       level=self.verbosity["finalizer_unvailable"])
         
         for table, structure in self.database_structure.items():
             self.create_table(table, structure)

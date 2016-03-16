@@ -12,13 +12,11 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX
 
-S_BOX = generate_s_box(lambda number: (pow(251, (((17 * number) + 3) % 256), 257)) % 256)    
+S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 
 # These are the default "tweak", two lists of 0...key_size bytes
-INDICES = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
-REVERSE_INDICES = dict((key_size, zip(reversed(range(key_size)), reversed(range(key_size))))
-                        for key_size in (8, 16, 32, 64, 128, 256))
-                                           
+CONSTANTS = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
+                               
 def generate_round_key(data):       
     """ Invertible round key generation function. Using an invertible key 
         schedule offers a potential advantage to embedded devices. """    
@@ -30,7 +28,7 @@ def extract_round_key(key):
     for index, key_byte in enumerate(key):        
         key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
 
-def substitution(input_bytes, key, indices): 
+def substitution(input_bytes, key, indices, counter): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network.
         The basic idea is that each byte of data is encrypted based off 
@@ -76,7 +74,9 @@ def substitution(input_bytes, key, indices):
         silently in situations where it is required."""        
     size = len(input_bytes)
     state = xor_sum(input_bytes) ^ xor_sum(key)    
-    for time, place in indices:
+    #for time, place in indices:
+    for index in counter:
+        time, place = indices[index]
         # the steps are:
         # remove the current byte from the state; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from the state (everything but the current plaintext byte),
@@ -110,27 +110,37 @@ def substitution(input_bytes, key, indices):
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
                 
-from scratch import p_box
-          
+def shuffle(data, key, indices):        
+    output = list(indices)
+    size = len(indices)    
+    for item in indices:
+        time, place = item        
+        random_place = key[place] % size           
+        output[place], output[random_place] = output[random_place], output[place]        
+    return output
+    
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
-    #p_box(plaintext)
-    _crypt_block(plaintext, key, tweak or INDICES[len(key)], range(rounds))
-    
-def decrypt_block(ciphertext, key, rounds=1, tweak=None):  
-    _crypt_block(ciphertext, key, tweak or REVERSE_INDICES[len(key)], list(reversed(range(rounds))))
-    #p_box(ciphertext)
-    
-def _crypt_block(data, key, indices, rounds):      
+    blocksize = len(key)
+    tweak = tweak or CONSTANTS[blocksize]    
+    _crypt_block(plaintext, key, tweak, bytearray(range(rounds)), range(blocksize))    
+       
+def decrypt_block(ciphertext, key, rounds=1, tweak=None): 
+    blocksize = len(key)
+    tweak = tweak or CONSTANTS[blocksize]      
+    _crypt_block(ciphertext, key, tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+        
+def _crypt_block(data, key, indices, rounds, counter):      
     round_keys = []
     for round in rounds:        
         key = generate_round_key(key)
         round_keys.append(key)        
-        
+    
     for round_key_index in rounds:
         round_key = round_keys[round_key_index]        
-        extract_round_key(round_key)                  
-        substitution(data, round_key, indices) 
-        
+        extract_round_key(round_key)           
+        indices = shuffle(data, round_key, indices)        
+        substitution(data, round_key, indices, counter) 
+              
 #from unrolledblockcipher import encrypt_block, decrypt_block
         
 class Test_Cipher(pride.crypto.Cipher):
@@ -140,14 +150,14 @@ class Test_Cipher(pride.crypto.Cipher):
         self.mode = mode
         self.rounds = rounds
         blocksize = len(key)
-        tweak = self.tweak = tweak or zip(range(blocksize), range(blocksize))
-        self.reversed_tweak = tuple(reversed(tweak))
+        tweak = self.tweak = tweak #or zip(range(blocksize), range(blocksize))
+       # self.reversed_tweak = tuple(reversed(tweak))
         
     def encrypt_block(self, plaintext, key):
         return encrypt_block(plaintext, key, self.rounds, self.tweak)
         
     def decrypt_block(self, ciphertext, key):
-        return decrypt_block(ciphertext, key, self.rounds, self.reversed_tweak)
+        return decrypt_block(ciphertext, key, self.rounds, self.tweak)
             
 def test_Cipher():
     import random
@@ -224,6 +234,6 @@ def test_linear_cryptanalysis():
 if __name__ == "__main__":
     test_Cipher()
     #test_linear_cryptanalysis()
-    test_cipher_metrics()
+    #test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()

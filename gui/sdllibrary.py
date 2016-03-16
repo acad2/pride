@@ -53,6 +53,7 @@ class SDL_Window(SDL_Component):
         super(SDL_Window, self).__init__(**kwargs)
         window = sdl2.ext.Window(self.name, size=self.size, 
                                  flags=self.window_flags)
+        
         self.wraps(window)
         self.window_handler = self.create(Window_Handler)
         
@@ -67,6 +68,9 @@ class SDL_Window(SDL_Component):
         self._texture = invoke("pride.gui.gui.create_texture", (self.size[0] * 10, self.size[1] * 10))
         objects["->Finalizer"].add_callback((self.reference, "delete"))
         
+        if self._instance_count == 0:
+            pride.gui.MAIN_WINDOW = self
+                
     def invalidate_object(self, instance):
         self._update_coordinates.append(instance)
         if not self.running:
@@ -147,7 +151,9 @@ class SDL_Window(SDL_Component):
             if entry[3] == self.reference:
                 pride.Instruction.instructions.remove(entry)
         pride.Instruction.instructions.sort()
-        
+        if pride.gui.MAIN_WINDOW is self:
+            pride.gui.MAIN_WINDOW = None
+            
         
 class Window_Handler(pride.base.Base):
     

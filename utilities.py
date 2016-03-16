@@ -24,6 +24,26 @@ _TYPE_RESOLVER = {_TYPE_SYMBOL[int] : int, _TYPE_SYMBOL[bool] : lambda value: Tr
                   _TYPE_SYMBOL[str] : lambda value: value,
                   _TYPE_SYMBOL[unicode] : unicode, _TYPE_SYMBOL[long] : long}                         
                 
+def isancestor(ancestor, descendant):
+    """ usage: isancestor(ancestor, descendant) => (True or False)
+    
+        Returns True if ancestor is an ancestor of descendant (i.e. a parent, grandparent, great grandparent, etc).
+        Returns False is ancestor is not an ancestor of descendant.
+        
+        Note that this method only works with Base objects. """
+    while descendant and descendant.parent != ancestor:
+        descendant = descendant.parent
+    return bool(descendant.parent if descendant is not None else descendant)
+    
+def isdescendant(descendant, ancestor):
+    """ usage: isdescendant(descendant, ancestor)
+        
+        Returns True if ancestor is an ancestor of descendant (i.e. a parent, grandparent, great grandparent, etc).
+        Returns False is ancestor is not an ancestor of descendant.
+        
+        Note that this method only works with Base objects. """
+    return isancestor(ancestor, descendant)
+                
 def splice(new_bytes, into='', at=0):
     return into[:at] + new_bytes + into[at + len(new_bytes):]
     
@@ -42,7 +62,7 @@ def rotate(input_string, amount):
     else:
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]
-      
+                                                    
 def save_data(*args):
     output = []
     for arg in args:
@@ -352,3 +372,9 @@ def test_pack_unpack():
     assert _iv == iv
     assert _tag == tag
     assert _extra_data == extra_data             
+    
+def test_isancestor_isdescendant():
+    descendant = objects["->Python->Rpc_Server->Rpc_Socket"]
+    ancestor = objects["->Python"]
+    assert isancestor(ancestor, descendant)
+    assert isdescendant(descendant, ancestor)

@@ -173,8 +173,7 @@ class Organizer(base.Base):
     def pack_bottom(self, parent, item, count, length):
         item.z = parent.z + 1       
         assert parent.w
-        bottom_size = parent.h / length
-        print bottom_size
+        bottom_size = parent.h / length        
         item.size = (parent.w, bottom_size)
         if count:
             pack_modes = self._pack_modes[parent.reference]
@@ -242,7 +241,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
              "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
              "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
     
-    mutable_defaults = {"draw_queue" : list, "_draw_operations" : list, "pack_count" : dict}
+    mutable_defaults = {"draw_queue" : list, "_draw_operations" : list, "pack_count" : dict,
+                        "_children" : list}
     verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv"} 
     
     Hotkeys = {}
@@ -338,6 +338,12 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return result
     parent_application = property(_get_parent_application)
         
+    def _get_children(self):
+        return self._children
+    def _set_children(self, value):
+        self._children = value
+    children = property(_get_children, _set_children)
+    
     def __init__(self, **kwargs):               
         super(Window_Object, self).__init__(**kwargs)        
         self.texture_window_x = self.texture_window_y = 0
@@ -347,6 +353,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def create(self, *args, **kwargs):
         kwargs["z"] = kwargs.get('z') or self.z + 1
         return super(Window_Object, self).create(*args, **kwargs)
+        
+    def add(self, _object):
+        self._children.append(_object)
+        super(Window_Object, self).add(_object)
+        
+    def remove(self, _object):
+        self._children.remove(_object)
+        super(Window_Object, self).remove(_object)
         
     def press(self, mouse):
         self.alert("Pressing", level=self.verbosity["press"])
@@ -428,6 +442,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                                                                
     def _draw_texture(self):
     #    if self._texture_invalid:
+        if self.hidden:
+            return []
         self.draw_texture()
         instructions = self._draw_operations[:]
      #   else:
@@ -555,7 +571,7 @@ class Application(Window):
     application_window = property(_get_application_window)
     
     def draw_texture(self):
-      #  assert not self.deleted
+        assert not self.deleted
         super(Application, self).draw_texture()
         self.application_window.texture_invalid = True
         

@@ -1,6 +1,6 @@
 import itertools
 
-from utilities import slide, cast
+from utilities import slide, cast, rotate, replacement_subroutine
 
 DEFAULT_FUNCTION_NAME = "S-BOX"
 
@@ -66,7 +66,7 @@ def prime_generator():
             primes.append(test_number)
 
 generator = prime_generator()
-PRIMES = [next(generator) for count in range(2048)]
+#PRIMES = [next(generator) for count in range(2048)]
 del generator          
 # end of helper functions
                                                 
@@ -161,4 +161,21 @@ def generate_sboxes():
         inverses.append(invert_sbox(sbox))
     sboxes.extend(inverses)
     return sboxes
+    
+def shuffle(data, key, indices):
+    output = data[:]
+    for index, place in indices:        
+        output = rotate(output[:index + 1], key[index]) + output[index + 1:]    
+    replacement_subroutine(data, output)            
+    
+def test_shuffle():
+    data = bytearray("Testing")
+    key = bytearray("0123456")
+    indices = zip((1, 3, 0, 2, 6, 5, 4), range(7))
+    shuffled = shuffle(data, key, indices)    
+    unshuffled = shuffle(shuffled, tuple(-byte for byte in key), reversed(indices))
+    assert unshuffled == data, (unshuffled, data)
+    
+if __name__ == "__main__":
+    test_shuffle()
     

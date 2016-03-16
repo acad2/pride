@@ -456,8 +456,14 @@ class Base(object):
         for attribute, value in ((key, value) for key, value in
                                  self.__dict__.items() if key not in
                                  self.__class__.__dict__):
-            setattr(new_self, attribute, value)        
+            setattr(new_self, attribute, value)    
+        if not hasattr(new_self, "reference"):
+            new_self.reference = self.reference
+            
         assert "reference" not in self.__class__.__dict__, self.__class__.__dict__ 
+        assert hasattr(self, "reference"), pprint.pformat(self.__dict__)
+      #  assert "reference" in self.__dict__, pprint.pformat(self.__dict__.keys())
+        assert hasattr(new_self, "reference"), pprint.pformat(new_self.__dict__)
         for reference in self.references_to[:]:
             _object = pride.objects[reference]
             _object.remove(self)
@@ -540,21 +546,25 @@ class Proxy(Base):
         if self.wrapped_object_name:
             set_attr(self.wrapped_object_name, _object)
             
-    def __getattribute__(self, attribute):
+    def __getattribute__(self, attribute):        
         try:
             wrapped_object = super(Proxy, self).__getattribute__("wrapped_object")
             value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)
-        except AttributeError:
+            assert attribute != "reference", pprint.pformat((self, wrapped_object, pprint.pformat(wrapped_object.__dict__)))
+        except AttributeError:            
             value = super(Proxy, self).__getattribute__(attribute)
         return value
 
     def __setattr__(self, attribute, value):        
-        super_object = super(Proxy, self)
+        super_object = super(Proxy, self)        
         try:
             wrapped_object = super_object.__getattribute__("wrapped_object")
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
-        except AttributeError:                        
+        except AttributeError:                                    
             super_object.__setattr__(attribute, value)
+            assert hasattr(self, attribute)
+            if attribute == "reference":
+                assert attribute in self.__dict__, pprint.pformat((attribute, pprint.pformat(self.__dict__)))
             
             
 class Adapter(Base):

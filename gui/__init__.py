@@ -12,6 +12,7 @@ if "__file__" not in globals():
     __file__ = os.getcwd()
 PACKAGE_LOCATION = os.path.dirname(os.path.abspath(__file__))
 
+MAIN_WINDOW = None
 SCREEN_SIZE = (800, 600)
 MAX_LAYER = int('1' * 64, 2)
 R = 0
@@ -32,7 +33,7 @@ def point_in_area(area, position):
 def enable():
     import pride
     if "->Python->SDL_Window" not in pride.objects:
-        return pride.objects["->Python"].create("pride.gui.sdllibrary.SDL_Window").reference
+        return pride.objects["->Python"].create("pride.gui.sdllibrary.SDL_Window").reference        
     else:
         return "->Python->SDL_Window"
     

@@ -226,7 +226,7 @@ class Authenticated_Service(pride.base.Base):
                                              retrieve_fields=("authentication_table",
                                                               "session_key", "username"),
                                              where=user_id)
-        except TypeError:
+        except TypeError: # this is really bad, exceptions are way slower then no exceptions, and the timing leaks information
             self.alert("Failed to find authentication_table_hash in database for login_stage_two",
                        level=self.verbosity["login_stage_two_hash_not_found"])             
         else:

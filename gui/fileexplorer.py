@@ -11,7 +11,8 @@ class File_Explorer(pride.gui.gui.Application):
                                      
     def __init__(self, **kwargs):
         self.file_details = collections.defaultdict(lambda: [])        
-        super(File_Explorer, self).__init__(**kwargs) 
+        super(File_Explorer, self).__init__(**kwargs)         
+        
         current_directory = self.current_working_directory
         epoch_to_english = lambda _time: time.asctime(time.localtime(_time))
         for filename in os.listdir(current_directory):
@@ -137,7 +138,9 @@ class Sort_Button(pride.gui.gui.Button):
         
         
 class Filename_Button(pride.gui.gui.Button):
-            
+    
+    flags = {"selected" : False}
+    
     def left_click(self, mouse):
         if not self.selected:
             self.selected = True
@@ -147,7 +150,8 @@ class Filename_Button(pride.gui.gui.Button):
             
 class File_Open_Prompt(pride.gui.gui.Container):
                 
-    defaults = {"h_range" : (0, 200), "pack_mode" : "bottom"}
+    defaults = {"h_range" : (0, 200), "pack_mode" : "bottom",
+                'a' : 255}
     
     def __init__(self, **kwargs):
         super(File_Open_Prompt, self).__init__(**kwargs)
@@ -159,3 +163,4 @@ class File_Open_Prompt(pride.gui.gui.Container):
 class Filetype_Filter_Selector(pride.gui.widgetlibrary.Popup_Button):
     
     defaults = {"popup_type" : "pride.gui.pyobjecttest.List"}
+    

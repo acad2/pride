@@ -37,7 +37,8 @@ history from storing hashes of shared secrets?
                 attribute)
   
 backport annotations ?
-  
+ 
+# recursive sort? 
 
 deter — detect — alarm — delay — respond
 
