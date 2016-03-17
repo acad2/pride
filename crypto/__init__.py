@@ -30,8 +30,8 @@ def ctr_mode(block, iv, key, cipher, output):
     
 def crypt(data, key, iv, cipher, mode_of_operation):    
     output = bytearray()
-    blocksize = len(key)        
-    for block in slide(data, blocksize):  
+    blocksize = len(key)            
+    for block in slide(data, blocksize):          
         mode_of_operation(block, iv, key, cipher, output)
     
     replacement_subroutine(data, output)    

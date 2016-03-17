@@ -1,3 +1,4 @@
+from operator import xor as _operator_xor
 import binascii
 
 # copied from pride so this module could conceivably be used independently
@@ -32,13 +33,21 @@ def rotate(input_string, amount):
 def byte_rotation(byte, amount):
     return int(rotate(cast(byte, "binary"), amount), 2)
     
-def xor_subroutine(bytearray1, bytearray2):    
-    for index, byte in enumerate(bytearray2):
-        bytearray1[index] ^= byte  
+def xor_subroutine(bytearray1, bytearray2): 
+    size = min(len(bytearray1), len(bytearray2))
+    for index in range(size):
+        bytearray1[index] ^= bytearray2[index]
+        
+#    for index, byte in enumerate(bytearray2):
+#        bytearray1[index] ^= byte  
                
-def replacement_subroutine(bytearray1, bytearray2):    
-    for index, byte in enumerate(bytearray2):
-        bytearray1[index] = byte
+def replacement_subroutine(bytearray1, bytearray2): 
+    size = min(len(bytearray1), len(bytearray2))
+    for index in range(size):
+        bytearray1[index] = bytearray2[index]
+        
+    #for index, byte in enumerate(bytearray2):
+    #    bytearray1[index] = byte
         
 def binary_form(_string):
     """ Returns the a string representation of the binary bits that constitute _string. """

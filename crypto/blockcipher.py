@@ -13,10 +13,7 @@ def generate_s_box(function):
     return S_BOX
 
 S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
-
-# These are the default "tweak", two lists of 0...key_size bytes
-CONSTANTS = dict((key_size, zip(range(key_size), range(key_size))) for key_size in (8, 16, 32, 64, 128, 256))
-                               
+                        
 def generate_round_key(data):       
     """ Invertible round key generation function. Using an invertible key 
         schedule offers a potential advantage to embedded devices. """    
@@ -88,8 +85,9 @@ def substitution(input_bytes, key, indices, counter):
         # xoring the counter directly would cause the low order bits to shuffle
         # more then the high order bits, introducing bias.
         time_constant = S_BOX[time]                             
-        place_constant = S_BOX[place]
+        place_constant = S_BOX[place ^ time_constant]
         present_modifier = time_constant ^ place_constant
+
         # Find a random location based off of the entropy in this location at this time
         # The modulo size operation does not bias the S_BOX output if the S_BOX is
         # a straight 8x8 mapping. The potential outputs are the range 0-256, which
@@ -110,26 +108,38 @@ def substitution(input_bytes, key, indices, counter):
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
                 
-def shuffle(data, key, indices):        
-    output = list(indices)
-    size = len(indices)    
-    for item in indices:
+def shuffle(data, key):        
+    output = list(data)
+    size = len(data)    
+    for item in data:
         time, place = item        
-        random_place = key[place] % size           
-        output[place], output[random_place] = output[random_place], output[place]        
+        random_place = key[place] % size   
+        current_place_constants = output[place]
+        random_place_constants = output[random_place]
+        output[place] = (random_place_constants[0], current_place_constants[1])
+        output[random_place] = (current_place_constants[0], random_place_constants[1])
+       # output[place], output[random_place] = output[random_place], output[place]         
     return output
     
+def generate_default_constants(block_size):
+    time_constants = bytearray(block_size)
+    place_constants = bytearray(block_size)
+    for index in range(block_size):
+        time_constants[index] = index
+        place_constants[index] = index
+    return zip(time_constants, place_constants)
+    
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
-    blocksize = len(key)
-    tweak = tweak or CONSTANTS[blocksize]    
+    blocksize = len(plaintext)
+    tweak = tweak or generate_default_constants(blocksize)
     _crypt_block(plaintext, key, tweak, bytearray(range(rounds)), range(blocksize))    
        
 def decrypt_block(ciphertext, key, rounds=1, tweak=None): 
-    blocksize = len(key)
-    tweak = tweak or CONSTANTS[blocksize]      
+    blocksize = len(ciphertext)
+    tweak = tweak or generate_default_constants(blocksize)
     _crypt_block(ciphertext, key, tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
         
-def _crypt_block(data, key, indices, rounds, counter):      
+def _crypt_block(data, key, constants, rounds, counter):      
     round_keys = []
     for round in rounds:        
         key = generate_round_key(key)
@@ -138,8 +148,8 @@ def _crypt_block(data, key, indices, rounds, counter):
     for round_key_index in rounds:
         round_key = round_keys[round_key_index]        
         extract_round_key(round_key)           
-        indices = shuffle(data, round_key, indices)        
-        substitution(data, round_key, indices, counter) 
+        round_constants = shuffle(constants, round_key)               
+        substitution(data, round_key, round_constants, counter) 
               
 #from unrolledblockcipher import encrypt_block, decrypt_block
         
@@ -161,12 +171,12 @@ class Test_Cipher(pride.crypto.Cipher):
             
 def test_Cipher():
     import random
-    data = "\x00" * 7 #"Mac Code" + "\x00" * 7
-    iv = key = ("\x00" * 7) + "\00"
+    data = "\x00" * 16 #"Mac Code" + "\x00" * 7
+    iv = key = ("\x00" * 15) + "\00"
     tweak = range(len(key))
    # random.shuffle(tweak)
     tweak = zip(range(len(tweak)), tweak)
-    cipher = Test_Cipher(key, "cbc", 1, tweak)
+    cipher = Test_Cipher(key, "cbc", 2, tweak)
     size = 2
     for count in range(5):
         plaintext = data + chr(count)
@@ -234,6 +244,6 @@ def test_linear_cryptanalysis():
 if __name__ == "__main__":
     test_Cipher()
     #test_linear_cryptanalysis()
-    #test_cipher_metrics()
+    test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()
