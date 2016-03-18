@@ -70,10 +70,9 @@ def substitution(input_bytes, key, indices, counter):
         modular exponentiation of 251 ^ x mod 257, which can be computed
         silently in situations where it is required."""        
     size = len(input_bytes)
-    state = xor_sum(input_bytes) ^ xor_sum(key)    
-    #for time, place in indices:
+    state = xor_sum(input_bytes) ^ xor_sum(key)        
     for index in counter:
-        time, place = indices[index]
+        time, place = indices[index * 2], indices[(index * 2) + 1]
         # the steps are:
         # remove the current byte from the state; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from the state (everything but the current plaintext byte),
@@ -108,26 +107,21 @@ def substitution(input_bytes, key, indices, counter):
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
                 
-def shuffle(data, key):        
-    output = list(data)
-    size = len(data)    
-    for item in data:
-        time, place = item        
-        random_place = key[place] % size   
-        current_place_constants = output[place]
-        random_place_constants = output[random_place]
-        output[place] = (random_place_constants[0], current_place_constants[1])
-        output[random_place] = (current_place_constants[0], random_place_constants[1])
-       # output[place], output[random_place] = output[random_place], output[place]         
+def shuffle(constants, key):        
+    output = bytearray(constants)
+    size = len(constants)    
+    for index in range(size, 2):     
+        random_place = key[index] % size   
+        output[index], output[random_place] = output[random_place], output[index]         
     return output
     
-def generate_default_constants(block_size):
-    time_constants = bytearray(block_size)
-    place_constants = bytearray(block_size)
+def generate_default_constants(block_size):    
+    constants = bytearray(block_size * 2)
     for index in range(block_size):
-        time_constants[index] = index
-        place_constants[index] = index
-    return zip(time_constants, place_constants)
+        _index = 2 * index
+        constants[_index] = index
+        constants[_index + 1] = index
+    return constants
     
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
     blocksize = len(plaintext)
@@ -171,11 +165,11 @@ class Test_Cipher(pride.crypto.Cipher):
             
 def test_Cipher():
     import random
-    data = "\x00" * 16 #"Mac Code" + "\x00" * 7
+    data = "\x00" * 15 #"Mac Code" + "\x00" * 7
     iv = key = ("\x00" * 15) + "\00"
-    tweak = range(len(key))
-   # random.shuffle(tweak)
-    tweak = zip(range(len(tweak)), tweak)
+    tweak = None#range(len(key))
+    #random.shuffle(tweak)
+   # tweak = zip(range(len(tweak)), tweak)
     cipher = Test_Cipher(key, "cbc", 2, tweak)
     size = 2
     for count in range(5):
