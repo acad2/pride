@@ -28,11 +28,11 @@ class File_Explorer(pride.gui.gui.Application):
                 
                 self.file_details["Date_Created"].append(epoch_to_english(file_information.st_ctime))
                 self.file_details["Date_Modified"].append(epoch_to_english(file_information.st_mtime))
-                
-        self.create(Navigation_Bar)
-        self.create(Directory_Viewer)                
-        self.create(File_Open_Prompt, background_color=(255, 255, 255, 0))
-     #   self.create(Info_Bar, pack_mode="bottom")
+        window = pride.objects[self.window]        
+        window.create(Navigation_Bar)
+        window.create(Directory_Viewer)                
+        self.create(Info_Bar, pack_mode="bottom")
+        self.create(File_Open_Prompt, background_color=(255, 255, 255, 0), pack_mode="bottom")
         
 
 class Navigation_Bar(pride.gui.gui.Container):

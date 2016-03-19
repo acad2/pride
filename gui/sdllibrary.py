@@ -300,7 +300,10 @@ class SDL_User_Input(vmlibrary.Process):
                 handlers[event.type](event)
             except KeyError:
                 if event.type in handlers:
-                    raise
+                    self.alert("Exception handling {};\n{}", (self.event_names[event.type], 
+                                                            traceback.format_exc()), 
+                            level=0)                
+                    #raise
                 else:
                     self.alert("Unhandled event: {}".format(event.type))
             except Exception as error:

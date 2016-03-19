@@ -6,6 +6,7 @@ import time
 
 import pride
 import pride.base
+import pride.vmlibrary
 import pride.utilities
 import pride.networkssl
 #objects = pride.objects
@@ -260,6 +261,10 @@ class Rpc_Socket(Packet_Socket):
     def serialize(self, result):
         return DEFAULT_SERIALIZER.dumps(result)  
 
+    def delete(self):
+        pride.vmlibrary.prune_instructions(self.reference)
+        super(Rpc_Socket, self).delete()
+        
         
 class Rpc_Worker(pride.base.Base):
     """ Performs remote procedure call requests """

@@ -58,7 +58,6 @@ import pprint
 import pride
 import pride.metaclass
 import pride.utilities
-import pride.datastructures
 import pride.contextmanagers
 from pride.errors import *
 #objects = pride.objects
@@ -339,11 +338,7 @@ class Base(object):
         format_args can sometimes make alerts more readable, depending on the
         length of the message and the length of the format arguments.""" 
         alert_handler = objects["->Alert_Handler"]               
-        try:
-            message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
-        except TypeError:
-            print message
-            raise
+        message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
             sys.stdout.flush()
@@ -549,8 +544,7 @@ class Proxy(Base):
     def __getattribute__(self, attribute):        
         try:
             wrapped_object = super(Proxy, self).__getattribute__("wrapped_object")
-            value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)
-            assert attribute != "reference", pprint.pformat((self, wrapped_object, pprint.pformat(wrapped_object.__dict__)))
+            value = super(type(wrapped_object), wrapped_object).__getattribute__(attribute)            
         except AttributeError:            
             value = super(Proxy, self).__getattribute__(attribute)
         return value
@@ -562,10 +556,7 @@ class Proxy(Base):
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:                                    
             super_object.__setattr__(attribute, value)
-            assert hasattr(self, attribute)
-            if attribute == "reference":
-                assert attribute in self.__dict__, pprint.pformat((attribute, pprint.pformat(self.__dict__)))
-            
+
             
 class Adapter(Base):
     """ Modifies the interface of the wrapped object. Effectively supplies

@@ -227,7 +227,11 @@ class Socket(base.Wrapper):
                 self._endpoint_reference = pride.objects["->Python->Network_Connection_Manager"].socket_reference[self.peername]
             instance = pride.objects[self._endpoint_reference]
             instance._local_data += data
-            instance.recv()                 
+            try:
+                instance.recv()
+            except Exception:
+                instance.alert("Caught non socket.error during recv:\n{}", (traceback.format_exc(), ), level=0)                
+                instance.delete()            
         else:
             # send through the socket using the network stack
             _socket = self.socket

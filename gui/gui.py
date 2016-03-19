@@ -24,12 +24,8 @@ def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
     
 class Organizer(base.Base):
     
-    verbosity = {"packing" : 'vvv'}
-    
-    def __init__(self, **kwargs):
-        super(Organizer, self).__init__(**kwargs)
-        self.pack_modes, self._pack_modes, self._pack_index = {}, {}, {}        
-        
+    mutable_defaults = {"pack_modes" : dict, "_pack_modes" : dict, "_pack_index" : dict}
+
     def get_pack_mode(self, instance):
         return self.pack_modes[instance]
      
@@ -68,9 +64,9 @@ class Organizer(base.Base):
         setattr(self, name, "pack_{}".format(name), callback)
         
     def pack(self, item):
-        self.alert("packing: {}, {} {} {}", 
-                  [item, item.area, item.z, item.pack_mode],
-                   level=self.verbosity["packing"])
+   #     self.alert("packing: {}, {} {} {}", 
+   #               [item, item.area, item.z, item.pack_mode],
+   #                level=self.verbosity["packing"])
         reference = item.reference
         pack_mode = self.pack_modes[reference]
         pack = getattr(self, "pack_{0}".format(pack_mode))
@@ -78,8 +74,8 @@ class Organizer(base.Base):
         old_size = item.size
         pack(parent, item, self._pack_index[reference], 
              len(self._pack_modes[parent.reference][pack_mode]))
-        self.alert("Finished packing {}: {} {}", [item, item.area, item.z], 
-                   level=self.verbosity["packing"])
+        item.alert("Packed into: {} {}", [item.area, item.z], 
+                   level=item.verbosity["packed"])
     
     def pack_main(self, parent, item, count, length):
         item.z = parent.z + 1
@@ -184,7 +180,7 @@ class Organizer(base.Base):
                 top_objects = [objects[name] for name in pack_modes["top"]]
                 top_size = parent.h / len(top_objects)
                 item.h = min(item.h_range[1], parent.h - sum(item.h or min(top_size, item.h_range[1]) for item in top_objects))
-                print "Adjusted height", item, item.h, item.h_range, parent.y, sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
+                print "Adjusted height", item, item.h, item.h_range, parent.h, sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
         else:
             item.y = parent.y + parent.h - item.h         
         item.x = parent.x
@@ -243,7 +239,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     
     mutable_defaults = {"draw_queue" : list, "_draw_operations" : list, "pack_count" : dict,
                         "_children" : list}
-    verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv"} 
+    verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv", "packed" : "packed"} 
     
     Hotkeys = {}
     

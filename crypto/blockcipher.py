@@ -12,7 +12,7 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX
 
-S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
+S_BOX = generate_s_box(lambda number: ((251 * pow(251, number, 257)) + 1) % 256)
                         
 def generate_round_key(data):       
     """ Invertible round key generation function. Using an invertible key 
@@ -25,9 +25,9 @@ def extract_round_key(key):
     for index, key_byte in enumerate(key):        
         key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
 
-def substitution(input_bytes, key, indices, counter): 
+def substitute_bytes(input_bytes, key, indices, counter): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
-        consistent, homeogenous, source heavy unbalanced feistel network.
+        consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
         The basic idea is that each byte of data is encrypted based off 
         of every other byte of data around it, along with the round key. 
         The ensures a high level of diffusion, which may indicate resistance
@@ -35,35 +35,14 @@ def substitution(input_bytes, key, indices, counter):
          (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf
           namely page 14)        
          
-        The rate of confusion, which is defined in the paper above as:
-         "The  rate  of  confusion  of  a  consistent  UFN2 is  the  minimum
-          number of times per cycle that any bit can occur in the target block"
-          
-        Where a cycle is defined as: 
-         "A cycle is the number of rounds necessary for each bit in the block 
-          to have been part of both the source and target blocks at least once"
-          
-        Each bit is guaranteed to be a part of the source block at least once,
-        as the bytes are simply enumerated. Each bit is part of the target
-        block every time it is not part of the source.
-        
-        In addition to the simple enumeration of bytes, at each step, both
-        before and after the current byte is encrypted, a byte at a random
-        location is encrypted as well. Supposing the distribution of the 
-        random selection is not biased, each bit should on average be
-        part of the source block 3 times per round.
+        Each byte is substituted, then a byte at a random location substituted,
+        then the current byte substituted again. At each substitution, the output
+        is fed back into the state to modify future outputs.
                         
-        Each random byte used to encrypt the data is fed back into the state 
-        to further modify future outputs.
-        
         The ideas of time and spatial locality are introduced to modify how
         the random bytes are generated. Time is represented by the count of
         how many bytes have been enciphered so far. Space is indicated by the
         current index being operated upon.
-        
-        By default, the order in which bytes are operated upon is linear.
-        Modification of the indices could be used as to facilitate a tweakable
-        block cipher.
         
         The S_BOX lookup could conceivably be replaced with a timing attack
         resistant non linear function. The default S_BOX is based off of
@@ -88,7 +67,7 @@ def substitution(input_bytes, key, indices, counter):
         present_modifier = time_constant ^ place_constant
 
         # Find a random location based off of the entropy in this location at this time
-        # The modulo size operation does not bias the S_BOX output if the S_BOX is
+        # The modulo size operation should not bias the S_BOX output if the S_BOX is
         # a straight 8x8 mapping. The potential outputs are the range 0-256, which
         # modulo a power of 2 results in equally distributed output
         random_place = S_BOX[key[place] ^ time_constant] % size 
@@ -101,19 +80,18 @@ def substitution(input_bytes, key, indices, counter):
         state ^= input_bytes[random_place]
         input_bytes[random_place] ^= S_BOX[state ^ random_place]
         state ^= input_bytes[random_place]                
-      
+       
         # manipulate the current location again
         state ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
                 
-def shuffle(constants, key):        
-    output = bytearray(constants)
-    size = len(constants)    
-    for index in range(size, 2):     
-        random_place = key[index] % size   
-        output[index], output[random_place] = output[random_place], output[index]         
-    return output
+def shuffle(data, key, counter):         
+    size = len(counter)      
+    for _index in range(size): 
+        index = counter[_index]
+        random_place = key[index] % (size - index)
+        data[index], data[random_place] = data[random_place], data[index]       
     
 def generate_default_constants(block_size):    
     constants = bytearray(block_size * 2)
@@ -122,7 +100,7 @@ def generate_default_constants(block_size):
         constants[_index] = index
         constants[_index + 1] = index
     return constants
-    
+        
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
     blocksize = len(plaintext)
     tweak = tweak or generate_default_constants(blocksize)
@@ -130,8 +108,8 @@ def encrypt_block(plaintext, key, rounds=1, tweak=None):
        
 def decrypt_block(ciphertext, key, rounds=1, tweak=None): 
     blocksize = len(ciphertext)
-    tweak = tweak or generate_default_constants(blocksize)
-    _crypt_block(ciphertext, key, tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+    constants = tweak or generate_default_constants(blocksize)
+    _crypt_block(ciphertext, key, constants, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
         
 def _crypt_block(data, key, constants, rounds, counter):      
     round_keys = []
@@ -141,10 +119,16 @@ def _crypt_block(data, key, constants, rounds, counter):
     
     for round_key_index in rounds:
         round_key = round_keys[round_key_index]        
-        extract_round_key(round_key)           
-        round_constants = shuffle(constants, round_key)               
-        substitution(data, round_key, round_constants, counter) 
-              
+        extract_round_key(round_key)                
+        
+        # equivalent to single key Even-Mansour? http://eprint.iacr.org/2011/541.pdf
+        # F(P xor K) xor K
+        # substitute_bytes is equivalent to xor with key, as key basically means "secret random data"
+        # while the shuffle subroutine acts as the F permutation
+        substitute_bytes(data, round_key, constants, counter) 
+        shuffle(data, round_key, counter)          
+        substitute_bytes(data, round_key, constants, counter)         
+        
 #from unrolledblockcipher import encrypt_block, decrypt_block
         
 class Test_Cipher(pride.crypto.Cipher):
@@ -154,9 +138,8 @@ class Test_Cipher(pride.crypto.Cipher):
         self.mode = mode
         self.rounds = rounds
         blocksize = len(key)
-        tweak = self.tweak = tweak #or zip(range(blocksize), range(blocksize))
-       # self.reversed_tweak = tuple(reversed(tweak))
-        
+        self.tweak = tweak 
+            
     def encrypt_block(self, plaintext, key):
         return encrypt_block(plaintext, key, self.rounds, self.tweak)
         
@@ -167,9 +150,8 @@ def test_Cipher():
     import random
     data = "\x00" * 15 #"Mac Code" + "\x00" * 7
     iv = key = ("\x00" * 15) + "\00"
-    tweak = None#range(len(key))
-    #random.shuffle(tweak)
-   # tweak = zip(range(len(tweak)), tweak)
+    tweak = generate_default_constants(len(key))
+   # random.shuffle(tweak)
     cipher = Test_Cipher(key, "cbc", 2, tweak)
     size = 2
     for count in range(5):
