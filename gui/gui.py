@@ -129,12 +129,11 @@ class Organizer(base.Base):
     def pack_top(self, parent, item, count, length):
         item.z = parent.z + 1
         assert parent.w
-        top_size = parent.h / length
-        if count:
-            top_items = (objects[name] for name in self._pack_modes[parent.reference]["top"][:count])
-            
-            item.y = parent.y + sum(top_item.h or min(top_size, top_item.h_range[1]) for
-                                    top_item in top_items)            
+        top_items = [objects[name] for name in self._pack_modes[parent.reference]["top"][:count]]
+        occupied_space = sum(top_item.h or min(top_size, top_item.h_range[1]) for top_item in top_items)  
+        top_size = (parent.h - occupied_space) / length
+        if count:                       
+            item.y = parent.y + occupied_space
         else:
             item.y = parent.y
         item.x = parent.x

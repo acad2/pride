@@ -25,6 +25,10 @@ def extract_round_key(key):
     for index, key_byte in enumerate(key):        
         key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
 
+def swap_bytes(input_bytes, place, random_byte, required_bits):           
+    random_place = random_byte >> (8 - required_bits)        
+    input_bytes[place], input_bytes[random_place] = input_bytes[random_place], input_bytes[place]
+    
 def substitute_bytes(input_bytes, key, indices, counter): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
@@ -49,10 +53,22 @@ def substitute_bytes(input_bytes, key, indices, counter):
         modular exponentiation of 251 ^ x mod 257, which can be computed
         silently in situations where it is required."""        
     size = len(input_bytes)
+    size_minus_one = size - 1
+    power_of_two = dict((2 ** index, index) for index in range(8))
+    required_bits = power_of_two[size]
+
     state = xor_sum(input_bytes) ^ xor_sum(key)        
-    for index in counter:
+    for index in counter:        
         time, place = indices[index * 2], indices[(index * 2) + 1]
-        # the steps are:
+        
+        # swap two random bytes
+        # the right shift by 8 - required_bits produces values in the ranges of
+        # powers of 2 (2, 4, 8, 16, 32, etc) without modular arithmetic/branches
+        # the state is included because bytes are swapped 
+        swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)
+        swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)
+        
+        # the substitution steps are:
         # remove the current byte from the state; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from the state (everything but the current plaintext byte),
         # then XOR it with current byte; then include current byte XOR psuedorandom_byte into the state 
@@ -70,7 +86,7 @@ def substitute_bytes(input_bytes, key, indices, counter):
         # The modulo size operation should not bias the S_BOX output if the S_BOX is
         # a straight 8x8 mapping. The potential outputs are the range 0-256, which
         # modulo a power of 2 results in equally distributed output
-        random_place = S_BOX[key[place] ^ time_constant] % size 
+        random_place = S_BOX[key[place] ^ time_constant] % size         
         
         state ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
@@ -85,6 +101,9 @@ def substitute_bytes(input_bytes, key, indices, counter):
         state ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
+        
+        swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)
+        swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)        
                 
 def shuffle(data, key, counter):         
     size = len(counter)      
@@ -121,13 +140,9 @@ def _crypt_block(data, key, constants, rounds, counter):
         round_key = round_keys[round_key_index]        
         extract_round_key(round_key)                
         
-        # equivalent to single key Even-Mansour? http://eprint.iacr.org/2011/541.pdf
-        # F(P xor K) xor K
-        # substitute_bytes is equivalent to xor with key, as key basically means "secret random data"
-        # while the shuffle subroutine acts as the F permutation
         substitute_bytes(data, round_key, constants, counter) 
-        shuffle(data, round_key, counter)          
-        substitute_bytes(data, round_key, constants, counter)         
+      #  shuffle(data, round_key, counter)          
+      #  substitute_bytes(data, round_key, constants, counter)         
         
 #from unrolledblockcipher import encrypt_block, decrypt_block
         

@@ -7,7 +7,7 @@ class Grid(pride.gui.gui.Window):
     defaults = {"rows" : 2, "columns" : 2,
                 "row_container_type" : "pride.gui.gui.Container",
                 "column_button_type" : "pride.gui.gui.Button",
-                "square_colors" : ((0, 0, 0), (255, 255, 255))}
+                "square_colors" : ((0, 0, 0, 255), (255, 255, 255, 255))}
     
     def _get_size(self):
         return self.rows, self.columns

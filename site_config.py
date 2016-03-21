@@ -31,6 +31,7 @@ window = pride.gui.enable()
 
 #graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
 #explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
+chess = objects["->Python->SDL_Window"].create("pride.gui.chess.Chess")
 #objects[window].create("pride.gui.boardgame.Checkers")
 
 """}

@@ -507,6 +507,11 @@ class Wrapper(Base):
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)
         
+    #def __dir__(self):
+    #    wrapper_attributes = self.__dict__.keys()
+    #    wrapped_attributes = dir(self.wrapped_object)
+    #    return wrapped_attributes + wrapper_attributes
+        
         
 class Proxy(Base):
     """ usage: Proxy(wrapped_object=my_object) => proxied_object
