@@ -71,8 +71,8 @@ def substitute_bytes(input_bytes, key, indices, counter):
         # powers of 2 (2, 4, 8, 16, 32, etc) without modular arithmetic/branches
         # the state is included because bytes are swapped at the end, and if 
         # the same values were supplied, the bytes swapped here would be undone
-        #swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)          
-        #swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)
+        swap_place = (((size_minus_one - index) ^ state) & ((2 ** required_bits) - 1)) | place        
+        swap_bytes(input_bytes, indices[swap_place], key[swap_place], required_bits)
         
         # the substitution steps are:
         # remove the current byte from the state; If this is not done, the transformation is uninvertible
@@ -100,14 +100,14 @@ def substitute_bytes(input_bytes, key, indices, counter):
         input_bytes[random_place] ^= S_BOX[state ^ random_place]
         state ^= input_bytes[random_place]                
        
-        # manipulate the current location again
+        # manipulate the current location again - required for symmetry
         state ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
         state ^= input_bytes[place]  
         
-        #swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)
-        #swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)        
-                
+        swap_place = (((size_minus_one - index) ^ state) & ((2 ** required_bits) - 1)) | place        
+        swap_bytes(input_bytes, indices[swap_place], key[swap_place], required_bits)
+          
 def generate_default_constants(block_size):    
     constants = bytearray(block_size)
     for index in range(block_size):
@@ -229,7 +229,7 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 if __name__ == "__main__":
-    #test_Cipher()
+    test_Cipher()
     #test_cipher_performance()
     #test_linear_cryptanalysis()
     test_cipher_metrics()
