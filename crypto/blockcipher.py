@@ -13,6 +13,7 @@ def generate_s_box(function):
     return S_BOX
 
 S_BOX = generate_s_box(lambda number: ((251 * pow(251, number, 257)) + 1) % 256)
+POWER_OF_TWO = dict((2 ** index, index) for index in range(8))
                         
 def generate_round_key(data):       
     """ Invertible round key generation function. Using an invertible key 
@@ -53,10 +54,8 @@ def substitute_bytes(input_bytes, key, indices, counter):
         modular exponentiation of 251 ^ x mod 257, which can be computed
         silently in situations where it is required."""        
     size = len(input_bytes)
-    size_minus_one = size - 1
-    power_of_two = dict((2 ** index, index) for index in range(8))
-    required_bits = power_of_two[size]
-
+    size_minus_one = size - 1    
+    required_bits = POWER_OF_TWO[size]
     state = xor_sum(input_bytes) ^ xor_sum(key)        
     for index in counter:        
         time, place = indices[index * 2], indices[(index * 2) + 1]
@@ -64,8 +63,9 @@ def substitute_bytes(input_bytes, key, indices, counter):
         # swap two random bytes
         # the right shift by 8 - required_bits produces values in the ranges of
         # powers of 2 (2, 4, 8, 16, 32, etc) without modular arithmetic/branches
-        # the state is included because bytes are swapped 
-        swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)
+        # the state is included because bytes are swapped at the end, and if 
+        # the same values were supplied, the bytes swapped here would be undone
+        swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)        
         swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)
         
         # the substitution steps are:
@@ -83,10 +83,7 @@ def substitute_bytes(input_bytes, key, indices, counter):
         present_modifier = time_constant ^ place_constant
 
         # Find a random location based off of the entropy in this location at this time
-        # The modulo size operation should not bias the S_BOX output if the S_BOX is
-        # a straight 8x8 mapping. The potential outputs are the range 0-256, which
-        # modulo a power of 2 results in equally distributed output
-        random_place = S_BOX[key[place] ^ time_constant] % size         
+        random_place = S_BOX[key[place] ^ time_constant] >> 8 - required_bits         
         
         state ^= input_bytes[place]
         input_bytes[place] ^= S_BOX[state ^ present_modifier]
@@ -105,13 +102,6 @@ def substitute_bytes(input_bytes, key, indices, counter):
         swap_place = ((size_minus_one - index) ^ state) >> (8 - required_bits)
         swap_bytes(input_bytes, swap_place, key[swap_place], required_bits)        
                 
-def shuffle(data, key, counter):         
-    size = len(counter)      
-    for _index in range(size): 
-        index = counter[_index]
-        random_place = key[index] % (size - index)
-        data[index], data[random_place] = data[random_place], data[index]       
-    
 def generate_default_constants(block_size):    
     constants = bytearray(block_size * 2)
     for index in range(block_size):
@@ -141,10 +131,6 @@ def _crypt_block(data, key, constants, rounds, counter):
         extract_round_key(round_key)                
         
         substitute_bytes(data, round_key, constants, counter) 
-      #  shuffle(data, round_key, counter)          
-      #  substitute_bytes(data, round_key, constants, counter)         
-        
-#from unrolledblockcipher import encrypt_block, decrypt_block
         
 class Test_Cipher(pride.crypto.Cipher):
     
@@ -192,6 +178,11 @@ def test_cipher_metrics():
     from metrics import test_block_cipher
     test_block_cipher(Test_Cipher)          
     
+def test_cipher_performance():
+    from metrics import test_prng_performance
+    _cipher = Test_Cipher("\x00" * 16, 'cbc')
+    test_prng_performance(lambda data, output_size: _cipher.encrypt("\x00" * output_size, "\x00" * 16))
+    
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity
     
@@ -234,7 +225,8 @@ def test_linear_cryptanalysis():
     
 if __name__ == "__main__":
     test_Cipher()
+    #test_cipher_performance()
     #test_linear_cryptanalysis()
-    test_cipher_metrics()
+    #test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()

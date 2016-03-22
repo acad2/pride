@@ -1,6 +1,7 @@
-import pride.site_config
+import pride.base
 import pride.security
 
+import cryptography.exceptions
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -20,7 +21,7 @@ class MGF(pride.base.Proxy):
         
 class OAEP_Padding(pride.base.Proxy):
     
-    defaults = {"hash_function" : "SHA1"}
+    defaults = {"hash_function" : "SHA1"} # only available option by default
     wrapped_object_name = "padding"
     
     def __init__(self, **kwargs):
@@ -51,7 +52,12 @@ class Private_Key(pride.base.Wrapper):
         else:
             private_key = rsa.generate_private_key(self.public_exponent, self.keysize, pride.security.BACKEND)
         self.wraps(private_key)
-                
+     
+    def sign(self, message):
+        signer = self.signer()
+        signer.update(message)
+        return signer.finalize()
+        
     def signer(self):        
         return self.key.signer(PSS_Padding(), getattr(hashes, self.signature_hash.upper())())
         
@@ -67,6 +73,16 @@ class Public_Key(pride.base.Wrapper):
     defaults = {"signature_hash" : "SHA256"}
     wrapped_object_name = "key"
     
+    def verify(self, signature, message):
+        verifier = self.verifier(signature)
+        verifier.update(message)
+        try:
+            verifier.verify()
+        except cryptography.exceptions.InvalidSignature:
+            return False
+        else:
+            return True
+        
     def verifier(self, signature):        
         return self.key.verifier(signature, PSS_Padding(), getattr(hashes, self.signature_hash.upper())())                                 
         
@@ -81,12 +97,9 @@ def test_private_public_key():
     plaintext = private_key.decrypt(ciphertext)
     assert plaintext == message
         
-    signer = private_key.signer()
-    signer.update(message)
-    signature = signer.finalize()
-    
-    verifier = public_key.verifier(signature)
-    assert verifier.verify()
+    signature = private_key.sign(message)
+    assert public_key.verify(signature, message)    
+       
     
 if __name__ == "__main__":
     test_private_public_key()
