@@ -20,10 +20,10 @@ class Grid(pride.gui.gui.Window):
         background_colors = itertools.cycle(self.square_colors)
         background_color = next(background_colors)
         for row in range(self.rows):
-            container = self.create(self.row_container_type)
+            container = self.create(self.row_container_type, pack_mode="left")
             for column in range(self.columns):
-                button = container.create(self.column_button_type, pack_mode="left",
-                                          background_color=background_color)
+                button = container.create(self.column_button_type, pack_mode="top",
+                                          background_color=background_color, grid_position=(row, column))
                 background_color = next(background_colors)
                 
         self._container_type = type(container).__name__
