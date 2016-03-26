@@ -74,7 +74,9 @@ class RSA_Private_Key(pride.base.Wrapper):
         
 class RSA_Public_Key(pride.base.Wrapper):
     
-    defaults = {"signature_hash" : "SHA256"}
+    defaults = {"signature_hash" : "SHA256",
+                "serialization_encoding" : "PEM",
+                "serialization_format" : "SubjectPublicKeyInfo"}
     wrapped_object_name = "key"
     required_attributes = ("wrapped_object", )
     
@@ -91,10 +93,14 @@ class RSA_Public_Key(pride.base.Wrapper):
     def verifier(self, signature):        
         return self.key.verifier(signature, PSS_Padding(), getattr(hashes, self.signature_hash.upper())())                                 
         
-    def encrypt(self, plaintext):
+    def encrypt(self, plaintext):        
         return self.key.encrypt(plaintext, OAEP_Padding())
-    
-
+        
+    def public_bytes(self):
+        encoding = getattr(cryptography.hazmat.primitives.serialization.Encoding, self.serialization_encoding)
+        _format = getattr(cryptography.hazmat.primitives.serialization.PublicFormat, self.serialization_format)
+        return self.key.public_bytes(encoding, _format)
+        
 class EC_Private_Key(pride.base.Wrapper):
     
     defaults = {"curve_name" : "SECP384R1", "hash_algorithm" : "SHA256"}
@@ -122,7 +128,7 @@ class EC_Private_Key(pride.base.Wrapper):
         
 class EC_Public_Key(pride.base.Wrapper):
             
-    defaults = {"serialization_encoding" : "pem", "serialization_format" : "SubjectPublicKeyInfo",
+    defaults = {"serialization_encoding" : "PEM", "serialization_format" : "SubjectPublicKeyInfo",
                 "hash_algorithm" : "SHA256"}
     wrapped_object_name = "key"
     
@@ -140,10 +146,10 @@ class EC_Public_Key(pride.base.Wrapper):
         return self.key.verifier(signature, ec.ECDSA(getattr(hashes, self.hash_algorithm)()))
         
     def public_bytes(self):
-        encoding = getatttr(cryptography.hazmat.primitives.serialization, self.serialization_encoding)
-        _format = getattr(cryptography.hazmat.primitives.serialization, self.serialization_format)
+        encoding = getattr(cryptography.hazmat.primitives.serialization.Encoding, self.serialization_encoding)
+        _format = getattr(cryptography.hazmat.primitives.serialization.PublicFormat, self.serialization_format)
         return self.key.public_bytes(encoding, _format)
-            
+        
 def test_rsa():
     private_key, public_key = generate_rsa_keypair()
     message = "Test message!"
@@ -154,6 +160,8 @@ def test_rsa():
     signature = private_key.sign(message)
     assert public_key.verify(signature, message)    
        
+    assert public_key.public_bytes()
+    
 def test_ecc():
     private_key, public_key = generate_ec_keypair()
     message = "Test message"
@@ -164,6 +172,8 @@ def test_ecc():
     shared_secret = private_key.exchange(public_key2)
     shared_secret2 = private_key2.exchange(public_key)
     assert shared_secret == shared_secret2
+    
+    assert public_key.public_bytes()
     
 if __name__ == "__main__":
     test_rsa()

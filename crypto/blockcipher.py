@@ -26,16 +26,12 @@ def extract_round_key(key):
     for index, key_byte in enumerate(key):        
         key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
 
-def swap_bytes(input_bytes, place, random_byte, required_bits):           
-    random_place = random_byte >> (8 - required_bits)        
-    input_bytes[place], input_bytes[random_place] = input_bytes[random_place], input_bytes[place]
-    
-def shuffle(data, key):
-    required_bits = POWER_OF_TWO[len(data)]
-    for index, byte in enumerate(key):
-        swap_bytes(data, index, byte, required_bits)
-        
-def substitute_bytes(input_bytes, key, indices, counter): 
+def shuffle_constants(data, key, mask):
+    for place in range(len(data)):
+        random_place = (key[place] & mask) | place
+        data[place], data[random_place] = data[random_place], data[place]
+            
+def substitute_bytes(data, key, indices, counter, mask): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
         The basic idea is that each byte of data is encrypted based off 
@@ -57,57 +53,39 @@ def substitute_bytes(input_bytes, key, indices, counter):
         The S_BOX lookup could conceivably be replaced with a timing attack
         resistant non linear function. The default S_BOX is based off of
         modular exponentiation of 251 ^ x mod 257, which can be computed
-        silently in situations where it is required."""        
-    size = len(input_bytes)
-    size_minus_one = size - 1    
-    required_bits = POWER_OF_TWO[size]
-    state = xor_sum(input_bytes) ^ xor_sum(key)        
+        silently in situations where it is required."""            
+    state = xor_sum(data) ^ xor_sum(key) 
+    size = len(data)
     for index in counter: 
         time = index
         place = indices[index]
         
-        # swap two random bytes
-        # the right shift by 8 - required_bits produces values in the ranges of
-        # powers of 2 (2, 4, 8, 16, 32, etc) without modular arithmetic/branches
-        # the state is included because bytes are swapped at the end, and if 
-        # the same values were supplied, the bytes swapped here would be undone
-        swap_place = (((size_minus_one - index) ^ state) & ((2 ** required_bits) - 1)) | place        
-        swap_bytes(input_bytes, indices[swap_place], key[swap_place], required_bits)
-        
+        time_constant = S_BOX[time]
+        place_constant = S_BOX[place]
+        present_modifier = S_BOX[time_constant ^ place_constant]
+        state ^= present_modifier
         # the substitution steps are:
         # remove the current byte from the state; If this is not done, the transformation is uninvertible
         # generate a psuedorandom byte from the state (everything but the current plaintext byte),
-        # then XOR it with current byte; then include current byte XOR psuedorandom_byte into the state 
-        # ; This is done in the current place, then in a random place, then in the current place again.     
-        
-        # The "time" counter acts like a nonce which will cause distinct output from
-        # input that is otherwise identical (i.e. 00000000...)
-        # xoring the counter directly would cause the low order bits to shuffle
-        # more then the high order bits, introducing bias.
-        time_constant = S_BOX[key[index]]                          
-        place_constant = S_BOX[key[(index + 1) % size]] 
-        present_modifier = time_constant ^ place_constant
-        
-        # Find a random location based off of the entropy in this location at this time
-        random_place = S_BOX[key[place] ^ time_constant] >> 8 - required_bits         
-        
-        state ^= input_bytes[place]
-        input_bytes[place] ^= S_BOX[state ^ present_modifier]
-        state ^= input_bytes[place]                                     
+        # then XOR that with current byte; then include current byte XOR psuedorandom_byte into the state 
+        # ; This is done in the current place, then in a random place, then in the current place again.             
+                
+        state ^= data[place]
+        data[place] ^= S_BOX[state]
+        state ^= data[place]                                     
 
+        # Find a random location
+        random_place = (time_constant ^ state) % size
         # Manipulate the state at the random place       
-        state ^= input_bytes[random_place]
-        input_bytes[random_place] ^= S_BOX[state ^ random_place]
-        state ^= input_bytes[random_place]                
+        state ^= data[random_place]
+        data[random_place] ^= S_BOX[state]
+        state ^= data[random_place]                
        
         # manipulate the current location again - required for symmetry
-        state ^= input_bytes[place]
-        input_bytes[place] ^= S_BOX[state ^ present_modifier]
-        state ^= input_bytes[place]  
+        state ^= data[place]
+        data[place] ^= S_BOX[state]
+        state ^= data[place]  
         
-        swap_place = (((size_minus_one - index) ^ state) & ((2 ** required_bits) - 1)) | place        
-        swap_bytes(input_bytes, indices[swap_place], key[swap_place], required_bits)
-          
 def generate_default_constants(block_size):    
     constants = bytearray(block_size)
     for index in range(block_size):
@@ -130,18 +108,23 @@ def _crypt_block(data, key, constants, rounds, counter):
         key = generate_round_key(key)
         round_keys.append(key)        
     
+    mask = (1 << POWER_OF_TWO[len(data)]) - 1 # byte & mask constrains byte to appropriate range
     for round_key_index in rounds:
         round_key = round_keys[round_key_index]        
-        extract_round_key(round_key)                
+        extract_round_key(round_key)                        
         
         round_constants = constants[:]
-        shuffle(round_constants, round_key)
-        substitute_bytes(data, round_key, round_constants, counter) 
+        shuffle_constants(round_constants, round_key, mask)
         
+        extract_round_key(round_key)
+        substitute_bytes(data, round_key, round_constants, counter, mask)
+                        
 class Test_Cipher(pride.crypto.Cipher):
     
     def __init__(self, key, mode, rounds=1, tweak=None):        
-        self.key = key
+        #self.key = key
+        from os import urandom; self.key = urandom(len(key));
+        print [byte for byte in self.key]
         self.mode = mode
         self.rounds = rounds        
         self.tweak = tweak 
@@ -174,8 +157,8 @@ def test_Cipher():
     #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
 
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
-        print real_ciphertext
-        print                   
+        #print real_ciphertext
+        #print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
         
@@ -229,7 +212,7 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 if __name__ == "__main__":
-    test_Cipher()
+    #test_Cipher()
     #test_cipher_performance()
     #test_linear_cryptanalysis()
     test_cipher_metrics()

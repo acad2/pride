@@ -35,12 +35,13 @@ def test_avalanche(hash_function, blocksize=16):
     print_hamming_info(output1, output2)
     
 def test_randomness(random_bytes):    
-    print "Testing randomness of {} bytes... ".format(len(random_bytes))    
-    with open("Test_Data.bin", 'wb') as _file:
+    size = len(random_bytes)
+    print "Testing randomness of {} bytes... ".format(size)    
+    with open("Test_Data_{}.bin".format(size), 'wb') as _file:
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
-    shell("./ent/ent.exe Test_Data.bin")
+    shell("./ent/ent.exe Test_Data_{}.bin".format(size))
     
     #outputs = dict((x, random_bytes.count(chr(x))) for x in xrange(256))
     #average = Average(values=tuple(random_bytes.count(chr(x))for x in xrange(256)))
@@ -106,10 +107,10 @@ def test_block_cipher(cipher, blocksize=16):
     test_function = lambda data: _cipher.encrypt(data, "\x00" * blocksize)
     test_avalanche(test_function)
                
-    random_bytes = _cipher.encrypt("\x00" * 1024 * 1024, "\x00" * blocksize)        
+    random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, "\x00" * blocksize)        
     test_randomness(random_bytes)
         
-    test_prng_performance(lambda data, output_size: _cipher.encrypt("\x00" * output_size, "\x00" * blocksize))
+    #test_prng_performance(lambda data, output_size: _cipher.encrypt("\x00" * output_size, "\x00" * blocksize))
     
 def test_random_metrics():
     from metrics import test_block_cipher

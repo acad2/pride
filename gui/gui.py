@@ -96,9 +96,9 @@ class Organizer(base.Base):
         
         width_of = lambda side: sum(item.w or min(width_spacing, item.w_range[1]) for item in side)
         height_of = lambda side: sum(item.h or min(height_spacing, item.h_range[1]) for item in side)
-
-        item.area = (item_x + width_of(left), item_y + height_of(top), 
-                     item_w - width_of(right), item_h - height_of(bottom))                         
+        height_of_top = height_of(top)
+        item.area = (item_x + width_of(left), item_y + height_of_top, 
+                     item_w - width_of(right), item_h - (height_of(bottom) + height_of_top))                         
         
     def pack_left(self, parent, item, count, length):
         item.z = parent.z + 1       
@@ -117,7 +117,7 @@ class Organizer(base.Base):
         
         item_height = parent.h - sum(item.h or min(height_per_object, item.h_range[1]) for item in bottom_objects)
         if count == length - 1:
-            item_w = parent.w - item.x
+            item_w = parent.w - item.x # (parent.x + parent.w) - item.x ?
             if pack_modes["right"]:
                 right_items = [objects[name] for name in pack_modes["right"]]
                 required_space = lambda item: item.w or min(space_per_object, item.w_range[1])
@@ -131,7 +131,7 @@ class Organizer(base.Base):
         assert parent.w
         top_items = [objects[name] for name in self._pack_modes[parent.reference]["top"][:count]]
         occupied_space = sum(top_item.h or min(top_size, top_item.h_range[1]) for top_item in top_items)  
-        top_size = (parent.h - occupied_space) / length
+        top_size = (parent.h - occupied_space) / (length - count)
         if count:                       
             item.y = parent.y + occupied_space
         else:
@@ -140,7 +140,7 @@ class Organizer(base.Base):
         
         if count == length - 1:
             bottom_objects = [objects[name] for name in self._pack_modes[parent.reference]["bottom"]]
-            item_h = parent.h - item.y
+            item_h = (parent.y + parent.h) - item.y         
             if bottom_objects:
                 width_spacing = parent.h / len(bottom_objects)
                 item_h - sum(bottom_object.h or min(width_spacing, bottom_object.h_range[1]) for
