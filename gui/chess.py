@@ -2,11 +2,31 @@ import pride.gui.gui
 
 class Gameboard_Square(pride.gui.gui.Button):
     
+    flags = {"current_piece" : None}
+    
     def add(self, piece):        
-        piece.current_square = self.reference
+        self_reference = self.reference
+        piece.current_square = self_reference
+        self.current_piece = piece.reference
+        
+        piece.parent_name = self_reference        
         super(Gameboard_Square, self).add(piece)
     
-    
+    def left_click(self, mouse):
+        chess_game = self.parent_application
+        if chess_game._active_item:                        
+            piece = pride.objects[chess_game._active_item]
+            piece._moved = True                       
+            piece.toggle_highlight_available_moves()                        
+            piece.pack_mode = None
+            
+            piece.current_square.remove(piece)            
+            self.add(piece)            
+            piece.pack_mode = "top"
+            self.pack()                        
+            
+            chess_game._active_item = None
+        
 class Pawn(pride.gui.gui.Button):
     
     defaults = {"_move_direction" : +1}
@@ -40,20 +60,47 @@ class Pawn(pride.gui.gui.Button):
         chess_game = self.parent_application
         
         if not self._highlight_on:                   
-            square_color = chess_game.movable_square_outline_color
-            self._highlight_on = True
+            movement_color = chess_game.movable_square_outline_color
+            capture_color = chess_game.capture_square_outline_color
+            self._highlight_on = True            
         else:
-            square_color = chess_game.square_outline_color
+            capture_color = movement_color = chess_game.square_outline_color            
             self._highlight_on = False
         
-        movement_direction = self._move_direction  
-        row, column = self.current_square.grid_position
         game_board = chess_game.game_board
-        game_board[row][column + movement_direction].color = square_color
-        if not self._moved:            
-            game_board[row][column + (movement_direction * 2)].color = square_color
-    
-    
+        for row, column, move_type in self.get_potential_moves():
+            if move_type == "movement":
+                color = movement_color                
+            else:
+                color = capture_color
+            game_board[row][column].color = color
+            
+    def get_potential_moves(self):        
+        game_board = self.parent_application.game_board
+        column, row = self.current_square.grid_position
+        movement_direction = self._move_direction
+        
+        moves = []
+        next_row = row + movement_direction        
+        if not game_board[column][next_row].current_piece:
+            moves.append((column, next_row, "movement"))
+            if not self._moved:
+                moves.append((column, row + (movement_direction * 2), "movement"))            
+        
+        if column:
+            left_column = column - 1
+            left_square = game_board[left_column][next_row]
+            if left_square.current_piece:
+                moves.append((left_column, next_row, "capture"))
+        if column < 7:
+            right_column = column + 1
+            right_square = game_board[right_column][next_row]
+            if right_square.current_piece:
+                moves.append((right_column, next_row, "capture"))
+                              
+        return moves
+        
+        
 class Rook(pride.gui.gui.Button): pass
 
 
@@ -80,6 +127,7 @@ class King(pride.gui.gui.Button):
 class Chess(pride.gui.gui.Application):
     
     defaults = {"square_outline_color" : (0, 0, 0, 255), "movable_square_outline_color" : (200, 200, 255, 255),
+                "capture_square_outline_color" : (235, 200, 175, 255),
                 "white_color" : (255, 255, 255, 255), "black_color" : (15, 25, 45, 255),
                 "white_square_color" : (225, 225, 225, 255), "black_square_color" : (25, 25, 25, 255)}
     
