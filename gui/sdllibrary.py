@@ -381,8 +381,11 @@ class SDL_User_Input(vmlibrary.Process):
                 try:
                     pride.objects[active_item].press(mouse)
                 except KeyError:
-                    self.alert("Active item has been deleted {}", (active_item, ), level=0)
-                    self.active_item = None
+                    if active_item in pride.objects:
+                        raise
+                    else:                        
+                        self.alert("Active item has been deleted {}", (active_item, ), level=0)
+                        self.active_item = None
             
     def handle_mousebuttonup(self, event):
         active_item = self.active_item

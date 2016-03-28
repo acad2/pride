@@ -7,7 +7,8 @@ class Grid(pride.gui.gui.Window):
     defaults = {"rows" : 2, "columns" : 2,
                 "row_container_type" : "pride.gui.gui.Container",
                 "column_button_type" : "pride.gui.gui.Button",
-                "square_colors" : ((0, 0, 0, 255), (255, 255, 255, 255))}
+                "square_colors" : ((0, 0, 0, 255), (255, 255, 255, 255)),
+                "square_outline_colors" : ((0, 0, 0, 255), (255, 255, 255, 255))}
     
     def _get_size(self):
         return self.rows, self.columns
@@ -17,14 +18,15 @@ class Grid(pride.gui.gui.Window):
     
     def __init__(self, **kwargs):
         super(Grid, self).__init__(**kwargs)
-        background_colors = itertools.cycle(self.square_colors)
-        background_color = next(background_colors)
+        background_color = itertools.cycle(self.square_colors)
+        outline_color = itertools.cycle(self.square_outline_colors)
+        
         for row in range(self.rows):
             container = self.create(self.row_container_type, pack_mode="left")
             for column in range(self.columns):
                 button = container.create(self.column_button_type, pack_mode="top",
-                                          background_color=background_color, grid_position=(row, column))
-                background_color = next(background_colors)
+                                          color=next(outline_color), background_color=next(background_color), 
+                                          grid_position=(row, column))                
                 
         self._container_type = type(container).__name__
         self._button_type = type(button).__name__

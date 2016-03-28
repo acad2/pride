@@ -1,10 +1,8 @@
-from utilities import byte_rotation, rotate
-
+from utilities import byte_rotation, rotate, cast  
+    
 def find_rotational_differentials(mapping):    
     differentials = []
-    for rotation_amount in range(-7, 8):
-        if not rotation_amount:
-            continue
+    for rotation_amount in range(1, 8):
         for count in range(256):
             input_one = count
             input_two = byte_rotation(input_one, rotation_amount)
@@ -27,7 +25,7 @@ def find_xor_differentials(mapping):
     for count in range(256):
         input_one = count
         output_one = mapping[input_one]
-        for input_two in range(256):
+        for input_two in range(count, 256):
             if input_one == input_two:
                 continue
                 
@@ -46,8 +44,7 @@ def test_xor_differentials(mapping, verbosity=0):
     print "Found {} xor differentials altogether".format(len(differentials))
     import pprint    
     #pprint.pprint(mapping)
-    
-  
+            
 def _sanity_check(s_box):            
     assert len(set(s_box.keys())) == 256, len(set(s_box.keys()))
     assert len(set(s_box.values())) == 256, len(set(s_box.values()))
@@ -73,8 +70,8 @@ def find_good_sbox(s_box=None, s_boxes=None, exit_flag=0):
             s_box[input] = outputs[index]         
         
         return find_good_sbox(s_box, s_boxes, exit_flag + 1)
-    
-if __name__ == "__main__":
+        
+if __name__ == "__main__":    
     from blockcipher import S_BOX
     from scratch import aes_s_box   
     import operator   

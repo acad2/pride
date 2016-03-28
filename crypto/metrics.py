@@ -37,7 +37,7 @@ def test_avalanche(hash_function, blocksize=16):
 def test_randomness(random_bytes):    
     size = len(random_bytes)
     print "Testing randomness of {} bytes... ".format(size)    
-    with open("Test_Data_{}.bin".format(size), 'wb') as _file:
+    with open("./random_data/Test_Data_{}.bin".format(size), 'wb') as _file:
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
