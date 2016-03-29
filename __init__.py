@@ -3,6 +3,16 @@ import sys
 import traceback
 import os
 
+if "--site_config" in sys.argv:            
+    import ast
+    index = sys.argv.index("--site_config")
+    sys.argv.pop(index)
+    site_config_entries = sys.argv.pop(index)
+    import site_config  
+    for name_equals_value in site_config_entries.split(';'):
+        name, value = name_equals_value.split('=', 1)
+        setattr(site_config, name, ast.literal_eval(value))                   
+            
 import preprocessing
         
 compiler = preprocessing.Compiler(preprocessors=(preprocessing.Preprocess_Decorator, ),
@@ -158,7 +168,7 @@ alert_handler = Alert_Handler()
 
 class Finalizer(base.Base):
     
-    mutable_defaults = {"_callbacks" : list}
+    mutable_defaults = {"_callbacks" : list, "_function_callback" : list}
     verbosity = {"execute_callback" : 'v', "callback_success" : 'v',
                  "unable_to_load_object" : 0, "unable_to_get_method" : 0,
                  "callback_exception" : 0}
@@ -168,8 +178,8 @@ class Finalizer(base.Base):
         for callback, args, kwargs in self._callbacks:
             try:
                 reference, method = callback
-            except ValueError:
-                pass
+            except TypeError:
+                reference = method = callback.__name__
             else:
                 try:
                     callback = getattr(objects[reference], method)

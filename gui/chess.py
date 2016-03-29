@@ -36,7 +36,7 @@ class Gameboard_Square(pride.gui.gui.Button):
                     captured_piece = pride.objects[self.current_piece]
                     assert captured_piece.team == piece.other_team                    
                     captured_piece.delete()
-                    
+                        
                 self.add(piece)            
                 piece.pack_mode = "top"
                 

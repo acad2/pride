@@ -41,7 +41,7 @@ def test_randomness(random_bytes):
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
-    shell("./ent/ent.exe Test_Data_{}.bin".format(size))
+    shell("./ent/ent.exe ./random_data/Test_Data_{}.bin".format(size))
     
     #outputs = dict((x, random_bytes.count(chr(x))) for x in xrange(256))
     #average = Average(values=tuple(random_bytes.count(chr(x))for x in xrange(256)))

@@ -54,8 +54,7 @@ def substitute_bytes(data, key, indices, counter, mask):
         resistant non linear function. The default S_BOX is based off of
         modular exponentiation of 251 ^ x mod 257, which can be computed
         silently in situations where it is required."""            
-    state = xor_sum(data) ^ xor_sum(key) 
-    size = len(data)
+    state = xor_sum(data) ^ xor_sum(key)    
     for index in counter: 
         time = index
         place = indices[index]
@@ -75,7 +74,7 @@ def substitute_bytes(data, key, indices, counter, mask):
         state ^= data[place]                                     
 
         # Find a random location
-        random_place = (time_constant ^ state) % size
+        random_place = (time_constant ^ state) & mask
         # Manipulate the state at the random place       
         state ^= data[random_place]
         data[random_place] ^= S_BOX[state]

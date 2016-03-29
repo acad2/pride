@@ -536,10 +536,10 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                     self._scroll_bar_w = None
                 
     def delete(self):
-        self.pack_mode = None # clear Organizer cache
-        super(Window_Object, self).delete()                
+        self.pack_mode = None # clear Organizer cache        
         objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
+        super(Window_Object, self).delete()                
         
         
 class Window(Window_Object):

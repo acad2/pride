@@ -386,7 +386,7 @@ class SDL_User_Input(vmlibrary.Process):
                     else:                        
                         self.alert("Active item has been deleted {}", (active_item, ), level=0)
                         self.active_item = None
-            
+
     def handle_mousebuttonup(self, event):
         active_item = self.active_item
         if active_item:            

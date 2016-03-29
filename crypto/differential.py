@@ -69,9 +69,9 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
     from os import urandom
     xor_ddt, rotational_ddt = build_difference_distribution_table(cipher_s_box)
     input_differential, output_differential, probablility = find_best_output_differential(xor_ddt, first_differential)  
-    differential_chain = calculate_differential_chain(xor_ddt, input_differential)
-    _outputs = dict((item[1], index) for index, item in enumerate(differential_chain))        
     minimum_length, maximum_length = trail_length_range
+    differential_chain = calculate_differential_chain(xor_ddt, input_differential)[:maximum_length]
+    _outputs = dict((item[1], index) for index, item in enumerate(differential_chain))          
     
     while True:
         data = bytearray(urandom(blocksize))
@@ -84,11 +84,15 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
             output_differential = byte ^ data2[index]
             if output_differential in _outputs:
                 trail_length = _outputs[output_differential]
-                if trail_length >= minimum_length and trail_length <= maximum_length:
+                if trail_length >= minimum_length:
                     s_box_applications[index] = trail_length
                     
         if s_box_applications:
-            print s_box_applications
+            print '*' * 80 #s_box_applications
+            if 0 in s_box_applications:
+                print differential_chain[:s_box_applications[0]]
+            if 1 in s_box_applications:
+                print differential_chain[:s_box_applications[1]]
             
     
 def test_build_difference_distribution_table():

@@ -39,3 +39,4 @@ chess = objects["->Python->SDL_Window"].create("pride.gui.chess.Chess")
 pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}
 
 pride_user_User_defaults = {'username' : 'localhost'}
+pride_gui_chess_Pawn_verbosity={"delete" : 0}

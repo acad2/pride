@@ -3,9 +3,9 @@
     This script starts a python session, and the first positional argument supplied is
     interpreted as the filepath of the python script to execute. ."""
 from __future__ import unicode_literals
-import pride.interpreter
-
-if __name__ == "__main__":
+        
+def main(): 
+    import pride.interpreter
     running = True
     while running:
         assert "->Python" not in pride.objects
@@ -31,4 +31,7 @@ if __name__ == "__main__":
                     raise
             else:
                 python.alert("Unhandled exception caused a fatal error", level=0)
-                raise     
+                raise   
+
+if __name__ == "__main__":
+    main()
