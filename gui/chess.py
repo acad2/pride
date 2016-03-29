@@ -137,7 +137,11 @@ class Pawn(Chess_Piece):
         return moves
         
 def determine_move_information(game_board, piece, next_row, column):
-    square = game_board[next_row][column]
+    try:
+        square = game_board[next_row][column]
+    except (KeyError, IndexError):
+        return None
+        
     if square.current_piece:
         other_piece = pride.objects[square.current_piece]
         if other_piece.team == piece.other_team:
@@ -202,7 +206,19 @@ class Knight(Chess_Piece):
         
     defaults = {"text" : "Knight"}
     
-
+    def get_potential_moves(self):
+        game_board = self.parent_application.game_board
+        row, column = self.current_square.grid_position
+        moves = []
+        
+        for row_movement, column_movement in ((2, -1), (2, 1), (1, -2), (1, 2),
+                                              (-2, -1), (-2, 1), (-1, -2), (-1, 2)):
+            move = determine_move_information(game_board, self, row + row_movement, column + column_movement)
+            if move:
+                moves.append(move)
+        return moves
+        
+        
 class Bishop(Chess_Piece):
         
     defaults = {"text" : "Bishop"}
