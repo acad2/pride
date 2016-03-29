@@ -276,7 +276,19 @@ class King(Chess_Piece):
         
     defaults = {"text" : "King"}
     
-    
+    def get_potential_moves(self):
+        game_board = self.parent_application.game_board
+        row, column = self.current_square.grid_position
+        moves = []
+        
+        for row_movement in range(-1, 2):
+            for column_movement in range(-1, 2):
+                move = determine_move_information(game_board, self, row + row_movement, column + column_movement)
+                if move:
+                    moves.append(move)
+        return moves
+        
+        
 class Chess(pride.gui.gui.Application):
     
     defaults = {"square_outline_color" : (0, 0, 0, 255), "movable_square_outline_color" : (200, 200, 255, 255),
