@@ -25,7 +25,8 @@ class Gameboard_Square(pride.gui.gui.Button):
             piece = pride.objects[chess_game._active_item]
             available_moves = piece.get_potential_moves()
             if (self.grid_position + ("movement", ) in available_moves or
-                self.grid_position + ("capture", ) in available_moves):                 
+                self.grid_position + ("capture", ) in available_moves or
+                self.grid_position + ("check", ) in available_moves):                 
                     
                 piece.toggle_highlight_available_moves()                        
                 piece.pack_mode = None                
@@ -47,6 +48,8 @@ class Gameboard_Square(pride.gui.gui.Button):
 class Chess_Piece(pride.gui.gui.Button):
       
     defaults = {"team" : ''}
+    flags = {"_highlight_on" : False}
+    verbosity = {"check" : 0, "capture" : 'v'}
     
     def _get_current_square(self):
         return pride.objects[self._current_square]
@@ -56,9 +59,7 @@ class Chess_Piece(pride.gui.gui.Button):
         
     def _get_other_team(self):
         return "black" if self.team == "white" else "white"
-    other_team = property(_get_other_team)
-    
-    flags = {"_highlight_on" : False}
+    other_team = property(_get_other_team)        
     
     def __init__(self, **kwargs):
         super(Chess_Piece, self).__init__(**kwargs)
@@ -135,24 +136,67 @@ class Pawn(Chess_Piece):
                               
         return moves
         
-        
+def determine_move_information(game_board, piece, next_row, column):
+    square = game_board[next_row][column]
+    if square.current_piece:
+        other_piece = pride.objects[square.current_piece]
+        if other_piece.team == piece.other_team:
+            if isinstance(other_piece, King):
+  #              piece.alert("Checks King at {}".format((next_row, column)), 
+  #                          level=piece.verbosity["check"])
+                return (next_row, column, "check")
+            else:
+  #              piece.alert("Captures {} at {}".format(other_piece.__class__.__name__, (next_row, column)),
+  #                          level=piece.verbosity["capture"])
+                return (next_row, column, "capture")        
+    else:        
+        return (next_row, column, "movement")
+                
 class Rook(Chess_Piece): 
     
     def get_potential_moves(self):
         game_board = self.parent_application.game_board
         moves = []
-        column, row = self.current_square.grid_position
+        row, column = self.current_square.grid_position
+        
         next_row = row + 1
-        while next_row < 7:
-            square = game_board[next_row][column]
-            if square.current_piece:
-                if square.current_piece.team == self.other_team:
-                    moves.append((next_row, column))
-                break                
-            else:
-                moves.append((next_row, column))
+        while next_row <= 7:
+            move = determine_move_information(game_board, self, next_row, column)
+            if move:
+                moves.append(move)
+            else:                
+                break
             next_row += 1
 
+        next_row = row - 1
+        while next_row >= 0:
+            move = determine_move_information(game_board, self, next_row, column)
+            if move:
+                moves.append(move)
+            else:
+                break
+            next_row -= 1
+            
+        next_column = column + 1
+        while next_column <= 7:
+            move = determine_move_information(game_board, self, row, next_column)
+            if move:
+                moves.append(move)
+            else:
+                break
+            next_column += 1
+            
+        next_column = column - 1
+        while next_column >= 0:
+            move = determine_move_information(game_board, self, row, next_column)
+            if move:                
+                moves.append(move)
+            else:                
+                break
+            next_column -= 1
+        print moves
+        return moves
+        
 
 class Knight(Chess_Piece):
         
