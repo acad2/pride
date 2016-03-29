@@ -2,6 +2,7 @@ import pride.gui.gui
 
 class Gameboard_Square(pride.gui.gui.Button):
     
+    defaults = {"outline_width" : 2}
     flags = {"current_piece" : None}
     
     def add(self, piece):        
@@ -43,12 +44,12 @@ class Gameboard_Square(pride.gui.gui.Button):
                 
                 chess_game._active_item = None
                 piece._moved = True                   
-        
-        
+                              
+                      
 class Chess_Piece(pride.gui.gui.Button):
       
-    defaults = {"team" : ''}
-    flags = {"_highlight_on" : False}
+    defaults = {"team" : '', "outline_width" : 2}
+    flags = {"_highlight_on" : False, "_backup_color" : None}
     verbosity = {"check" : 0, "capture" : 'v'}
     
     def _get_current_square(self):
@@ -85,23 +86,32 @@ class Chess_Piece(pride.gui.gui.Button):
 
     def toggle_highlight_available_moves(self):
         chess_game = self.parent_application
+        capture_color = chess_game.capture_outline_color
         
         if not self._highlight_on:                   
-            movement_color = chess_game.movable_square_outline_color
-            capture_color = chess_game.capture_square_outline_color
+            movement_color = chess_game.movable_square_outline_color            
             self._highlight_on = True            
         else:
-            capture_color = movement_color = chess_game.square_outline_color            
+            movement_color = chess_game.square_outline_color            
             self._highlight_on = False
         
         game_board = chess_game.game_board
         for row, column, move_type in self.get_potential_moves():
-            if move_type == "movement":
-                color = movement_color                
-            else:
-                color = capture_color
-            game_board[row][column].color = color
+            if move_type == "movement":                
+                game_board[row][column].color = movement_color                
+            else:                
+                piece = game_board[row][column].current_piece
+                pride.objects[piece].toggle_outline_highlight(capture_color)                            
 
+    def toggle_outline_highlight(self, color):
+        if self._backup_color:            
+            self.color = self._backup_color
+            self._backup_color = None            
+        else:
+            backup_color = self.color
+            self._backup_color = (backup_color.r, backup_color.g, backup_color.b, backup_color.a)
+            self.color = color            
+            
     def get_potential_moves(self):
         return []        
         
@@ -153,7 +163,7 @@ def determine_move_information(game_board, piece, next_row, column):
   #              piece.alert("Captures {} at {}".format(other_piece.__class__.__name__, (next_row, column)),
   #                          level=piece.verbosity["capture"])
                 return (next_row, column, "capture")        
-    else:        
+    else:                
         return (next_row, column, "movement")
                 
 class Rook(Chess_Piece): 
@@ -172,7 +182,9 @@ class Rook(Chess_Piece):
             move = determine_move_information(game_board, self, next_row, column)
             if move:
                 moves.append(move)
-            else:                
+            else:
+                break                
+            if move[-1] == "capture":
                 break
             next_row += 1
 
@@ -182,16 +194,20 @@ class Rook(Chess_Piece):
             if move:
                 moves.append(move)
             else:
+                break                
+            if move[-1] == "capture":
                 break
             next_row -= 1
             
         next_column = column + 1
         while next_column <= 7:
-            move = determine_move_information(game_board, self, row, next_column)
+            move = determine_move_information(game_board, self, row, next_column)            
             if move:
                 moves.append(move)
             else:
-                break
+                break                
+            if move[-1] == "capture":
+                break            
             next_column += 1
             
         next_column = column - 1
@@ -199,7 +215,9 @@ class Rook(Chess_Piece):
             move = determine_move_information(game_board, self, row, next_column)
             if move:                
                 moves.append(move)
-            else:                
+            else:
+                break                
+            if move[-1] == "capture":
                 break
             next_column -= 1        
         return moves
@@ -236,28 +254,52 @@ class Bishop(Chess_Piece):
         moves = []
         
         for movement in range(1, 8):
-            move = determine_move_information(game_board, self, row + movement, column + movement)            
-            if not move:
+            next_row, next_column = (row + movement, column + movement)
+            if next_row <= 7 and next_column <= 7:
+                move = determine_move_information(game_board, self, next_row, next_column)            
+                if not move:
+                    break
+                moves.append(move)
+                if move[-1] == "capture":
+                    break
+            else:
                 break
-            moves.append(move)
-        
+                
         for movement in range(1, 8):
-            move = determine_move_information(game_board, self, row - movement, column - movement)
-            if not move:
+            next_row, next_column = (row - movement, column - movement)
+            if next_row >= 0 and next_column >= 0:
+                move = determine_move_information(game_board, self, next_row, next_column)
+                if not move:
+                    break
+                moves.append(move)
+                if move[-1] == "capture":
+                    break
+            else:
                 break
-            moves.append(move)
-            
+                
         for movement in range(1, 8):
-            move = determine_move_information(game_board, self, row - movement, column + movement)
-            if not move:
+            next_row, next_column = (row - movement, column + movement)
+            if next_row >= 0 and next_column <= 7:
+                move = determine_move_information(game_board, self, row - movement, column + movement)
+                if not move:
+                    break
+                moves.append(move)
+                if move[-1] == "capture":
+                    break
+            else:
                 break
-            moves.append(move)
-        
+                
         for movement in range(1, 8):
-            move = determine_move_information(game_board, self, row + movement, column - movement)
-            if not move:
+            next_row, next_column = (row + movement, column - movement)
+            if next_row <= 7 and next_column >= 0:
+                move = determine_move_information(game_board, self, row + movement, column - movement)
+                if not move:
+                    break
+                moves.append(move)    
+                if move[-1] == "capture":
+                    break            
+            else:
                 break
-            moves.append(move)        
         return moves
         
         
@@ -291,9 +333,11 @@ class King(Chess_Piece):
         
 class Chess(pride.gui.gui.Application):
     
-    defaults = {"square_outline_color" : (0, 0, 0, 255), "movable_square_outline_color" : (200, 200, 255, 255),
-                "capture_square_outline_color" : (235, 200, 175, 255),
-                "white_color" : (255, 255, 255, 255), "black_color" : (15, 25, 45, 255),
+    defaults = {"square_outline_color" : (0, 0, 0, 255), "movable_square_outline_color" : (155, 155, 255, 255),
+                "capture_outline_color" : (255, 175, 175, 255),
+                "white_color" : (255, 255, 255, 255), "black_color" : (75, 75, 125, 255),
+                "white_text_color" : (55, 55, 85, 255), "black_text_color" : (230, 230, 230, 255),
+                "white_background_color" : (205, 205, 205, 155), "black_background_color" : (25, 25, 25, 155),
                 "white_square_color" : (205, 205, 205, 255), "black_square_color" : (55, 55, 55, 255),
                 "white_square_outline_color" : (0, 0, 0, 255), "black_square_outline_color" : (0, 0, 0, 255)}
     
@@ -314,16 +358,24 @@ class Chess(pride.gui.gui.Application):
     def setup_game(self):
         game_board = self.game_board  
         white, black = self.white_color, self.black_color
+        white_text, black_text = self.white_text_color, self.black_text_color
+        white_background, black_background = self.white_background_color, self.black_background_color
         
         for piece_index in range(8):            
-            game_board[piece_index][1].create("pride.gui.chess.Pawn", color=white, text="pawn", _move_direction=+1, team="white")
-            game_board[piece_index][-2].create("pride.gui.chess.Pawn", color=black, text="pawn", _move_direction=-1, team="black")
+            game_board[piece_index][1].create("pride.gui.chess.Pawn", color=white, text="pawn", text_color=white_text,
+                                              _move_direction=+1, team="white", background_color=white_background)
+            game_board[piece_index][-2].create("pride.gui.chess.Pawn", color=black, text="pawn", text_color=black_text,
+                                               _move_direction=-1, team="black", background_color=black_background)
         
         back_pieces = ("Rook", "Knight", "Bishop", "King", "Queen", "Bishop", "Knight", "Rook")
         for piece_index, piece_name in enumerate(back_pieces):
-            game_board[piece_index][0].create("pride.gui.chess." + piece_name, color=white, text=piece_name, team="white")
+            game_board[piece_index][0].create("pride.gui.chess." + piece_name, text_color=white_text,
+                                              color=white, text=piece_name, team="white",
+                                              background_color=white_background)
        
         for piece_index, piece_name in enumerate(reversed(back_pieces)):
-            game_board[piece_index][-1].create("pride.gui.chess." + piece_name, color=black, text=piece_name, team="black")
+            game_board[piece_index][-1].create("pride.gui.chess." + piece_name, text_color=black_text,
+                                               color=black, text=piece_name, team="black",
+                                               background_color=black_background)
             
         

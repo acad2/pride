@@ -221,7 +221,7 @@ class Organizer(base.Base):
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
-                "texture_size" : pride.gui.SCREEN_SIZE,
+                "texture_size" : pride.gui.SCREEN_SIZE, "outline_width" : 1,
                 "background_color" : (0, 0, 0, 0), #(25, 125, 225, 125),
                 "color" : (15, 165, 25, 255), "text_color" : (15, 165, 25, 255),
                 "held" : False, "allow_text_edit" : False,
@@ -480,7 +480,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def draw_texture(self):
         area = self.area
         self.draw("fill", area, color=self.background_color)
-        self.draw("rect", area, color=self.color)
+        self.draw("rect_width", area, color=self.color, width=self.outline_width)
         if self.text:
             self.draw("text", area, self.text, 
                       bg_color=self.background_color, color=self.text_color)
