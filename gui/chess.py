@@ -159,6 +159,10 @@ def determine_move_information(game_board, piece, next_row, column):
 class Rook(Chess_Piece): 
     
     def get_potential_moves(self):
+        return self._get_potential_moves(self)
+    
+    @staticmethod
+    def _get_potential_moves(self):
         game_board = self.parent_application.game_board
         moves = []
         row, column = self.current_square.grid_position
@@ -223,13 +227,16 @@ class Bishop(Chess_Piece):
     defaults = {"text" : "Bishop"}
     
     def get_potential_moves(self):
+        return self._get_potential_moves(self)
+        
+    @staticmethod
+    def _get_potential_moves(self):
         game_board = self.parent_application.game_board
         row, column = self.current_square.grid_position
         moves = []
         
         for movement in range(1, 8):
-            move = determine_move_information(game_board, self, row + movement, column + movement)
-            print move, row + movement, column + movement
+            move = determine_move_information(game_board, self, row + movement, column + movement)            
             if not move:
                 break
             moves.append(move)
@@ -250,8 +257,7 @@ class Bishop(Chess_Piece):
             move = determine_move_information(game_board, self, row + movement, column - movement)
             if not move:
                 break
-            moves.append(move)
-        print moves
+            moves.append(move)        
         return moves
         
         
@@ -259,6 +265,12 @@ class Queen(Chess_Piece):
         
     defaults = {"text" : "Queen"}
     
+    diagonal_moves = Bishop.get_potential_moves
+    straight_moves = Rook.get_potential_moves
+    
+    def get_potential_moves(self):
+        return Bishop._get_potential_moves(self) + Rook._get_potential_moves(self)
+        
     
 class King(Chess_Piece):
         
