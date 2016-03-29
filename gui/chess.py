@@ -197,8 +197,7 @@ class Rook(Chess_Piece):
                 moves.append(move)
             else:                
                 break
-            next_column -= 1
-        print moves
+            next_column -= 1        
         return moves
         
 
@@ -223,7 +222,39 @@ class Bishop(Chess_Piece):
         
     defaults = {"text" : "Bishop"}
     
-    
+    def get_potential_moves(self):
+        game_board = self.parent_application.game_board
+        row, column = self.current_square.grid_position
+        moves = []
+        
+        for movement in range(1, 8):
+            move = determine_move_information(game_board, self, row + movement, column + movement)
+            print move, row + movement, column + movement
+            if not move:
+                break
+            moves.append(move)
+        
+        for movement in range(1, 8):
+            move = determine_move_information(game_board, self, row - movement, column - movement)
+            if not move:
+                break
+            moves.append(move)
+            
+        for movement in range(1, 8):
+            move = determine_move_information(game_board, self, row - movement, column + movement)
+            if not move:
+                break
+            moves.append(move)
+        
+        for movement in range(1, 8):
+            move = determine_move_information(game_board, self, row + movement, column - movement)
+            if not move:
+                break
+            moves.append(move)
+        print moves
+        return moves
+        
+        
 class Queen(Chess_Piece):
         
     defaults = {"text" : "Queen"}
