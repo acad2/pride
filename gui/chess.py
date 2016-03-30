@@ -49,7 +49,8 @@ class Gameboard_Square(pride.gui.gui.Button):
                 self.grid_position + ("capture", ) in available_moves or
                 self.grid_position + ("check", ) in available_moves):                 
                     
-                piece.toggle_highlight_available_moves()                        
+                piece.toggle_highlight_available_moves()  
+                piece.color = getattr(chess_game, piece.team + "_color")                
                 piece.pack_mode = None                
                 piece.current_square.remove(piece)  
                 if self.current_piece:                    
@@ -64,6 +65,7 @@ class Gameboard_Square(pride.gui.gui.Button):
                 self.pack()                        
                 
                 chess_game._active_item = None
+                chess_game._current_move = "black" if piece.team == "white" else "white"
                 piece._moved = True                   
                               
                       
@@ -89,16 +91,19 @@ class Chess_Piece(pride.gui.gui.Button):
         
     def left_click(self, mouse):
         chess_game = self.parent_application
+            
         current_position = row, column = self.parent.grid_position
         game_board = self.parent_application.game_board
                 
-        if not chess_game._active_item:
+        if not chess_game._active_item and chess_game._current_move == self.team:
             # this piece has been selected
+            self.color = chess_game.selected_piece_outline_color
             chess_game._active_item = self.reference
             self.toggle_highlight_available_moves()
                             
-        elif self.reference == chess_game._active_item:
+        elif self.reference == chess_game._active_item and chess_game._current_move == self.team:
             # this piece has been deselected
+            self.color = getattr(chess_game, self.team + "_color")
             chess_game._active_item = None
             self.toggle_highlight_available_moves()
         else:
@@ -338,14 +343,14 @@ class King(Chess_Piece):
 class Chess(pride.gui.gui.Application):
     
     defaults = {"square_outline_color" : (0, 0, 0, 255), "movable_square_outline_color" : (155, 155, 255, 255),
-                "capture_outline_color" : (255, 175, 175, 255),
+                "capture_outline_color" : (255, 75, 125, 255), "selected_piece_outline_color" : (255, 175, 125, 255),
                 "white_color" : (255, 255, 255, 255), "black_color" : (75, 75, 125, 255),
                 "white_text_color" : (55, 55, 85, 255), "black_text_color" : (230, 230, 230, 255),
                 "white_background_color" : (205, 205, 205, 155), "black_background_color" : (25, 25, 25, 155),
                 "white_square_color" : (205, 205, 205, 255), "black_square_color" : (55, 55, 55, 255),
                 "white_square_outline_color" : (0, 0, 0, 255), "black_square_outline_color" : (0, 0, 0, 255)}
     
-    flags = {"_active_item" : None}
+    flags = {"_active_item" : None, "_current_move" : "white"}
     
     def _get_game_board(self):
         return self.application_window.objects["Grid"][0]
