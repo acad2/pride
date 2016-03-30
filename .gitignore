@@ -56,4 +56,4 @@ Temporary Items
 *.yml
 *.pyo
 .py.cache
-/crypto/random_bytes
+/crypto/random_data

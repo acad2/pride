@@ -435,16 +435,13 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         # draw operations are enqueued and processed in batches by the Renderer
         self._draw_operations.append((figure, args, kwargs))
                                                                
-    def _draw_texture(self):
-    #    if self._texture_invalid:
+    def _draw_texture(self):    
         if self.hidden:
             return []
+        pride.objects[self.sdl_window + "->SDL_User_Input"]._update_coordinates(self.reference, self.area, self.z)
         self.draw_texture()
         instructions = self._draw_operations[:]
-     #   else:
-     #       area = self.area
-     #       instructions = [("copy", (objects[self.sdl_window]._texture.texture, area, area), {})]
-            
+
         for child in self.children:
             instructions.extend(child._draw_texture())
             
@@ -471,11 +468,6 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.texture_invalid = False
         del self._draw_operations[:]
         return instructions
-        
-        #objects[self.sdl_window + "->Renderer"].draw(self.texture.texture, self._draw_operations)
-        #self._draw_operations = []
-        #self.texture_invalid = False            
-        #return self.texture.texture
         
     def draw_texture(self):
         area = self.area
@@ -540,7 +532,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
         super(Window_Object, self).delete()                
-        
+                
         
 class Window(Window_Object):
 

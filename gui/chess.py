@@ -1,5 +1,25 @@
 import pride.gui.gui
 
+def determine_move_information(game_board, piece, next_row, column):
+    try:
+        square = game_board[next_row][column]
+    except (KeyError, IndexError):
+        return None
+        
+    if square.current_piece:
+        other_piece = pride.objects[square.current_piece]
+        if other_piece.team == piece.other_team:
+            if isinstance(other_piece, King):
+  #              piece.alert("Checks King at {}".format((next_row, column)), 
+  #                          level=piece.verbosity["check"])
+                return (next_row, column, "check")
+            else:
+  #              piece.alert("Captures {} at {}".format(other_piece.__class__.__name__, (next_row, column)),
+  #                          level=piece.verbosity["capture"])
+                return (next_row, column, "capture")        
+    else:                
+        return (next_row, column, "movement")
+        
 class Gameboard_Square(pride.gui.gui.Button):
     
     defaults = {"outline_width" : 2}
@@ -36,7 +56,8 @@ class Gameboard_Square(pride.gui.gui.Button):
                     captured_piece = pride.objects[self.current_piece]
                     assert captured_piece.team == piece.other_team                    
                     captured_piece.delete()
-                        
+                   # import objectfinder
+                   # print objectfinder.find_locations(captured_piece)
                 self.add(piece)            
                 piece.pack_mode = "top"
                 
@@ -146,26 +167,7 @@ class Pawn(Chess_Piece):
                               
         return moves
         
-def determine_move_information(game_board, piece, next_row, column):
-    try:
-        square = game_board[next_row][column]
-    except (KeyError, IndexError):
-        return None
         
-    if square.current_piece:
-        other_piece = pride.objects[square.current_piece]
-        if other_piece.team == piece.other_team:
-            if isinstance(other_piece, King):
-  #              piece.alert("Checks King at {}".format((next_row, column)), 
-  #                          level=piece.verbosity["check"])
-                return (next_row, column, "check")
-            else:
-  #              piece.alert("Captures {} at {}".format(other_piece.__class__.__name__, (next_row, column)),
-  #                          level=piece.verbosity["capture"])
-                return (next_row, column, "capture")        
-    else:                
-        return (next_row, column, "movement")
-                
 class Rook(Chess_Piece): 
     
     def get_potential_moves(self):
@@ -325,9 +327,11 @@ class King(Chess_Piece):
         
         for row_movement in range(-1, 2):
             for column_movement in range(-1, 2):
-                move = determine_move_information(game_board, self, row + row_movement, column + column_movement)
-                if move:
-                    moves.append(move)
+                next_row, next_column = (row + row_movement, column + column_movement)
+                if next_row >= 0 and next_row <= 7 and next_column >= 0 and next_column <= 7:
+                    move = determine_move_information(game_board, self, row + row_movement, column + column_movement)
+                    if move:
+                        moves.append(move)
         return moves
         
         

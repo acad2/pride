@@ -51,7 +51,7 @@ class Process(pride.base.Base):
     defaults = {"priority" : .04, "context_managed" : False, "running" : True,
                 "run_callback" : None, "run_condition" : '', "_run_queued" : False}
     
-    parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued")
+    parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued", "run_condition")
     
     verbosity = {"run_condition_false" : "vvv"}
     

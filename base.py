@@ -165,7 +165,7 @@ class Base(object):
         return (child for child in itertools.chain(*self.objects.values()) if child)
     children = property(_get_children)
     
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):               
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing          
         self.references_to = []
         parent_name = self.parent_name = pride._last_creator
@@ -180,7 +180,7 @@ class Base(object):
             
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
-                            
+                        
         for value, attributes in itertools.chain(self._localized_flags.items(), 
                                                  self._localized_defaults.items()):
             for attribute in attributes:                
@@ -191,7 +191,7 @@ class Base(object):
         if kwargs:
             for key, value in kwargs.items():
                 setattr(self, key, value)
-                
+        assert not self.deleted
         if self.parse_args:            
             command_line_args = self.parser.get_options()
             defaults = self.defaults

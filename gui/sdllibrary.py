@@ -35,7 +35,7 @@ class SDL_Window(SDL_Component):
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE   
     
-    mutable_defaults = {"on_screen" : list, "_update_coordinates" : list}
+    mutable_defaults = {"on_screen" : list}
     
     flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}
     
@@ -72,7 +72,6 @@ class SDL_Window(SDL_Component):
             pride.gui.MAIN_WINDOW = self
                 
     def invalidate_object(self, instance):
-        self._update_coordinates.append(instance)
         if not self.running:
             self.running = True                        
             self.run_instruction.execute(priority=self.priority)
@@ -119,11 +118,7 @@ class SDL_Window(SDL_Component):
         renderer.copy(texture, area, area)
         renderer.present()
         self.running = False
-           #  
-        user_input = self.user_input
-        for instance in self._update_coordinates:
-            user_input._update_coordinates(instance.reference, instance.area, instance.z)
-        
+
     def get_mouse_state(self):
         mouse = sdl2.mouse
         x = ctypes.c_long(0)
@@ -325,7 +320,7 @@ class SDL_User_Input(vmlibrary.Process):
             
         self.coordinate_tracker[item] = (area, z)
         
-    def _remove_from_coordinates(self, item):
+    def _remove_from_coordinates(self, item):        
         _, old_z = self.coordinate_tracker[item]
         self._coordinate_tracker[old_z].remove(item)
         del self.coordinate_tracker[item]
@@ -361,6 +356,7 @@ class SDL_User_Input(vmlibrary.Process):
         possible = []
         for layer_number, layer in reversed(self._coordinate_tracker.items()):
             for item in layer:
+                assert item in pride.objects
                 area, z = coordinates[item]
                 if pride.gui.point_in_area(area, mouse_position):
                     #active_item = item

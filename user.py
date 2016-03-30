@@ -52,7 +52,7 @@ class User(pride.base.Base):
                      "salt_indexable", "kdf_iteration_count",
                      "encryption_mode", "encryption_algorithm",
                      "launcher_type", "verifier_indexable",
-                     "salt_size", "salt_filetype", "salt")
+                     "salt_size", "salt_filetype", "salt", "file_system_key")
     
     flags = {"_password_verifier_size" : 32, "_reset_encryption_key" : False,
              "_reset_file_system_key" : False, "_reset_mac_key" : False}
