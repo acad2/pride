@@ -32,7 +32,7 @@ class File_Explorer(pride.gui.gui.Application):
         window.create(Navigation_Bar)
         window.create(Directory_Viewer)                
         self.create(Info_Bar, pack_mode="bottom")
-        self.create(File_Open_Prompt, background_color=(255, 255, 255, 0), pack_mode="bottom")
+      #  self.create(File_Open_Prompt, background_color=(255, 255, 255, 0), pack_mode="bottom")
         
 
 class Navigation_Bar(pride.gui.gui.Container):
@@ -89,7 +89,8 @@ class Places_Bar(pride.gui.gui.Container):
 
 class Info_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "bottom", "h_range" : (0, 20)}
+    defaults = {"pack_mode" : "bottom", "h_range" : (0, 20),
+                'a' : 255}
     
     def __init__(self, **kwargs):
         super(Info_Bar, self).__init__(**kwargs)

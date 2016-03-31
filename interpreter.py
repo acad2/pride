@@ -15,6 +15,7 @@ import pride
 import pride.base as base
 import pride.authentication2 as authentication2
 import pride.shell
+import pride.user
 
 @contextlib.contextmanager
 def main_as_name():
@@ -187,7 +188,22 @@ class Python(base.Base):
                                     os.path.split(__file__)[0]), 
                                     "shell_launcher.py")
         else:
-            command = self.command        
+            try:
+                machine_info_file = pride.objects["->Python->File_System"].open_file("machine_credentials.bin", 'r')
+            except IOError:
+                machine_info_file = pride.objects["->Python->File_System"].open_file("machine_credentials.bin", 'w')
+                urandom = os.urandom
+                machine_id, key1, key2, key3, salt = urandom(16), urandom(16), urandom(16), urandom(16), urandom(16)
+                machine_info_file.write(machine_id + key1 + key2 + key3 + salt)
+                machine_info_file.flush()
+            else:
+                machine_info = machine_info_file.read()
+                assert machine_info
+                machine_id = machine_info[:16]
+                key1, key2, key3, salt = machine_info[16:32], machine_info[32:48], machine_info[48:64], machine_info[64:80]
+            user = pride.user.User(username=machine_id, encryption_key=key1, mac_key=key2, file_system_key=key3, salt=salt)        
+            command = self.command  
+            
         with open(command, 'r') as module_file:
             source = module_file.read()            
         pride.Instruction(self.interpreter, "_exec_command", source).execute()

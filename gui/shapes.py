@@ -11,10 +11,9 @@ class Shape(pride.base.Base):
         self._color = sdl2.ext.Color(0, 0, 0, 0)
         for coordinate in self.coordinates:
             setattr(self, "_" + coordinate, 0)
-        super(Shape, self).__init__(**kwargs)
-       # self._color = sdl2.ext.Color(self.r, self.g, self.b, self.a)
+        super(Shape, self).__init__(**kwargs)       
         
-    def _on_set(self, coordinate, value):
+    def _on_set(self, coordinate, value):        
         setattr(self, "_" + coordinate, value)
     
     @pride.preprocess
@@ -84,13 +83,13 @@ class Shape(pride.base.Base):
         return self._color
     def _set_color(self, colors):
         color = self._color
-        color.r = colors[0]
-        color.g = colors[1]
-        color.b = colors[2]
+        self._r = color.r = colors[0]
+        self._g = color.g = colors[1]
+        self._b = color.b = colors[2]
         try:
-            color.a = colors[3]
+            self._a = color.a = colors[3]
         except IndexError:
-            color.a = 255
+            self._a = color.a = 255
         #self._color = sdl2.ext.Color(self.r, self.g, self.b, self.a)        
     color = property(_get_color, _set_color)  
     

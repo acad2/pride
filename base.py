@@ -191,7 +191,7 @@ class Base(object):
         if kwargs:
             for key, value in kwargs.items():
                 setattr(self, key, value)
-        assert not self.deleted
+        
         if self.parse_args:            
             command_line_args = self.parser.get_options()
             defaults = self.defaults

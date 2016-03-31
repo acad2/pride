@@ -74,7 +74,7 @@ class User(pride.base.Base):
     
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)        
-            
+        
         login_success = self.encryption_key and self.mac_key and self.file_system_key and self.salt
         while not login_success:    
             try:

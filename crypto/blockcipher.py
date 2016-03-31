@@ -50,10 +50,10 @@ def substitute_bytes(data, key, indices, counter, mask):
         how many bytes have been enciphered so far. Space is indicated by the
         current index being operated upon.
         
-        The S_BOX lookup could conceivably be replaced with a timing attack
+        The S_BOX lookup could/should conceivably be replaced with a timing attack
         resistant non linear function. The default S_BOX is based off of
-        modular exponentiation of 251 ^ x mod 257, which can be computed
-        silently in situations where it is required."""            
+        modular exponentiation of 251 ^ x mod 257, which was basically
+        selected at random and does not possess good differential characteristics. """            
     state = xor_sum(data) ^ xor_sum(key)    
     for index in counter: 
         time = index

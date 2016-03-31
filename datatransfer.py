@@ -137,14 +137,14 @@ class Proxy(Data_Transfer_Client):
             
             
 def test_dts():
-    client1 = Data_Transfer_Client(username="Ella", token_file_encrypted=False, token_file_indexable=True)
-    client2 = Data_Transfer_Client(username="Not_Ella", token_file_encrypted=False, token_file_indexable=True)
+    client1 = Data_Transfer_Client(username="Ella")
+    client2 = Data_Transfer_Client(username="Not_Ella")
     return client1, client2
     
 def test_File_Transfer():
-    file_transfer1 = File_Transfer(username="Ella",  token_file_encrypted=False, token_file_indexable=True)                                        
+    file_transfer1 = File_Transfer(username="Ella")                                        
     file_transfer2 = File_Transfer(filename="base_Copy.py", username="Not_Ella",
-                                   receivers=("Not_Ella", "Ella"),  token_file_encrypted=False, token_file_indexable=True)
+                                   receivers=("Not_Ella", "Ella"))
     
 if __name__ == "__main__":
     test_File_Transfer()
