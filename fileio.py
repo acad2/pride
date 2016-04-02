@@ -357,20 +357,14 @@ class File_System(pride.database.Database):
         file_info = {}
         
         if not indexable:
+            user = objects["->User"]
             hasher = pride.security.hash_function(self.hash_function)
-            try:
-                hasher.update(filename + objects["->User"].file_system_key)
-            except KeyError:
-                hasher.update(filename)              
+            hasher.update(user.file_system_key + user.salt + filename)            
             filename = hasher.finalize()                    
             
         if encrypt and data:
-            try:
-                data = objects["->User"].encrypt(data)
-            except KeyError:
-                self.alert("Unable to encrypt data for file '{}'; User not logged in",
-                           (filename, ), level=0)
-                raise ValueError("Unable to encrypt '{}'; User not logged in".format(filename))                
+            data = objects["->User"].encrypt(data)
+               
         file_info.update({"date_modified" : now, "date_created" : now, "data" : data, 
                          "file_type" : os.path.splitext(filename)[-1] if indexable else ''})
         if tags:

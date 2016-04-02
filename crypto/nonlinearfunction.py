@@ -27,16 +27,13 @@ def nonlinear_function2(state, constant):
     return eight_bit_integer(state).value, state
         
 def nonlinear_function3(data, mask=1 << 7):     
-    data ^= 1
+    #data ^= 1 << (data % 8)
     for bit_number in range(8):    
-       # bit_position = 7 - bit_number
-        #random_byte = ((data ^ (data & (1 << bit_position))) % 2) << bit_position
-        #data ^= ((data ^ (data & (1 << bit_position))) % 2) << bit_position
-    
         data ^= ((data ^ (data & mask)) % 2) << 7        
         data = rotate(data, -1)
 
-        data ^= 1 << (data % 8)
+       # data ^= 1 << (data % 8)
+    
     return data
     
 def _nonlinear_function2(data):
@@ -82,7 +79,7 @@ def test_nonlinear_function2():
     pprint.pprint(rotational_ddt)
     
 def test_nonlinear_function3():
-    cycle = find_cycle_length(nonlinear_function3, 0)
+    cycle = find_cycle_length(nonlinear_function3, 1)
     print len(cycle), cycle
     
     sbox = dict((byte, nonlinear_function3(byte)) for byte in range(256))

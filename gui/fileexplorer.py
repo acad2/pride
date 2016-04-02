@@ -89,8 +89,7 @@ class Places_Bar(pride.gui.gui.Container):
 
 class Info_Bar(pride.gui.gui.Container):
             
-    defaults = {"pack_mode" : "bottom", "h_range" : (0, 20),
-                'a' : 255}
+    defaults = {"pack_mode" : "bottom", "h_range" : (0, 20)}
     
     def __init__(self, **kwargs):
         super(Info_Bar, self).__init__(**kwargs)

@@ -109,28 +109,19 @@ class File_Button(pride.gui.gui.Button):
             self._file_menu = None
             
             
-class Cyvasse_Gameboard(pride.gui.gui.Window):
-    
-    defaults = pride.gui.gui.Window.defaults.copy()
-    
-    
-class Cyvasse(pride.gui.gui.Application):
-    
-    defaults = {"startup_components" : tuple()}
-    
-    def _get_current_game(self):
-        reference = "->Python->SDL_Window->Cyvasse->Cyvasse_Gameboard"
-        return (self._current_game or
-                self.objects[reference][0].reference if
-                self.objects[reference] else None)
-    def _set_current_game(self, value):
-        self._current_game = value
-    current_game = property(_get_current_game, _set_current_game)
-    
+class Unit_Palette(pride.gui.gui.Window):
+                
     def __init__(self, **kwargs):
-        self._current_save_file = self._current_game = None
-        super(Cyvasse, self).__init__(**kwargs)
-        self.objects.setdefault("Cyvasse_Gameboard", [])
-        self.create("pride.gui.widgetlibrary.Task_Bar", startup_components=(
-                    File_Button, ))
+        super(Unit_Palette, self).__init__(**kwargs)
+        
+        
+        
+class Cyvasse(pride.gui.boardgame.Board_Game):
+    
+    defaults = {"row_count" : 16, "column_count" : 16}
+
+    def setup_game(self):   
+        self.create(Unit_Palette, pack_mode="left", team="white")
+        self.create(Unit_Palette, pack_mode="right", team="black")        
+    
         
