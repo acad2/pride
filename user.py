@@ -42,7 +42,7 @@ class User(pride.base.Base):
                 # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
-                "salt_indexable" : False, "verifier_indexable" : False,
+                "verifier_indexable" : False,
                 
                 "launcher_type" : "pride.interpreter.Python"}
     
@@ -96,22 +96,17 @@ class User(pride.base.Base):
     def login(self):
         """ Attempt to login as username using a password. Upon success, the
             users encryption and mac key are derived and stored in memory.
-            Upon failure, the prompt is repeated. """
-        if self.file_system_key:
-            backup = self.file_system_key
-            self.file_system_key = b''
-        else:
-            backup = ''
-                
+            Upon failure, the prompt is repeated. """                
         if not self.salt:
             with self.create(self.salt_filetype, # uses Database_Files by default
                              "{}_salt.bin".format(self.username), 
-                             "a+b", indexable=self.salt_indexable) as _file:                 
+                             "a+b", indexable=True) as _file:                 
                 _file.seek(0)
                 salt = _file.read(self.salt_size)
                 if not salt:
                     salt = random._urandom(self.salt_size)
                     _file.write(salt)
+            self.salt = salt
         else:
             salt = self.salt            
         key_length = self.key_length
@@ -123,10 +118,15 @@ class User(pride.base.Base):
                      salt=salt, iterations=self.kdf_iteration_count)
         master_key = kdf.derive(self.username + ':' + self.password)
         
-        hkdf_options = {"algorithm" : self.hash_function, "length" : key_length,
-                        "info" : self.hkdf_encryption_info_string.format(self.username + salt)}      
+        hkdf_options = {"algorithm" : self.hash_function, "length" : key_length}      
         
+        if not self.file_system_key:
+            hkdf_options["info"] = self.hkdf_file_system_info_string.format(self.username + salt)
+            file_system_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
+            self.file_system_key = file_system_kdf.derive(master_key)       
+            self._reset_file_system_key = True            
         if not self.encryption_key:
+            hkdf_options["info"] = self.hkdf_encryption_info_string.format(self.username + salt)
             encryption_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.encryption_key = encryption_kdf.derive(master_key)                
             self._reset_encryption_key = True
@@ -135,8 +135,8 @@ class User(pride.base.Base):
             mac_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
             self.mac_key = mac_kdf.derive(master_key)
             self._reset_mac_key = True
-        # Create a password verifier by creating/finding a nonindexable 
-        # encrypted file.
+            
+        # Create a password verifier by creating/finding a nonindexable encrypted file.
         with self.create(self.verifier_filetype,
                          "{}_password_verifier.bin".format(self.username),
                          "a+b", indexable=False, encrypted=True) as _file:
@@ -149,16 +149,8 @@ class User(pride.base.Base):
                     _file.write(self.username)
                 else:
                     _file.delete_from_filesystem()
-                    raise InvalidUsername
-        self.salt = salt          
-        
-        if not backup:
-            hkdf_options = {"info" : self.hkdf_file_system_info_string.format(self.username + salt)}
-            file_system_kdf = invoke("pride.security.hkdf_expand", **hkdf_options)
-            self.file_system_key = file_system_kdf.derive(master_key)            
-        else:
-            self.file_system_key = backup
-                                
+                    raise InvalidUsername              
+                                        
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 
             does not encrypt, any extra_data. The data is encrypted using the 

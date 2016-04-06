@@ -38,10 +38,10 @@ class Stdout(pride.base.Base):
             self.log.write(data)
             self.log.flush()        
         self.file.write(data)
-        self.file.flush()
-    
+        self.file.flush()                
+        
     def flush(self):
-        sys.module.__stdout__.flush()
+        self.file.flush()
         
     @contextlib.contextmanager
     def switched(self, _file):

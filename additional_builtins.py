@@ -76,6 +76,7 @@ def invoke(callable_string, *args, **kwargs):
         
 if is_version_two:    
     __raw_input = raw_input
+    class RequestDenied(BaseException): pass
     
     def raw_input(prompt='', must_reply=False):
         """ raw_input function that plays nicely when sys.stdout is swapped.
@@ -83,16 +84,18 @@ if is_version_two:
             until a non empty string is returned.
             
             For documentation of the standard CPython raw_input function, consult
-            the python interpreter or the internet. """
+            the python interpreter or the internet. """        
+        if getattr(objects.get("->Python->Interpreter", None), "_disable_raw_input", None):
+            raise RequestDenied("raw_input does not function remotely and would block")        
         if must_reply:
             reply = ''
             while not reply:
                 sys.__stdout__.write(prompt)
-                #sys.__stdout__.flush()        
+                sys.__stdout__.flush()
                 reply = __raw_input('')
         else:
             sys.__stdout__.write(prompt)
-            #sys.__stdout__.flush()       
+            sys.__stdout__.flush()
             reply = __raw_input('')
         return reply    
 else:

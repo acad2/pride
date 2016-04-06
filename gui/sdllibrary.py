@@ -110,7 +110,7 @@ class SDL_Window(SDL_Component):
         for operation, args, kwargs in instructions:
             if operation == "text":
                 if not args[0]:
-                    continue                    
+                    continue                                
             draw_instructions[operation](*args, **kwargs)        
         
         renderer.set_render_target(None)

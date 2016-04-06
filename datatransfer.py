@@ -132,7 +132,7 @@ class Proxy(Data_Transfer_Client):
     
     def receive(self, messages):
         for sender, message in messages:
-            target, packet = pride.utilities.load_data(message)
+            target, packet = pride.utilities.load_data(message)            
             self.send_to(target, packet)
             
             

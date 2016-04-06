@@ -10,7 +10,7 @@ if "--site_config" in sys.argv:
     site_config_entries = sys.argv.pop(index)
     import site_config  
     for name_equals_value in site_config_entries.split(';'):
-        name, value = name_equals_value.split('=', 1)
+        name, value = name_equals_value.split('=', 1)        
         setattr(site_config, name, ast.literal_eval(value))                   
             
 import preprocessing

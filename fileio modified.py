@@ -10,10 +10,8 @@ import sqlite3
 
 import pride    
 import pride.database
-import pride.vmlibrary as vmlibrary
 import pride.base as base
-import pride.utilities as utilities
-import pride.shell
+import pride.security
 #objects = pride.objects
 
 def ensure_folder_exists(pathname, file_system="disk"):
@@ -278,25 +276,24 @@ class Database_File(File):
         to memory saved onto the file system database; The contents of memory
         are not encrypted. """
     defaults = {"_data" : '', "tags" : '', "file_type" : "StringIO.StringIO",
-                "encrypted" : False, "indexable" : True}
+                "encrypted" : False, "indexable" : True, "authenticated" : True}
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
         data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, 
-                                                                       self.tags, self.indexable)
+                                                                       self.tags, self.indexable,
+                                                                       self.authenticated)
         filename = {"filename" : self.filename}
         if tags != self.tags:
             for old_tag in set(self.tags).difference(tags):
                 self.delete_from(old_tag, where=filename)
         self.tags = self.tags or tags
         if self.encrypted and data:
-            data, _filename = pride.objects["->User"].decrypt(data)
-            if self.indexable:
-                assert _filename == filename["filename"], (_filename, filename["filename"])
-            else:                                               
-                filename = objects["->Python->File_System"]._hash(filename["filename"])
-                assert _filename == filename, (_filename, filename)
-                
+            try:
+                data = pride.objects["->User"].decrypt(data)
+            except KeyError:
+                self.alert("Unable to decrypt '{}'; User not logged in".format(filename), level=0)
+
         self.file.write(data)
         if self.mode[0] != 'a':
             self.file.seek(0)
@@ -324,7 +321,7 @@ class Database_File(File):
         file.seek(0)
         pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
                                                          self.tags, self.encrypted,
-                                                         self.indexable)                                                       
+                                                         self.indexable, self.authenticated)                                                       
         file.seek(backup_position)
         
     def delete_from_filesystem(self):
@@ -338,7 +335,7 @@ class File_System(pride.database.Database):
     
     verbosity = {"file_modified" : "vv", "file_created" : "vv"}
     
-    database_structure = {"Files" : ("filename BLOB PRIMARY KEY", "data BLOB",
+    database_structure = {"Files" : ("filename BLOB PRIMARY KEY", "data BLOB", "mac BLOB",
                                      "date_created TIMESTAMP", "date_modified TIMESTAMP",
                                      "date_accessed TIMESTAMP", "file_type TEXT",
                                      "tags TEXT"),
@@ -353,38 +350,47 @@ class File_System(pride.database.Database):
             tag = tag[0]
             if tag not in database_structure:
                 self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
-    
-    def _hash(self, filename):
+        
+    def save_file(self, filename, data, tags=tuple(), encrypt=False, indexable=True,
+                  authenticated=True, save_metadata=True):      
+        print "SAVING: ", filename
+        _filename = filename
         user = objects["->User"]
-        hasher = pride.security.hash_function(self.hash_function)
-        assert user.file_system_key, filename
-        assert user.salt, filename
-        hasher.update(user.file_system_key + user.salt + filename)
-        return hasher.finalize()   
-                
-    def save_file(self, filename, data, tags=tuple(), encrypt=False, indexable=True):
-        now = time.time()
-        file_info = {}
-        user = objects["->User"]
-        if not indexable: 
-            filename = self._hash(filename)                    
+        if not indexable:            
+            hasher = pride.security.hash_function(self.hash_function)
+            hasher.update(user.file_system_key + user.salt + filename)            
+            filename = hasher.finalize()                    
             
         if encrypt and data:
-            data = objects["->User"].encrypt(data, extra_data=filename)
-               
-        file_info.update({"date_modified" : now, "date_created" : now, "data" : data, 
-                         "file_type" : os.path.splitext(filename)[-1] if indexable else ''})
+            data = user.encrypt(data)
+        
+        if save_metadata:
+            now = time.time()        
+            file_info = {"date_modified" : now, "date_created" : now, "data" : data}                         
+        else:
+            file_info = {"date_modifier" : 0.0, "date_created" : 0.0, "data" : data}
+        file_info["file_type"] = os.path.splitext(filename)[-1] if indexable else ''
+        
         if tags:
             file_info["tags"] = ' '.join(tags)
             for tag in tags:
                 if tag not in self:
                     self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
                     self.insert_into("Tags", (tag, ))
-                self.insert_into(tag, (filename, ))   
+                self.insert_into(tag, (filename, )) 
+        if authenticated:
+            assert user.mac_key
+            mac = pride.security.generate_mac(objects["->User"].mac_key, "Files" + filename + data)
+            print "Generated tag for: ", _filename
+            print
+            print mac
+            print
+            print data
+        else:
+            mac = ''
         try:            
-            self.insert_into("Files", (filename, data, now, now, now, 
-                                       file_info["file_type"], 
-                                       file_info.get("tags", '')))
+            self.insert_into("Files", (filename, data, mac, now, now, now, 
+                                       file_info["file_type"], file_info.get("tags", '')))
         except sqlite3.IntegrityError:
             self.alert("Updating preexisting file: {}".format(filename), 
                        level=self.verbosity["file_modified"])
@@ -394,22 +400,42 @@ class File_System(pride.database.Database):
             self.alert("Saving new file: {}".format(filename), 
                        level=self.verbosity["file_created"])
         
-    def _open_file(self, filename, mode, tags, indexable):
-        user = pride.objects["->User"]
-        if not indexable:        
-            filename = self._hash(filename)
+    def _open_file(self, filename, mode, tags, indexable, authenticated):
+        print "OPENING: ", filename
+        _filename = filename
+        user = objects["->User"]
+        if not indexable:            
+            hasher = pride.security.hash_function(self.hash_function)
+            hasher.update(user.file_system_key + user.salt + filename)
+            filename = hasher.finalize()
             
         if mode[0] == 'w':
             try:
+                print 'DELETING FILE: ', _filename
                 self.delete_from("Files", where={"filename" : filename})
             except sqlite3.Error:
                 pass
+            print "RESAVING FILE: ", _filename
             self.save_file(filename, '', tags)    
         result = self.query("Files", where={"filename" : filename},
-                            retrieve_fields=("data", "tags"))        
+                            retrieve_fields=("data", "mac", "tags"))        
         if not result and mode[0] == 'r':
             raise IOError("File {} does not exist in {}".format(filename, self.reference))
-        return result or ('', '')
+        
+        if result:
+            if authenticated:
+                assert user.mac_key
+                print "Validating tag: ", _filename
+                print
+                print result[1]
+                print
+                print pride.security.generate_mac(objects["->User"].mac_key, "Files" + filename + result[0])
+                
+                if not pride.security.verify_mac(objects["->User"].mac_key, result[1], "Files" + filename + result[0]):
+                    raise pride.security.InvalidTag()
+            return (result[0], result[2])
+        else:
+            return ('', '')
         
     def open_file(self, filename, mode):
         return self.create(Database_File, filename, mode)

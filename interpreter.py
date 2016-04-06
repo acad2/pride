@@ -104,8 +104,8 @@ class Interpreter(authentication2.Authenticated_Service):
             result = traceback.format_exc()           
         else:          
             _logger = self._logger
-            backup = sys.stdout            
-            sys.stdout = _logger            
+            backup = sys.stdout                 
+            sys.stdout = _logger                          
             try:
                 exec code in globals()
             except SystemExit:                    
@@ -116,8 +116,7 @@ class Interpreter(authentication2.Authenticated_Service):
             else:
                 self.user_session[username] += source                
                 _logger.seek(0)
-                result = _logger.read() 
-            
+                result = _logger.read()                         
             log.write("{}\n".format(result))                    
             _logger.truncate(0)      
             sys.stdout = backup

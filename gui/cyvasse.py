@@ -1,5 +1,6 @@
 import pride.gui.gui
 import pride.gui.widgetlibrary            
+import pride.gui.boardgame
     
 class New_Button(pride.gui.gui.Button):
     
@@ -109,19 +110,72 @@ class File_Button(pride.gui.gui.Button):
             self._file_menu = None
             
             
-class Unit_Palette(pride.gui.gui.Window):
+class Castle(pride.gui.boardgame.Gameboard_Square):  pass
+
+            
+class Rabble(pride.gui.boardgame.Game_Piece):
                 
+    defaults = {"text" : "Rabble"}
+
+
+class Spearmen(pride.gui.boardgame.Game_Piece):
+    
+    defaults = {"text" : "Spearmen"}
+    
+    
+class Crossbowmen(pride.gui.boardgame.Game_Piece):
+
+    defaults = {"text" : "Crossbowmen"}
+    
+    
+class Light_Horse(pride.gui.boardgame.Game_Piece):
+        
+    defaults = {"text" : "Light_Horse"}
+    
+    
+class Heavy_Horse(pride.gui.boardgame.Game_Piece):
+        
+    defaults = {"text" : "Heavy_Horse"}
+    
+    
+class Elephant(pride.gui.boardgame.Game_Piece):
+        
+    defaults = {"text" : "Elephant"}
+    
+    
+class Trebuchet(pride.gui.boardgame.Game_Piece):
+        
+    defaults = {"text" : "Trebuchet"}
+    
+    
+class King(pride.gui.boardgame.Game_Piece):
+        
+    defaults = {"text" : "King"}
+
+
+class Dragon(pride.gui.boardgame.Game_Piece):
+    
+    defaults = {"text" : "Dragon"}
+    
+    
+class Unit_Palette(pride.gui.gui.Window):
+    
+    defaults = {"team" : '', "unit_types" : (Rabble, Spearmen, Crossbowmen,
+                                             Light_Horse, Heavy_Horse, Elephant,
+                                             Trebuchet, King, Castle, Dragon)}
+                                             
     def __init__(self, **kwargs):
         super(Unit_Palette, self).__init__(**kwargs)
-        
+        for unit_type in self.unit_types:
+            self.create(unit_type, team=self.team)
         
         
 class Cyvasse(pride.gui.boardgame.Board_Game):
     
     defaults = {"row_count" : 16, "column_count" : 16}
 
-    def setup_game(self):   
-        self.create(Unit_Palette, pack_mode="left", team="white")
-        self.create(Unit_Palette, pack_mode="right", team="black")        
-    
+    def setup_game(self): 
+        self.application_window.create(Unit_Palette, pack_mode="left", team="white")
+        self.application_window.create(Unit_Palette, pack_mode="right", team="black")        
+      #  self.pack()
         

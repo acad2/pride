@@ -53,38 +53,50 @@ def substitute_bytes(data, key, indices, counter, mask):
         The S_BOX lookup could/should conceivably be replaced with a timing attack
         resistant non linear function. The default S_BOX is based off of
         modular exponentiation of 251 ^ x mod 257, which was basically
-        selected at random and does not possess good differential characteristics. """            
-    state = xor_sum(data) ^ xor_sum(key)    
-    for index in counter: 
-        time = index
-        place = indices[index]
-        
-        time_constant = S_BOX[time]
-        place_constant = S_BOX[place]
-        present_modifier = S_BOX[time_constant ^ place_constant]
-        state ^= present_modifier
-        # the substitution steps are:
-        # remove the current byte from the state; If this is not done, the transformation is uninvertible
-        # generate a psuedorandom byte from the state (everything but the current plaintext byte),
-        # then XOR that with current byte; then include current byte XOR psuedorandom_byte into the state 
-        # ; This is done in the current place, then in a random place, then in the current place again.             
-                
-        state ^= data[place]
-        data[place] ^= S_BOX[state]
-        state ^= data[place]                                     
+        selected at random and possesses a bad differential characteristic.
 
-        # Find a random location
-        random_place = (time_constant ^ state) & mask
-        # Manipulate the state at the random place       
+        The substitution steps are:
+            
+            - Remove the current byte from the state; If this is not done, the transformation is uninvertible
+            - Generate an ephemeral byte to mix with the state; the ephemeral byte aims to preserve forward secrecy in
+              the event the internal state is recovered (i.e. by differential attack)
+            - Generate a psuedorandom byte from the state (everything but the current plaintext byte),
+              then XOR that with current byte; then include current byte XOR psuedorandom_byte into the state 
+            - This is done in the current place, then in a random place, then in the current place again. """            
+    state = xor_sum(data) ^ xor_sum(key)    
+    for index in counter:         
+        place = indices[index]       
+        
+        # the counters are passed through the sbox to attempt to eliminate bias
+        # simple byte ^ index would flip the low order bits more frequently then high order bits for smaller blocksizes
+        place_constant = S_BOX[place]
+        time_constant = S_BOX[S_BOX[index]] # applied twice to prevent time_constant == place_constant when index == place        
+        present_modifier = S_BOX[time_constant ^ place_constant]
+        entropy_modifier = key[place] ^ present_modifier
+        
+        state ^= present_modifier             
+                               
+        state ^= data[place]         
+        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]] # goal is forward secrecy in event of sbox input becoming known
+        data[place] ^= S_BOX[state ^ ephemeral_byte]
+        state ^= data[place]        
+        
+        # Find a random location + manipulate data at that location
+        random_place = (time_constant ^ key[place]) & mask                     
         state ^= data[random_place]
-        data[random_place] ^= S_BOX[state]
+        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]    
+        data[random_place] ^= S_BOX[state ^ ephemeral_byte]
         state ^= data[random_place]                
        
-        # manipulate the current location again - required for symmetry
+        # manipulate the current location again - required for symmetry        
         state ^= data[place]
-        data[place] ^= S_BOX[state]
-        state ^= data[place]  
+        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]          
+        data[place] ^= S_BOX[state ^ ephemeral_byte]
+        state ^= data[place] 
         
+        # must be removed for symmetry purposes
+        state ^= present_modifier
+                  
 def generate_default_constants(block_size):    
     constants = bytearray(block_size)
     for index in range(block_size):
@@ -121,9 +133,8 @@ def _crypt_block(data, key, constants, rounds, counter):
 class Test_Cipher(pride.crypto.Cipher):
     
     def __init__(self, key, mode, rounds=1, tweak=None):        
-        #self.key = key
-        from os import urandom; self.key = urandom(len(key));
-        print [byte for byte in self.key]
+        self.key = key
+       # from os import urandom; self.key = urandom(len(key));        
         self.mode = mode
         self.rounds = rounds        
         self.tweak = tweak 
@@ -136,11 +147,11 @@ class Test_Cipher(pride.crypto.Cipher):
             
 def test_Cipher():
     import random
-    data = "\x00" * 255 #"Mac Code" + "\x00" * 7
-    iv = key = ("\x00" * 255) + "\00"
+    data = "\x00" * 7 #"Mac Code" + "\x00" * 7
+    iv = key = ("\x00" * 7) + "\00"
     tweak = generate_default_constants(len(key))
    # random.shuffle(tweak)
-    cipher = Test_Cipher(key, "cbc", 2, tweak)
+    cipher = Test_Cipher(key, "cbc", 1, tweak)
     size = 2
     for count in range(5):
         plaintext = data + chr(count)
@@ -156,8 +167,8 @@ def test_Cipher():
     #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
 
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
-        #print real_ciphertext
-        #print                   
+        print real_ciphertext
+        print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
         
@@ -207,11 +218,11 @@ def test_linear_cryptanalysis():
         zero_bits = outputs.count(0)
         one_bits = outputs.count(1)
         print float(one_bits) / zero_bits, one_bits, zero_bits    
-    
+     
     _test_encrypt()
     
 if __name__ == "__main__":
-    #test_Cipher()
+    test_Cipher()
     #test_cipher_performance()
     #test_linear_cryptanalysis()
     test_cipher_metrics()

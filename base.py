@@ -341,7 +341,7 @@ class Base(object):
         message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
-            sys.stdout.flush()
+            sys.stdout.flush()                           
         if level in alert_handler._log_level or level is 0:
             alert_handler.log.seek(0, 1) # windows might complain about files in + mode if this isn't done
             alert_handler.log.write(str(level) + message + "\n")    

@@ -103,7 +103,7 @@ class Organizer(base.Base):
     def pack_left(self, parent, item, count, length):
         item.z = parent.z + 1       
         pack_modes = self._pack_modes[parent.reference]
-        space_per_object = parent.w / (length + len(pack_modes["right"]))
+        space_per_object = parent.w / (length + len(pack_modes["right"]) + len(pack_modes["main"]))        
         left_items = [objects[name] for name in pack_modes["left"][:count]]
         if left_items:
             required_space = lambda item: item.w or min(space_per_object, item.w_range[1])
@@ -116,7 +116,7 @@ class Organizer(base.Base):
         item.position = parent.x + left_total, parent.y + sum(item.h or min(height_spacing, item.h_range[1]) for item in top_items)     
         
         item_height = parent.h - sum(item.h or min(height_per_object, item.h_range[1]) for item in bottom_objects)
-        if count == length - 1:
+        if count == length - 1 and not self._pack_modes[parent.reference]["main"]:
             item_w = parent.w - item.x # (parent.x + parent.w) - item.x ?
             if pack_modes["right"]:
                 right_items = [objects[name] for name in pack_modes["right"]]
@@ -128,17 +128,17 @@ class Organizer(base.Base):
    
     def pack_top(self, parent, item, count, length):
         item.z = parent.z + 1
-        assert parent.w
+      #  assert parent.w, (parent, item)
         top_items = [objects[name] for name in self._pack_modes[parent.reference]["top"][:count]]
-        occupied_space = sum(top_item.h or min(top_size, top_item.h_range[1]) for top_item in top_items)  
-        top_size = (parent.h - occupied_space) / (length - count)
+        occupied_space = sum(top_item.h or min(top_size, top_item.h_range[1]) for top_item in top_items)  # bug hiding right here!
+        top_size = (parent.h - occupied_space) / (length - count) # name error with top_size
         if count:                       
             item.y = parent.y + occupied_space
         else:
             item.y = parent.y
         item.x = parent.x
         
-        if count == length - 1:
+        if count == length - 1 and not self._pack_modes[parent.reference]["main"]:
             bottom_objects = [objects[name] for name in self._pack_modes[parent.reference]["bottom"]]
             item_h = (parent.y + parent.h) - item.y         
             if bottom_objects:
@@ -148,7 +148,7 @@ class Organizer(base.Base):
             item.size = (parent.w, item_h)
         else:
             item.size = (parent.w, top_size)  
-        assert item.w, (item.size, item)
+       # assert item.w, (item.size, item)
             
     def pack_grid(self, parent, item, count, length):
         grid_size = sqrt(length)
@@ -189,12 +189,13 @@ class Organizer(base.Base):
         left_objects = [objects[name] for name in pack_modes["left"]]
         bottom_objects = [objects[name] for name in pack_modes["bottom"]]
         top_objects = [objects[name] for name in pack_modes["top"]]
+        main_size = sum(objects[item].w for item in pack_modes["main"])
         height_spacing = parent.h / (len(top_objects) + len(bottom_objects) or 1)
         item_height = parent.h - sum(item.h or min(height_spacing, item.h_range[1]) for item in bottom_objects)
         if left_objects:
             left_unit = parent.w / len(left_objects)
             required_space = lambda item: item.w or min(left_unit, item.w_range[1])
-            left_size = sum(required_space(item) for item in left_objects)        
+            left_size = sum(required_space(item) for item in left_objects) + main_size
             if count == length - 1:                
                 item.size = (parent.w - left_size, item_height)
         #      print "Set item size: ", item, item.size, parent.w
@@ -204,9 +205,11 @@ class Organizer(base.Base):
             left_size = 0
             
         right_objects = (objects[name] for name in self._pack_modes[parent.reference]["right"][:count + 1])
-        right_unit = (parent.w - left_size) / length
-        required_space = lambda item: item.w or min(right_unit, item.w_range[1])
-        item.x = parent.x + parent.w - sum(required_space(item) for item in right_objects)        
+        available_w = parent.w - left_size - main_size
+        right_unit = available_w / length
+        required_space = lambda item: item.w or min(right_unit, item.w_range[1])              
+        
+        item.x = parent.x + parent.w - sum(required_space(item) for item in right_objects)
         item.y = parent.y + sum(_item.h or min(height_spacing, _item.h_range[1]) for _item in top_objects if
                                 _item.x > item.x and _item.x <= item.x + item.w)
         item.z = parent.z + 1

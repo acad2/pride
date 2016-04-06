@@ -135,8 +135,8 @@ class Text_Box(gui.Container):
         self.editing = not self.editing
         
     def draw_texture(self):
-        width, height = pride.gui.SCREEN_SIZE#self.texture.area
-        area = (0, 0, width, height)
+       # width, height = pride.gui.SCREEN_SIZE#self.texture.area
+        area = self.area#(0, 0, width, height)
         self.draw("fill", area, color=self.background_color)
         self.draw("rect", area, color=self.color)
         if self.text:
@@ -240,6 +240,7 @@ class Indicator(gui.Button):
 
 class Done_Button(gui.Button):
         
+    defaults = {"w_range" : (0, 20), "h_range" : (0, 20), "pack_mode" : "right"}
     def left_click(self, mouse):
         callback_owner, method = self.callback
         getattr(pride.objects[callback_owner], method)()        
@@ -247,36 +248,38 @@ class Done_Button(gui.Button):
       
 class Prompt(Text_Box):
     
-    defaults = {"use_done_button" : False, }
+    defaults = {"use_done_button" : False}
     
     def __init__(self, **kwargs):
         super(Prompt, self).__init__(**kwargs)
         if self.use_done_button:
-            self.create("pride.gui.widgetlibrary.Done_Button", 
-                        callback=self._done_callback)
+            self.create("pride.gui.widgetlibrary.Done_Button", callback=(self.reference, "_done_callback"))
                         
     def text_entry(self, value):
         self._text = value
         if value and value[-1] == '\n':
             callback_owner, method = self.callback
             getattr(pride.objects[callback_owner], method)(self.text)
+            self._text = ''
             
     def _done_callback(self):
         self.text += '\n'
         
         
-class Dialog_Box(gui.Application):
+class Dialog_Box(gui.Container):
         
-    defaults = {"callback_owner" : '', "callback" : ''}
-                     
+    defaults = {"callback" : tuple()}
+    required_attributes = ("callback", )
+    
     def __init__(self, **kwargs):
-        super(Application, self).__init__(**kwargs)
+        super(Dialog_Box, self).__init__(**kwargs)
         self.create("pride.gui.widgetlibrary.Text_Box", text=self.text,
-                    allow_text_edit=False)
+                    allow_text_edit=False, pack_mode="top")
         self.user_text = self.create("pride.gui.widgetlibrary.Prompt",
-                                     use_done_button=True,
-                                     callback=(self.reference, "handle_input"))
+                                     use_done_button=True, pack_mode="bottom",
+                                     h_range=(0, 80), callback=(self.reference, "handle_input"))
    
     def handle_input(self, user_input):
-        getattr(pride.objects[self.callback_owner], self.callback)(user_input)       
+        reference, method = self.callback
+        getattr(pride.objects[reference], method)(user_input)       
         
