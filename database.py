@@ -255,6 +255,9 @@ class Database(pride.base.Wrapper):
         self.alert("Retrieving table information for: {}",
                    (table_name, ), level=self.verbosity["table_info"])
         return self.cursor.execute("PRAGMA table_info({})".format(table_name))
+    
+    def last_auto_increment_value(self, table_name):
+        return self.cursor.execute("SELECT seq FROM sqlite_sequence where name='{}'", (table_name, ))
         
     def __getstate__(self):
         state = super(Database, self).__getstate__()

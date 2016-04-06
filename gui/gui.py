@@ -220,10 +220,10 @@ class Organizer(base.Base):
                      SCREEN_SIZE[0] / 5, min(120, SCREEN_SIZE[1] / length))
         item.z = parent.z + 1
         
-    def pack_popup_menu(self, parent, item, count, length):
-        assert length == 1
-        self.pack_main(parent, item, count, length)
+    def pack_popup_menu(self, parent, item, count, length):        
         item.z = max(pride.objects[item.sdl_window + "->SDL_User_Input"]._coordinate_tracker.keys())
+        w, h = pride.gui.SCREEN_SIZE
+        item.position = (w / 4, h / 4)        
         
         
 class Window_Object(pride.gui.shapes.Bounded_Shape):
@@ -233,7 +233,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "background_color" : (0, 0, 0, 0), #(25, 125, 225, 125),
                 "color" : (15, 165, 25, 255), "text_color" : (15, 165, 25, 255),
                 "held" : False, "allow_text_edit" : False,
-                "_ignore_click" : False, "hidden" : False, "movable" : True, 
+                "_ignore_click" : False, "hidden" : False, "movable" : False, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
                 "sdl_window" : "->Python->SDL_Window",
                 "scroll_bars_enabled" : False, "_scroll_bar_h" : None,

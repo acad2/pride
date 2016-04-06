@@ -421,7 +421,7 @@ class SDL_User_Input(vmlibrary.Process):
       #      if print "Returning early. key: ", event.key.keysym.sym
             return # key was a modifier key
         else:
-            print "Handling keydown: ", key
+      #      print "Handling keydown: ", key
             if key == "\r":
                 key = "\n"
             
@@ -488,12 +488,19 @@ class Renderer(SDL_Component):
         texture = self.sprite_factory.from_text(text, 
                                                 fontmanager=self.font_manager, 
                                                 **kwargs)        
-        _w, _h = texture.size
+        _w, _h = texture.size        
         self.copy(texture, dstrect=(x + 2, y + 2, 
                                     _w - 2, #(_w if _w < w else w) - 2,
-                                    _h))
-    
-   # def rotation(self, degrees, 
+                                    _h))        
+        
+    def get_text_size(self, area, text, **kwargs):
+        x, y, w, h = area
+        kwargs.setdefault("width", w)
+        texture = self.sprite_factory.from_text(text, 
+                                                fontmanager=self.font_manager, 
+                                                **kwargs)        
+        return texture.size        
+        
     def draw_rect_width(self, area, **kwargs):
         width = kwargs.pop("width")
         x, y, w, h = area        

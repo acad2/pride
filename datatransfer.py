@@ -50,7 +50,7 @@ class Data_Transfer_Service(pride.authentication2.Authenticated_Service):
     """ Service for transferring arbitrary data from one registered client to another """        
     mutable_defaults = {"messages" : dict}
     remotely_available_procedures = ("send_to", )
-    verbosity = {"refresh" : 'v', "data_transfer" : 0}
+    verbosity = {"refresh" : 'v', "data_transfer" : 'v'}
     
     def send_to(self, receiver, message):        
         sender = self.session_id[self.current_session[0]]
