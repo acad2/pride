@@ -220,7 +220,12 @@ class Organizer(base.Base):
                      SCREEN_SIZE[0] / 5, min(120, SCREEN_SIZE[1] / length))
         item.z = parent.z + 1
         
-              
+    def pack_popup_menu(self, parent, item, count, length):
+        assert length == 1
+        self.pack_main(parent, item, count, length)
+        item.z = max(pride.objects[item.sdl_window + "->SDL_User_Input"]._coordinate_tracker.keys())
+        
+        
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
@@ -234,13 +239,11 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "scroll_bars_enabled" : False, "_scroll_bar_h" : None,
                 "_scroll_bar_w" : None}    
         
-    flags = {"z_range" : (0, pride.gui.MAX_LAYER),
-             "scale_to_text" : False, "_texture_invalid" : False,
-             "_layer_index" : 0, "_texture_window_x" : 0, "_texture_window_y" : 0,
+    flags = {"scale_to_text" : False, "_texture_invalid" : False,
+             "_texture_window_x" : 0, "_texture_window_y" : 0,
              "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
     
-    mutable_defaults = {"draw_queue" : list, "_draw_operations" : list, "pack_count" : dict,
-                        "_children" : list}
+    mutable_defaults = {"_draw_operations" : list, "pack_count" : dict, "_children" : list}
     verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv", "packed" : "packed"} 
     
     Hotkeys = {}
@@ -250,21 +253,14 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _set_texture_invalid(self, value):
         if not self._texture_invalid and value:
             objects[self.sdl_window].invalidate_object(self)
-            #window.running = True
-            #objects[self.sdl_window].invalidate_layer(self.z)
         self._texture_invalid = value
     texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
     
     def _on_set(self, coordinate, value):
-        if not self.texture_invalid and coordinate in ('x', 'y', 'w', 'h', 'r', 'g', 'b', 'a'):
+        if not self.texture_invalid and coordinate in ('z', 'x', 'y', 'w', 'h', 'r', 'g', 'b', 'a'):
             self.texture_invalid = True           
         super(Window_Object, self)._on_set(coordinate, value)
                                                                  
-    #def _set_z(self, value):
-    #    objects[self.sdl_window].set_layer(self, value)
-    #    super(Window_Object, self)._set_z(value)
-    #z = property(pride.gui.shapes.Bounded_Shape._get_z, _set_z)
-    
     def _get_text(self):
         return self._text
     def _set_text(self, value):

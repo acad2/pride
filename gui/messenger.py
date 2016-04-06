@@ -7,7 +7,28 @@ class Client(pride.datatransfer.Data_Transfer_Client):
     
     pass
             
+              
+class Popup_Menu(pride.gui.gui.Window):
                 
+    defaults = {"pack_mode" : "popup_menu"}
+    
+    
+class Add_Contact_Button(pride.gui.gui.Button):     
+
+    defaults = {"text" : "add contact..."}
+    
+    def left_click(self, mouse):
+        self.parent_application.create(Popup_Menu)
+        self.parent_application.pack()
+        
+         
+class Contacts(pride.gui.gui.Window):
+                
+    def __init__(self, **kwargs):
+        super(Contacts, self).__init__(**kwargs)
+        self.create(Add_Contact_Button)        
+        
+        
 class Messenger(pride.gui.gui.Application):
     
     defaults = {"password_prompt" : "{}: Please enter the password: ", "password" : '',
@@ -15,7 +36,7 @@ class Messenger(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
         super(Messenger, self).__init__(**kwargs)
-        self.application_window.create("pride.gui.gui.Window", pack_mode="left")
+        self.application_window.create(Contacts, pack_mode="left")
         self.application_window.create("pride.gui.widgetlibrary.Dialog_Box", pack_mode="right",
                                        callback=(self.reference, "send_message"))        
         self.client = self.create(Client, username=self.username, 

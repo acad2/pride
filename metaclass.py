@@ -362,13 +362,14 @@ class Metaclass(Documented, Parser_Metaclass, Method_Hook, Defaults,
         new_class = super(Metaclass, cls).__new__(cls, name, bases, attributes)    
         for attribute_name in cls.localized_dictionaries:
             dictionary = getattr(new_class, attribute_name)
-            new_dictionary = {}                        
+            new_dictionary = {}         
+
             for key, value in dictionary.items():
                 try:
-                    new_dictionary[value].append(key)
+                    new_dictionary[(value, type(value))].append(key)
                 except KeyError:
-                    new_dictionary[value] = [key]
-            
+                    new_dictionary[(value, type(value))] = [key]
+
             setattr(new_class, "_localized_" + attribute_name, new_dictionary)
         return new_class
         
