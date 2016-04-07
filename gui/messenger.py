@@ -31,7 +31,7 @@ class Popup_Menu(pride.gui.gui.Window):
                     callback=(self.reference, "handle_input"))
         
     def handle_input(self, text):
-        self.parent_application.contacts.create(Contact_Button, text=text)
+        self.parent_application.contacts.create(Contact_Button, text=text[:-1])
         self.delete()
         self.parent_application.pack()
         
@@ -54,38 +54,42 @@ class Contacts(pride.gui.gui.Window):
         
 class Message_Database(pride.database.Database):
      
-    defaults = {"indexable" : False}
+    defaults = {"indexable" : False, "hash_function" : "SHA256"}
     
-    database_structure = {"Messages" : ("sender TEXT PRIMARY KEY", "data_metadata BLOB"
-                                        "message_number INTEGER AUTO INCREMENT")}                                               
+    database_structure = {"Messages" : ("message_number INTEGER PRIMARY KEY AUTOINCREMENT",
+                                        "sender BLOB", "data_metadata BLOB")}                                               
         
-    def store_message(self, sender, message):
+    def store_message(self, sender, message, timestamp):
         user = pride.objects["->User"]
         if not self.indexable:            
-            assert user.file_system_key, filename
-            assert user.salt, filename
+            assert user.file_system_key, sender
+            assert user.salt, sender
             hasher = pride.security.hash_function(self.hash_function)
-            hasher.update(user.file_system_key + user.salt + filename)
+            hasher.update(user.file_system_key + user.salt + sender)
             sender = hasher.finalize()  
-        self.insert_into("Messages", (sender, user.encrypt(time.asctime() + ' ' + message)))
+        self.insert_into("Messages", (sender, user.encrypt(timestamp + ": " + message)),
+                         columns=("sender", "data_metadata"))
         
-    def retrieve_message(self, sender, message_id): 
+    def retrieve_message(self, sender, message_id=None): 
         user = pride.objects["->User"]
         if not self.indexable:
-            assert user.file_system_key, filename
-            assert user.salt, filename
+            assert user.file_system_key, sender
+            assert user.salt, sender
             hasher = pride.security.hash_function(self.hash_function)
-            hasher.update(user.file_system_key + user.salt + filename)
-            sender = hasher.finalize()             
+            hasher.update(user.file_system_key + user.salt + sender)
+            sender = hasher.finalize()  
+        if message_id is None:
+            message_id = self.get_last_auto_increment_value("Messages")            
         cryptogram = self.query("Messages", where={"sender" : sender, "message_number" : message_id},
                                 retrieve_fields=("data_metadata", ))
-        return user.decrypt(cryptogram)
+        if cryptogram:
+            return user.decrypt(cryptogram)
     
     
 class Messenger(pride.gui.gui.Application):
     
     defaults = {"password_prompt" : "{}: Please enter the password: ", "password" : '',
-                "current_contact" : ''}
+                "current_contact" : '', "display_message_timestamps" : True}
     
     def _get_dialog_box(self):
         return self.application_window.objects["Dialog_Box"][0].objects["Text_Box"][0]
@@ -111,11 +115,23 @@ class Messenger(pride.gui.gui.Application):
         
     def send_message(self, message):
         assert self.current_contact
-        self.client.send_to(self.current_contact, message)
-        self.message_box.text += "\n" + message
+        contact = self.current_contact                
+        now = time.asctime()
+        if self.display_message_timestamps:
+            _message = "|>{}:{}: {}".format(self.username, now, message)
+        else:
+            _message = "|>{}: {}".format(self.username, message)
+        self.message_box.text += _message
+        self.client.send_to(contact, message)
+        self.database.store_message(contact, message, now)                
         
     def receive_message(self, sender, message):        
-        self.alert("{}: {}", (sender, message), level=self.verbosity.get(sender, 0))
-        self.database.store_message(sender, message)
-        self.message_box.text += "{}: {}".format(sender, message)
+        now = time.asctime()
+        if self.display_message_timestamps:
+            _message = "{}: {}: {}".format(sender, now, message)
+        else:
+            _message = "{}: {}".format(sender, message)
+        self.alert(_message, level=self.verbosity.get(sender, 0))        
+        self.database.store_message(sender, message, now)
+        self.message_box.text += _message
         

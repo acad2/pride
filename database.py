@@ -160,14 +160,13 @@ class Database(pride.base.Wrapper):
                     result = result[0]
             return result
             
-    def insert_into(self, table_name, values, batch=False):
+    def insert_into(self, table_name, values, columns=None, batch=False):
         """ Inserts values into the specified table. The values must
             be the correct type and the correct amount. Value types
             and quantity can be introspected via the table_info method."""
         # range is len(values[0]) if batch is True, else range is len(values)
-        query = "INSERT INTO {} VALUES({})".format(table_name,  ", ".join('?' for count in 
-                                                                 range(len(values[0 if batch 
-                                                                                  else slice(len(values))]))))
+        query = "INSERT INTO {}{} VALUES({})".format(table_name, columns or '',
+                                                     ", ".join('?' for count in range(len(values[0 if batch else slice(len(values))]))))
         self.alert("Inserting data into table {}; {}, {}",
                   (table_name, query, values), level=self.verbosity["insert_into"])
         if batch:
@@ -256,8 +255,10 @@ class Database(pride.base.Wrapper):
                    (table_name, ), level=self.verbosity["table_info"])
         return self.cursor.execute("PRAGMA table_info({})".format(table_name))
     
-    def last_auto_increment_value(self, table_name):
-        return self.cursor.execute("SELECT seq FROM sqlite_sequence where name='{}'", (table_name, ))
+    def get_last_auto_increment_value(self, table_name):        
+        value = self.cursor.execute("SELECT seq FROM sqlite_sequence where name='{}'".format(table_name)).fetchone()
+        if value:
+            return value[0]
         
     def __getstate__(self):
         state = super(Database, self).__getstate__()
