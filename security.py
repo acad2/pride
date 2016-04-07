@@ -94,8 +94,8 @@ else:
         else:
             return True
                                 
-    def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES", mode="GCM", 
-                backend=BACKEND, iv_size=16, mac_key='', hash_algorithm="SHA256"):
+    def encrypt(data='', key='', mac_key='', iv=None, extra_data='', algorithm="AES", 
+                mode="GCM", backend=BACKEND, iv_size=16, hash_algorithm="SHA256"):
         """ Encrypts data with the specified key. Returns packed encrypted bytes.
             If an iv is not supplied a random one of iv_size will be generated.
             By default, the GCM mode of operation is used and the iv is 

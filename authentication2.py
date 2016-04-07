@@ -259,7 +259,7 @@ class Authenticated_Service(pride.base.Base):
                 self.peer_ip[new_table_hash] = ip                       
                 login_message = self.on_login()                
                 login_packet = pride.utilities.save_data(new_key, login_message)                                                    
-                encrypted_key = pride.security.encrypt(login_packet, session_key, mac_key=session_key)                                            
+                encrypted_key = pride.security.encrypt(login_packet, session_key, session_key)                                            
             else:                
                 self.alert("Authentication Failure: {} '{}'",
                            (ip, username), 

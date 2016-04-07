@@ -95,8 +95,8 @@ def verify_mac(key, packed_data, algorithm="SHA256", backend=None):
     else:
         return True    
 
-def encrypt(data='', key='', iv=None, extra_data='', algorithm="SHA256",
-            mode=None, backend=None, iv_size=16, mac_key=None, hash_algorithm="sha256"):        
+def encrypt(data='', key='', mac_key=None,iv=None, extra_data='', algorithm="SHA256",
+            mode=None, backend=None, iv_size=16, hash_algorithm="sha256"):        
     iv = iv or random_bytes(iv_size)
     if (not data) or (not key) or (not mac_key):
         raise ValueError("Encryption requires data, encryption key, and mac key")
@@ -219,8 +219,8 @@ def test__encrypt__decrypt():
         assert False
     
 def test_encrypt_decrypt():
-    packet = encrypt(_TEST_MESSAGE, _TEST_KEY, mac_key=_TEST_KEY, extra_data="extra data")
-    decrypted = decrypt(packet, _TEST_KEY, mac_key=_TEST_KEY)
+    packet = encrypt(_TEST_MESSAGE, _TEST_KEY, _TEST_KEY, extra_data="extra data")
+    decrypted = decrypt(packet, _TEST_KEY, _TEST_KEY)
     assert decrypted == (_TEST_MESSAGE, "extra data"), decrypted
         
 if __name__ == "__main__":
