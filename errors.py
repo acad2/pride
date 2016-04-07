@@ -1,5 +1,9 @@
-from pride.security import SecurityError, InvalidPassword, InvalidSignature, InvalidTag
 
+class SecurityError(Exception): pass
+class InvalidPassword(SecurityError): pass
+class InvalidSignature(SecurityError): pass
+class InvalidTag(SecurityError): pass
+    
 class UnauthorizedError(SecurityError): 
     meaning = "An attempt was made to access a resource with improper credentials"
 
