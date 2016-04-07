@@ -6,114 +6,20 @@
 import os
 
 from pride.utilities import save_data, load_data
-
-class SecurityError(Exception): pass
-class InvalidPassword(SecurityError): pass
-
-def random_bytes(count):
-    """ Generates count cryptographically secure random bytes """
-    return os.urandom(count) 
-    
+from pride.errors import SecurityError, InvalidPassword, InvalidTag, InvalidSignature
+        
 AEAD_MODES = ["GCM"]
     
-try:    
+try:                
     import cryptography
 except ImportError:
-    # use an alternative file when the cryptography package is not installed
-    import hashlib
-    
-    import cryptographyless
-    import hkdf
-    
-    class InvalidSignature(SecurityError): pass
-    class InvalidTag(SecurityError): pass
-
-    class Hash_Object(object):
-        
-        def __init__(self, algorithm="md5"):
-            self.hash_object = getattr(hashlib, algorithm.lower())()
-            
-        def __getattr__(self, attribute):
-            try:
-                return getattr(super(Hash_Object, self).__getattribute__("hash_object"), attribute)
-            except AttributeError:
-                if attribute == "finalize":
-                    return super(Hash_Object, self).__getattribute__("finalize")
-                else:
-                    raise
-                    
-        def finalize(self):
-            return self.hash_object.digest()
-            
-        
-    class Key_Derivation_Object(object):
-        
-        def __init__(self, algorithm, length, salt, iterations):
-            self.algorithm = algorithm
-            self.length = length
-            self.salt = salt
-            self.iterations = iterations
-            
-        def derive(self, kdf_input):
-            return hashlib.pbkdf2_hmac(self.algorithm, kdf_input, self.salt, 
-                                       self.iterations, self.length)
-            
-    class HKDFExpand(object):
-        
-        def __init__(self, algorithm="sha256", length=32, info='', backend=None):
-            self.algorithm = algorithm
-            self.length = length
-            self.info = info
-            
-        def derive(self, key_material):
-            return hkdf.expand(key_material, length=self.length, info=self.info, 
-                               hash_function=getattr(hashlib, self.algorithm.lower()))
-                               
-            
-    def hash_function(algorithm_name, backend=None):
-        return Hash_Object(algorithm_name.lower())#getattr(hashlib, algorithm_name.lower())()
-     
-    def hkdf_expand(algorithm="SHA256", length=256, info='', backend=None):
-        """ Returns an hmac based key derivation function (expand only) from
-            cryptography.hazmat.primitives.hkdf. """
-        return HKDFExpand(algorithm, length, info, backend)
-                          
-    def key_derivation_function(salt, algorithm="sha256", length=32, 
-                                iterations=100000, backend=None):
-        return Key_Derivation_Object(algorithm, length, salt, iterations)
-        
-    def generate_mac(key, data, algorithm="SHA256", backend=None):
-        return hmac.HMAC(key, algorithm + "::" + data, hash_function(algorithm)).digest()
-        
-    def apply_mac(key, data, algorithm="SHA256", backend=None):
-        return save_data(generate_mac(key, data, algorithm, backend), data)
-                        
-    def verify_mac(key, packed_data, algorithm="SHA256", backend=None):
-        """ Verifies a message authentication code as obtained by apply_mac.
-            Successful comparison indicates integrity and authenticity of the data. """
-        mac, data = load_data(packed_data)
-        calculated_mac = hmac.HMAC(key, algorithm + "::" + data, hash_function(algorithm)).digest()        
-        try:
-            if not hmac.HMAC.compare_digest(mac, calculated_mac):
-                raise InvalidTag()
-        except InvalidTag: # to be consistent with how it is done when the cryptography package is used
-            return False
-        else:
-            return True    
-
-    def encrypt(data='', key='', iv=None, extra_data='', algorithm="sha512",
-                mode=None, backend=None, iv_size=16, mac_key=None):        
-        iv = iv or random_bytes(iv_size)        
-        return cryptographyless.encrypt(data, key, iv, extra_data)      
-        
-    def decrypt(packed_encrypted_data, key, algorithm="sha512",
-                mode=None, backend=None, mac_key=None):
-        """ Decrypts packed encrypted data as returned by encrypt with the same key. 
-            If extra data is present, returns plaintext, extra_data. If not,
-            returns plaintext. Raises InvalidTag on authentication failure. """
-        return cryptographyless.decrypt(packed_encrypted_data, key)
+    # use an alternative file when the cryptography package is not installed    
+    from cryptographyless import *        
         
 else:
+    import hashlib
+    import cryptographyless
+    
     del cryptography    
     from cryptography.exceptions import InvalidTag, InvalidSignature
     from cryptography.hazmat.primitives.hmac import HMAC
@@ -123,6 +29,10 @@ else:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.backends import openssl
     BACKEND = openssl.backend      
+        
+    def random_bytes(count):
+        """ Generates count cryptographically secure random bytes """
+        return os.urandom(count)         
         
     def hash_function(algorithm_name, backend=BACKEND):
         """ Returns a Hash object of type algorithm_name from 
@@ -203,6 +113,10 @@ else:
             using two different fields for what are functionally the same would
             increase complexity needlessly. """
         assert data and key
+        if algorithm.lower() in hashlib.algorithms_guaranteed:
+            return cryptographyless.encrypt(data, key, iv, extra_data, algorithm, mode,
+                                            backend, iv_size, mac_key, hash_algorithm)
+                                            
         header = algorithm + '_' + mode 
         if mode not in AEAD_MODES:
             if not mac_key:
@@ -232,7 +146,10 @@ else:
             If extra data is present, returns plaintext, extra_data. If not,
             returns plaintext. Raises InvalidTag on authentication failure. """
         header, ciphertext, iv, tag, extra_data = load_data(packed_encrypted_data)        
-        algorithm, mode, authentication_algorithm = header.split('_', 2)        
+        algorithm, mode, authentication_algorithm = header.split('_', 2)   
+        if algorithm.lower() in hashlib.algorithms_guaranteed:
+            return cryptographyless.decrypt(packed_encrypted_data, key, mac_key, backend)
+            
         mode_args = (iv, tag) if mode in AEAD_MODES else (iv, )
         decryptor = Cipher(getattr(algorithms, algorithm)(key), 
                            getattr(modes, mode)(*mode_args), 

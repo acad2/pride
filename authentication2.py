@@ -259,7 +259,7 @@ class Authenticated_Service(pride.base.Base):
                 self.peer_ip[new_table_hash] = ip                       
                 login_message = self.on_login()                
                 login_packet = pride.utilities.save_data(new_key, login_message)                                                    
-                encrypted_key = pride.security.encrypt(login_packet, session_key)                                            
+                encrypted_key = pride.security.encrypt(login_packet, session_key, mac_key=session_key)                                            
             else:                
                 self.alert("Authentication Failure: {} '{}'",
                            (ip, username), 
@@ -422,7 +422,9 @@ class Authenticated_Client(pride.base.Base):
         
         if pride.shell.get_permission("{}: Insert username into site_config?: ".format(self.reference)):
             with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
-                _file.write("\npride_user_User_defaults = {" + "'username' : '{}'".format(self.username) + "}\n")
+                module = self.__module__.replace('.', '_')
+                line = "\n" + '_'.join(module, self.__class__.__name__, "defaults") + " = {"
+                _file.write(line + "'username' : '{}'".format(self.username) + "}\n")
                 _file.flush()
                 
         if self.auto_login:
@@ -489,7 +491,7 @@ class Authenticated_Client(pride.base.Base):
             auth_table = _file.read(self.authentication_table_size)
             shared_key = _file.read(self.shared_key_size)
             try:
-                packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key)
+                packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key, shared_key)
             except ValueError:
                 self.alert("Login attempt failed", level=self.verbosity["login_failed"])
             else:
