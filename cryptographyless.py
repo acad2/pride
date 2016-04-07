@@ -6,36 +6,15 @@ import hashlib
 import hmac
 import os
 
+from pride.utilities import save_data, load_data
 __all__ = ("InvalidTag", "psuedorandom_bytes", "encrypt", "decrypt")
 
 TEST_KEY = "\x00" * 16
 TEST_MESSAGE = "This is a sweet test message :)"
 
 class InvalidTag(Exception): pass
-
-def save_data(*args): # copied from pride.utilities
-    sizes = []
-    arg_strings = []
-    types = []
-    for arg in args:
-        arg_string = str(arg)
-        arg_strings.append(arg_string)
-        sizes.append(str(len(arg_string)))
-        types.append(_TYPE_SYMBOL[type(arg)])
-    return ''.join(types) + ' ' + ' '.join(sizes + [arg_strings[0]]) + ''.join(arg_strings[1:])
     
-def load_data(packed_bytes): # copied from pride.utilities
-    types, packed_bytes = packed_bytes.split(' ', 1)    
-    size_count = len(types)    
-    sizes = packed_bytes.split(' ', size_count)    
-    packed_bytes = sizes.pop(-1)
-    data = []
-    for index, size in enumerate((int(size) for size in sizes)):
-        data.append(_TYPE_RESOLVER[types[index]](packed_bytes[:size]))
-        packed_bytes = packed_bytes[size:]                  
-    return data 
-    
-def _hmac_rng(key, seed, hash_function="sha512"):
+def _hmac_rng(key, seed, hash_function="SHA256"):
     """ Generates psuedorandom bytes via HMAC. Implementation could be improved to
         a compliant scheme like HMAC-DRBG. """
     hasher = hmac.HMAC(key, seed, getattr(hashlib, hash_function))
@@ -43,9 +22,9 @@ def _hmac_rng(key, seed, hash_function="sha512"):
         yield hasher.digest()
         hasher.update(key + seed + counter)
     
-def psuedorandom_bytes(key, seed, count, hash_function="sha512"): 
+def psuedorandom_bytes(key, seed, count, hash_function="SHA256"): 
     """ usage: psuedorandom_bytes(key, seed, count, 
-                           hash_function="sha512") => psuedorandom bytes
+                           hash_function="SHA256") => psuedorandom bytes
                 
         Generates count cryptographically secure psuedorandom bytes. 
         Bytes are produced deterministically based on key and seed, using 
@@ -58,7 +37,7 @@ def psuedorandom_bytes(key, seed, count, hash_function="sha512"):
         output += next(generator)
     return output[:count]       
             
-def _hash_stream_cipher(data, key, nonce, hash_function="sha512"):    
+def _hash_stream_cipher(data, key, nonce, hash_function="SHA256"):    
     """ Generates key material and XORs with data. Provides confidentiality,
         but not authenticity or integrity. As such, this should seldom be used alone. """    
     output = bytearray(data)
@@ -66,9 +45,9 @@ def _hash_stream_cipher(data, key, nonce, hash_function="sha512"):
         output[index] ^= key_byte
     return bytes(output)    
         
-def encrypt(data, key, nonce='', extra_data='', hash_function="sha512", nonce_size=32):
+def encrypt(data, key, nonce='', extra_data='', hash_function="SHA256", nonce_size=32):
     """ usage: encrypt(data, key, extra_data='', nonce='', 
-                hash_function="sha512", nonce_size=32) => encrypted_packet
+                hash_function="SHA256", nonce_size=32) => encrypted_packet
     
         Encrypts data using key. 
         Returns a packet of encrypted data, nonce, mac_tag, extra_data
@@ -80,12 +59,13 @@ def encrypt(data, key, nonce='', extra_data='', hash_function="sha512", nonce_si
         nonce is randomly generated when not supplied (recommended)
         nonce_size defaults to 32; decreasing below 16 may destroy security"""    
     nonce = nonce or os.urandom(nonce_size)
+    hash_function = hash_function.lower()
     encrypted_data = _hash_stream_cipher(data, key, nonce, hash_function)
-    header = hash_function + '_' + hash_function
+    header = hash_function + '_' + hash_function + "_" + hash_function
     mac_tag = hmac.HMAC(key, header + extra_data + nonce + encrypted_data, getattr(hashlib, hash_function)).digest()
     return save_data(header, encrypted_data, nonce, mac_tag, extra_data)
         
-def decrypt(data, key, hash_function="sha512"):
+def decrypt(data, key, hash_function="SHA256"):
     """ usage: decrypt(data, key, 
                 hash_function) => (plaintext, extra_data)
                                    or
@@ -95,7 +75,7 @@ def decrypt(data, key, hash_function="sha512"):
         Otherwise, just returns plaintext data. 
         Authenticity and integrity of the plaintext/extra data is guaranteed. """
     header, encrypted_data, nonce, mac_tag, extra_data = load_data(data)
-    hash_function, _ = header.split('_', 1)
+    hash_function, _, hash_function = header.split('_', 2)
     try:
         hasher = getattr(hashlib, hash_function)
     except AttributeError:
@@ -128,11 +108,12 @@ def test_hmac_rng():
 def test_encrypt_decrypt():        
     packet = encrypt(TEST_MESSAGE, TEST_KEY, extra_data="extra_data")
     #print "Encrypted packet: \n\n\n", packet
-    assert decrypt(packet, TEST_KEY) == ("extra_data", TEST_MESSAGE)
+    decrypted = decrypt(packet, TEST_KEY)
+    assert decrypted == (TEST_MESSAGE, "extra_data"), decrypted
     
-    encrypted_data, nonce, mac_tag, extra_data = load_data(packet)
+    header, encrypted_data, nonce, mac_tag, extra_data = load_data(packet)
     extra_data = "Changed"
-    packet = save_data(encrypted_data, nonce, mac_tag, extra_data)
+    packet = save_data(header, encrypted_data, nonce, mac_tag, extra_data)
     try:
         decrypt(packet, TEST_KEY)
     except InvalidTag:

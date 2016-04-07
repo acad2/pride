@@ -16,7 +16,7 @@ def random_bytes(count):
     
 AEAD_MODES = ["GCM"]
     
-try:
+try:    
     import cryptography
 except ImportError:
     # use an alternative file when the cryptography package is not installed
