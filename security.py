@@ -14,6 +14,8 @@ def random_bytes(count):
     """ Generates count cryptographically secure random bytes """
     return os.urandom(count) 
     
+AEAD_MODES = ["GCM"]
+    
 try:
     import cryptography
 except ImportError:
@@ -81,7 +83,7 @@ except ImportError:
         return Key_Derivation_Object(algorithm, length, salt, iterations)
         
     def generate_mac(key, data, algorithm="SHA256", backend=None):
-        return hmac.HMAC(key, data, hash_function(algorithm)).digest()
+        return hmac.HMAC(key, algorithm + "::" + data, hash_function(algorithm)).digest()
         
     def apply_mac(key, data, algorithm="SHA256", backend=None):
         return save_data(generate_mac(key, data, algorithm, backend), data)
@@ -90,7 +92,7 @@ except ImportError:
         """ Verifies a message authentication code as obtained by apply_mac.
             Successful comparison indicates integrity and authenticity of the data. """
         mac, data = load_data(packed_data)
-        calculated_mac = hmac.HMAC(key, data, hash_function(algorithm)).digest()        
+        calculated_mac = hmac.HMAC(key, algorithm + "::" + data, hash_function(algorithm)).digest()        
         try:
             if not hmac.HMAC.compare_digest(mac, calculated_mac):
                 raise InvalidTag()
@@ -166,7 +168,7 @@ else:
             
             The mac is generated via HMAC with the specified algorithm and key. """
         hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
-        hasher.update(data)
+        hasher.update(algorithm + '::' + data)
         return hasher.finalize()
                         
     def verify_mac(key, packed_data, algorithm="SHA256", backend=BACKEND):
@@ -174,7 +176,7 @@ else:
             Successful comparison indicates integrity and authenticity of the data. """        
         mac, data = load_data(packed_data)
         hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
-        hasher.update(data)
+        hasher.update(algorithm + '::' + data)
         try:
             hasher.verify(mac)
         except InvalidSignature:
@@ -182,8 +184,8 @@ else:
         else:
             return True
                                 
-    def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES",
-                mode="GCM", backend=BACKEND, iv_size=16, mac_key=''):
+    def encrypt(data='', key='', iv=None, extra_data='', algorithm="AES", mode="GCM", 
+                backend=BACKEND, iv_size=16, mac_key='', hash_algorithm="SHA256"):
         """ Encrypts data with the specified key. Returns packed encrypted bytes.
             If an iv is not supplied a random one of iv_size will be generated.
             By default, the GCM mode of operation is used and the iv is 
@@ -201,22 +203,28 @@ else:
             using two different fields for what are functionally the same would
             increase complexity needlessly. """
         assert data and key
-        header = algorithm + '_' + mode   
-        if mode != "GCM" and not mac_key:
-            raise ValueError("Unable to authenticate data because no mac key was supplied for {} mode".format(header))        
+        header = algorithm + '_' + mode 
+        if mode not in AEAD_MODES:
+            if not mac_key:
+                raise ValueError("Unable to authenticate data because no mac key was supplied for {} mode".format(header))        
+            else:
+                header += "_" + hash_algorithm
+        else:
+            header += "_" + "AEAD"
+            
         if not iv and iv != 0: # 0 is a valid nonce for CTR mode.
             iv = random_bytes(iv_size)
         encryptor = Cipher(getattr(algorithms, algorithm)(key), 
                            getattr(modes, mode)(iv), 
                            backend=BACKEND).encryptor()
-        if mode == "GCM":        
+        if mode in AEAD_MODES:       
             encryptor.authenticate_additional_data(extra_data)            
         ciphertext = encryptor.update(data) + encryptor.finalize()          
                      
-        if mode == "GCM":
+        if mode in AEAD_MODES:
             mac_tag = encryptor.tag
         else:
-            mac_tag = generate_mac(mac_key, header + ciphertext + iv + extra_data)        
+            mac_tag = generate_mac(mac_key, header + ciphertext + iv + extra_data, hash_algorithm)        
         return save_data(header, ciphertext, iv, mac_tag, extra_data)
         
     def decrypt(packed_encrypted_data, key, mac_key='', backend=BACKEND):
@@ -224,15 +232,18 @@ else:
             If extra data is present, returns plaintext, extra_data. If not,
             returns plaintext. Raises InvalidTag on authentication failure. """
         header, ciphertext, iv, tag, extra_data = load_data(packed_encrypted_data)        
-        algorithm, mode = header.split('_', 1)        
-        mode_args = (iv, tag) if mode == "GCM" else (iv, )
+        algorithm, mode, authentication_algorithm = header.split('_', 2)        
+        mode_args = (iv, tag) if mode in AEAD_MODES else (iv, )
         decryptor = Cipher(getattr(algorithms, algorithm)(key), 
                            getattr(modes, mode)(*mode_args), 
                            backend=BACKEND).decryptor()
-        if mode == "GCM":
+        if mode in AEAD_MODES:
             decryptor.authenticate_additional_data(extra_data)
-        elif not verify_mac(mac_key, save_data(tag, header + ciphertext + iv + extra_data)):
-            raise InvalidTag("Failed to authenticate data")
+        else:
+            if not mac_key:
+                raise ValueError("mac_key not supplied for {} mode".format(header))
+            if not verify_mac(mac_key, save_data(tag, header + ciphertext + iv + extra_data), authentication_algorithm):
+                raise InvalidTag("Failed to authenticate data")
             
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()
         if extra_data:

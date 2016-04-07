@@ -15,7 +15,7 @@ class User(pride.base.Base):
         including encryption and decryption. The user object is responsible
         for deriving and holding keys required for such manipulation. """
     defaults = {# security configuration options    
-                # these may need to update with time
+                # these may need to update with time. If so the site_config file can be used instead of changing this dictionary.
                 "hash_function" : "SHA256", "kdf_iteration_count" : 100000, 
                 "salt_size" : 16, "key_length" : 32, "iv_size" : 12,
                 
@@ -164,7 +164,7 @@ class User(pride.base.Base):
     def decrypt(self, packed_encrypted_data):
         """ Decrypts packed encrypted data as returned by encrypt. The Users 
             encryption key is used to decrypt the data. """
-        return pride.security.decrypt(packed_encrypted_data, self.encryption_key)
+        return pride.security.decrypt(packed_encrypted_data, self.encryption_key, mac_key=self.mac_key)
     
     def authenticate(self, data):
         """ Authenticates and provides integrity to a piece of data. 

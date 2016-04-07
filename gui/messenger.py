@@ -78,10 +78,12 @@ class Message_Database(pride.database.Database):
             hasher = pride.security.hash_function(self.hash_function)
             hasher.update(user.file_system_key + user.salt + sender)
             sender = hasher.finalize()  
-        if message_id is None:
-            message_id = self.get_last_auto_increment_value("Messages")            
-        cryptogram = self.query("Messages", where={"sender" : sender, "message_number" : message_id},
-                                retrieve_fields=("data_metadata", ))
+        
+        if message_id == -1:
+            message_id = self.get_last_auto_increment_value("Messages")   
+        if message_id is not None:
+            where["message_id"] = message_id
+        cryptogram = self.query("Messages", where=where, retrieve_fields=("data_metadata", ))
         if cryptogram:
             return user.decrypt(cryptogram)
     
@@ -111,7 +113,7 @@ class Messenger(pride.gui.gui.Application):
                                        
     def set_current_contact(self, contact):
         self.current_contact = contact
-        #self.message_box.text = self.database.retrieve_message(
+        self.message_box.text = self.database.retrieve_message(contact)
         
     def send_message(self, message):
         assert self.current_contact
