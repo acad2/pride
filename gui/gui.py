@@ -532,7 +532,13 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.texture_invalid = True
         super(Window_Object, self).delete()                
                 
+    def deselect(self, mouse, next_active_object):
+        pass
         
+    def select(self, mouse):
+        pass
+
+    
 class Window(Window_Object):
 
     defaults = {"pack_mode" : "main", "size" : pride.gui.SCREEN_SIZE}

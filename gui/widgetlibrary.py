@@ -283,3 +283,22 @@ class Dialog_Box(gui.Container):
         reference, method = self.callback
         getattr(pride.objects[reference], method)(user_input)       
         
+        
+class Palette_Button(pride.gui.gui.Button):
+    
+    defaults = {"button_type" : ''}
+    required_attributes = ("button_type", )
+    
+    def deselected(self, mouse, next_active_item):
+        pride.objects[next_active_item].create(self.button_type)
+        
+        
+class Palette(pride.gui.gui.Window):
+    
+    defaults = {"button_types" : tuple()}
+    
+    def __init__(self, **kwargs):
+        super(Palette, self).__init__(**kwargs)
+        for button_type in self.button_types:
+            self.create(Palette_Button, button_type=button_type, pack_mode="top")
+        
