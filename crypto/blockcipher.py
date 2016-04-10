@@ -15,22 +15,27 @@ def generate_s_box(function):
 S_BOX = generate_s_box(lambda number: ((251 * pow(251, number, 257)) + 1) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
-def generate_round_key(data):       
+def generate_round_key(key, constants):       
     """ Invertible round key generation function. Using an invertible key 
-        schedule offers a potential advantage to embedded devices. """    
-    return bytearray(S_BOX[byte ^ S_BOX[index]] for index, byte in enumerate(data))        
-        
+        schedule offers a potential advantage to embedded devices. """           
+    state = xor_sum(key)
+    for index in constants:                
+        state ^= key[index]
+        key[index] ^= state ^ S_BOX[index]
+        state ^= key[index]           
+    
 def extract_round_key(key): 
     """ Non invertible round key extraction function. """
     xor_sum_of_key = xor_sum(key)    
     for index, key_byte in enumerate(key):        
-        key[index] = S_BOX[S_BOX[index] ^ xor_sum_of_key]               
-
-def shuffle_constants(data, key, mask):
-    for place in range(len(data)):
-        random_place = (key[place] & mask) | place
-        data[place], data[random_place] = data[random_place], data[place]
-            
+        key[index] = S_BOX[S_BOX[key_byte] ^ S_BOX[index] ^ xor_sum_of_key]               
+      
+def shuffle(data, key): 
+    n = len(data)
+    for i in reversed(range(1, n)):
+        j = key[i] & (i - 1)
+        data[i], data[j] = data[j], data[i]
+        
 def substitute_bytes(data, key, indices, counter, mask): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
@@ -75,7 +80,7 @@ def substitute_bytes(data, key, indices, counter, mask):
         entropy_modifier = key[place] ^ present_modifier
         
         state ^= present_modifier             
-                               
+                                                  
         state ^= data[place]         
         ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]] # goal is forward secrecy in event of sbox input becoming known
         data[place] ^= S_BOX[state ^ ephemeral_byte]
@@ -105,53 +110,96 @@ def generate_default_constants(block_size):
         
 def encrypt_block(plaintext, key, rounds=1, tweak=None): 
     blocksize = len(plaintext)
-    tweak = tweak or generate_default_constants(blocksize)
-    _crypt_block(plaintext, key, tweak, bytearray(range(rounds)), range(blocksize))    
+    tweak = tweak or generate_default_constants(blocksize)    
+    online_keyschedule(plaintext, key[:], tweak, bytearray(range(rounds)), range(blocksize))    
        
 def decrypt_block(ciphertext, key, rounds=1, tweak=None): 
     blocksize = len(ciphertext)
     constants = tweak or generate_default_constants(blocksize)
-    _crypt_block(ciphertext, key, constants, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+    upfront_keyschedule(ciphertext, key[:], constants, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+           
+def generate_round_keys(key, rounds, tweak):
+    round_keys = []    
+    for round_number in rounds:
+        generate_round_key(key, tweak)
+        round_keys.append(key[:])        
+    return round_keys          
+            
+def online_keyschedule(data, key, constants, rounds, counter):                      
+    mask = (1 << POWER_OF_TWO[len(data)]) - 1 # byte & mask constrains byte to appropriate range    
+    for round_number in rounds:        
+        generate_round_key(key, constants)
+        _crypt_block(key, constants, data, counter, mask)                
+                
+def upfront_keyschedule(data, key, constants, rounds, counter):
+    round_keys = generate_round_keys(key, rounds, constants)        
+    mask = (1 << POWER_OF_TWO[len(data)]) - 1
+    for round_key_index in rounds:        
+        round_key = round_keys[round_key_index]
+        _crypt_block(round_key, constants, data, counter, mask)  
         
-def _crypt_block(data, key, constants, rounds, counter):      
-    round_keys = []
-    for round in rounds:        
-        key = generate_round_key(key)
-        round_keys.append(key)        
+def _crypt_block(key, constants, data, counter, mask):        
+    round_key = key[:]
+    extract_round_key(round_key)                        
     
-    mask = (1 << POWER_OF_TWO[len(data)]) - 1 # byte & mask constrains byte to appropriate range
-    for round_key_index in rounds:
-        round_key = round_keys[round_key_index]        
-        extract_round_key(round_key)                        
+    round_constants = constants[:]        
+    shuffle(round_constants, round_key)
+    
+    extract_round_key(round_key)
+    substitute_bytes(data, round_key, round_constants, counter, mask)
         
-        round_constants = constants[:]
-        shuffle_constants(round_constants, round_key, mask)
-        
-        extract_round_key(round_key)
-        substitute_bytes(data, round_key, round_constants, counter, mask)
-                        
+def decrypt_block_embedded_decryption_key(ciphertext, final_round_key, rounds=1, tweak=None):
+    blocksize = len(ciphertext)
+    constants = tweak or generate_default_constants(blocksize)    
+    online_keyschedule_embedded_decryption_key(ciphertext, final_round_key[:], constants, 
+                                               bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+                                               
+def online_keyschedule_embedded_decryption_key(data, key, constants, rounds, counter):    
+    reverse_constants = bytearray(reversed(constants))
+    mask = (1 << POWER_OF_TWO[len(data)]) - 1
+    for round_number in rounds:          
+        _crypt_block(key, constants, data, counter, mask)
+        generate_round_key(key, reverse_constants)
+
+def generate_embedded_decryption_key(key, rounds, tweak):
+    return generate_round_keys(key[:], rounds, tweak)[-1]    
+    
 class Test_Cipher(pride.crypto.Cipher):
     
     def __init__(self, key, mode, rounds=1, tweak=None):        
         self.key = key
-       # from os import urandom; self.key = urandom(len(key));        
+     #   from os import urandom; self.key = urandom(len(key));        
         self.mode = mode
         self.rounds = rounds        
-        self.tweak = tweak 
-            
+        self.tweak = tweak #or generate_default_constants(len(key))
+    #    import os
+    #    shuffle(self.tweak, bytearray(os.urandom(len(key))))
+        
     def encrypt_block(self, plaintext, key):
-        return encrypt_block(plaintext, key, self.rounds, self.tweak)
+        return encrypt_block(plaintext, self.key, self.rounds, self.tweak)
         
     def decrypt_block(self, ciphertext, key):
-        return decrypt_block(ciphertext, key, self.rounds, self.tweak)
+        return decrypt_block(ciphertext, self.key, self.rounds, self.tweak)
             
+            
+class Test_Embedded_Decryption_Cipher(Test_Cipher):
+                
+    def __init__(self, *args):
+        super(Test_Embedded_Decryption_Cipher, self).__init__(*args)
+        self.decryption_key = generate_embedded_decryption_key(self.key, range(self.rounds), self.tweak)
+        
+    def decrypt_block(self, ciphertext, key):
+        return decrypt_block_embedded_decryption_key(ciphertext, self.decryption_key, self.rounds, self.tweak)
+        
+        
 def test_Cipher():
     import random
     data = "\x00" * 7 #"Mac Code" + "\x00" * 7
     iv = key = ("\x00" * 7) + "\00"
     tweak = generate_default_constants(len(key))
    # random.shuffle(tweak)
-    cipher = Test_Cipher(key, "cbc", 1, tweak)
+    cipher = Test_Cipher(key, "cbc", 2, tweak)
+    cipher2 = Test_Embedded_Decryption_Cipher(key, "cbc", 2, tweak)
     size = 2
     for count in range(5):
         plaintext = data + chr(count)
@@ -165,12 +213,15 @@ def test_Cipher():
     #            invalid_plaintext = cipher.decrypt(attacked_ciphertext, iv) 
     #            if invalid_plaintext[:8] == "Mac Code" and modification != correct_bytes:
     #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
-
+      
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
-        print real_ciphertext
-        print                   
+     #   print real_ciphertext
+     #   print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
+        ciphertext2 = cipher2.encrypt(plaintext, iv)
+        plaintext2 = cipher2.decrypt(ciphertext2, iv)
+        assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():
     from metrics import test_block_cipher
@@ -221,10 +272,35 @@ def test_linear_cryptanalysis():
      
     _test_encrypt()
     
+def test_generate_round_key():
+    import os
+    key = bytearray(S_BOX[byte] for byte in bytearray(os.urandom(256)))#range(256))    
+    key_material = bytearray()
+    constants = bytearray(os.urandom(256))
+    for chunk in range(4096):
+        generate_round_key(key, constants)
+        key_material.extend(key[:])
+       # print key
+    from pride.crypto.metrics import test_randomness
+    test_randomness(bytes(key_material))
+    
+def test_extract_round_key():
+    key = bytearray(S_BOX[byte] for byte in range(256))
+    key_material = bytearray()
+    for chunk in range(4096):
+        extract_round_key(key)
+       # print key
+        key_material.extend(key[:])
+                
+    from pride.crypto.metrics import test_randomness
+    test_randomness(bytes(key_material))       
+            
 if __name__ == "__main__":
-    test_Cipher()
+    #test_generate_round_key()
+    test_extract_round_key()
+    #test_Cipher()
     #test_cipher_performance()
     #test_linear_cryptanalysis()
-    test_cipher_metrics()
+    #test_cipher_metrics()
     #test_random_metrics()
     #test_aes_metrics()
