@@ -21,7 +21,7 @@ def generate_round_key(key, constants):
     state = xor_sum(key)
     for index in constants:                
         state ^= key[index]
-        key[index] ^= S_BOX[state ^ S_BOX[index]]
+        key[index] ^= state ^ S_BOX[index]
         state ^= key[index]           
     
 def extract_round_key(key): 
