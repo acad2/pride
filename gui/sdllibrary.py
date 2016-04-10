@@ -369,7 +369,21 @@ class SDL_User_Input(vmlibrary.Process):
             if active_item:
                 break
                 
+        old_active_item = self.active_item
+        if old_active_item:
+            try:
+                pride.objects[old_active_item].deselect(mouse, active_item)
+            except KeyError:
+                if old_active_item in pride.objects:
+                    raise
+                    
         self.active_item = active_item
+        try:
+            pride.objects[active_item].select(mouse)        
+        except KeyError:
+            if active_item in pride.objects:
+                raise              
+        
         if active_item:
             if self._ignore_click:
                 self._ignore_click = False

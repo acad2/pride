@@ -34,11 +34,11 @@ def delete(reference):
 import pride.gui
 window = pride.gui.enable()
 
-#graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Audio_Visualizer")
+graph = objects["->Python->SDL_Window"].create("pride.gui.graph.Graph")
 #explorer = objects["->Python->SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
 #chess = objects["->Python->SDL_Window"].create("pride.gui.chess.Chess")
 #cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")
-messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
+#messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
 """}
 
 pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}
