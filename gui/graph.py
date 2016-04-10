@@ -52,17 +52,33 @@ class Graph(pride.gui.gui.Application):
                  
         self_x, self_y, self_w, self_h = self.area          
         point_count = len(points)
-        if point_count > self_w:        
-            x_spacing, extra = divmod(len(points), self_w)
-            x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
-        else:
-            x_spacing, extra = divmod(self_w, len(points))
-            x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
+        x_spacing = float(self_w) / (point_count or 1)
+        
+        max_point = max(points)
+        self.y_axis_range = (self.y_axis_range[0], max_point)      
+        y_spacing = float(self_h) / (max_point or 1)
+        #if point_count > self_w:       
+        #    x_spacing = float(self_w) / (point_count or 1)
+        #    #x_spacing, extra = divmod(len(points), self_w)
+        #    #x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
+        #else:
+        #    x_spacing = float(
+        #    x_spacing, extra = divmod(self_w, len(points))
+        #    x_spacing = x_spacing + 1 if extra else (x_spacing or 1)
+        
+
+      #      
+      #  if max_point < self_h:
+      #      y_spacing, extra = divmod(max_point, self_h)
+      #      y_spacing = y_spacing + 1 if extra else (y_spacing or 1)
+      #  else:
+      #      y_spacing = float(self_h) / (max_point or 1)
             
         last_point = (self_x, self_y + self_h)
         color = self.color
         for x_coord, y_coord in enumerate(point for point in points if point):            
-            point = (self_x + (x_coord * x_spacing), self_h - y_coord)
+            point = (self_x + int(x_coord * x_spacing), (self_y + self_h) - int(y_coord * y_spacing)) 
+            print point
             coordinates.extend(point)
             lines.extend(last_point + point)
             last_point = point
