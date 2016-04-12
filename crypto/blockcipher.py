@@ -17,12 +17,12 @@ POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
 def generate_round_key(key, constants):       
     """ Invertible round key generation function. Using an invertible key 
-        schedule offers a potential advantage to embedded devices. """           
-    state = xor_sum(key)
-    size = len(key)
+        schedule offers a potential advantage to embedded devices. """ 
+    size = len(key)        
+    state = xor_sum(key)    
     for index in constants:                
-        state ^= key[index]        
-        key[index] ^= S_BOX[S_BOX[index] ^ state] 
+        state ^= key[index]            
+        key[index] ^= S_BOX[S_BOX[index] ^ state]
         state ^= key[index]           
     
 def extract_round_key(key): 
@@ -178,18 +178,19 @@ class Test_Cipher(pride.crypto.Cipher):
             self.mac_key = None
         self.rounds = rounds        
         self.tweak = tweak
+        self.iv = None
         
     def encrypt_block(self, plaintext, key):
         return encrypt_block(plaintext, self.key, self.rounds, self.tweak)
         
-    def decrypt_block(self, ciphertext, key):
+    def decrypt_block(self, ciphertext, key):        
         return decrypt_block(ciphertext, self.key, self.rounds, self.tweak)
             
-    def encrypt(self, data, iv, tag=None):
+    def encrypt(self, data, iv=None, tag=None):
         assert tag is None
         return super(Test_Cipher, self).encrypt(data, iv, self.mac_key)
         
-    def decrypt(self, data, iv, tag=None):
+    def decrypt(self, data, iv=None, tag=None):
         assert tag is None        
         mode = self.mode
         return super(Test_Cipher, self).decrypt(data[8:] if mode == "ella" else data, iv, data[:8] if mode == "ella" else None)
@@ -238,7 +239,7 @@ def test_Cipher():
         
 def test_cipher_metrics():
     from metrics import test_block_cipher
-    test_block_cipher(Test_Cipher, avalanche_test=False)          
+    test_block_cipher(Test_Cipher, avalanche_test=True)          
     
 def test_cipher_performance():
     from metrics import test_prng_performance
@@ -289,7 +290,8 @@ def test_generate_round_key():
     import os
     key = bytearray(S_BOX[byte] for byte in bytearray(os.urandom(256)))#range(256))    
     key_material = bytearray()
-    constants = bytearray(os.urandom(256))
+    constants = generate_default_constants(256)
+    shuffle(constants, bytearray(os.urandom(256)))
     for chunk in range(4096):
         generate_round_key(key, constants)
         key_material.extend(key[:])
@@ -297,12 +299,11 @@ def test_generate_round_key():
     from pride.crypto.metrics import test_randomness, test_avalanche
     test_randomness(bytes(key_material))
         
+    constants = generate_default_constants(16)
+    shuffle(constants, bytearray(os.urandom(16)))
     def _test_interface(data):
-        data = bytearray(data)
-        generate_round_key(data, range(len(data)))
-        print
-        print data
-        print
+        data = bytearray(data)             
+        generate_round_key(data, constants)        
         return bytes(data)        
     test_avalanche(_test_interface)
     
@@ -324,7 +325,7 @@ def test_extract_round_key():
     test_avalanche(_test_interface)
     
 if __name__ == "__main__":
-   # test_generate_round_key()
+    #test_generate_round_key()
     #test_extract_round_key()
     test_Cipher()
     #test_cipher_performance()

@@ -31,6 +31,9 @@ def ella_mode(block, iv, key, cipher, tag):
     replacement_subroutine(block, datablock[8:])
     return datablock[:8]
     
+def ecb_mode(block, iv, key, cipher, tag=None):
+    cipher(block, key)
+    
 def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):    
     output = bytearray()    
     for block in slide(data, blocksize):      
@@ -39,8 +42,8 @@ def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):
     replacement_subroutine(data, output)                       
     return tag
     
-ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode}
-DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode}
+ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
+DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
     
 def encrypt(data, cipher, iv, tag=None):
     data = bytearray(data)
@@ -48,7 +51,7 @@ def encrypt(data, cipher, iv, tag=None):
     blocksize = cipher.blocksize
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
-    tag = crypt(data, bytearray(cipher.key), bytearray(iv), cipher.encrypt_block, 
+    tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), cipher.encrypt_block, 
                 ENCRYPTION_MODES[cipher.mode], blocksize, tag)
     if tag is not None:
         return tag + bytes(data)
@@ -59,15 +62,15 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
     mode = cipher.mode
     if mode != "ella":
         assert not tag, (mode, data, cipher, iv, tag)
-    if mode in ("cbc", "ella"):
+    if mode in ("cbc", "ella", "ecb"):
         crypt_block = cipher.decrypt_block
         if mode == "ella":                    
             data = ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
     else:
         crypt_block = cipher.encrypt_block  
     
-    data = bytearray(data)
-    tag = crypt(data, bytearray(cipher.key), bytearray(iv), crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
+    data = bytearray(data)        
+    tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
     if mode == "ella":
         if tag != cipher.mac_key:
             raise InvalidTag()
@@ -82,6 +85,12 @@ class Cipher(object):
     def _set_key(self, value):
         self._key = bytearray(value)
     key = property(_get_key, _set_key)
+    
+    MODE_ECB = "ecb"
+    MODE_CBC = "cbc"
+    MODE_OFB = "ofb"
+    MODE_CTR = "ctr"
+    MODE_ELLA = "ella"
     
     def __init__(self, key, mode):
         self.key = key
@@ -106,34 +115,49 @@ class Cipher(object):
     def substitution_round(self, data, key):
         raise NotImplementedError()
 
-    def encrypt(self, data, iv, tag=None):           
+    def encrypt(self, data, iv=None, tag=None): 
+        if self.iv:
+            assert iv is None
+            iv = self.iv           
         return encrypt(data, self, iv, tag)
                 
-    def decrypt(self, data, iv, tag=None):        
+    def decrypt(self, data, iv=None, tag=None): 
+        if self.iv:
+            assert iv is None
+            iv = self.iv      
         return decrypt(data, self, iv, tag)    
                 
+    @classmethod
+    def new(cls, key, mode, iv=None):
+        cipher = cls(key, mode)
+        cipher.iv = iv
+        return cipher
+        
 def test_encrypt_decrypt():
     data = "TestData" * 4
     _data = data[:]
     key = bytearray("\x00" * 16)
     iv = "\x00" * 16
     from blockcipher import Test_Cipher
-    print data
-    for mode in ("ctr", "ofb", "cbc"):        
+    #print data
+    for mode in ("ctr", "ofb", "cbc", "ecb"):    
+        #print mode
         cipher = Test_Cipher(key, mode)
         ciphertext = cipher.encrypt(data, iv)
-        plaintext = cipher.decrypt(ciphertext, iv)        
-        assert plaintext == data, (plaintext, data)
+        plaintext = cipher.decrypt(ciphertext, iv)    
+        #print ciphertext                    
+        assert plaintext == data, (mode, plaintext, data)
         
-        ciphertext2 = encrypt(data, cipher, iv)        
+        ciphertext2 = encrypt(data, cipher, iv)             
         assert ciphertext2 == ciphertext
         plaintext2 = decrypt(ciphertext2, cipher, iv)   
-        assert plaintext2 == plaintext, (plaintext2, plaintext)
+        assert plaintext2 == plaintext, (mode, plaintext2, plaintext)
     
+    print "Beginning mac test..."
     cipher = Test_Cipher(key, "ella")
     ciphertext = cipher.encrypt(data, iv)
     plaintext = cipher.decrypt(ciphertext, iv)
-    assert plaintext == data, (plaintext, data)
+    assert plaintext == data, (mode, plaintext, data)
         
     ciphertext = cipher.encrypt(data, iv)[:-2]
     for x in xrange(256):
