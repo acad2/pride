@@ -8,17 +8,20 @@ from utilities import cast, binary_form
 
 ASCII = ''.join(chr(x) for x in range(256))
     
-def hamming_distance(input_one, input_two):
-    size = len(input_one)
-    if len(input_two) != size:
-        raise ValueError("Inputs must be same length")
-    count = 0
-    for index, bit in enumerate(input_one):
-        if input_two[index] == bit:
-            count += 1
-    return count
-    #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
+#def hamming_distance(input_one, input_two):
+#    size = len(input_one)
+#    if len(input_two) != size:
+#        raise ValueError("Inputs must be same length")
+#    count = 0
+#    for index, bit in enumerate(input_one):
+#        if input_two[index] == bit:
+#            count += 1
+#    return count
+#    #return format(int(input_one, 2) ^ int(input_two, 2), 'b').zfill(size).count('1')   
          
+def hamming_distance(str1, str2):
+  return sum(itertools.imap(str.__ne__, cast(str1, "binary"), cast(str2, "binary")))
+  
 def print_hamming_info(output1, output2):    
     output1_binary = binary_form(output1)
     output2_binary = binary_form(output2)
@@ -30,9 +33,26 @@ def print_hamming_info(output1, output2):
     
 def test_avalanche(hash_function, blocksize=16):        
     print "Testing diffusion/avalanche... "
-    output1 = hash_function(("\x00" * (blocksize - 1)) + "\x00")
-    output2 = hash_function(("\x00" * (blocksize - 1)) + "\x01")    
-    print_hamming_info(output1, output2)
+    beginning = "\x00" * (blocksize - 2)
+    _bytes = ''.join(chr(byte) for byte in range(256))
+    import pride.datastructures
+    ratio = pride.datastructures.Average(size=65535)
+    for byte in _bytes:        
+        for byte2 in _bytes:
+            input1 = beginning + byte + byte2
+            byte2 = chr((ord(byte2) + 1) % 256)
+            if byte2 == byte:
+                continue
+            input2 = beginning + byte + byte2
+            output1 = hash_function(input1)
+            output2 = hash_function(input2)            
+            distance = hamming_distance(output1, output2)
+            ratio.add(distance)
+    minimum, average, maximum = ratio.range
+    bit_count = float(len(cast(output1, "binary")))
+    print "Minimum Hamming distance and ratio: ", minimum / bit_count
+    print "Average Hamming distance and ratio: ", average / bit_count
+    print "Maximum Hamming distance and ratio: ", maximum / bit_count    
     
 def test_randomness(random_bytes):    
     size = len(random_bytes)
@@ -102,13 +122,15 @@ def test_hash_function(hash_function):
     test_compression_performance(hash_function)
     test_prng_performance(hash_function)
     
-def test_block_cipher(cipher, blocksize=16):
+def test_block_cipher(cipher, blocksize=16, avalanche_test=True, randomness_test=True):
     _cipher = cipher("\x00" * blocksize, "cbc")
-    test_function = lambda data: _cipher.encrypt(data, "\x00" * blocksize)
-    test_avalanche(test_function)
+    if avalanche_test:
+        test_function = lambda data: _cipher.encrypt(data, "\x00" * blocksize)
+        test_avalanche(test_function)
                
-    random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, "\x00" * blocksize)        
-    test_randomness(random_bytes)
+    if randomness_test:
+        random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, "\x00" * blocksize)        
+        test_randomness(random_bytes)
         
     #test_prng_performance(lambda data, output_size: _cipher.encrypt("\x00" * output_size, "\x00" * blocksize))
     
@@ -137,4 +159,11 @@ def test_aes_metrics():
             header, ciphertext, iv, tag, extra_data = load_data(ciphertext)   
             replacement_subroutine(plaintext, bytearray(ciphertext))
     test_block_cipher(Aes_Cipher) 
+    
+def test_sha_metrics():
+    from hashlib import sha256
+    test_avalanche(lambda data: sha256(data).digest())
+    
+if __name__ == "__main__":
+    test_sha_metrics()
     

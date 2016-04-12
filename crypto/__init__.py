@@ -3,48 +3,78 @@
 # use to protect data in the real world.
 
 from utilities import slide, xor_subroutine, replacement_subroutine, cast
+from pride.errors import InvalidTag
                 
-def cbc_encrypt(block, iv, key, cipher, output):        
+def cbc_encrypt(block, iv, key, cipher, tag=None):        
     xor_subroutine(block, iv)
     cipher(block, key)          
-    output.extend(block)
     replacement_subroutine(iv, block)    
 
-def cbc_decrypt(block, iv, key, cipher, output):    
+def cbc_decrypt(block, iv, key, cipher, tag=None):    
     next_iv = block[:]        
     cipher(block, key)
     xor_subroutine(block, iv)        
-    output.extend(block)
     replacement_subroutine(iv, next_iv)    
     
-def ofb_mode(block, iv, key, cipher, output):
+def ofb_mode(block, iv, key, cipher, tag=None):
     cipher(iv, key)        
     xor_subroutine(block, iv)
-    output.extend(block)
-    
-def ctr_mode(block, iv, key, cipher, output):
+        
+def ctr_mode(block, iv, key, cipher, tag=None):
     cipher(iv, key)
-    xor_subroutine(block, iv)
-    output.extend(block)
+    xor_subroutine(block, iv)    
     replacement_subroutine(iv, bytearray(cast(cast(cast(bytes(iv), "binary"), "integer") + 1, "bytes")))
     
-def crypt(data, key, iv, cipher, mode_of_operation):    
-    output = bytearray()
-    blocksize = len(key)            
-    for block in slide(data, blocksize):          
-        mode_of_operation(block, iv, key, cipher, output)
+def ella_mode(block, iv, key, cipher, tag):       
+    datablock = tag + block
+    cipher(datablock, key)
+    replacement_subroutine(block, datablock[8:])
+    return datablock[:8]
     
-    replacement_subroutine(data, output)    
+def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):    
+    output = bytearray()    
+    for block in slide(data, blocksize):      
+        tag = mode_of_operation(block, iv, key, cipher, tag)        
+        output.extend(block)
+    replacement_subroutine(data, output)                       
+    return tag
     
-ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode}
-DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode}
+ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode}
+DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode}
     
-def encrypt(data, key, iv, cipher, mode_of_operation, tweak=None):
-    crypt(data, key, iv, cipher, ENCRYPTION_MODES[mode_of_operation])
+def encrypt(data, cipher, iv, tag=None):
+    data = bytearray(data)
+    mode = cipher.mode    
+    blocksize = cipher.blocksize
+    if mode == "ella" and tag is None:
+        raise ValueError("Tag not supplied")
+    tag = crypt(data, bytearray(cipher.key), bytearray(iv), cipher.encrypt_block, 
+                ENCRYPTION_MODES[cipher.mode], blocksize, tag)
+    if tag is not None:
+        return tag + bytes(data)
+    else:
+        return bytes(data)
     
-def decrypt(data, key, iv, cipher, mode_of_operation, tweak=None):
-    crypt(data, key, iv, cipher, DECRYPTION_MODES[mode_of_operation])    
-
+def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, tweak=None):    
+    mode = cipher.mode
+    if mode != "ella":
+        assert not tag, (mode, data, cipher, iv, tag)
+    if mode in ("cbc", "ella"):
+        crypt_block = cipher.decrypt_block
+        if mode == "ella":                    
+            data = ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
+    else:
+        crypt_block = cipher.encrypt_block  
+    
+    data = bytearray(data)
+    tag = crypt(data, bytearray(cipher.key), bytearray(iv), crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
+    if mode == "ella":
+        if tag != cipher.mac_key:
+            raise InvalidTag()
+        return ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
+    else:
+        return bytes(data)
+    
 class Cipher(object):
     
     def _get_key(self):
@@ -56,6 +86,7 @@ class Cipher(object):
     def __init__(self, key, mode):
         self.key = key
         self.mode = mode
+        self.blocksize = 0
         
     def encrypt_block(self, plaintext, key):
         raise NotImplementedError()
@@ -75,31 +106,44 @@ class Cipher(object):
     def substitution_round(self, data, key):
         raise NotImplementedError()
 
-    def encrypt(self, data, iv):   
-        data = bytearray(data)
-        encrypt(data, self.key, bytearray(iv), self.encrypt_block, self.mode)
-        return bytes(data)
-        
-    def decrypt(self, data, iv):        
-        data = bytearray(data)
-        mode = self.mode
-        decrypt(data, self.key, bytearray(iv), self.decrypt_block if mode == "cbc" else self.encrypt_block, mode)    
-        return bytes(data)
-        
+    def encrypt(self, data, iv, tag=None):           
+        return encrypt(data, self, iv, tag)
+                
+    def decrypt(self, data, iv, tag=None):        
+        return decrypt(data, self, iv, tag)    
+                
 def test_encrypt_decrypt():
     data = "TestData" * 4
     _data = data[:]
     key = bytearray("\x00" * 16)
     iv = "\x00" * 16
     from blockcipher import Test_Cipher
-    
-    for mode in ("ctr", "ofb", "cbc"):
+    print data
+    for mode in ("ctr", "ofb", "cbc"):        
         cipher = Test_Cipher(key, mode)
         ciphertext = cipher.encrypt(data, iv)
-        print ciphertext
-        plaintext = cipher.decrypt(ciphertext, iv)
-        print plaintext
+        plaintext = cipher.decrypt(ciphertext, iv)        
         assert plaintext == data, (plaintext, data)
+        
+        ciphertext2 = encrypt(data, cipher, iv)        
+        assert ciphertext2 == ciphertext
+        plaintext2 = decrypt(ciphertext2, cipher, iv)   
+        assert plaintext2 == plaintext, (plaintext2, plaintext)
+    
+    cipher = Test_Cipher(key, "ella")
+    ciphertext = cipher.encrypt(data, iv)
+    plaintext = cipher.decrypt(ciphertext, iv)
+    assert plaintext == data, (plaintext, data)
+        
+    ciphertext = cipher.encrypt(data, iv)[:-2]
+    for x in xrange(256):
+        for y in xrange(256):
+            try:
+                plaintext = cipher.decrypt(ciphertext + chr(x) + chr(y), iv)
+            except InvalidTag:
+                continue
+            else:        
+                print x, y#assert plaintext == data, (plaintext, data)
     
 if __name__ == "__main__":
     test_encrypt_decrypt()

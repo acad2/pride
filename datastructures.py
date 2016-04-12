@@ -82,13 +82,12 @@ class Average(object):
         return (min(values), self.average, max(values))
     range = property(_get_range)
         
-    def __init__(self, name='', size=20, values=tuple(), meta_average=True):
+    def __init__(self, size=20, values=tuple(), meta_average=True):
         value = meta_average
         if meta_average:
-            value = Average("{0} meta-average".format(name), 30, meta_average=False)
+            value = Average(30, meta_average=False)
         self._meta_average = value
-
-        self.name = name
+        
         size = len(values) if values else size
         self.values = collections.deque(values, size)
         self.max_size = size
