@@ -235,13 +235,12 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "held" : False, "allow_text_edit" : False,
                 "_ignore_click" : False, "hidden" : False, "movable" : False, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
-                "sdl_window" : "->Python->SDL_Window",
-                "scroll_bars_enabled" : False, "_scroll_bar_h" : None,
-                "_scroll_bar_w" : None}    
+                "sdl_window" : '', "scroll_bars_enabled" : False, 
+                "_scroll_bar_h" : None, "_scroll_bar_w" : None}    
         
     flags = {"scale_to_text" : False, "_texture_invalid" : False,
              "_texture_window_x" : 0, "_texture_window_y" : 0,
-             "sdl_window" : "->Python->SDL_Window", "_text" : '', "_pack_mode" : ''}
+             "_text" : '', "_pack_mode" : '', "_sdl_window" : ''}
     
     mutable_defaults = {"_draw_operations" : list, "pack_count" : dict, "_children" : list}
     verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv", "packed" : "packed"} 
@@ -252,6 +251,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._texture_invalid
     def _set_texture_invalid(self, value):
         if not self._texture_invalid and value:
+            assert self.sdl_window
             objects[self.sdl_window].invalidate_object(self)
         self._texture_invalid = value
     texture_invalid = property(_get_texture_invalid, _set_texture_invalid)
@@ -269,6 +269,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         else:
             self._text = value
         if value and self.scale_to_text:
+            assert self.sdl_window
             w, h = objects[self.sdl_window].renderer._get_text_size(self.area, value)
             w += 2
             self.w_range = (0, w)
@@ -315,7 +316,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._pack_mode
     def _set_pack_mode(self, value):
         self._pack_mode = value
-        objects[self.sdl_window + "->Organizer"].set_pack_mode(self.reference, value)
+        objects[(self.sdl_window  or self.parent.sdl_window)+ "->Organizer"].set_pack_mode(self.reference, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def _get_parent_application(self):
@@ -338,14 +339,21 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self._children = value
     children = property(_get_children, _set_children)
     
+    def _get_sdl_window(self):
+        return (self._sdl_window or getattr(self.parent, "sdl_window", self.parent_name))
+    def _set_sdl_window(self, value):
+        self._sdl_window = value
+    sdl_window = property(_get_sdl_window, _set_sdl_window)
+    
     def __init__(self, **kwargs):               
-        super(Window_Object, self).__init__(**kwargs)        
+        super(Window_Object, self).__init__(**kwargs)               
         self.texture_window_x = self.texture_window_y = 0
         self.texture = None #create_texture(self.texture_size)
         self.texture_invalid = True
         
     def create(self, *args, **kwargs):
-        kwargs["z"] = kwargs.get('z') or self.z + 1
+        kwargs.setdefault('z', self.z + 1)#["z"] = kwargs.get('z') or self.z + 1
+        kwargs.setdefault("sdl_window", self.sdl_window)
         return super(Window_Object, self).create(*args, **kwargs)
         
     def add(self, _object):

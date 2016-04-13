@@ -157,6 +157,8 @@ class Base(object):
         
     site_config_support = ("defaults", "verbosity", "flags", "mutable_defaults")
     
+    attribute_priority = tuple()
+    
     def _get_parent(self):
         return objects[self.parent_name] if self.parent_name else None
     parent = property(_get_parent)
@@ -180,7 +182,7 @@ class Base(object):
             
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
-                        
+                            
         for value, attributes in itertools.chain(self._localized_flags.items(), 
                                                  self._localized_defaults.items()):
             value = value[0]

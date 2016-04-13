@@ -31,7 +31,7 @@ class SDL_Window(SDL_Component):
                 'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
                 'w' : pride.gui.SCREEN_SIZE[0], 'h' : pride.gui.SCREEN_SIZE[1],
                 "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
-                "name" : "->Python",
+                "name" : "->Python", "texture_access_flag" : sdl2.SDL_TEXTUREACCESS_TARGET,            
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE   
     
@@ -65,7 +65,11 @@ class SDL_Window(SDL_Component):
         if self.showing:
             self.show()  
 
-        self._texture = invoke("pride.gui.gui.create_texture", (self.size[0] * 10, self.size[1] * 10))
+        create_texture = self.renderer.sprite_factory.create_texture_sprite 
+        self._texture = create_texture(self.renderer.wrapped_object,
+                                       (self.size[0] * 10, self.size[1] * 10),
+                                       access=self.texture_access_flag)
+        
         objects["->Finalizer"].add_callback((self.reference, "delete"))
         
         if self._instance_count == 0:
@@ -77,6 +81,7 @@ class SDL_Window(SDL_Component):
             self.run_instruction.execute(priority=self.priority)
                 
     def create(self, *args, **kwargs):  
+        kwargs.setdefault("sdl_window", self.reference)
         instance = super(SDL_Window, self).create(*args, **kwargs)
         if hasattr(instance, 'pack'):
             try:
@@ -359,8 +364,6 @@ class SDL_User_Input(vmlibrary.Process):
                 assert item in pride.objects
                 area, z = coordinates[item]
                 if pride.gui.point_in_area(area, mouse_position):
-                    #active_item = item
-                    #break
                     possible.append((item, area[0]))
             if len(possible) > 1:
                 active_item = sorted(possible, key=operator.itemgetter(1))[-1][0]
