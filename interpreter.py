@@ -200,7 +200,10 @@ class Python(base.Base):
                 assert machine_info
                 machine_id = machine_info[:16]
                 key1, key2, key3, salt = machine_info[16:32], machine_info[32:48], machine_info[48:64], machine_info[64:80]
-            user = pride.user.User(username=machine_id, encryption_key=key1, mac_key=key2, file_system_key=key3, salt=salt)        
+            user = pride.user.User(username=machine_id, encryption_key=key1, mac_key=key2, 
+                                   file_system_key=key3, salt=salt, open_command_line=False)        
+            assert user.reference in pride.objects
+            print user
             command = self.command  
             
         with open(command, 'r') as module_file:

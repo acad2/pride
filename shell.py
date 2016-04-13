@@ -69,8 +69,7 @@ class Command_Line(pride.vmlibrary.Process):
         set_default_program, and get_program methods."""
     defaults = {"thread_started" : False, "write_prompt" : True,
                 "prompt" : ">>> ", "programs" : None,
-                "default_programs" : ("pride.shell.Python_Shell",
-                                      "pride.shell.OS_Shell", 
+                "default_programs" : ("pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
                 "idle_threshold" : 10000, 
                 "screensaver_type" : "pride.shell.CA_Screensaver"}

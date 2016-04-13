@@ -364,8 +364,7 @@ class File_System(pride.database.Database):
                 
     def save_file(self, filename, data, tags=tuple(), encrypt=False, indexable=True):
         now = time.time()
-        file_info = {}
-        user = objects["->User"]
+        file_info = {}        
         if not indexable: 
             filename = self._hash(filename)                    
             
@@ -394,8 +393,7 @@ class File_System(pride.database.Database):
             self.alert("Saving new file: {}".format(filename), 
                        level=self.verbosity["file_created"])
         
-    def _open_file(self, filename, mode, tags, indexable):
-        user = pride.objects["->User"]
+    def _open_file(self, filename, mode, tags, indexable):        
         if not indexable:        
             filename = self._hash(filename)
             

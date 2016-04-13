@@ -397,7 +397,7 @@ class Authenticated_Client(pride.base.Base):
         self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
-        name = '_'.join((self.username, module, type(self).__name__)).replace('.', '_')
+        name = self.reference
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
                                        

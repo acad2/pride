@@ -44,14 +44,13 @@ class User(pride.base.Base):
                 "verifier_filetype" : "pride.fileio.Database_File",
                 "verifier_indexable" : False,
                 
-                "launcher_type" : "pride.interpreter.Python"}
+                "open_command_line" : True}
     
     parser_ignore = ("mac_key", "encryption_key", "hkdf_mac_info_string", 
                      "hkdf_encryption_info_string", "hkdf_file_system_info_string",
                      "password_prompt", "iv_size", "verifier_filetype",
                      "salt_indexable", "kdf_iteration_count",
-                     "encryption_mode", "encryption_algorithm",
-                     "launcher_type", "verifier_indexable",
+                     "encryption_mode", "encryption_algorithm", "verifier_indexable",
                      "salt_size", "salt_filetype", "salt", "file_system_key")
     
     flags = {"_password_verifier_size" : 32, "_reset_encryption_key" : False,
@@ -91,7 +90,8 @@ class User(pride.base.Base):
                 login_success = True      
         assert self.encryption_key and self.mac_key and self.file_system_key and self.salt
         self.alert("Logged in successfully", level=self.verbosity["login_success"])
-        self.create("pride.shell.Command_Line")       
+        if self.open_command_line:
+            self.create("pride.shell.Command_Line")       
                         
     def login(self):
         """ Attempt to login as username using a password. Upon success, the
