@@ -1,3 +1,8 @@
+""" Provides network services that do not reveal information about how 
+    application logic produces its result. Black_Box_Services receive input
+    in the form of keystrokes, mouse clicks, and potentially audio,
+    operate on the input in a manner opaque to the client, and return output
+    to the client. """
 import pride.authentication2
 import pride.utilities
 
@@ -19,8 +24,8 @@ class Mouse_Structure(object):
         return "Mouse(x={}, y={}, clicks={}, button={})".format(self.x, self.y, self.clicks, self.button)
         
     
-class Black_Box_Service(pride.authentication2.Authenticated_Service):
-    
+class Black_Box_Service(pride.authentication2.Authenticated_Service):    
+
     defaults = {"input_types" : ("keyboard", "mouse", "audio"), "window_type" : "pride.gui.blackbox.Service_Window"}
     remotely_available_procedures = ("handle_input", )
     verbosity = {"handle_keyboard" : 0, "handle_mouse" : 0, "handle_audio" : 0}
