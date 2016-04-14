@@ -95,7 +95,8 @@ else:
             return True
                                 
     def encrypt(data='', key='', mac_key='', iv=None, extra_data='', algorithm="AES", 
-                mode="GCM", backend=BACKEND, iv_size=16, hash_algorithm="SHA256"):
+                mode="GCM", backend=BACKEND, iv_size=16, hash_algorithm="SHA256",
+                return_mode="cryptogram"):
         """ Encrypts data with the specified key. Returns packed encrypted bytes.
             If an iv is not supplied a random one of iv_size will be generated.
             By default, the GCM mode of operation is used and the iv is 
@@ -128,9 +129,16 @@ else:
             
         if not iv and iv != 0: # 0 is a valid nonce for CTR mode.
             iv = random_bytes(iv_size)
+            
+        if mode != "ECB":
+            mode_args = (iv, )
+        else:
+            mode_args = tuple()
+        
         encryptor = Cipher(getattr(algorithms, algorithm)(key), 
-                           getattr(modes, mode)(iv), 
-                           backend=BACKEND).encryptor()
+                           getattr(modes, mode)(*mode_args), 
+                           backend=BACKEND).encryptor()        
+            
         if mode in AEAD_MODES:       
             encryptor.authenticate_additional_data(extra_data)            
         ciphertext = encryptor.update(data) + encryptor.finalize()          
@@ -138,9 +146,14 @@ else:
         if mode in AEAD_MODES:
             mac_tag = encryptor.tag
         else:
-            mac_tag = generate_mac(mac_key, header + ciphertext + iv + extra_data, hash_algorithm)        
-        return save_data(header, ciphertext, iv, mac_tag, extra_data)
+            mac_tag = generate_mac(mac_key, header + ciphertext + iv + extra_data, hash_algorithm) 
         
+        if return_mode == "cryptogram":
+            return save_data(header, ciphertext, iv, mac_tag, extra_data)
+        else:
+            assert return_mode == "values"
+            return header, ciphertext, iv, mac_tag, extra_data
+            
     def decrypt(packed_encrypted_data, key, mac_key='', backend=BACKEND):
         """ Decrypts packed encrypted data as returned by encrypt with the same key. 
             If extra data is present, returns plaintext, extra_data. If not,

@@ -1,4 +1,6 @@
 import os    
+
+import pride.crypto
 from utilities import xor_sum, xor_subroutine, replacement_subroutine
 
 def convert(old_value, old_base, new_base):
@@ -114,52 +116,73 @@ def test_convert():
   #  print converted2
     
     
-def encrypt(data, key):
-    diffusion_transformation(data)   
-    xor_subroutine(data, key)     
+def key_schedule(key):
     conversion_key = bytearray(range(256))
     shuffle(conversion_key, key)
     conversion_key2 = conversion_key[:]
-    shuffle(conversion_key2, conversion_key2)     
+    shuffle(conversion_key2, conversion_key2)  
+    return conversion_key, conversion_key2
+    
+def encrypt(data, key, conversion_key, conversion_key2):
+    xor_subroutine(data, key)                  
+    
+    diffusion_transformation(data)         
     converted = convert(bytes(data), bytes(conversion_key), bytes(conversion_key2))
-    replacement_subroutine(data, converted)    
+    replacement_subroutine(data, converted)   
+    
     xor_subroutine(data, key)
     return bytes(data)
     
-def decrypt(data, key):
+def decrypt(data, key, conversion_key, conversion_key2):
     xor_subroutine(data, key)
-    conversion_key = bytearray(range(256))
-    shuffle(conversion_key, key)
-    conversion_key2 = conversion_key[:]
-    shuffle(conversion_key2, conversion_key2)
+        
     converted = convert(bytes(data), bytes(conversion_key2), bytes(conversion_key))
-    replacement_subroutine(data, converted)    
-    xor_subroutine(data, key)
+    replacement_subroutine(data, converted)        
     invert_diffusion_transformation(data)
+    
+    xor_subroutine(data, key)
     return bytes(data)
     
+class Test_Cipher(pride.crypto.Cipher):
+     
+    def __init__(self, *args):
+        super(Test_Cipher, self).__init__(*args)
+        self.key = os.urandom(256)
+        self.blocksize = 256
+        self.conversion_key, self.conversion_key2 = key_schedule(self.key)
+        
+    def encrypt_block(self, data, key):
+        return encrypt(data, key, self.conversion_key, self.conversion_key2)
+        
+    def decrypt_block(self, data, key):
+        return decrypt(data, key, self.conversion_key, self.conversion_key2)
+        
+        
 def test_encrypt_decrypt():
     message = "\x00" * 16#    "A particularly excellent Test message of arbitrary length ;)"
     data = bytearray(message)
-    key = bytearray(os.urandom(256))    
+    key = bytearray(os.urandom(256))
+    conversion_key, conversion_key2 = key_schedule(key)
   #  print data
-    ciphertext = encrypt(data, key)    
+    ciphertext = encrypt(data, key, conversion_key, conversion_key2)    
   #  print "Ciphertext: "
   #  print
     print ciphertext
   #  print
-    plaintext = decrypt(bytearray(ciphertext), key)
+    plaintext = decrypt(bytearray(ciphertext), key, conversion_key, conversion_key2)
     assert plaintext == message, plaintext
     
-    data2 = bytearray(message[:-1] + "\x01")
-  #  print data2
-    ciphertext2 = encrypt(data2, key)
-    print ciphertext2
-  #  print
-    plaintext2 = decrypt(bytearray(ciphertext2), key)
-    assert plaintext2 == message[:-1] + "\x01"
-        
+    for x in range(1, 256):
+        data2 = bytearray(message[:-1] + chr(x))
+    #  print data2
+        ciphertext2 = encrypt(data2, key, conversion_key, conversion_key2)
+        print ciphertext2
+    #  print
+        plaintext2 = decrypt(bytearray(ciphertext2), key, conversion_key, conversion_key2)
+        assert plaintext2 == message[:-1] + chr(x)
+                               
 if __name__ == "__main__":
     #test_convert()
     #test_diffusion_transformation()
     test_encrypt_decrypt()
+    Test_Cipher.test_metrics(avalanche_test=False)

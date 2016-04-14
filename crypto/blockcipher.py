@@ -84,18 +84,18 @@ def substitute_bytes(data, key, indices, counter, mask):
         data[place] ^= S_BOX[state ^ ephemeral_byte] # goal is forward secrecy in event of sbox input becoming known
         state ^= data[place]        
         
-        # Find a random location + manipulate data at that location
-        random_place = indices[(time_constant ^ key[place]) & mask]
-        state ^= data[random_place]
-        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]    
-        data[random_place] ^= S_BOX[state ^ ephemeral_byte]
-        state ^= data[random_place]                
-       
-        # manipulate the current location again - required for symmetry        
-        state ^= data[place]
-        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]          
-        data[place] ^= S_BOX[state ^ ephemeral_byte]
-        state ^= data[place] 
+     #   # Find a random location + manipulate data at that location
+     #   random_place = indices[(time_constant ^ key[place]) & mask]
+     #   state ^= data[random_place]
+     #   ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]    
+     #   data[random_place] ^= S_BOX[state ^ ephemeral_byte]
+     #   state ^= data[random_place]                
+     #  
+     #   # manipulate the current location again - required for symmetry        
+     #   state ^= data[place]
+     #   ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]          
+     #   data[place] ^= S_BOX[state ^ ephemeral_byte]
+     #   state ^= data[place] 
         
         # must be removed for symmetry purposes
         state ^= present_modifier
@@ -165,7 +165,7 @@ def generate_embedded_decryption_key(key, rounds, tweak):
 class Test_Cipher(pride.crypto.Cipher):
     
     def __init__(self, key, mode, rounds=1, tweak=None):        
-        self.key = key#from os import urandom; self.key = urandom(len(key));        
+        self.key = key#; from os import urandom; self.key = urandom(len(key));        
         self.mode = mode
         if mode == "ella":
             self.blocksize = len(key) - 8
@@ -173,7 +173,7 @@ class Test_Cipher(pride.crypto.Cipher):
         else:
             self.blocksize = len(key)
             self.mac_key = None
-        self.rounds = rounds        
+        self.rounds = 2#rounds        
         self.tweak = tweak
         self.iv = None
         
@@ -234,9 +234,9 @@ def test_Cipher():
         plaintext2 = cipher2.decrypt(ciphertext2, iv)
         assert plaintext2 == plaintext, plaintext2
         
-def test_cipher_metrics():
-    from metrics import test_block_cipher
-    test_block_cipher(Test_Cipher, avalanche_test=False)          
+def test_cipher_metrics():        
+    Test_Cipher.test_metrics()#avalanche_test=False, randomness_test=False, bias_test=False, performance_test=False,
+                             #period_test=True, randomize_key=True)    
     
 def test_cipher_performance():
     from metrics import test_prng_performance

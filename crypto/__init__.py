@@ -3,6 +3,7 @@
 # use to protect data in the real world.
 
 from utilities import slide, xor_subroutine, replacement_subroutine, cast
+from metrics import test_block_cipher
 from pride.errors import InvalidTag
                 
 def cbc_encrypt(block, iv, key, cipher, tag=None):        
@@ -96,6 +97,7 @@ class Cipher(object):
         self.key = key
         self.mode = mode
         self.blocksize = 0
+        self.iv = None
         
     def encrypt_block(self, plaintext, key):
         raise NotImplementedError()
@@ -132,7 +134,11 @@ class Cipher(object):
         cipher = cls(key, mode)
         cipher.iv = iv
         return cipher
-        
+    
+    @classmethod
+    def test_metrics(cls, *args, **kwargs):
+        test_block_cipher(cls, *args, **kwargs)    
+    
 def test_encrypt_decrypt():
     data = "TestData" * 4
     _data = data[:]
