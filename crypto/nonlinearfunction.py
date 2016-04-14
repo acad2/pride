@@ -1,6 +1,6 @@
 from ctypes import c_uint8 as eight_bit_integer, c_uint16 as word
 from utilities import rotate as _rotate
-from utilities import cast
+from utilities import cast, hamming_weight
 
 def rotate(word, amount):
     bits = cast(word, "binary")    
@@ -27,16 +27,18 @@ def nonlinear_function2(state, constant):
     return eight_bit_integer(state).value, state
         
 def nonlinear_function3(data, mask=1 << 7):     
-    #data ^= 1 << (data % 8)
+  #  data ^= 1 << (data % 8)
     for bit_number in range(8):    
-        data ^= ((data ^ (data & mask)) % 2) << 7        
-        data = rotate(data, -1)
-
-       # data ^= 1 << (data % 8)
+        other_bits = (data ^ (data & (1 << bit_number))) % 2
+        weight = hamming_weight(other_bits)
+        data ^= other_bits << bit_number    
+       # data = rotate(data, -1)
+        data = (data + (other_bits + weight)) % 256
+        data ^= 1 << (data % 8)
     
     return data
     
-def _nonlinear_function2(data):
+def __nonlinear_function2(data):
     for target_index, target_byte in enumerate(data):
         for source_index, source_byte in enumerate(data):
             if source_index == target_index:

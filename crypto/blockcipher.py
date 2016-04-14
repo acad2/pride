@@ -12,7 +12,7 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX
 
-S_BOX = generate_s_box(lambda number: ((251 * pow(251, number, 257)) + 1) % 256)
+S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
 def generate_round_key(key, constants):       
@@ -40,12 +40,9 @@ def shuffle(data, key):
 def substitute_bytes(data, key, indices, counter, mask): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
+        (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf)
         The basic idea is that each byte of data is encrypted based off 
-        of every other byte of data around it, along with the round key. 
-        The ensures a high level of diffusion, which may indicate resistance
-        towards differential cryptanalysis as indicated by:
-         (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf
-          namely page 14)        
+        of every other byte of data around it.      
          
         Each byte is substituted, then a byte at a random location substituted,
         then the current byte substituted again. At each substitution, the output
@@ -229,7 +226,7 @@ def test_Cipher():
     #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
       
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
-     #   print real_ciphertext
+        print real_ciphertext
      #   print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
@@ -239,7 +236,7 @@ def test_Cipher():
         
 def test_cipher_metrics():
     from metrics import test_block_cipher
-    test_block_cipher(Test_Cipher, avalanche_test=True)          
+    test_block_cipher(Test_Cipher, avalanche_test=False)          
     
 def test_cipher_performance():
     from metrics import test_prng_performance

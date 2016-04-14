@@ -118,6 +118,6 @@ def test_differential_attack():
     differential_attack(encryption_function, S_BOX, 2, 128, (2, 4))
     
 if __name__ == "__main__":
-    #test_build_difference_distribution_table()
+    test_build_difference_distribution_table()
     #test_calculate_differential_chain()
-    test_differential_attack()
+    #test_differential_attack()
