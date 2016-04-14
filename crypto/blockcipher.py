@@ -2,7 +2,7 @@ import pride.utilities
 import pride.crypto
 
 import itertools
-from utilities import cast, slide, xor_sum
+from utilities import cast, slide, xor_sum, xor_subroutine
 
 import random
 
@@ -16,8 +16,7 @@ S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
 def generate_round_key(key, constants):       
-    """ Invertible round key generation function. Using an invertible key 
-        schedule offers a potential advantage to embedded devices. """ 
+    """ Invertible round key generation function. """ 
     size = len(key)        
     state = xor_sum(key)    
     for index in constants:                
@@ -37,7 +36,7 @@ def shuffle(data, key):
         j = key[i] & (i - 1)
         data[i], data[j] = data[j], data[i]
         
-def substitute_bytes(data, key, indices, counter, mask): 
+def substitute_bytes(data, key, round_constants, counter, mask): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
         (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf)
@@ -67,39 +66,20 @@ def substitute_bytes(data, key, indices, counter, mask):
               then XOR that with current byte; then include current byte XOR psuedorandom_byte into the state 
             - This is done in the current place, then in a random place, then in the current place again. """            
     state = xor_sum(data) ^ xor_sum(key)    
+    size = len(data)
     for index in counter:         
-        place = indices[index]       
-        
+        place = round_constants[index]           
+                
         # the counters are passed through the sbox to attempt to eliminate bias
-        # simple byte ^ index would flip the low order bits more frequently then high order bits for smaller blocksizes
-        place_constant = S_BOX[place]
-        time_constant = S_BOX[S_BOX[index]] # applied twice to prevent time_constant == place_constant when index == place        
-        present_modifier = S_BOX[time_constant ^ place_constant]
-        entropy_modifier = key[place] ^ present_modifier
-        
-        state ^= present_modifier             
-                                                  
-        state ^= data[place]         
-        ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]] 
+        # simple byte ^ index would flip the low order bits more frequently then high order bits for smaller blocksizes       
+        # S_BOX is applied twice to prevent index ^ place == 0 when index == place      
+        present_modifier = S_BOX[S_BOX[S_BOX[index]] ^ S_BOX[place]]
+                
+        state ^= data[place] ^ present_modifier
+        ephemeral_byte = S_BOX[key[place] ^ S_BOX[state]] 
         data[place] ^= S_BOX[state ^ ephemeral_byte] # goal is forward secrecy in event of sbox input becoming known
-        state ^= data[place]        
+        state ^= data[place] ^ present_modifier        
         
-     #   # Find a random location + manipulate data at that location
-     #   random_place = indices[(time_constant ^ key[place]) & mask]
-     #   state ^= data[random_place]
-     #   ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]    
-     #   data[random_place] ^= S_BOX[state ^ ephemeral_byte]
-     #   state ^= data[random_place]                
-     #  
-     #   # manipulate the current location again - required for symmetry        
-     #   state ^= data[place]
-     #   ephemeral_byte = S_BOX[entropy_modifier ^ S_BOX[state]]          
-     #   data[place] ^= S_BOX[state ^ ephemeral_byte]
-     #   state ^= data[place] 
-        
-        # must be removed for symmetry purposes
-        state ^= present_modifier
-                  
 def generate_default_constants(block_size):    
     constants = bytearray(block_size)
     for index in range(block_size):
@@ -127,14 +107,18 @@ def online_keyschedule(data, key, constants, rounds, counter):
     mask = (1 << POWER_OF_TWO[len(data)]) - 1 # byte & mask constrains byte to appropriate range    
     for round_number in rounds:        
         generate_round_key(key, constants)
+        xor_subroutine(data, key)
         _crypt_block(key, constants, data, counter, mask)                
-                
+        xor_subroutine(data, key)
+        
 def upfront_keyschedule(data, key, constants, rounds, counter):
     round_keys = generate_round_keys(key, rounds, constants)        
     mask = (1 << POWER_OF_TWO[len(data)]) - 1
     for round_key_index in rounds:        
         round_key = round_keys[round_key_index]
+        xor_subroutine(data, round_key)
         _crypt_block(round_key, constants, data, counter, mask)  
+        xor_subroutine(data, round_key)
         
 def _crypt_block(key, constants, data, counter, mask):        
     round_key = key[:]
@@ -143,8 +127,8 @@ def _crypt_block(key, constants, data, counter, mask):
     round_constants = constants[:]        
     shuffle(round_constants, round_key)
     
-    extract_round_key(round_key)
-    substitute_bytes(data, round_key, round_constants, counter, mask)
+    extract_round_key(round_key)        
+    substitute_bytes(data, round_key, round_constants, counter, mask)        
         
 def decrypt_block_embedded_decryption_key(ciphertext, final_round_key, rounds=1, tweak=None):
     blocksize = len(ciphertext)
@@ -156,7 +140,9 @@ def online_keyschedule_embedded_decryption_key(data, key, constants, rounds, cou
     reverse_constants = bytearray(reversed(constants))
     mask = (1 << POWER_OF_TWO[len(data)]) - 1
     for round_number in rounds:          
+        xor_subroutine(data, key)
         _crypt_block(key, constants, data, counter, mask)
+        xor_subroutine(data, key)
         generate_round_key(key, reverse_constants)
 
 def generate_embedded_decryption_key(key, rounds, tweak):
@@ -173,7 +159,7 @@ class Test_Cipher(pride.crypto.Cipher):
         else:
             self.blocksize = len(key)
             self.mac_key = None
-        self.rounds = 2#rounds        
+        self.rounds = rounds        
         self.tweak = tweak
         self.iv = None
         
