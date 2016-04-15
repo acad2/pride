@@ -73,6 +73,13 @@ class Instruction(object):
                                            callback, self.component_name,
                                            self.method, self.args, self.kwargs))
 
+    @classmethod
+    def purge(cls, reference):
+        for entry in cls.instructions[:]:
+            if entry[3] == reference:
+                cls.instructions.remove(entry)
+        cls.instructions.sort()        
+        
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,
                                                    self.args, self.kwargs)

@@ -6,7 +6,7 @@ from utilities import slide, xor_subroutine, replacement_subroutine, cast
 from metrics import test_block_cipher
 from pride.errors import InvalidTag
                 
-def cbc_encrypt(block, iv, key, cipher, tag=None):        
+def cbc_encrypt(block, iv, key, cipher, tag=None): 
     xor_subroutine(block, iv)
     cipher(block, key)          
     replacement_subroutine(iv, block)    
@@ -52,8 +52,9 @@ def encrypt(data, cipher, iv, tag=None):
     blocksize = cipher.blocksize
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
+    
     tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), cipher.encrypt_block, 
-                ENCRYPTION_MODES[cipher.mode], blocksize, tag)
+                ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
     if tag is not None:
         return tag + bytes(data)
     else:

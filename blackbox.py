@@ -26,19 +26,19 @@ class Mouse_Structure(object):
     
 class Black_Box_Service(pride.authentication2.Authenticated_Service):    
 
-    defaults = {"input_types" : ("keyboard", "mouse", "audio"), "window_type" : "pride.gui.blackbox.Service_Window"}
+    defaults = {"input_types" : ("keyboard", "mouse", "audio"), "window_type" : "pride.gui.sdllibrary.Window_Context"}
     remotely_available_procedures = ("handle_input", )
     verbosity = {"handle_keyboard" : 0, "handle_mouse" : 0, "handle_audio" : 0}
     mutable_defaults = {"windows" : dict}
     
     def on_login(self):
         username = self.current_user
-        self.windows[username] = pride.objects["->Python->SDL_Window"].create(self.window_type)
+        self.windows[username] = self.create(self.window_type).reference
         
     def handle_input(self, packed_user_input):
         input_type, input_values = packed_user_input.split(' ', 1)
         if input_type in self.input_types:
-            getattr(self, "handle_{}_input".format(input_type))(input_values)
+            return getattr(self, "handle_{}_input".format(input_type))(input_values)
         else:            
             raise ValueError("Unaccepted input_type: {}".format(packed_user_input))
             
@@ -46,12 +46,14 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
         self.alert("Received keystrokes: {}".format(input_bytes), 
                    level=self.verbosity["handle_keyboard"])
                       
-    def handle_mouse_input(self, mouse_info):
+    def handle_mouse_input(self, mouse_info):    
         mouse = Mouse_Structure(*pride.utilities.load_data(mouse_info))
-        pride.objects["->Python->SDL_Window->SDL_User_Input"].handle_mousebuttondown(Event_Structure(mouse))
-        self.alert("Received mouse info: {}".format(mouse),
-                   level=self.verbosity["handle_mouse"])
-                   
+        self.alert("Received mouse info: {}".format(mouse), level=self.verbosity["handle_mouse"])
+                           
+        user_window = pride.objects[self.windows[self.current_user]]
+        user_window.user_input.handle_mousebuttondown(Event_Structure(mouse))
+        return "draw", user_window.run()
+        
     def handle_audio_input(self, audio_bytes):
         self.alert("Received audio: {}...".format(audio_bytes[:50]), 
                    level=self.verbosity["handle_audio"])
@@ -62,7 +64,9 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
     defaults = {"target_service" : "->Python->Black_Box_Service", 
                 "mouse_support" : True,
                 "audio_support" : True, "audio_source" : "->Python->Audio_Manager->Audio_Input",
-                "microphone_on" : False}
+                "microphone_on" : False,
+                "response_methods" : ("handle_response_draw", )}
+                
     verbosity = {"handle_input" : 0, "receive_response" : 0}
     
     def __init__(self, **kwargs):
@@ -87,11 +91,19 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
         if self.microphone_on:
             self.handle_input("audio " + audio_bytes)
         
-    def receive_response(self, data):
-        self.alert("Received response: {}".format(data), 
-                   level=self.verbosity["receive_response"])
-                   
-                                      
+    def receive_response(self, packet):
+        _type, data = packet
+        self.alert("Received response: {}".format(packet), level=self.verbosity["receive_response"])
+        response_method = "handle_response_{}".format(_type)
+        if response_method in self.response_methods:
+            getattr(self, response_method)(data)
+        else:
+            self.alert("Unsupported response method: '{}'".format(response_method), level=0)
+            
+    def handle_response_draw(self, draw_instructions):        
+        if draw_instructions:
+            pride.objects[self.sdl_window].draw(draw_instructions)        
+            
 def test_black_box_service():
     import pride
     import pride.gui

@@ -76,8 +76,8 @@ def invert_diffusion_transformation(_bytes):
         state ^= _bytes[index]
             
 def test_diffusion_transformation():
-    inputs = bytearray(range(8))
-    inputs2 = bytearray(range(7) + [9])
+    inputs = bytearray(range(16))
+    inputs2 = bytearray(range(15) + [16])
     print [byte for byte in inputs]
     print [byte for byte in inputs2]
     for x in range(4):
@@ -183,6 +183,6 @@ def test_encrypt_decrypt():
                                
 if __name__ == "__main__":
     #test_convert()
-    #test_diffusion_transformation()
-    test_encrypt_decrypt()
-    Test_Cipher.test_metrics(avalanche_test=False)
+    test_diffusion_transformation()
+    #test_encrypt_decrypt()
+    #Test_Cipher.test_metrics(avalanche_test=False)

@@ -36,7 +36,7 @@ def test_avalanche(hash_function, blocksize=16):
             byte2 = chr((ord(byte2) + 1) % 256)
             if byte2 == byte:
                 continue
-            input2 = beginning + byte + byte2
+            input2 = beginning + byte + byte2                        
             output1 = hash_function(input1)
             output2 = hash_function(input2)            
             distance = hamming_distance(output1, output2)
@@ -80,7 +80,7 @@ def test_period(hash_function, blocksize=16, test_size=2):
     average = Average(values=cycle_lengths)
     print "Minimum/Average/Maximum cycle lengths: ", average.range
     
-def test_bias(hash_function, byte_range=slice(16)):
+def test_bias(hash_function, byte_range=slice(0, 16)):
     biases = [[] for x in xrange(byte_range.stop)]    
     outputs2 = []   
     print "Testing for byte bias..."
@@ -88,11 +88,11 @@ def test_bias(hash_function, byte_range=slice(16)):
         for byte2 in range(256):
             output = hash_function(chr(byte1) + chr(byte2))
             for index, byte in enumerate(output[byte_range]):
-                biases[index].append(ord(byte))
+                biases[index].append(ord(byte))            
             outputs2.extend(output[byte_range])        
     print "Byte bias: ", len(output), [len(set(_list)) for _list in biases]   
     print "Symbols out of 256 that appeared anywhere: ", len(set(outputs2))
-    
+       
 def test_collisions(hash_function, output_size=3):      
     outputs = {}        
     print "Testing for collisions with output of {} bytes... ".format(output_size)

@@ -18,11 +18,16 @@ POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
 def generate_round_key(key, constants):       
     """ Invertible round key generation function. """ 
     size = len(key)        
-    state = xor_sum(key)    
-    for index in constants:                
-        state ^= key[index]            
-        key[index] ^= S_BOX[S_BOX[index] ^ state]
-        state ^= key[index]           
+    for round in range(1):
+        state = xor_sum(key)      
+        for index in constants:        
+            state ^= key[index]
+            key[index] ^= S_BOX[state ^ S_BOX[index] ^ key[(index + 1) % size] ^ key[(index + 2) % size]]
+            state ^= key[index]
+        #state ^= key[index]                             
+        #key[index] ^= (state + key[other_index] + S_BOX[index] + 1) % 256 #key[index] ^= S_BOX[S_BOX[index] ^ state]          
+        #state ^= key[index] 
+    #print key
     
 def extract_round_key(key): 
     """ Non invertible round key extraction function. """
@@ -150,7 +155,7 @@ def generate_embedded_decryption_key(key, rounds, tweak):
     
 class Test_Cipher(pride.crypto.Cipher):
     
-    def __init__(self, key, mode, rounds=1, tweak=None):        
+    def __init__(self, key, mode, rounds=2, tweak=None):        
         self.key = key#; from os import urandom; self.key = urandom(len(key));        
         self.mode = mode
         if mode == "ella":
@@ -164,10 +169,10 @@ class Test_Cipher(pride.crypto.Cipher):
         self.iv = None
         
     def encrypt_block(self, plaintext, key):
-        return encrypt_block(plaintext, self.key, self.rounds, self.tweak)
+        encrypt_block(plaintext, self.key, self.rounds, self.tweak)
         
     def decrypt_block(self, ciphertext, key):        
-        return decrypt_block(ciphertext, self.key, self.rounds, self.tweak)
+        decrypt_block(ciphertext, self.key, self.rounds, self.tweak)
             
     def encrypt(self, data, iv=None, tag=None):
         assert tag is None
@@ -223,12 +228,7 @@ def test_Cipher():
 def test_cipher_metrics():        
     Test_Cipher.test_metrics()#avalanche_test=False, randomness_test=False, bias_test=False, performance_test=False,
                              #period_test=True, randomize_key=True)    
-    
-def test_cipher_performance():
-    from metrics import test_prng_performance
-    _cipher = Test_Cipher("\x00" * 16, 'cbc')
-    test_prng_performance(lambda data, output_size: _cipher.encrypt("\x00" * output_size, "\x00" * 16))
-    
+
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity
     
@@ -270,49 +270,69 @@ def test_linear_cryptanalysis():
     _test_encrypt()
     
 def test_generate_round_key():
-    import os
-    key = bytearray(S_BOX[byte] for byte in bytearray(os.urandom(256)))#range(256))    
-    key_material = bytearray()
-    constants = generate_default_constants(256)
-    shuffle(constants, bytearray(os.urandom(256)))
-    for chunk in range(4096):
-        generate_round_key(key, constants)
-        key_material.extend(key[:])
-       # print key
-    from pride.crypto.metrics import test_randomness, test_avalanche
-    test_randomness(bytes(key_material))
+    constants = range(16)
+    class Test_Cipher(pride.crypto.Cipher):
         
-    constants = generate_default_constants(16)
-    shuffle(constants, bytearray(os.urandom(16)))
-    def _test_interface(data):
-        data = bytearray(data)             
-        generate_round_key(data, constants)        
-        return bytes(data)        
-    test_avalanche(_test_interface)
+        def __init__(self, *args):
+            super(Test_Cipher, self).__init__(*args)
+            self.blocksize = 16            
+            
+        def encrypt_block(self, data, key):            
+            generate_round_key(data, constants)                        
+            return bytes(data)
+            
+    Test_Cipher.test_metrics()
     
-def test_extract_round_key():
-    key = bytearray(S_BOX[byte] for byte in range(256))
-    key_material = bytearray()
-    for chunk in range(4096):
-        extract_round_key(key)
-       # print key
-        key_material.extend(key[:])
-                
-    from pride.crypto.metrics import test_randomness, test_avalanche
-    test_randomness(bytes(key_material))       
+    #key = bytearray(S_BOX[byte] for byte in bytearray(os.urandom(256)))#range(256))    
+    #key_material = bytearray()
+    #constants = generate_default_constants(256)
+    #shuffle(constants, bytearray(os.urandom(256)))
+    #for chunk in range(4096):
+    #    generate_round_key(key, constants)
+    #    key_material.extend(key[:])
+    #   # print key
+    #from pride.crypto.metrics import test_randomness, test_avalanche
+    #test_randomness(bytes(key_material))
+    #    
+    #constants = generate_default_constants(16)
+    #shuffle(constants, bytearray(os.urandom(16)))
+    #def _test_interface(data):
+    #    data = bytearray(data)             
+    #    generate_round_key(data, constants)        
+    #    return bytes(data)        
+    #test_avalanche(_test_interface)
     
-    def _test_interface(data):
-        data = bytearray(data)
-        extract_round_key(data)
-        return bytes(data)
-    test_avalanche(_test_interface)
+def test_extract_round_key():        
+    class Test_Cipher(pride.crypto.Cipher):
+        
+        def __init__(self, *args):
+            super(Test_Cipher, self).__init__(*args)
+            self.blocksize = 16
+            
+        def encrypt_block(self, data, key):
+            extract_round_key(data)            
+            
+    Test_Cipher.test_metrics()
+    
+    #key = bytearray(S_BOX[byte] for byte in range(256))
+    #key_material = bytearray()
+    #for chunk in range(4096):
+    #    extract_round_key(key)
+    #   # print key
+    #    key_material.extend(key[:])
+    #            
+    #from pride.crypto.metrics import test_randomness, test_avalanche
+    #test_randomness(bytes(key_material))       
+    #
+    #def _test_interface(data):
+    #    data = bytearray(data)
+    #    extract_round_key(data)
+    #    return bytes(data)
+    #test_avalanche(_test_interface)
     
 if __name__ == "__main__":
-    #test_generate_round_key()
-    #test_extract_round_key()
-    test_Cipher()
-    #test_cipher_performance()
+    test_generate_round_key()
+ #   test_extract_round_key()
+#    test_Cipher()
     #test_linear_cryptanalysis()
-    test_cipher_metrics()
-    #test_random_metrics()
-    #test_aes_metrics()
+#    test_cipher_metrics()

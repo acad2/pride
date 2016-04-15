@@ -25,6 +25,78 @@ font_module = sdl2.sdlttf
 class SDL_Component(base.Proxy): pass
     
 
+class Window_Context(SDL_Component):
+
+    defaults = {"size" : pride.gui.SCREEN_SIZE, 
+                'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
+                'w' : pride.gui.SCREEN_SIZE[0], 'h' : pride.gui.SCREEN_SIZE[1],
+                "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
+                "name" : ""}
+    
+    mutable_defaults = {"on_screen" : list}
+    
+    flags = {"max_layer" : 1, "invalid_layer" : 0, "running" : False}
+    
+    def _get_size(self):
+        return (self.w, self.h)
+    def _set_size(self, size):
+        self.w, self.h = size
+    size = property(_get_size, _set_size)
+    
+    def __init__(self, **kwargs):
+        super(Window_Context, self).__init__(**kwargs)
+        self.run_instruction = Instruction(self.reference, "run")                
+        objects["->Finalizer"].add_callback((self.reference, "delete"))
+        self.window_handler = self.create(Window_Handler)  
+        self.user_input = self.create(SDL_User_Input, running=False)
+        self.organizer = self.create("pride.gui.gui.Organizer")                      
+        
+    def invalidate_object(self, instance):
+        if not self.running:
+            self.running = True                        
+            self.run_instruction.execute(priority=self.priority)
+                
+    def create(self, *args, **kwargs):  
+        kwargs.setdefault("sdl_window", self.reference)
+        instance = super(Window_Context, self).create(*args, **kwargs)
+        if hasattr(instance, 'pack'):
+            try:
+                instance.pack()
+            except TypeError:
+                if instance.__class__.__name__ != "Organizer":
+                    raise
+            else:
+                self.on_screen.append(instance)        
+        return instance
+        
+    def remove(self, instance):
+        try:
+            self.on_screen.remove(instance)
+        except ValueError:
+            if hasattr(instance, "pack") and instance.__class__.__name__ != "Organizer":
+                raise ValueError("Unable to remove {} from on_screen".format(instance))
+        super(Window_Context, self).remove(instance)
+        
+    def run(self):        
+        instructions = []
+        for child in sorted(self.on_screen, key=operator.attrgetter('z')):            
+            instructions.extend(child._draw_texture())              
+        self.running = False
+        return instructions
+
+    def pack(self, modifiers=None):
+        pass
+            
+    def delete(self):
+        # delete window objects before sdl components
+        for child in self.children:
+            if hasattr(child, "pack") and child is not self.organizer:
+                child.delete()
+        super(Window_Context, self).delete()
+        objects["->Finalizer"].remove_callback((self.reference, "delete"))
+        pride.Instruction.purge(self.reference)
+
+        
 class SDL_Window(SDL_Component):
 
     defaults = {"size" : pride.gui.SCREEN_SIZE, "showing" : True,
@@ -46,13 +118,10 @@ class SDL_Window(SDL_Component):
     size = property(_get_size, _set_size)
     
     def __init__(self, **kwargs):
-        self.layers = collections.OrderedDict((x, (None, [])) for 
-                                               x in xrange(100))
-        #self.latency = resolve_string("pride.datastructures.Latency")(name="framerate")
-                
         super(SDL_Window, self).__init__(**kwargs)
-        window = sdl2.ext.Window(self.name, size=self.size, 
-                                 flags=self.window_flags)
+        self.run_instruction = Instruction(self.reference, "run")
+        
+        window = sdl2.ext.Window(self.name, size=self.size, flags=self.window_flags)
         
         self.wraps(window)
         self.window_handler = self.create(Window_Handler)
@@ -60,7 +129,7 @@ class SDL_Window(SDL_Component):
         self.renderer = self.create(Renderer, self, flags=self.renderer_flags)
         self.user_input = self.create(SDL_User_Input)
         self.organizer = self.create("pride.gui.gui.Organizer")
-        self.run_instruction = Instruction(self.reference, "run")
+        
               
         if self.showing:
             self.show()  
@@ -105,9 +174,13 @@ class SDL_Window(SDL_Component):
         instructions = []
         for child in sorted(self.on_screen, key=operator.attrgetter('z')):            
             instructions.extend(child._draw_texture())          
-    #
+        
+        self.draw(instructions)
+        self.running = False
+
+    def draw(self, instructions):
         renderer = self.renderer
-        draw_instructions = renderer.instructions
+        draw_procedures = renderer.instructions
         texture = self._texture.texture
         renderer.set_render_target(texture)
         renderer.clear()
@@ -116,14 +189,13 @@ class SDL_Window(SDL_Component):
             if operation == "text":
                 if not args[0]:
                     continue                                
-            draw_instructions[operation](*args, **kwargs)        
+            draw_procedures[operation](*args, **kwargs)        
         
         renderer.set_render_target(None)
         area = (0, 0, self.size[0], self.size[1])
         renderer.copy(texture, area, area)
         renderer.present()
-        self.running = False
-
+        
     def get_mouse_state(self):
         mouse = sdl2.mouse
         x = ctypes.c_long(0)
