@@ -1,12 +1,20 @@
 import pride.crypto
 from pride.crypto.blockcipher import extract_round_key
-from pride.crypto.utilities import xor_subroutine
+from pride.crypto.utilities import xor_subroutine, xor_sum
 
 def shuffle(data, key): 
     n = len(data)    
     for i in reversed(range(1, n)):
         j = key[i] & (i - 1)
         data[i], data[j] = data[j], data[i]
+        
+def extract_round_key(key): 
+    """ Non invertible round key extraction function. """
+    for round in range(2):
+        xor_sum_of_key = xor_sum(key)    
+        shuffle(key, key)
+        for index, key_byte in enumerate(key):        
+            key[index] = (xor_sum_of_key + key_byte + (~index + 256)) % 256    
         
 def random_number_generator(key, first_set, output_size=256):
     extract_round_key(key)    
@@ -15,6 +23,11 @@ def random_number_generator(key, first_set, output_size=256):
     key_three = key_two[:]
     extract_round_key(key_three)
     
+    print key
+    print
+    print key_two
+    print
+    print key_three
     shuffle(first_set, key)
     second_set = first_set[:]
     shuffle(second_set, key_two)
@@ -54,6 +67,12 @@ class Disco(pride.crypto.Cipher):
             output.extend(next(keystream))
         return output
         
+def test_extract_round_key():
+    key = bytearray("\x00" * 8)
+    for round in range(4):
+        extract_round_key(key)
+        print key
+    
 def test_random_number_generator():
     key = bytearray("\x00" * 256)
     generator = random_number_generator(key, range(256), 16)
@@ -68,5 +87,6 @@ def test_Disco():
     
     
 if __name__ == "__main__":
+    #test_extract_round_key()
     test_random_number_generator()
-    test_Disco()
+    #test_Disco()
