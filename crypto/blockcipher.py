@@ -97,7 +97,7 @@ def attack():
     plaintext = bytearray("\x00" * 2)
     ciphertext = plaintext[:]
     key = ciphertext[:]
-    encrypt_block(ciphertext, key)
+    encrypt_block(ciphertext, key, 1, range(2))
    
     inverse_s_box = bytearray(len(S_BOX))
     for index, byte in enumerate(S_BOX):
@@ -122,15 +122,13 @@ def generate_default_constants(block_size):
         constants[index] = index
     return constants
         
-def encrypt_block(plaintext, key, rounds=1, tweak=None): 
-    blocksize = len(plaintext)
-    tweak = tweak or generate_default_constants(blocksize)    
+def encrypt_block(plaintext, key, rounds, tweak): 
+    blocksize = len(plaintext)       
     online_keyschedule(plaintext, key[:], tweak, bytearray(range(rounds)), range(blocksize))    
        
-def decrypt_block(ciphertext, key, rounds=1, tweak=None): 
-    blocksize = len(ciphertext)
-    constants = tweak or generate_default_constants(blocksize)
-    upfront_keyschedule(ciphertext, key[:], constants, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+def decrypt_block(ciphertext, key, rounds, tweak): 
+    blocksize = len(ciphertext)    
+    upfront_keyschedule(ciphertext, key[:], tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
            
 def generate_round_keys(key, rounds, tweak):
     round_keys = []    
@@ -196,7 +194,7 @@ class Test_Cipher(pride.crypto.Cipher):
             self.blocksize = len(key)
             self.mac_key = None
         self.rounds = rounds        
-        self.tweak = tweak
+        self.tweak = tweak or generate_default_constants(len(key))
         self.iv = None
         
     def encrypt_block(self, plaintext, key):
@@ -257,8 +255,8 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics(randomize_key=False)#avalanche_test=False, randomness_test=False, bias_test=False, performance_test=False,
-                             #period_test=True, randomize_key=True)    
+    Test_Cipher.test_metrics(avalanche_test=False, randomness_test=False, bias_test=False, performance_test=True,
+                             period_test=False, randomize_key=False)    
 
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity
@@ -366,5 +364,5 @@ if __name__ == "__main__":
  #   test_extract_round_key()
     #test_Cipher()
     #test_linear_cryptanalysis()
-    #test_cipher_metrics()
-    attack()
+    test_cipher_metrics()
+    #attack()
