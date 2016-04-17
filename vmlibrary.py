@@ -26,12 +26,6 @@ import pride.base
 
 Instruction = pride.Instruction
 timer_function = timeit.default_timer
-
-def prune_instructions(reference):
-    for entry in pride.Instruction.instructions[:]:            
-        if entry[3] == reference:                
-            pride.Instruction.instructions.remove(entry)
-    pride.Instruction.instructions.sort()
         
 class Process(pride.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
@@ -92,7 +86,7 @@ class Process(pride.base.Base):
                         
     def delete(self):
         self.running = False
-        prune_instructions(self.reference)
+        pride.Instruction.purge(self.reference)
         super(Process, self).delete()
         
     def __getstate__(self):

@@ -262,7 +262,7 @@ class Rpc_Socket(Packet_Socket):
         return DEFAULT_SERIALIZER.dumps(result)  
 
     def delete(self):
-        pride.vmlibrary.prune_instructions(self.reference)
+        pride.Instruction.purge(self.reference)        
         super(Rpc_Socket, self).delete()
         
         

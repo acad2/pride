@@ -12,6 +12,7 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX
 
+#from scratch import aes_s_box as S_BOX    
 S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
@@ -24,10 +25,6 @@ def generate_round_key(key, constants):
             state ^= key[index]
             key[index] ^= S_BOX[state ^ S_BOX[index] ^ key[(index + 1) % size] ^ key[(index + 2) % size]]
             state ^= key[index]
-        #state ^= key[index]                             
-        #key[index] ^= (state + key[other_index] + S_BOX[index] + 1) % 256 #key[index] ^= S_BOX[S_BOX[index] ^ state]          
-        #state ^= key[index] 
-    #print key
     
 def extract_round_key(key): 
     """ Non invertible round key extraction function. """
@@ -79,12 +76,46 @@ def substitute_bytes(data, key, round_constants, counter, mask):
         # simple byte ^ index would flip the low order bits more frequently then high order bits for smaller blocksizes       
         # S_BOX is applied twice to prevent index ^ place == 0 when index == place      
         present_modifier = S_BOX[S_BOX[S_BOX[index]] ^ S_BOX[place]]
-                
+                                
         state ^= data[place] ^ present_modifier
-        ephemeral_byte = S_BOX[key[place] ^ S_BOX[state]] 
+        ephemeral_byte = S_BOX[key[index] ^ S_BOX[state]] 
         data[place] ^= S_BOX[state ^ ephemeral_byte] # goal is forward secrecy in event of sbox input becoming known
         state ^= data[place] ^ present_modifier        
         
+        second_place = round_constants[place]
+        state ^= data[second_place] ^ present_modifier
+        ephemeral_byte = S_BOX[key[index] ^ S_BOX[state]]
+        data[second_place] ^= S_BOX[state ^ ephemeral_byte]
+        state ^= data[second_place] ^ present_modifier
+        
+        state ^= data[place] ^ present_modifier
+        ephemeral_byte = S_BOX[key[index] ^ S_BOX[state]] 
+        data[place] ^= S_BOX[state ^ ephemeral_byte] # goal is forward secrecy in event of sbox input becoming known
+        state ^= data[place] ^ present_modifier  
+
+def attack(): 
+    plaintext = bytearray("\x00" * 2)
+    ciphertext = plaintext[:]
+    key = ciphertext[:]
+    encrypt_block(ciphertext, key)
+   
+    inverse_s_box = bytearray(len(S_BOX))
+    for index, byte in enumerate(S_BOX):
+        inverse_s_box[byte] = index
+    
+    for first_place_guess in (0, ):#1):
+        for round_key_byte_guess in range(256):
+            sbox_input = inverse_s_box[ciphertext[first_place_guess] ^ plaintext[first_place_guess]]
+            sbox_output = S_BOX[sbox_input]
+            for key_byte_guess in range(256):
+                for state_guess in range(256):
+                    ephemeral_byte = S_BOX[key_byte_guess ^ S_BOX[state_guess]]
+                    if S_BOX[state_guess ^ ephemeral_byte] == sbox_output:                    
+                        print "Found potential state/ephemeral byte: ", state_guess, ephemeral_byte
+                        
+                        
+                    
+    
 def generate_default_constants(block_size):    
     constants = bytearray(block_size)
     for index in range(block_size):
@@ -155,7 +186,7 @@ def generate_embedded_decryption_key(key, rounds, tweak):
     
 class Test_Cipher(pride.crypto.Cipher):
     
-    def __init__(self, key, mode, rounds=2, tweak=None):        
+    def __init__(self, key, mode, rounds=1, tweak=None):        
         self.key = key#; from os import urandom; self.key = urandom(len(key));        
         self.mode = mode
         if mode == "ella":
@@ -196,8 +227,8 @@ class Test_Embedded_Decryption_Cipher(Test_Cipher):
         
 def test_Cipher():
     import random
-    data = "\x00" * 7 #"Mac Code" + "\x00" * 7
-    iv = key = ("\x00" * 7) + "\00"
+    data = "\x00" * 255 #"Mac Code" + "\x00" * 7
+    iv = key = ("\x00" * 255) + "\00"
     tweak = generate_default_constants(len(key))
    # random.shuffle(tweak)
     cipher = Test_Cipher(key, "cbc", 2, tweak)
@@ -218,7 +249,7 @@ def test_Cipher():
       
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
         print real_ciphertext
-     #   print                   
+        print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
         ciphertext2 = cipher2.encrypt(plaintext, iv)
@@ -226,7 +257,7 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics()#avalanche_test=False, randomness_test=False, bias_test=False, performance_test=False,
+    Test_Cipher.test_metrics(randomize_key=False)#avalanche_test=False, randomness_test=False, bias_test=False, performance_test=False,
                              #period_test=True, randomize_key=True)    
 
 def test_linear_cryptanalysis():       
@@ -331,8 +362,9 @@ def test_extract_round_key():
     #test_avalanche(_test_interface)
     
 if __name__ == "__main__":
-    test_generate_round_key()
+#    test_generate_round_key()
  #   test_extract_round_key()
-#    test_Cipher()
+    #test_Cipher()
     #test_linear_cryptanalysis()
-#    test_cipher_metrics()
+    #test_cipher_metrics()
+    attack()

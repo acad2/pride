@@ -30,19 +30,28 @@ def test_avalanche(hash_function, blocksize=16):
     _bytes = ''.join(chr(byte) for byte in range(256))
     import pride.datastructures
     ratio = pride.datastructures.Average(size=65535)
-    for byte in _bytes:        
-        for byte2 in _bytes:
-            input1 = beginning + byte + byte2
-            byte2 = chr((ord(byte2) + 1) % 256)
-            if byte2 == byte:
-                continue
-            input2 = beginning + byte + byte2                        
-            output1 = hash_function(input1)
-            output2 = hash_function(input2)            
-            distance = hamming_distance(output1, output2)
+    for byte in _bytes:  
+        last_output = hash_function(beginning + byte + _bytes[0])
+        for byte2 in _bytes[1:]:
+            next_input = beginning + byte + byte2
+            next_output = hash_function(next_input)
+            distance = hamming_distance(last_output, next_output)
             ratio.add(distance)
+            last_output = next_output
+            
+            #input1 = beginning + byte + byte2
+            #output1 = hash_function(input1)                      
+            
+            #byte2 = chr((ord(byte2) + 1) % 256)
+            #if byte2 == byte:
+            #    continue
+            #input2 = beginning + byte + byte2                        
+            #output1 = hash_function(input1)
+            #output2 = hash_function(input2)            
+            #distance = hamming_distance(output1, output2)
+            #ratio.add(distance)
     minimum, average, maximum = ratio.range
-    bit_count = float(len(cast(output1, "binary")))
+    bit_count = float(len(cast(last_output, "binary")))
     print "Minimum Hamming distance and ratio: ", minimum / bit_count
     print "Average Hamming distance and ratio: ", average / bit_count
     print "Maximum Hamming distance and ratio: ", maximum / bit_count    
