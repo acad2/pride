@@ -13,7 +13,9 @@ def generate_s_box(function):
     return S_BOX
 
 #from scratch import aes_s_box as S_BOX    
-S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
+from nonlinearfunction import nonlinear_function4 as nonlinear_function
+S_BOX = bytearray(nonlinear_function(index) for index in range(256))    
+#S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
 def generate_round_key(key, constants):       
@@ -31,7 +33,7 @@ def extract_round_key(key):
     xor_sum_of_key = xor_sum(key)    
     for index, key_byte in enumerate(key):        
         key[index] = S_BOX[S_BOX[key_byte] ^ S_BOX[index] ^ xor_sum_of_key]               
-      
+
 def shuffle(data, key): 
     n = len(data)
     for i in reversed(range(1, n)):
@@ -361,8 +363,8 @@ def test_extract_round_key():
     
 if __name__ == "__main__":
 #    test_generate_round_key()
- #   test_extract_round_key()
+    test_extract_round_key()
     #test_Cipher()
     #test_linear_cryptanalysis()
-    test_cipher_metrics()
+ #   test_cipher_metrics()
     #attack()

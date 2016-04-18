@@ -1,5 +1,5 @@
 from utilities import cast, replacement_subroutine, xor_subroutine
-from utilities import rotate as _rotate
+from utilities import rotate_left, rotate_right
 import pride.crypto
 
 NUMBER_OF_ROUNDS = {(64, 2) : 32, (64, 3) : 33, (64, 4) : 34,
@@ -7,12 +7,6 @@ NUMBER_OF_ROUNDS = {(64, 2) : 32, (64, 3) : 33, (64, 4) : 34,
                     (32, 3) : 26, (32, 4) : 27,
                     (24, 3) : 22, (24, 4) : 23,
                     (16, 4) : 22}
-
-def rotate_right(x, r):
-    return ((x >> r) | (x << (8 - r)))
-    
-def rotate_left(x, r):
-    return ((x << r) | (x >> (8 - r)))
     
 def speck_round(left, right, key, modulus):
     left = rotate_right(left, 7)        

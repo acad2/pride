@@ -1,50 +1,50 @@
 import pride.crypto
-from pride.crypto.blockcipher import extract_round_key
-from pride.crypto.utilities import xor_subroutine, xor_sum
+from pride.crypto.utilities import xor_subroutine, xor_sum, shift_left, shift_right, rotate_left, rotate_right
 
 def shuffle(data, key): 
     n = len(data)    
     for i in reversed(range(1, n)):
-        j = key[i] & (i - 1)
-        data[i], data[j] = data[j], data[i]
-        
+        j = key[i] & (i - 1)        
+        data[i], data[j] = data[j], data[i]                     
+    
+def nonlinear_function(byte):    
+    for round in range(2):
+        byte ^= rotate_left(byte + 6, 3) ^ rotate_right(byte + 16, 5)
+        byte ^= shift_left(byte + 1, 4)
+                
+        byte ^= shift_right(byte + 144, 4)
+        byte ^= rotate_left(byte + 11, 1) ^ rotate_right(byte + 96, 5)            
+    return byte
+               
 def extract_round_key(key): 
     """ Non invertible round key extraction function. """
-    for round in range(2):
-        xor_sum_of_key = xor_sum(key)    
-        shuffle(key, key)
-        for index, key_byte in enumerate(key):        
-            key[index] = (xor_sum_of_key + key_byte + (~index + 256)) % 256    
+    size = len(key)       
+    xor_sum_of_key = xor_sum(key) 
+    for round in range(2):                
+        for index in reversed(range(1, size)):
+            key_byte = key[index]            
+            other_index = key_byte & (index - 1)      
+            key[index], key[other_index] = key[other_index], key[index]
+            key[index] = nonlinear_function(key_byte, key[index], xor_sum_of_key, index)#(xor_sum_of_key + (key_byte ^ key[index]) + (~index ^ 131)) % 256    
+            xor_sum_of_key ^= key[index] ^ key[other_index] ^ index       
+        key[0] = nonlinear_function(key[0], key[-1], xor_sum_of_key, 0)#(xor_sum_of_key + (key[0] ^ key[-1]) + 131) % 256       
         
-def random_number_generator(key, first_set, output_size=256):
+def random_number_generator(key, seed, output_size=256):
     extract_round_key(key)    
-    key_two = key[:]
-    extract_round_key(key_two)
-    key_three = key_two[:]
-    extract_round_key(key_three)
-    
-    print key
-    print
-    print key_two
-    print
-    print key_three
-    shuffle(first_set, key)
-    second_set = first_set[:]
-    shuffle(second_set, key_two)
-    third_set = second_set[:]
-    shuffle(third_set, key_three)
-    
-    output_set = bytearray(256)
-    while True:
-        shuffle(first_set, key)
-        shuffle(second_set, key_two)
-        shuffle(third_set, key_three)
+    shuffle(seed, key)     
+    state_size = len(seed)
+    state = bytearray(state_size)
+    output = bytearray(output_size)
+    while True:      
+        shuffle(seed, key)  
+        shuffle(key, seed)                
+        for index in range(state_size):
+            state[index] ^= seed[index]
         
-        for index in range(256):
-            output_set[index] = first_set[index] ^ second_set[index] ^ third_set[index]
-        shuffle(output_set, key)
-        yield bytes(output_set[:output_size])                   
-            
+        for index in range(output_size):            
+            output[index] = state[seed[index]]        
+        yield bytes(output)                                              
+                        
 class Disco(pride.crypto.Cipher):
             
     def __init__(self, key, mode, seed=None, output_size=256):
@@ -68,7 +68,7 @@ class Disco(pride.crypto.Cipher):
         return output
         
 def test_extract_round_key():
-    key = bytearray("\x00" * 8)
+    key = bytearray("\x00" * 256)
     for round in range(4):
         extract_round_key(key)
         print key
@@ -77,16 +77,47 @@ def test_random_number_generator():
     key = bytearray("\x00" * 256)
     generator = random_number_generator(key, range(256), 16)
     next(generator)
+    print key
     for _bytes in range(16):
+        print
         print next(generator)
             
 def test_Disco():
     #key = bytearray("\x00" * 256)
-    Disco.test_metrics(avalanche_test=False, bias_test=True)
+    Disco.test_metrics(avalanche_test=False, bias_test=True, randomness_test=False, period_test=False)
     #cipher = Disco(key, "ctr")
     
-    
+def test_extract_round_key_metrics():        
+    class Test_Cipher(pride.crypto.Cipher):
+        
+        def __init__(self, *args):
+            super(Test_Cipher, self).__init__(*args)
+            self.blocksize = 16
+            
+        def encrypt_block(self, data, key):
+            extract_round_key(data)            
+            
+    Test_Cipher.test_metrics(avalanche_test=False, randomness_test=False, period_test=False)    
+  
+def test_nonlinear_function():
+    import pprint
+    from differential import build_difference_distribution_table, find_best_output_differential
+    table1, table2 = build_difference_distribution_table(bytearray(nonlinear_function(count) for count in range(256)))
+   # pprint.pprint(table1)
+    #pprint.pprint(table2)
+    max_probability = (0, 0, 0)
+    for input_differential in xrange(1, 256):
+        output = find_best_output_differential(table1, input_differential)
+        if output[-1] > max_probability[-1]:
+            max_probability = output
+    print max_probability
+    #for x in range(256):
+    #    print nonlinear_function(x)
+        
 if __name__ == "__main__":
     #test_extract_round_key()
-    test_random_number_generator()
+    #test_extract_round_key_metrics()
+    #test_random_number_generator()
     #test_Disco()
+    test_nonlinear_function()
+  

@@ -30,9 +30,20 @@ def rotate(input_string, amount):
         amount = amount % len(input_string)
         return input_string[-amount:] + input_string[:-amount]                
 
-def byte_rotation(byte, amount):
-    return int(rotate(cast(byte, "binary"), amount), 2)
+def rotate_right(x, r, bit_width=8): 
+    r %= bit_width
+    return ((x >> r) | (x << (bit_width - r))) & ((2 ** bit_width) - 1)
     
+def rotate_left(x, r, bit_width=8):     
+    r %= bit_width
+    return ((x << r) | (x >> (bit_width - r))) & ((2 ** bit_width) - 1)
+    
+def shift_left(byte, amount, bit_width=8):
+    return (byte << amount) & ((2 ** bit_width) - 1)   
+    
+def shift_right(byte, amount, bit_width=8):
+    return (byte >> amount) & ((2 ** bit_width) - 1)
+        
 def xor_subroutine(bytearray1, bytearray2): 
     size = min(len(bytearray1), len(bytearray2))
     for index in range(size):

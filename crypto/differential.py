@@ -14,9 +14,10 @@ def rotational_difference(input_one, input_two):
 def build_difference_distribution_table(sbox):
     xor_difference_distribution_table = {}
     rotational_ddt = {}
+    size = len(sbox)
     
-    for input_one in range(256):
-        for input_two in range(input_one + 1, 256):
+    for input_one in range(size):
+        for input_two in range(input_one + 1, size):
             input_differential = input_one ^ input_two
             output_differential = sbox[input_one] ^ sbox[input_two]
             try:

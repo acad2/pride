@@ -1,6 +1,6 @@
 from ctypes import c_uint8 as eight_bit_integer, c_uint16 as word
 from utilities import rotate as _rotate
-from utilities import cast, hamming_weight
+from utilities import cast, hamming_weight, rotate_left, rotate_right, shift_left, shift_right
 
 def rotate(word, amount):
     bits = cast(word, "binary")    
@@ -37,6 +37,28 @@ def nonlinear_function3(data, mask=1 << 7):
         data ^= 1 << (data % 8)
     
     return data
+    
+def nonlinear_function4(byte):    
+    state = 1 
+    for bit in range(8):
+        state ^= rotate_right(byte & rotate_left(1, bit), bit)                
+        
+   # byte ^= shift_left(byte, 4)
+   # byte ^= shift_right(byte, 4)
+   # byte ^= shift_left(byte, 4)  
+    
+    for bit in range(4):            
+        byte ^= rotate_left(state, bit)                  
+        state ^= rotate_right(byte & rotate_left(1, bit), bit)
+        
+        #byte ^= rotate_left(state, 7 - bit)
+        #state ^= rotate_right(byte & rotate_left(1, 7 - bit), bit)
+ 
+    byte ^= shift_left(byte, 4)
+    byte ^= shift_right(byte, 4)
+    byte ^= shift_left(byte, 4)  
+      
+    return byte
     
 def __nonlinear_function2(data):
     for target_index, target_byte in enumerate(data):
@@ -94,8 +116,23 @@ def test_nonlinear_function3():
     #pprint.pprint(xor_ddt)
     pprint.pprint(rotational_ddt)    
         
+def test_nonlinear_function4():
+    from differential import build_difference_distribution_table, find_best_output_differential
+    cycle = find_cycle_length(nonlinear_function4, 1)
+    print len(cycle), cycle
+    
+    sbox = bytearray(nonlinear_function4(index) for index in range(256))
+    xor_ddt, rotational_ddt = build_difference_distribution_table(sbox)
+    best_differential = (None, None, 0)
+    for difference in range(1, 256):
+        info = find_best_output_differential(xor_ddt, difference)        
+        if info[-1] > best_differential[-1]:
+            best_differential = info
+    print best_differential
+            
         
 if __name__ == "__main__":
     #test_nonlinear_function()
     #test_nonlinear_function2()
-    test_nonlinear_function3()
+    #test_nonlinear_function3()
+    test_nonlinear_function4()
