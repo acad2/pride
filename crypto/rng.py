@@ -39,7 +39,7 @@ def random_number_generator_subroutine(key, seed, tweak, output, output_size=256
         
 def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):        
     output = bytearray(256)
-    generator = random_number_generator_subroutine_inline(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
+    generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size)
     amount = amount + 1 if extra else amount
     for chunk in range(amount):
