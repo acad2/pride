@@ -149,21 +149,24 @@ class Processor(Process):
             try:
                 while True:                    
                     (execute_at, instruction, callback, 
-                     component_name, method, args, kwargs) = heappop(instructions)     
-                    call = _getattr(objects[component_name], method)
+                     component_name, method, args, kwargs,
+                     execute_flag) = heappop(instructions)
+                     
+                    if execute_flag:
+                        call = _getattr(objects[component_name], method)
+                            
+                        time_until = max(0, (execute_at - timer_function()))
+                        if time_until:
+                            sleep(time_until)
+                                            
+                        execution_alert([instruction], level=verbosity["instruction_execution"])
                         
-                    time_until = max(0, (execute_at - timer_function()))
-                    if time_until:
-                        sleep(time_until)
-                                        
-                    execution_alert([instruction], level=verbosity["instruction_execution"])
-                    
-                    if callback:
-                        result = call(*args, **kwargs)
-                        callback(result)
-                        result = null_result
-                    else:
-                        call(*args, **kwargs)
+                        if callback:
+                            result = call(*args, **kwargs)
+                            callback(result)
+                            result = null_result
+                        else:
+                            call(*args, **kwargs)
                         
             except KeyError:                 
                 if component_name in objects:

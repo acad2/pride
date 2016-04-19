@@ -28,7 +28,7 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
 
     defaults = {"input_types" : ("keyboard", "mouse", "audio"), "window_type" : "pride.gui.sdllibrary.Window_Context"}
     remotely_available_procedures = ("handle_input", )
-    verbosity = {"handle_keyboard" : 0, "handle_mouse" : 0, "handle_audio" : 0}
+    verbosity = {"handle_keyboard" : 0, "handle_mouse" : 'v', "handle_audio" : 0, "refresh" : 'v'}
     mutable_defaults = {"windows" : dict}
     
     def on_login(self):
@@ -48,36 +48,40 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
         self.alert("Received keystrokes: {}".format(input_bytes), 
                    level=self.verbosity["handle_keyboard"])
                       
-    def handle_mouse_input(self, mouse_info):    
-        mouse = Mouse_Structure(*pride.utilities.load_data(mouse_info))
-        self.alert("Received mouse info: {}".format(mouse), level=self.verbosity["handle_mouse"])
-                           
+    def handle_mouse_input(self, mouse_info): 
         user_window = pride.objects[self.windows[self.current_user]]
-        user_window.user_input.handle_mousebuttondown(Event_Structure(mouse))
-        instructions = user_window.run()
-        print type(instructions), instructions
+        if mouse_info:            
+            mouse = Mouse_Structure(*pride.utilities.load_data(mouse_info))
+            self.alert("Received mouse info: {}".format(mouse), level=self.verbosity["handle_mouse"])
+            user_window.user_input.handle_mousebuttondown(Event_Structure(mouse))
+        else:
+            self.alert("Received window refresh request", level=self.verbosity["refresh"])                   
+        
+        instructions = user_window.run()    
         return "draw", instructions
         
     def handle_audio_input(self, audio_bytes):
         self.alert("Received audio: {}...".format(audio_bytes[:50]), 
                    level=self.verbosity["handle_audio"])
-    
-    
+        
 class Black_Box_Client(pride.authentication2.Authenticated_Client):
                     
     defaults = {"target_service" : "->Python->Black_Box_Service", 
-                "mouse_support" : True,
-                "audio_support" : True, "audio_source" : "->Python->Audio_Manager->Audio_Input",
+                "mouse_support" : False, "refresh_interval" : .04,
+                "audio_support" : False, "audio_source" : "->Python->Audio_Manager->Audio_Input",
                 "microphone_on" : False,
                 "response_methods" : ("handle_response_draw", )}
                 
-    verbosity = {"handle_input" : 0, "receive_response" : 0}
-    
+    verbosity = {"handle_input" : 'v', "receive_response" : 'v'}
+    flags = {"_refresh_flag" : False}
+        
     def __init__(self, **kwargs):
         super(Black_Box_Client, self).__init__(**kwargs)
         pride.objects["->User->Command_Line"].set_default_program(self.reference, (self.reference, "handle_keyboard_input"))                 
         if self.mouse_support:
             pride.objects[self.sdl_window].create("pride.gui.blackbox.Client_Window", client=self.reference)
+            self.refresh_instruction = pride.Instruction(self.reference, "_refresh")
+            self.refresh_instruction.execute(priority=self.refresh_interval)
         if self.audio_support:
             pride.objects[self.audio_source].add_listener(self.reference)
             
@@ -88,7 +92,8 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
     def handle_keyboard_input(self, input_bytes):
         self.handle_input("keyboard " + input_bytes)
         
-    def handle_mouse_input(self, mouse_info):        
+    def handle_mouse_input(self, mouse_info):  
+        self._refresh_flag = False
         self.handle_input("mouse " + mouse_info)
     
     def handle_audio_input(self, audio_bytes):
@@ -98,16 +103,22 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
     def receive_response(self, packet):
         _type, data = packet
         self.alert("Received response: {}".format(packet), level=self.verbosity["receive_response"])
-        response_method = "handle_response_{}".format(_type)
+        response_method = "handle_response_{}".format(_type)        
         if response_method in self.response_methods:
             getattr(self, response_method)(data)
         else:
             self.alert("Unsupported response method: '{}'".format(response_method), level=0)
             
-    def handle_response_draw(self, draw_instructions):        
+    def handle_response_draw(self, draw_instructions):         
         if draw_instructions:
             pride.objects[self.sdl_window].draw(draw_instructions)        
-            
+    
+    def _refresh(self):
+        if self._refresh_flag:                    
+            self.handle_mouse_input('')
+        self.refresh_instruction.execute(priority=self.refresh_interval)
+        self._refresh_flag = True
+        
 def test_black_box_service():
     import pride
     import pride.gui
@@ -119,7 +130,7 @@ def test_black_box_service():
     window = pride.gui.enable()
     pride.audio.enable()
     service = pride.objects["->Python"].create(Black_Box_Service)
-    client = Black_Box_Client(username="localhost", sdl_window=window)    
+    client = Black_Box_Client(username="localhost", sdl_window=window, mouse_support=True, audio_support=True)    
     
 if __name__ == "__main__":
     test_black_box_service()

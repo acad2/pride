@@ -69,16 +69,22 @@ class Instruction(object):
             The instruction will be executed in priority seconds.
             An optional callback function can be provided if the return value
             of the instruction is needed. """
-        heapq.heappush(self.instructions, (timer_function() + priority, self, 
+        heapq.heappush(self.instructions, [timer_function() + priority, self, 
                                            callback, self.component_name,
-                                           self.method, self.args, self.kwargs))
-
+                                           self.method, self.args, self.kwargs,
+                                           True])
+    
     @classmethod
-    def purge(cls, reference):
-        for entry in cls.instructions[:]:
-            if entry[3] == reference:
-                cls.instructions.remove(entry)
-        cls.instructions.sort()        
+    def purge(cls, reference):        
+        instructions = cls.instructions
+        for entry in instructions:
+            if entry[3] == reference:                
+                entry[-1] = False                        
+                
+    def unschedule(self):
+        for entry in self.instructions:
+            if entry[1] == self:
+                entry[-1] = False
         
     def __str__(self):
         return "Instruction({}.{}, {}, {})".format(self.component_name, self.method,

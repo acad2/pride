@@ -157,7 +157,11 @@ class Date_Time_Button(gui.Button):
         self.text = time.asctime()     
         self.update_instruction.execute(priority=1)   
         
-
+    def delete(self):
+        self.update_instruction.unschedule()
+        super(Date_Time_Button, self).delete()
+        
+        
 class Color_Palette(gui.Window):
             
     def __init__(self, **kwargs):
