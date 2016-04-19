@@ -73,7 +73,7 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
                 "microphone_on" : False,
                 "response_methods" : ("handle_response_draw", )}
                 
-    verbosity = {"handle_input" : 'v', "receive_response" : 'v'}
+    verbosity = {"handle_input" : 'v', "receive_response" : 'v', "receive_null_response" : 'v'}
     flags = {"_refresh_flag" : False}
         
     def __init__(self, **kwargs):
@@ -102,13 +102,18 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
             self.handle_input("audio " + audio_bytes)
         
     def receive_response(self, packet):
-        _type, data = packet
-        self.alert("Received response: {}".format(packet), level=self.verbosity["receive_response"])
-        response_method = "handle_response_{}".format(_type)        
-        if response_method in self.response_methods:
-            getattr(self, response_method)(data)
+        try:
+            _type, data = packet
+        except TypeError:            
+            self.alert("Received null response", level=self.verbosity["receive_null_response"])
+            assert packet is None
         else:
-            self.alert("Unsupported response method: '{}'".format(response_method), level=0)
+            self.alert("Received response: {}".format(_type), level=self.verbosity["receive_response"])
+            response_method = "handle_response_{}".format(_type)        
+            if response_method in self.response_methods:
+                getattr(self, response_method)(data)
+            else:
+                self.alert("Unsupported response method: '{}'".format(response_method), level=0)
             
     def handle_response_draw(self, draw_instructions):         
         if draw_instructions:

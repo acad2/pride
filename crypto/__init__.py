@@ -140,6 +140,16 @@ class Cipher(object):
     def test_metrics(cls, *args, **kwargs):
         test_block_cipher(cls, *args, **kwargs)    
     
+class Test_Cipher(Cipher):
+    
+    def __init__(self, encrypt_block_method, *args):
+        super(Test_Cipher, self).__init__(*args)
+        self.blocksize = 16
+        self.encrypt_block = encrypt_block_method
+        
+    def encrypt_block(self, data, key):
+        pass  
+        
 def test_encrypt_decrypt():
     data = "TestData" * 4
     _data = data[:]

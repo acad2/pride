@@ -124,14 +124,23 @@ def test_prng_performance(hash_function):
     print "Testing time to generate 1024 * 1024 bytes... "
     print Timed(hash_function, 1)('', output_size=1024 * 1024)
     
-def test_hash_function(hash_function):
-    test_avalanche(hash_function)
-    test_randomness(hash_function('', output_size=1024 * 1024))
-    test_period(hash_function)    
-    test_bias(hash_function)
-    test_collisions(hash_function)
-    test_compression_performance(hash_function)
-    test_prng_performance(hash_function)
+def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
+                       period_test=True, performance_test=True, randomize_key=False, collision_test=True,
+                       compression_test=True):
+    if avalanche_test:
+        test_avalanche(hash_function)
+    if randomness_test:
+        test_randomness(hash_function('', output_size=1024 * 1024))
+    if period_test:
+        test_period(hash_function)    
+    if bias_test:
+        test_bias(hash_function)
+    if collision_test:
+        test_collisions(hash_function)
+    if compression_test:
+        test_compression_performance(hash_function)
+    if performance_test:
+        test_prng_performance(hash_function)
     
 def test_block_cipher(cipher, blocksize=16, avalanche_test=True, randomness_test=True, bias_test=True,
                       period_test=True, performance_test=True, randomize_key=False, keysize=None):

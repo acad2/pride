@@ -1,43 +1,23 @@
 import pride.crypto
-from pride.crypto.utilities import xor_subroutine, xor_sum, shift_left, shift_right, rotate_left, rotate_right
-
-def shuffle(data, key): 
-    n = len(data)    
+from pride.crypto.utilities import xor_subroutine, xor_sum, shift_left, shift_right, rotate_left, rotate_right                   
+    
+def shuffle_extract(data, key):
+    n = len(data)        
     for i in reversed(range(1, n)):
         j = key[i] & (i - 1)        
-        data[i], data[j] = data[j], data[i]                     
-    
-def nonlinear_function(byte):    
-    for round in range(2):
-        byte ^= rotate_left(byte + 6, 3) ^ rotate_right(byte + 16, 5)
-        byte ^= shift_left(byte + 1, 4)
-                
-        byte ^= shift_right(byte + 144, 4)
-        byte ^= rotate_left(byte + 11, 1) ^ rotate_right(byte + 96, 5)            
-    return byte
-               
-def extract_round_key(key): 
-    """ Non invertible round key extraction function. """
-    size = len(key)       
-    xor_sum_of_key = xor_sum(key) 
-    for round in range(2):                
-        for index in reversed(range(1, size)):
-            key_byte = key[index]            
-            other_index = key_byte & (index - 1)      
-            key[index], key[other_index] = key[other_index], key[index]
-            key[index] = nonlinear_function(key_byte, key[index], xor_sum_of_key, index)#(xor_sum_of_key + (key_byte ^ key[index]) + (~index ^ 131)) % 256    
-            xor_sum_of_key ^= key[index] ^ key[other_index] ^ index       
-        key[0] = nonlinear_function(key[0], key[-1], xor_sum_of_key, 0)#(xor_sum_of_key + (key[0] ^ key[-1]) + 131) % 256       
+        data[i], data[j] = data[j], data[i]         
         
-def random_number_generator(key, seed, output_size=256):
-    extract_round_key(key)    
-    shuffle(seed, key)     
+        key[i] ^= data[j] ^ data[i] ^ key[j]
+    key[0] ^= data[j] ^ data[i] ^ key[j] ^ key[i]
+    
+def random_number_generator(key, seed, output_size=256):    
+    shuffle_extract(seed, key)    
     state_size = len(seed)
     state = bytearray(state_size)
     output = bytearray(output_size)
     while True:      
-        shuffle(seed, key)  
-        shuffle(key, seed)                
+        shuffle_extract(seed, key)  
+                     
         for index in range(state_size):
             state[index] ^= seed[index]
         
@@ -80,7 +60,7 @@ def test_random_number_generator():
     print key
     for _bytes in range(16):
         print
-        print next(generator)
+        next(generator)
             
 def test_Disco():
     #key = bytearray("\x00" * 256)
@@ -114,10 +94,31 @@ def test_nonlinear_function():
     #for x in range(256):
     #    print nonlinear_function(x)
         
+def test_shuffle_extract():
+    from metrics import test_randomness
+    random_megabyte = bytearray()
+    data = range(256)
+    key = bytearray("\x00" * 256)
+    for chunk in range((1024 * 1024) / 256):
+        shuffle_extract(data, key)
+        random_megabyte.extend(key[:])
+    
+    #generator = random_number_generator(bytearray("\x00" * 256), range(256))
+    
+     #   random_megabyte += next(generator)
+    test_randomness(random_megabyte)
+    
+    outputs = [[] for count in range(256)]
+    for chunk in slide(random_megabyte, 256):
+        for index, byte in enumerate(chunk):
+            outputs[index].append(byte)
+    print [len(set(item)) for item in outputs]
+    
 if __name__ == "__main__":
     #test_extract_round_key()
     #test_extract_round_key_metrics()
     #test_random_number_generator()
-    #test_Disco()
-    test_nonlinear_function()
-  
+    #test_shuffle_extract()
+    test_Disco()
+  #  test_nonlinear_function()
+    
