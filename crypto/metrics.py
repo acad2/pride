@@ -144,8 +144,8 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     
 def test_block_cipher(cipher, blocksize=16, avalanche_test=True, randomness_test=True, bias_test=True,
                       period_test=True, performance_test=True, randomize_key=False, keysize=None):
-    _cipher = cipher("\x00" * blocksize, "cbc")
-    key = "\x00" * blocksize if not randomize_key else urandom(keysize or blocksize)
+    _cipher = cipher("\x00" * (keysize if keysize is not None else blocksize), "cbc")
+    key = "\x00" * keysize if not randomize_key else urandom(keysize or blocksize)
     
     if avalanche_test:
         test_function = lambda data: _cipher.encrypt(data, key)

@@ -105,18 +105,6 @@ class Cipher(object):
     
     def decrypt_block(self, ciphertext, key):
         raise NotImplementedError()
-        
-    def generate_round_key(self, key):
-        raise NotImplementedError()
-        
-    def extract_round_key(self, key):
-        raise NotImplementedError()
-        
-    def p_box(self, data):
-        raise NotImplementedError()
-        
-    def substitution_round(self, data, key):
-        raise NotImplementedError()
 
     def encrypt(self, data, iv=None, tag=None): 
         if self.iv:
