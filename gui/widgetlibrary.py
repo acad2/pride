@@ -73,13 +73,34 @@ class Popup_Button(gui.Button):
             self._popup = self.create(self.popup_type)
         
         
-class Homescreen(gui.Window):
+class Objects_Explorer(pride.gui.gui.Application):
+    
+    def __init__(self, **kwargs):
+        super(Objects_Explorer, self).__init__(**kwargs)
+        references = self.object_references_container = self.create("pride.gui.gui.Container", pack_mode="left")
+        viewer = self.object_attributes_viewer = self.create("pride.gui.gui.Container", pack_mode="right")
+        viewer.current_object = viewer.create("pride.gui.pyobjecttest.Object_Button", objects["->Python"]).reference
+        
+        for key, item in pride.objects.items():
+            references.create("pride.gui.pyobjecttest.Object_Button", item, opener=viewer.reference)
+            
+        
+class Icon(Popup_Button):
+            
+    defaults = {"h_range" : (0, 40), "w_range" : (0, 40)}
+    
+    def left_click(self, mouse):
+        if mouse.clicks == 2:
+            self.parent_application.application_window.create(self.popup_type)
+            
+    
+class Homescreen(gui.Application):
     
     def __init__(self, **kwargs):
         super(Homescreen, self).__init__(**kwargs)
-        self.create(Task_Bar, startup_components=\
-                                ("pride.gui.widgetlibrary.Date_Time_Button",
-                                 "pride.gui.widgetlibrary.Text_Box"))
+        self.application_window.create(Task_Bar, startup_components=("pride.gui.widgetlibrary.Date_Time_Button",
+                                                  "pride.gui.widgetlibrary.Text_Box"))        
+        self.application_window.create(Icon, popup_type=Objects_Explorer)
         
 
 class Task_Bar(gui.Container):

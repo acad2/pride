@@ -39,6 +39,7 @@ window = pride.gui.enable()
 #chess = objects["->Python->SDL_Window"].create("pride.gui.chess.Chess")
 #cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")
 #messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
+homescreen = objects[window].create('pride.gui.widgetlibrary.Homescreen')
 """}
 
 pride_rpc_Rpc_Server_defaults = {'certfile' : r'c:\users\_\pythonbs\pride\rpcserver.crt', 'keyfile' : r'c:\users\_\pythonbs\pride\rpcserver.key'}

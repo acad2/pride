@@ -24,7 +24,7 @@ class Dictionary(pride.gui.gui.Container):
             
 class Object_Button(pride.gui.widgetlibrary.Popup_Button):
                 
-    defaults = {"popup_type" : Dictionary}
+    defaults = {"popup_type" : Dictionary, "opener" : None}
     
     def __init__(self, _object, **kwargs):
         super(Object_Button, self).__init__(**kwargs)
@@ -36,5 +36,9 @@ class Object_Button(pride.gui.widgetlibrary.Popup_Button):
             self._popup.delete()
         elif self.popup_type:
             self.alert("Creating: {}".format(self.popup_type), level='vv')
-            self._popup = self.create(self.popup_type, self._object.__dict__)        
+            if self.opener:
+                creator = pride.objects[self.opener]
+            else:
+                creator = self
+            self._popup = creator.create(self.popup_type, self._object.__dict__)        
             

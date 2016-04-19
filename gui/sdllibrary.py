@@ -238,6 +238,9 @@ class Window_Context(SDL_Window):
         self.running = False
         return instructions        
         
+    def invalidate_object(self, item):
+        pass
+        
         
 class Window_Handler(pride.base.Base):
     

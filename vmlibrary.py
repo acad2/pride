@@ -166,8 +166,7 @@ class Processor(Process):
                             callback(result)
                             result = null_result
                         else:
-                            call(*args, **kwargs)
-                        
+                            call(*args, **kwargs)                        
             except KeyError:                 
                 if component_name in objects:
                     if callback:

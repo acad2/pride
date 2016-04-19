@@ -64,10 +64,11 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
         self.alert("Received audio: {}...".format(audio_bytes[:50]), 
                    level=self.verbosity["handle_audio"])
         
+        
 class Black_Box_Client(pride.authentication2.Authenticated_Client):
                     
     defaults = {"target_service" : "->Python->Black_Box_Service", 
-                "mouse_support" : False, "refresh_interval" : .04,
+                "mouse_support" : False, "refresh_interval" : .95,
                 "audio_support" : False, "audio_source" : "->Python->Audio_Manager->Audio_Input",
                 "microphone_on" : False,
                 "response_methods" : ("handle_response_draw", )}
