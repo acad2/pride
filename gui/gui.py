@@ -281,7 +281,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._background_color
     def _set_bg_color(self, color):
         self.texture_invalid = True
-        self._background_color = sdl2.ext.Color(*color)
+        self._background_color = color#sdl2.ext.Color(*color)
     background_color = property(_get_bg_color, _set_bg_color)
     
     def _get_color(self):
@@ -294,7 +294,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _get_text_color(self):
         return self._text_color
     def _set_text_color(self, colors):
-        self._text_color = sdl2.ext.Color(*colors)
+        self._text_color = colors#sdl2.ext.Color(*colors)
         self.texture_invalid = True
     text_color = property(_get_text_color, _set_text_color)
     

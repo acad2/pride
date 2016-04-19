@@ -33,7 +33,9 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
     
     def on_login(self):
         username = self.current_user
-        self.windows[username] = self.create(self.window_type).reference
+        window =  self.create(self.window_type)
+        self.windows[username] = window.reference
+        window.create("pride.gui.widgetlibrary.Homescreen")
         
     def handle_input(self, packed_user_input):
         input_type, input_values = packed_user_input.split(' ', 1)
@@ -52,7 +54,9 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
                            
         user_window = pride.objects[self.windows[self.current_user]]
         user_window.user_input.handle_mousebuttondown(Event_Structure(mouse))
-        return "draw", user_window.run()
+        instructions = user_window.run()
+        print type(instructions), instructions
+        return "draw", instructions
         
     def handle_audio_input(self, audio_bytes):
         self.alert("Received audio: {}...".format(audio_bytes[:50]), 
@@ -73,7 +77,7 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
         super(Black_Box_Client, self).__init__(**kwargs)
         pride.objects["->User->Command_Line"].set_default_program(self.reference, (self.reference, "handle_keyboard_input"))                 
         if self.mouse_support:
-            pride.objects["->Python->SDL_Window"].create("pride.gui.blackbox.Client_Window", client=self.reference)
+            pride.objects[self.sdl_window].create("pride.gui.blackbox.Client_Window", client=self.reference)
         if self.audio_support:
             pride.objects[self.audio_source].add_listener(self.reference)
             
@@ -112,10 +116,10 @@ def test_black_box_service():
         pride.objects["->User->Command_Line"]
     except KeyError:
         pride.objects["->User"].create("pride.shell.Command_Line")    
-    pride.gui.enable()
+    window = pride.gui.enable()
     pride.audio.enable()
     service = pride.objects["->Python"].create(Black_Box_Service)
-    client = Black_Box_Client(username="localhost")    
+    client = Black_Box_Client(username="localhost", sdl_window=window)    
     
 if __name__ == "__main__":
     test_black_box_service()

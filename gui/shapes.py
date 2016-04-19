@@ -80,7 +80,7 @@ class Shape(pride.base.Base):
     a = property(_get_a, _set_a)
     
     def _get_color(self):
-        return self._color
+        return (self._color.r, self._color.g, self._color.b, self._color.a)
     def _set_color(self, colors):
         color = self._color
         self._r = color.r = colors[0]
