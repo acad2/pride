@@ -2,42 +2,41 @@
 #include <stdlib.h>
 #include <time.h>
     
-int shuffle_extract(unsigned char* data, unsigned char* key, unsigned char* state)
+int shuffle_extract(unsigned char* data, unsigned char* key, unsigned char state)
 {       
     unsigned int i, j, temp;
 
     for (i = 255; i > 0; i -= 1)
     {                
-        j = state[0] & (i - 1); 
+        j = state & (i - 1); 
         
         temp = data[j];
         data[j] = data[i];
         data[i] = temp;
            
-        key[i] ^= data[j] ^ data[i];                      
-        state[0] ^= key[i] ^ i ^ key[j];       
+        key[i] ^= data[j] ^ i ^ data[i];                      
+        state ^= key[i] ^ key[j];       
     }
         
     key[0] ^= data[j] ^ data[i]; 
-    state[0] ^= key[0] ^ key[j]; 
+    state ^= key[0] ^ key[j]; 
+    return state;
 }
 
 int random_number_generator(unsigned char* key, unsigned char* seed, unsigned char* tweak, unsigned char* output, unsigned int rate, unsigned long byte_count)
 {
-    unsigned char state[1] = {0x00};
+    unsigned char state = 0x00;
     unsigned int i;
-    for (i = 0; i < 256; i++)
-    {
-        state[0] ^= seed[i];
-    }    
-    shuffle_extract(tweak, key, state);        
-    shuffle_extract(tweak, seed, state);
+   
+    state = key[0];
+    state = shuffle_extract(tweak, key, state);        
+    state = shuffle_extract(tweak, seed, state);
     
-    unsigned long current_amount = 0;    
-    while(current_amount < byte_count)
-    {                  
-        shuffle_extract(tweak, seed, state);       
+    unsigned long current_amount = 0; 
         
+    while(current_amount < byte_count)
+    {                          
+        state = shuffle_extract(tweak, seed, state);
         for (i = 0; i < rate; i++)
         {            
             output[current_amount + i] = seed[tweak[i]];

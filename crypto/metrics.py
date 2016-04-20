@@ -210,13 +210,27 @@ def test_aes_metrics(test_options):
     
 def test_sha_metrics():
     from hashlib import sha256
-    test_avalanche(lambda data: sha256(data).digest())
+    from pride.utilities import timer_function
+    #test_avalanche(lambda data: sha256(data).digest())
+    def test_function(data, output_size=0):
+        
+        output = b''
+        chunks, extra = divmod(output_size, 32)
+        chunks += 1 if extra else 0        
+        start = timer_function()
+        for chunk in range(chunks):            
+            output += sha256(output[chunk * 32:]).digest()            
+        end = timer_function()
+        print end - start
+        return output
+    test_function('', 1024 * 1024)
+   # test_prng_performance(test_function)
     
 if __name__ == "__main__":
     options = dict((key, not value) for key, value in TEST_OPTIONS.items())
     options["period_test"] = True
     options["randomize_key"] = False
     #test_aes_metrics(options)
-    #test_sha_metrics()
-    test_random_metrics(TEST_OPTIONS)
+    test_sha_metrics()
+    #test_random_metrics(TEST_OPTIONS)
     

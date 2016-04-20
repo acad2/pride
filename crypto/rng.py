@@ -2,34 +2,33 @@ from pride.crypto.utilities import xor_sum, xor_subroutine
     
 def shuffle_extract(data, key, state):    
     for i in reversed(range(1, 256)):
-        j = state[0] & (i - 1)                
+        j = state & (i - 1)                
         data[i], data[j] = data[j], data[i]                         
-        key[i] ^= data[j] ^ data[i]        
-        state[0] ^= key[i] ^ i ^ key[j]        
+        key[i] ^= data[j] ^ data[i] ^ i     
+        state ^= key[i] ^ key[j]        
         
     key[0] ^= data[j] ^ data[i] 
-    state[0] ^= key[0] ^ key[j]
+    state ^= key[0] ^ key[j]
+    return state
     
 def random_number_generator(key, seed, tweak, output_size=256):
-    state = bytearray(1)        
-    state[0] = xor_sum(seed)
-    shuffle_extract(tweak, key, state)
-    
+    state = key[0]           
+    state = shuffle_extract(tweak, key, state)
+    state = shuffle_extract(tweak, seed, state)
     output = bytearray(output_size)
     while True:                  
-        shuffle_extract(tweak, seed, state)        
+        state = shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
         yield bytes(output)                                              
    
-def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):
-    state = bytearray(1)        
-    state[0] = xor_sum(seed)
-    shuffle_extract(tweak, key, state)
-    shuffle_extract(tweak, seed, state)
+def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):        
+    state = key[0]
+    state = shuffle_extract(tweak, key, state)
+    state = shuffle_extract(tweak, seed, state)
     
     while True:         
-        shuffle_extract(tweak, seed, state)        
+        state = shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
         yield        
@@ -138,9 +137,9 @@ def test_shuffle_extract():
         
         
 if __name__ == "__main__":
-    #test_random_number_generator()
+    test_random_number_generator()
     #test_shuffle_extract()
     #test_Disco()  
     #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
-    with open("pythonrng.bin", "wb") as _file:
-        _file.write(random_bytes(1024 * 1024))
+    #with open("pythonrng.bin", "wb") as _file:
+    #    _file.write(random_bytes(1024 * 1024))
