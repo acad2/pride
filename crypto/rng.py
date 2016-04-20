@@ -1,13 +1,11 @@
-from pride.crypto.utilities import xor_sum
+from pride.crypto.utilities import xor_sum, xor_subroutine
     
-def shuffle_extract(data, key, state):
-    n = len(data)            
-    for i in reversed(range(1, n)):
-        j = state[0] & (i - 1)        
-        data[i], data[j] = data[j], data[i]                 
-        key[i] ^= data[j] ^ data[i]
-        
-        state[0] ^= key[i] ^ i ^ key[j]
+def shuffle_extract(data, key, state):    
+    for i in reversed(range(1, 256)):
+        j = state[0] & (i - 1)                
+        data[i], data[j] = data[j], data[i]                         
+        key[i] ^= data[j] ^ data[i]        
+        state[0] ^= key[i] ^ i ^ key[j]        
         
     key[0] ^= data[j] ^ data[i] 
     state[0] ^= key[0] ^ key[j]
@@ -117,19 +115,19 @@ def test_shuffle_extract():
     from metrics import test_randomness, test_avalanche
     random_megabyte = bytearray()
     data = range(256)
-    #key = bytearray("\x00" * 256)
-    #for chunk in range((1024 * 1024) / 256):
-    #    shuffle_extract(data, key)
-    #    random_megabyte.extend(key[:])
+    key = bytearray("\x00" * 256)
+    state = bytearray(1)
+    for chunk in range((1024 * 1024) / 256):
+        shuffle_extract(data, key, state)
+        random_megabyte.extend(key[:])
+    
+    test_randomness(random_megabyte)
     #
-    #test_randomness(random_megabyte)
-    #
-
     
     def _test_avalanche(_input):
         _input = bytearray(_input)
         key = bytearray("\x00" * len(_input))
-        shuffle_extract(range(len(_input)), key, _input)
+        shuffle_extract(range(len(_input)), _input, state)
         return bytes(key)
         
     test_avalanche(_test_avalanche)
@@ -140,8 +138,9 @@ def test_shuffle_extract():
         
         
 if __name__ == "__main__":
-    test_random_number_generator()
+    #test_random_number_generator()
     #test_shuffle_extract()
-    #test_Disco()
-  #  test_nonlinear_function()
-    
+    #test_Disco()  
+    #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
+    with open("pythonrng.bin", "wb") as _file:
+        _file.write(random_bytes(1024 * 1024))
