@@ -4,22 +4,23 @@ from pride.crypto.utilities import xor_subroutine, xor_sum, shift_left, shift_ri
 def shuffle_extract(data, key, state):
     n = len(data)            
     for i in reversed(range(1, n)):
-        j = key[i] & (i - 1)        
+        j = state[0] & (i - 1)        
         data[i], data[j] = data[j], data[i]                 
-        key[i] ^= data[j] ^ data[i] ^ key[j] ^ state[0]
-        state[0] ^= key[i] ^ data[i]
+        key[i] ^= data[j] ^ data[i]
         
-    key[0] ^= data[j] ^ data[i] ^ key[j] ^ key[i] ^ state[0] 
-    state[0] ^= key[0] ^ data[0]
+        state[0] ^= key[i] ^ i ^ key[j]
+        
+    key[0] ^= data[j] ^ data[i] 
+    state[0] ^= key[0] ^ key[j]
     
 def random_number_generator(key, seed, tweak, output_size=256):
     state = bytearray(1)    
+    xor_subroutine(seed, key)
     state[0] = xor_sum(seed)
     shuffle_extract(tweak, key, state)
-    shuffle_extract(tweak, seed, state)
-
+    
     output = bytearray(output_size)
-    while True:              
+    while True:                  
         shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
@@ -27,11 +28,12 @@ def random_number_generator(key, seed, tweak, output_size=256):
    
 def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):
     state = bytearray(1)    
+    xor_subroutine(seed, key)
     state[0] = xor_sum(seed)
     shuffle_extract(tweak, key, state)
     shuffle_extract(tweak, seed, state)
     
-    while True:              
+    while True:         
         shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
@@ -45,7 +47,7 @@ def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(2
     for chunk in range(amount):
         next(generator)
         output.extend(output[:output_size])    
-    return output[output_size:count + output_size]
+    return bytes(output[output_size:count + output_size])
         
 class Disco(pride.crypto.Cipher):
             
@@ -81,26 +83,28 @@ class Disco(pride.crypto.Cipher):
         return output        
     
 def test_random_number_generator():
-    key = bytearray("\x00" * 256)
+    import os
+    key = bytearray(os.urandom(256))#"\x00" * 256)
     tweak = range(256)    
     import pride.datastructures
     from metrics import hamming_distance, cast, test_randomness, test_prng_performance
-    #random_megabyte = random_bytes(1024 * 1024, "\x00" * 256)
-    #test_randomness(random_megabyte)
-    #random_megabyte2 = random_bytes(1024 * 1024, "\x00" * 255 + "\x01")
-    #ratio = pride.datastructures.Average(size=65535)
-    #for chunk in range((1024 * 1024) / 256):
-    #    _slice = slice(chunk * 256, (chunk + 1) * 256)
-    #    distance = hamming_distance(random_megabyte[_slice], random_megabyte2[_slice])
-    #    ratio.add(distance) 
-    #minimum, average, maximum = ratio.range
-    #bit_count = float(len(cast(random_megabyte[_slice], "binary")))
-    #print "Minimum Hamming distance and ratio: ", minimum / bit_count
-    #print "Average Hamming distance and ratio: ", average / bit_count
-    #print "Maximum Hamming distance and ratio: ", maximum / bit_count     
-    #    
-    #test_bias(random_megabyte)
-    test_prng_performance(lambda data, output_size: random_bytes(output_size))
+    random_megabyte = random_bytes(1024 * 1024, "\x00" * 256, key=key)
+    test_randomness(random_megabyte)
+    random_megabyte2 = random_bytes(1024 * 1024, "\x00" * 255 + "\x01", key=key)
+    ratio = pride.datastructures.Average(size=65535)
+    for chunk in range((1024 * 1024) / 256):
+        _slice = slice(chunk * 256, (chunk + 1) * 256)
+        distance = hamming_distance(random_megabyte[_slice], random_megabyte2[_slice])
+        ratio.add(distance) 
+        print distance
+    minimum, average, maximum = ratio.range
+    bit_count = float(len(cast(random_megabyte[_slice], "binary")))
+    print "Minimum Hamming distance and ratio: ", minimum / bit_count
+    print "Average Hamming distance and ratio: ", average / bit_count
+    print "Maximum Hamming distance and ratio: ", maximum / bit_count     
+        
+    test_bias(random_megabyte)    
+    test_prng_performance(lambda data, output_size: random_bytes(output_size, key=key))
     
 def test_Disco():
     #key = bytearray("\x00" * 256)
