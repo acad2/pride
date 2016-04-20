@@ -24,6 +24,13 @@ def print_hamming_info(output1, output2):
     print "Hamming weights: ", output1_binary.count('1'), output2_binary.count('1')
     print "Hamming distance and ratio (.5 is ideal): ", _distance, _distance / float(bit_count)
     
+def test_bias_of_data(random_data):    
+    outputs = [[] for count in range(256)]
+    for chunk in slide(random_data, 256):
+        for index, byte in enumerate(chunk):
+            outputs[index].append(byte)
+    print [len(set(item)) for item in outputs]
+    
 def test_avalanche(hash_function, blocksize=16):        
     print "Testing diffusion/avalanche... "
     beginning = "\x00" * (blocksize - 2)
