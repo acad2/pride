@@ -1,5 +1,6 @@
 import itertools
 import random
+import sys
 import os
 from timeit import default_timer as timer_function
 
@@ -182,6 +183,43 @@ def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_te
     if performance_test:
         test_function = lambda data: _cipher.encrypt(data or "\x00" * blocksize, key)
         test_prng_performance(test_function)
+    
+def test_stream_cipher(cipher, keysize, avalanche_test=True, randomness_test=True, bias_test=True,
+                       period_test=True, performance_test=True, randomize_key=False, rate=224):
+    key = ("\x00" * keysize) if not randomize_key else os.urandom(keysize)
+    _cipher = cipher(key, rate)
+    
+   # if avalanche_test:
+   #     test_function = lambda data: _cipher.encrypt(data, key)
+   #     test_avalanche(test_function)
+   #            
+   # if randomness_test:
+   #     random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, key)        
+   #     test_randomness(random_bytes)
+   # 
+   # if bias_test:
+   #     test_function = lambda byte: _cipher.encrypt(("\x00" * 14) + byte, key)
+   #     test_bias(test_function)
+   #  
+   # if period_test:
+   #     test_function = lambda data: _cipher.encrypt(data, key)
+   #     test_period(test_function)
+        
+    if performance_test:
+        for increment_size in (32, 256, 1500, 4096, 65536, 1024 * 1024):
+            print "Generating 10MB in {} byte increments... ".format(increment_size)
+            size = (1024 * 1024) / increment_size
+            start = timer_function()  
+            for round in range(10):
+                sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
+                sys.stdout.flush()
+                for chunk in range(size):
+                    _cipher.random_bytes(increment_size, "\x00")                    
+            end = timer_function()
+            sys.stdout.write("{}100%\r".format("=" * 76))
+            print "MB/s: ", 1 / ((end - start) / 10)
+        #test_function = lambda data: _cipher.encrypt(data or "\x00" * rate, key)
+        #test_prng_performance(test_function)
     
 def test_random_metrics(test_options):
     import pride.crypto

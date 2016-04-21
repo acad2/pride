@@ -101,6 +101,9 @@ else:
             self.rate = rate
             self.default_tweak = tuple(range(256))
             
+        def pad(self, seed, size):
+            return bytearray(seed + ("\x00" * (size - len(seed))))
+            
         def encrypt(self, data, seed, tag=None):
             xor_subroutine(data, self.random_bytes(len(data), seed))
             
@@ -108,14 +111,14 @@ else:
             xor_subroutine(data, self.random_bytes(len(data), seed))
             
         def random_bytes(self, quantity, seed, tweak=None):
-            return random_bytes(quantity, key=self.key, seed=seed, tweak=tweak or self.default_tweak)
+            return random_bytes(quantity, key=self.key, seed=self.pad(seed, 256), tweak=tweak or self.default_tweak)
                 
+        @classmethod
+        def test_metrics(cls, *args, **kwargs):
+            pride.crypto.metrics.test_stream_cipher(cls, *args, **kwargs)
             
     class Stream_Cipher2(Stream_Cipher):
-                
-        def pad(self, seed, size):
-            return bytearray(seed + ("\x00" * (size - len(seed))))
-            
+                            
         def encrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
             data_size = len(data)
@@ -137,7 +140,7 @@ else:
             for count in range(0, data_size):                                                
                 state ^= data[index]                           
                 random_place = state & (data_size - 1)                                  
-                data[index] ^= tweak[random_place] ^ data[random_place & (index - 1)] ^ index
+                data[index] ^= tweak[random_place] ^ data[random_place & (index - 1)]
                 state ^= data[index]                 
                 
                 index += direction
@@ -223,6 +226,8 @@ def test_stream_cipher2():
     plaintext2 = cipher.decrypt(ciphertext2, seed)
     assert message2 == plaintext2, (plaintext2, message2)
     
+    Stream_Cipher2.test_metrics(256)
+    
 if __name__ == "__main__":
    # test_random_number_generator()
     #test_shuffle_extract()
@@ -231,3 +236,4 @@ if __name__ == "__main__":
     #with open("pythonrng.bin", "wb") as _file:
     #    _file.write(random_bytes(1024 * 1024))
     test_stream_cipher2()
+    
