@@ -189,21 +189,21 @@ def test_stream_cipher(cipher, keysize, avalanche_test=True, randomness_test=Tru
     key = ("\x00" * keysize) if not randomize_key else os.urandom(keysize)
     _cipher = cipher(key, rate)
     
-   # if avalanche_test:
-   #     test_function = lambda data: _cipher.encrypt(data, key)
-   #     test_avalanche(test_function)
-   #            
-   # if randomness_test:
-   #     random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, key)        
-   #     test_randomness(random_bytes)
-   # 
-   # if bias_test:
-   #     test_function = lambda byte: _cipher.encrypt(("\x00" * 14) + byte, key)
-   #     test_bias(test_function)
-   #  
-   # if period_test:
-   #     test_function = lambda data: _cipher.encrypt(data, key)
-   #     test_period(test_function)
+    if avalanche_test:
+        test_function = lambda data: _cipher.encrypt(data, key)
+        test_avalanche(test_function)
+               
+    if randomness_test:
+        random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, key)        
+        test_randomness(random_bytes)
+    
+    if bias_test:
+        test_function = lambda byte: _cipher.encrypt(("\x00" * 14) + byte, key)
+        test_bias(test_function)
+     
+    if period_test:
+        test_function = lambda data: _cipher.encrypt(data, key)
+        test_period(test_function)
         
     if performance_test:
         for increment_size in (32, 256, 1500, 4096, 65536, 1024 * 1024):
