@@ -185,12 +185,13 @@ def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_te
         test_prng_performance(test_function)
     
 def test_stream_cipher(cipher, keysize, avalanche_test=True, randomness_test=True, bias_test=True,
-                       period_test=True, performance_test=True, randomize_key=False, rate=224):
+                       period_test=True, performance_test=True, randomize_key=False, rate=224,
+                       performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):
     key = ("\x00" * keysize) if not randomize_key else os.urandom(keysize)
     _cipher = cipher(key, rate)
     
     if avalanche_test:
-        test_function = lambda data: _cipher.encrypt(data, key)
+        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
         test_avalanche(test_function)
                
     if randomness_test:
@@ -198,15 +199,15 @@ def test_stream_cipher(cipher, keysize, avalanche_test=True, randomness_test=Tru
         test_randomness(random_bytes)
     
     if bias_test:
-        test_function = lambda byte: _cipher.encrypt(("\x00" * 14) + byte, key)
+        test_function = lambda byte: _cipher.encrypt("\x00" * 16, byte)
         test_bias(test_function)
      
     if period_test:
-        test_function = lambda data: _cipher.encrypt(data, key)
+        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
         test_period(test_function)
         
     if performance_test:
-        for increment_size in (32, 256, 1500, 4096, 65536, 1024 * 1024):
+        for increment_size in performance_test_sizes:
             print "Generating 10MB in {} byte increments... ".format(increment_size)
             size = (1024 * 1024) / increment_size
             start = timer_function()  

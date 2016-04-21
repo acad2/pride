@@ -85,6 +85,17 @@ def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(2
         output.extend(output[:output_size])
         
     return bytes(output[:count])
+    
+def _random_bytes(count, output, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
+    """ Generates count random bytes using random_number_generator using the 
+        supplied/default seed, key, tweak, and output_size. 
+        Identical to random_bytes, except uses a bytearray and avoids allocations"""         
+    generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
+    amount, extra = divmod(count, output_size) 
+    amount += 1 if extra else 0
+    for chunk in range(amount):            
+        next(generator)           
+        output.extend(output[:output_size])   
 
 try:
     import pride.crypto    
@@ -105,17 +116,24 @@ else:
             return bytearray(seed + ("\x00" * (size - len(seed))))
             
         def encrypt(self, data, seed, tag=None):
+            data = bytearray(data)
             xor_subroutine(data, self.random_bytes(len(data), seed))
+            return bytes(data)
             
         def decrypt(self, data, seed, tag=None):
+            data = bytearray(data)
             xor_subroutine(data, self.random_bytes(len(data), seed))
+            return bytes(data)
             
         def random_bytes(self, quantity, seed, tweak=None):
-            return random_bytes(quantity, key=self.key, seed=self.pad(seed, 256), tweak=tweak or self.default_tweak)
-                
+            output = bytearray(256)
+            _random_bytes(quantity, output, key=self.key, seed=self.pad(seed, 256), tweak=tweak or self.default_tweak)
+            return output
+            
         @classmethod
         def test_metrics(cls, *args, **kwargs):
             pride.crypto.metrics.test_stream_cipher(cls, *args, **kwargs)
+            
             
     class Stream_Cipher2(Stream_Cipher):
                             
@@ -124,7 +142,7 @@ else:
             data_size = len(data)
             seed = self.pad(seed, 256)
             tweak = bytearray(tweak or self.default_tweak)
-            key = bytearray(self.random_bytes(data_size, seed, tweak))          
+            key = self.random_bytes(data_size, seed, tweak)
             self.crypt(data, key, tweak, 0, 1)
             return bytes(data)
             
@@ -150,7 +168,7 @@ else:
             data_size = len(data)
             seed = self.pad(seed, 256)
             tweak = bytearray(tweak or self.default_tweak)
-            key = bytearray(self.random_bytes(data_size, seed, tweak))            
+            key = self.random_bytes(data_size, seed, tweak)
             self.crypt(data, key, tweak, data_size - 1, -1)       
             return bytes(data)
             
@@ -235,5 +253,5 @@ if __name__ == "__main__":
     #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
     #with open("pythonrng.bin", "wb") as _file:
     #    _file.write(random_bytes(1024 * 1024))
-    test_stream_cipher2()
-    
+    #test_stream_cipher2()
+    Stream_Cipher.test_metrics(256, performance_test_sizes=(1500, 4096), avalanche_test=False)
