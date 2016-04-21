@@ -1,17 +1,56 @@
-from pride.crypto.utilities import xor_sum, xor_subroutine
-    
 def shuffle_extract(data, key, state):    
+    """ State update and round key extraction function. """
     for i in reversed(range(1, 256)):
+        # Fisher-Yates shuffle
         j = state & (i - 1)                
-        data[i], data[j] = data[j], data[i]                         
-        key[i] ^= data[j] ^ data[i] ^ i     
-        state ^= key[i] ^ key[j]        
+        data[i], data[j] = data[j], data[i]           
+        
+        key[i] ^= data[j] ^ data[i] ^ i # randomize key value   
+        state ^= key[i] ^ key[j] # randomize value with output feedback
         
     key[0] ^= data[j] ^ data[i] 
     state ^= key[0] ^ key[j]
     return state
     
+def sponge(input_data, output_bytes, rate=256):
+    state = ord(input_data[0]) if input_data else 0
+    tweak = bytearray(range(256))
+    seed = bytearray(256)
+    for block in slide(bytearray(input_data), 256):
+        state = shuffle_extract(tweak, block, state)        
+        xor_subroutine(seed, block)
+        
+    chunks, extra = divmod(output_bytes, 256)    
+    output = bytearray(output_bytes)
+    
+    for chunk in range(chunks):
+        state = shuffle_extract(tweak, seed, state)
+        print seed
+        for index in range(rate):
+            output[(chunk * 256) + index] = seed[tweak[index]]
+    else:
+        chunk = -1
+    if extra:
+        shuffle_extract(tweak, seed, state)
+        for index in range(extra):
+            output[((chunk + 1) * 256) + index] = seed[tweak[index]]
+    return bytes(output)
+    
 def random_number_generator(key, seed, tweak, output_size=256):
+    """ Psuedorandom number generator. Operates by randomly shuffling the
+        set of 256 elements according to an internal state array.
+        
+        One round consists of a permutation of the set array along with a
+        randomizing of the internal state array. 
+        
+        Each output byte is obtained by selecting a byte from the state in
+        a random location determined by the set.
+        
+        Output size is configurable to allow for a tunable security capacity,
+        similar to a cryptographic sponge function. 
+        
+        Internally, two states are used: The main state array, and an 8-bit
+        byte. The 8-bit byte contributes to diffusion and avalanche"""   
     state = key[0]           
     state = shuffle_extract(tweak, key, state)
     state = shuffle_extract(tweak, seed, state)
@@ -22,7 +61,8 @@ def random_number_generator(key, seed, tweak, output_size=256):
             output[index] = seed[tweak[index]]   
         yield bytes(output)                                              
    
-def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):        
+def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):
+    """ Identical to random_number_generator; This uses less allocations and is more performant. """        
     state = key[0]
     state = shuffle_extract(tweak, key, state)
     state = shuffle_extract(tweak, seed, state)
@@ -33,59 +73,84 @@ def random_number_generator_subroutine(key, seed, tweak, output, output_size=256
             output[index] = seed[tweak[index]]   
         yield        
         
-def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):        
+def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
+    """ Generates count random bytes using random_number_generator using the 
+        supplied/default seed, key, tweak, and output_size. """      
     output = bytearray(256)
     generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
-    amount, extra = divmod(count, output_size)
-    amount = amount + 1 if extra else amount
-    for chunk in range(amount):
-        next(generator)
-        output.extend(output[:output_size])    
-    return bytes(output[output_size:count + output_size])
+    amount, extra = divmod(count, output_size) 
+    amount += 1 if extra else 0
+    for chunk in range(amount):            
+        next(generator)           
+        output.extend(output[:output_size])
+        
+    return bytes(output[:count])
 
 try:
     import pride.crypto    
 except ImportError:
     pass
 else:
-    class Disco(pride.crypto.Cipher):
+    from pride.crypto.utilities import xor_subroutine, xor_sum
+    
+    class Stream_Cipher(object):
+        
+        def __init__(self, key, rate=224):
+            super(Stream_Cipher, self).__init__()
+            self.key = key            
+            self.rate = rate
+            self.default_tweak = tuple(range(256))
+            
+        def encrypt(self, data, seed, tag=None):
+            xor_subroutine(data, self.random_bytes(len(data), seed))
+            
+        def decrypt(self, data, seed, tag=None):
+            xor_subroutine(data, self.random_bytes(len(data), seed))
+            
+        def random_bytes(self, quantity, seed, tweak=None):
+            return random_bytes(quantity, key=self.key, seed=seed, tweak=tweak or self.default_tweak)
                 
-        def __init__(self, key, mode, seed=None, tweak=None, output_size=256):
-            super(Disco, self).__init__(key, None)
-    
-            self.seed = bytearray(seed or "\x00" * 256)
-            self.tweak = bytearray(tweak or range(256))
-            self.output_size = output_size
-            assert len(key) == 256, len(key)
-            assert len(self.seed) == 256, (len(self.seed), [byte for byte in self.seed])
-            assert len(self.tweak) == 256, len(self.tweak)        
-            self.keystream = random_number_generator(bytearray(key), self.seed, self.tweak, output_size=output_size)        
             
-        def encrypt(self, data, iv=None, tag=None):
+    class Stream_Cipher2(Stream_Cipher):
+                
+        def pad(self, seed, size):
+            return bytearray(seed + ("\x00" * (size - len(seed))))
+            
+        def encrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
-            xor_subroutine(data, self.random_bytes(len(data)))
+            data_size = len(data)
+            seed = self.pad(seed, 256)
+            tweak = bytearray(tweak or self.default_tweak)
+            key = bytearray(self.random_bytes(data_size, seed, tweak))          
+            self.crypt(data, key, tweak, 0, 1)
             return bytes(data)
             
-        def decrypt(self, data, iv=None, tag=None):
+        def crypt(self, data, key, tweak, start, direction):
+            xor_subroutine(data, key)
+            self.substitute_bytes(data, tweak, start, direction)
+            xor_subroutine(data, key)            
+            
+        def substitute_bytes(self, data, tweak, start, direction):
+            data_size = len(data)        
+            index = start
+            state = xor_sum(data)
+            for count in range(0, data_size):                                                
+                state ^= data[index]                           
+                random_place = state & (data_size - 1)                                  
+                data[index] ^= tweak[random_place] ^ data[random_place & (index - 1)] ^ index
+                state ^= data[index]                 
+                
+                index += direction
+                
+        def decrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
-            xor_subroutine(data, self.random_bytes(len(data)))
+            data_size = len(data)
+            seed = self.pad(seed, 256)
+            tweak = bytearray(tweak or self.default_tweak)
+            key = bytearray(self.random_bytes(data_size, seed, tweak))            
+            self.crypt(data, key, tweak, data_size - 1, -1)       
             return bytes(data)
             
-        def random_bytes(self, quantity):
-            count, remainder = divmod(quantity, self.output_size)
-            if remainder:
-                count += 1
-            output = bytearray()
-            keystream = self.keystream
-            for counter in range(count):
-                output.extend(next(keystream))
-            return output    
-            
-    def test_Disco():
-        #key = bytearray("\x00" * 256)
-        Disco.test_metrics(avalanche_test=False, bias_test=True, randomness_test=True, period_test=True, keysize=256)
-        #cipher = Disco(key, "ctr")
-    
 def test_random_number_generator():
     import os
     key = bytearray(os.urandom(256))#"\x00" * 256)
@@ -135,11 +200,34 @@ def test_shuffle_extract():
     #for x in range(65535):
     #    next_output = next(generator)
         
-        
+def test_stream_cipher2():
+    cipher = Stream_Cipher2("\x00" * 256)
+    message = "Testing!"
+    seed = "\x01"
+    ciphertext = cipher.encrypt(message, seed)
+    
+    print
+    print ciphertext
+    print
+    plaintext = cipher.decrypt(ciphertext, seed)
+    assert message == plaintext, (plaintext, message)
+    
+    print
+    print
+    message2 = "Testing?"
+    ciphertext2 = cipher.encrypt(message2, seed)
+    
+    print
+    print ciphertext2
+    print
+    plaintext2 = cipher.decrypt(ciphertext2, seed)
+    assert message2 == plaintext2, (plaintext2, message2)
+    
 if __name__ == "__main__":
-    test_random_number_generator()
+   # test_random_number_generator()
     #test_shuffle_extract()
     #test_Disco()  
     #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
     #with open("pythonrng.bin", "wb") as _file:
     #    _file.write(random_bytes(1024 * 1024))
+    test_stream_cipher2()

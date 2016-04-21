@@ -62,8 +62,8 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
         absorb(_bytes, state, rate, mix_state_subroutine, absorb_mode)
     
     mix_state_subroutine(state)
-    return mode_of_operation(state, rate, output_size, mix_state_subroutine, absorb_mode)               
-
+    return mode_of_operation(state, rate, output_size, mix_state_subroutine, absorb_mode)                
+    
 def encrypt(data, key, iv, mix_state_subroutine=mixing_subroutine, rate=32):
     encryptor = sponge_function(iv, key, mix_state_subroutine=mix_state_subroutine,
                                 mode_of_operation=encryption_generator)

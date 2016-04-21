@@ -14,10 +14,9 @@ def _hash_prng(hash_function, output_size=0):
     output = b''
     chunks, extra = divmod(output_size, 32)
     chunks += 1 if extra else 0        
-    digest_size = len(hash_function(''))
-    
-    for chunk in range(chunks):                    
-        output += hash_function(output[(chunk - 1) * digest_size:])
+    digest_size = len(hash_function(''))    
+    for chunk in range(chunks):           
+        output += hash_function(output[-digest_size:])
     
     return output
     
@@ -130,7 +129,7 @@ def test_compression_performance(hash_function):
 def test_prng_performance(hash_function):    
     print "Testing time to generate 1024 * 1024 bytes... "
     start = timer_function()
-    _hash_prng(hash_function, 1024 * 1024)
+    output = _hash_prng(hash_function, 1024 * 1024)
     end = timer_function()
     print end - start    
     
@@ -160,9 +159,9 @@ def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_te
                       keysize=None, blocksize=16):
     """ Test statistical metrics of the supplied cipher. cipher should be a 
         pride.crypto.Cipher object or an object that supports an encrypt method
-        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""
-    _cipher = cipher("\x00" * (keysize if keysize is not None else blocksize), "cbc")
+        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""    
     key = "\x00" * keysize if not randomize_key else os.urandom(keysize or blocksize)
+    _cipher = cipher(key, "cbc")    
     
     if avalanche_test:
         test_function = lambda data: _cipher.encrypt(data, key)
@@ -181,7 +180,7 @@ def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_te
         test_period(test_function)
         
     if performance_test:
-        test_function = lambda data, output_size: _cipher.encrypt("\x00" * output_size, key)
+        test_function = lambda data: _cipher.encrypt(data or "\x00" * blocksize, key)
         test_prng_performance(test_function)
     
 def test_random_metrics(test_options):

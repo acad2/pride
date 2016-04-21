@@ -13,9 +13,9 @@ def generate_s_box(function):
     return S_BOX
 
 #from scratch import aes_s_box as S_BOX    
-from nonlinearfunction import nonlinear_function4 as nonlinear_function
-S_BOX = bytearray(nonlinear_function(index) for index in range(256))    
-#S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
+#from nonlinearfunction import nonlinear_function4 as nonlinear_function
+#S_BOX = bytearray(nonlinear_function(index) for index in range(256))    
+S_BOX = generate_s_box(lambda number: pow(251, number, 257) % 256)
 POWER_OF_TWO = dict((2 ** index, index) for index in range(9))
                         
 def generate_round_key(key, constants):       
@@ -40,7 +40,18 @@ def shuffle(data, key):
         j = key[i] & (i - 1)
         data[i], data[j] = data[j], data[i]
         
-def substitute_bytes(data, key, round_constants, counter, mask): 
+def shuffle_extract(data, key, state):
+    n = len(data)
+    for i in reversed(range(1, n)):
+        j = key[i] & (i - 1)
+        data[i], data[j] = data[j], data[i]
+
+        key[i] ^= data[i] ^ data[j] ^ i
+        state ^= key[i]
+    state ^= key[0]
+    return state
+    
+def substitute_bytes(data, key, round_constants, counter, state): 
     """ Substitution portion of the cipher. Classifies as an even, complete,
         consistent, homeogenous, source heavy unbalanced feistel network. (I think?)
         (https://www.schneier.com/cryptography/paperfiles/paper-unbalanced-feistel.pdf)
@@ -126,11 +137,13 @@ def generate_default_constants(block_size):
         
 def encrypt_block(plaintext, key, rounds, tweak): 
     blocksize = len(plaintext)       
-    online_keyschedule(plaintext, key[:], tweak, bytearray(range(rounds)), range(blocksize))    
+    state = key[0]
+    online_keyschedule(plaintext, key[:], tweak, bytearray(range(rounds)), range(blocksize), state)    
        
 def decrypt_block(ciphertext, key, rounds, tweak): 
     blocksize = len(ciphertext)    
-    upfront_keyschedule(ciphertext, key[:], tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+    state = key[0]
+    upfront_keyschedule(ciphertext, key[:], tweak, bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))), state)
            
 def generate_round_keys(key, rounds, tweak):
     round_keys = []    
@@ -139,45 +152,43 @@ def generate_round_keys(key, rounds, tweak):
         round_keys.append(key[:])        
     return round_keys          
             
-def online_keyschedule(data, key, constants, rounds, counter):                      
-    mask = (1 << POWER_OF_TWO[len(data)]) - 1 # byte & mask constrains byte to appropriate range    
+def online_keyschedule(data, key, constants, rounds, counter, state):                          
     for round_number in rounds:        
         generate_round_key(key, constants)
         xor_subroutine(data, key)
-        _crypt_block(key, constants, data, counter, mask)                
+        state = _crypt_block(key, constants, data, counter, state)                
         xor_subroutine(data, key)
         
-def upfront_keyschedule(data, key, constants, rounds, counter):
-    round_keys = generate_round_keys(key, rounds, constants)        
-    mask = (1 << POWER_OF_TWO[len(data)]) - 1
+def upfront_keyschedule(data, key, constants, rounds, counter, state):
+    round_keys = generate_round_keys(key, rounds, constants)            
     for round_key_index in rounds:        
         round_key = round_keys[round_key_index]
         xor_subroutine(data, round_key)
-        _crypt_block(round_key, constants, data, counter, mask)  
+        state = _crypt_block(round_key, constants, data, counter, state)  
         xor_subroutine(data, round_key)
         
-def _crypt_block(key, constants, data, counter, mask):        
-    round_key = key[:]
-    extract_round_key(round_key)                        
+def _crypt_block(key, constants, data, counter, state):        
+    #round_key = key[:]
+    #extract_round_key(round_key)                        
     
     round_constants = constants[:]        
-    shuffle(round_constants, round_key)
+    round_key = key[:]
+    state = shuffle_extract(round_constants, round_key, state)         
+    substitute_bytes(data, round_key, round_constants, counter, state)        
+    return state
     
-    extract_round_key(round_key)        
-    substitute_bytes(data, round_key, round_constants, counter, mask)        
-        
 def decrypt_block_embedded_decryption_key(ciphertext, final_round_key, rounds=1, tweak=None):
     blocksize = len(ciphertext)
     constants = tweak or generate_default_constants(blocksize)    
+    state = final_round_key[0]
     online_keyschedule_embedded_decryption_key(ciphertext, final_round_key[:], constants, 
-                                               bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))))
+                                               bytearray(reversed(range(rounds))), bytearray(reversed(range(blocksize))), state)
                                                
-def online_keyschedule_embedded_decryption_key(data, key, constants, rounds, counter):    
-    reverse_constants = bytearray(reversed(constants))
-    mask = (1 << POWER_OF_TWO[len(data)]) - 1
+def online_keyschedule_embedded_decryption_key(data, key, constants, rounds, counter, state):    
+    reverse_constants = bytearray(reversed(constants))    
     for round_number in rounds:          
         xor_subroutine(data, key)
-        _crypt_block(key, constants, data, counter, mask)
+        state = _crypt_block(key, constants, data, counter, state)
         xor_subroutine(data, key)
         generate_round_key(key, reverse_constants)
 
@@ -207,7 +218,8 @@ class Test_Cipher(pride.crypto.Cipher):
             
     def encrypt(self, data, iv=None, tag=None):
         assert tag is None
-        return super(Test_Cipher, self).encrypt(data, iv, self.mac_key)
+        ciphertext = super(Test_Cipher, self).encrypt(data, iv, self.mac_key)        
+        return ciphertext
         
     def decrypt(self, data, iv=None, tag=None):
         assert tag is None        
@@ -248,8 +260,8 @@ def test_Cipher():
     #                print "Mac code collision", correct_bytes, modification, invalid_plaintext, plaintext
       
         real_plaintext = cipher.decrypt(real_ciphertext, iv)
-        print real_ciphertext
-        print                   
+        #print real_ciphertext
+        #print                   
         assert real_plaintext == plaintext, (plaintext, real_plaintext)
         
         ciphertext2 = cipher2.encrypt(plaintext, iv)
@@ -257,8 +269,8 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics(avalanche_test=False, randomness_test=False, bias_test=False, performance_test=True,
-                             period_test=False, randomize_key=False)    
+    Test_Cipher.test_metrics(avalanche_test=False, randomness_test=True, bias_test=True, performance_test=True,
+                             period_test=False, randomize_key=False, keysize=16)    
 
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity
@@ -363,8 +375,8 @@ def test_extract_round_key():
     
 if __name__ == "__main__":
 #    test_generate_round_key()
-    test_extract_round_key()
-    #test_Cipher()
+    #test_extract_round_key()
+    test_Cipher()
     #test_linear_cryptanalysis()
- #   test_cipher_metrics()
+    test_cipher_metrics()
     #attack()
