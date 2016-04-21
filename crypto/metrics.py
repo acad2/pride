@@ -1,19 +1,28 @@
 import itertools
 import random
-from os import urandom
-
-from pride.decorators import Timed
-from pride.datastructures import Average
-from pride.utilities import shell
-from utilities import cast, binary_form
-import pride.crypto
+from os import urandom, system
+from timeit import default_timer as timer_function
 
 ASCII = ''.join(chr(x) for x in range(256))
 TEST_OPTIONS = {"avalanche_test" : True, "randomness_test" : True, "bias_test" : True,
                 "period_test" : True, "performance_test" : True, "randomize_key" : False}                 
-         
+    
+def binary_form(_bytes):
+    return ''.join(format(byte, 'b').zfill(8) for byte in bytearray(_bytes))
+    
+def _hash_prng(hash_function, output_size=0):        
+    output = b''
+    chunks, extra = divmod(output_size, 32)
+    chunks += 1 if extra else 0        
+    digest_size = len(hash_function(''))
+    
+    for chunk in range(chunks):                    
+        output += hash_function(output[(chunk - 1) * digest_size:])
+    
+    return output
+    
 def hamming_distance(str1, str2):
-  return sum(itertools.imap(str.__ne__, cast(str1, "binary"), cast(str2, "binary")))
+  return sum(itertools.imap(str.__ne__, binary_form(str1), binary_form(str2)))
   
 def print_hamming_info(output1, output2):    
     output1_binary = binary_form(output1)
@@ -35,30 +44,21 @@ def test_avalanche(hash_function, blocksize=16):
     print "Testing diffusion/avalanche... "
     beginning = "\x00" * (blocksize - 2)
     _bytes = ''.join(chr(byte) for byte in range(256))
-    import pride.datastructures
-    ratio = pride.datastructures.Average(size=65535)
+    
+    ratio = []
     for byte in _bytes:  
         last_output = hash_function(beginning + byte + _bytes[0])
         for byte2 in _bytes[1:]:
             next_input = beginning + byte + byte2
             next_output = hash_function(next_input)
             distance = hamming_distance(last_output, next_output)
-            ratio.add(distance)
+            ratio.append(distance)
             last_output = next_output
-            
-            #input1 = beginning + byte + byte2
-            #output1 = hash_function(input1)                      
-            
-            #byte2 = chr((ord(byte2) + 1) % 256)
-            #if byte2 == byte:
-            #    continue
-            #input2 = beginning + byte + byte2                        
-            #output1 = hash_function(input1)
-            #output2 = hash_function(input2)            
-            #distance = hamming_distance(output1, output2)
-            #ratio.add(distance)
-    minimum, average, maximum = ratio.range
-    bit_count = float(len(cast(last_output, "binary")))
+
+    minimum = min(ratio)
+    maximum = max(ratio)
+    average = sum(ratio) / len(ratio)   
+    bit_count = float(len(binary_form(last_output)))
     print "Minimum Hamming distance and ratio: ", minimum / bit_count
     print "Average Hamming distance and ratio: ", average / bit_count
     print "Maximum Hamming distance and ratio: ", maximum / bit_count    
@@ -70,14 +70,8 @@ def test_randomness(random_bytes):
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
-    shell("./ent/ent.exe ./random_data/Test_Data_{}.bin".format(size))
-    
-    #outputs = dict((x, random_bytes.count(chr(x))) for x in xrange(256))
-    #average = Average(values=tuple(random_bytes.count(chr(x))for x in xrange(256)))
-    #print "Randomness distribution (min, average, max): (~4100 is good): ", average.range
-    #import pprint
-    #pprint.pprint(sorted(outputs.items()))
-        
+    system("ent.exe ./random_data/Test_Data_{}.bin".format(size))
+            
 def test_period(hash_function, blocksize=16, test_size=2):
     output = '\x00' * blocksize
     outputs = ['']    
@@ -93,8 +87,10 @@ def test_period(hash_function, blocksize=16, test_size=2):
             if len(cycle_lengths) == 100:
                 break
         outputs.append(output[:test_size])
-    average = Average(values=cycle_lengths)
-    print "Minimum/Average/Maximum cycle lengths: ", average.range
+    minimum = min(cycle_lengths)
+    maximum = max(cycle_lengths)
+    average = sum(cycle_lengths) / float(len(cycle_lengths))
+    print "Minimum/Average/Maximum cycle lengths: ", (minimum, average, maximum)
     
 def test_bias(hash_function, byte_range=slice(0, 16)):
     biases = [[] for x in xrange(byte_range.stop)]    
@@ -125,19 +121,29 @@ def test_collisions(hash_function, output_size=3):
     
 def test_compression_performance(hash_function):    
     print "Time testing compression function..."
-    print Timed(hash_function, 10)("Timing test for input" * 1000)
+    start = timer_function()
+    for round in range(10):
+        hash_function("Timing test for input" * 1000)
+    end = timer_function()
+    print (end - start) / 10
     
 def test_prng_performance(hash_function):    
     print "Testing time to generate 1024 * 1024 bytes... "
-    print Timed(hash_function, 1)('', output_size=1024 * 1024)
+    start = timer_function()
+    _hash_prng(hash_function, 1024 * 1024)
+    end = timer_function()
+    print end - start    
     
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,
                        compression_test=True):
+    """ Test statistical metrics of the given hash function. hash_function 
+        should be a function that accepts one string of bytes as input and returns
+        one string of bytes as output. """
     if avalanche_test:
         test_avalanche(hash_function)
     if randomness_test:
-        test_randomness(hash_function('', output_size=1024 * 1024))
+        test_randomness(_hash_prng(hash_function, 1024 * 1024))        
     if period_test:
         test_period(hash_function)    
     if bias_test:
@@ -149,8 +155,12 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     if performance_test:
         test_prng_performance(hash_function)
     
-def test_block_cipher(cipher, blocksize=16, avalanche_test=True, randomness_test=True, bias_test=True,
-                      period_test=True, performance_test=True, randomize_key=False, keysize=None):
+def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_test=True,
+                      period_test=True, performance_test=True, randomize_key=False, 
+                      keysize=None, blocksize=16):
+    """ Test statistical metrics of the supplied cipher. cipher should be a 
+        pride.crypto.Cipher object or an object that supports an encrypt method
+        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""
     _cipher = cipher("\x00" * (keysize if keysize is not None else blocksize), "cbc")
     key = "\x00" * keysize if not randomize_key else urandom(keysize or blocksize)
     
@@ -175,6 +185,7 @@ def test_block_cipher(cipher, blocksize=16, avalanche_test=True, randomness_test
         test_prng_performance(test_function)
     
 def test_random_metrics(test_options):
+    import pride.crypto
     from metrics import test_block_cipher
     from utilities import replacement_subroutine
         
@@ -189,7 +200,8 @@ def test_random_metrics(test_options):
             
     Random_Cipher.test_metrics(**test_options)
 
-def test_aes_metrics(test_options):        
+def test_aes_metrics(test_options):     
+    import pride.crypto
     from pride.security import encrypt as aes_encrypt
     from pride.security import random_bytes
     from utilities import replacement_subroutine
@@ -209,22 +221,12 @@ def test_aes_metrics(test_options):
     test_block_cipher(Aes_Cipher, **test_options) 
     
 def test_sha_metrics():
-    from hashlib import sha256
-    from pride.utilities import timer_function
+    from hashlib import sha256    
     #test_avalanche(lambda data: sha256(data).digest())
-    def test_function(data, output_size=0):
-        
-        output = b''
-        chunks, extra = divmod(output_size, 32)
-        chunks += 1 if extra else 0        
-        start = timer_function()
-        for chunk in range(chunks):            
-            output += sha256(output[chunk * 32:]).digest()            
-        end = timer_function()
-        print end - start
-        return output
-    test_function('', 1024 * 1024)
+    #test_function('', 1024 * 1024)
    # test_prng_performance(test_function)
+    
+    test_hash_function(lambda data: sha256(data).digest())
     
 if __name__ == "__main__":
     options = dict((key, not value) for key, value in TEST_OPTIONS.items())
