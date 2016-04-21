@@ -1,6 +1,6 @@
 import itertools
 import random
-from os import urandom, system
+import os
 from timeit import default_timer as timer_function
 
 ASCII = ''.join(chr(x) for x in range(256))
@@ -70,7 +70,7 @@ def test_randomness(random_bytes):
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
-    system("ent.exe ./random_data/Test_Data_{}.bin".format(size))
+    os.system(os.path.join(os.getcwd(), "ent.exe") + " ./random_data/Test_Data_{}.bin".format(size))
             
 def test_period(hash_function, blocksize=16, test_size=2):
     output = '\x00' * blocksize
@@ -162,7 +162,7 @@ def test_block_cipher(cipher, avalanche_test=True, randomness_test=True, bias_te
         pride.crypto.Cipher object or an object that supports an encrypt method
         that accepts plaintext bytes and key bytes and returns ciphertext bytes"""
     _cipher = cipher("\x00" * (keysize if keysize is not None else blocksize), "cbc")
-    key = "\x00" * keysize if not randomize_key else urandom(keysize or blocksize)
+    key = "\x00" * keysize if not randomize_key else os.urandom(keysize or blocksize)
     
     if avalanche_test:
         test_function = lambda data: _cipher.encrypt(data, key)
@@ -196,7 +196,7 @@ def test_random_metrics(test_options):
             self.blocksize = 16
             
         def encrypt_block(self, plaintext, key):
-            replacement_subroutine(plaintext, urandom(len(plaintext)))
+            replacement_subroutine(plaintext, os.urandom(len(plaintext)))
             
     Random_Cipher.test_metrics(**test_options)
 
@@ -222,10 +222,6 @@ def test_aes_metrics(test_options):
     
 def test_sha_metrics():
     from hashlib import sha256    
-    #test_avalanche(lambda data: sha256(data).digest())
-    #test_function('', 1024 * 1024)
-   # test_prng_performance(test_function)
-    
     test_hash_function(lambda data: sha256(data).digest())
     
 if __name__ == "__main__":
