@@ -67,11 +67,13 @@ class Popup_Button(gui.Button):
         
     def left_click(self, mouse):
         if self._popup:
+            self.alert("Deleting: {}".format(self._popup), level=0)
             self._popup.delete()
         elif self.popup_type:
-            self.alert("Creating: {}".format(self.popup_type), level='vv')
-            self._popup = self.create(self.popup_type)
-        
+            self.alert("Creating: {}".format(self.popup_type), level=0)#'vv')
+            popup = self._popup = self.create(self.popup_type)
+            popup.pack()
+            
         
 class Objects_Explorer(pride.gui.gui.Application):
     
@@ -87,11 +89,11 @@ class Objects_Explorer(pride.gui.gui.Application):
         
 class Icon(Popup_Button):
             
-    defaults = {"h_range" : (0, 40), "w_range" : (0, 40)}
+    defaults = {"h_range" : (0, 40), "w_range" : (0, 40), "pack_mode" : "grid"}
     
     def left_click(self, mouse):
         if mouse.clicks == 2:
-            self.parent_application.application_window.create(self.popup_type)
+            self.parent.create(self.popup_type)
             
     
 class Homescreen(gui.Application):
@@ -100,7 +102,7 @@ class Homescreen(gui.Application):
         super(Homescreen, self).__init__(**kwargs)
         self.application_window.create(Task_Bar, startup_components=("pride.gui.widgetlibrary.Date_Time_Button",
                                                   "pride.gui.widgetlibrary.Text_Box"))        
-        self.application_window.create(Icon, popup_type=Objects_Explorer)
+        self.application_window.create(Icon, popup_type=Objects_Explorer, text="Objects Explorer")
         
 
 class Task_Bar(gui.Container):

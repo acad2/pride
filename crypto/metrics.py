@@ -191,9 +191,16 @@ def test_stream_cipher(cipher, keysize, avalanche_test=True, randomness_test=Tru
     _cipher = cipher(key, rate)
     
     if avalanche_test:
-        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
-        test_avalanche(test_function)
+#        print "Testing diffusion of seed..."
+#        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
+#        test_avalanche(test_function)
                
+        print "Testing diffusion of key..."
+        def test_function(data):
+            _cipher = cipher(data, rate)
+            return _cipher.encrypt("\x00" * 32, "\x00")
+        test_avalanche(test_function)                   
+        
     if randomness_test:
         random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, key)        
         test_randomness(random_bytes)

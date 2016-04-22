@@ -97,6 +97,8 @@ class Organizer(base.Base):
         width_of = lambda side: sum(item.w or min(width_spacing, item.w_range[1]) for item in side)
         height_of = lambda side: sum(item.h or min(height_spacing, item.h_range[1]) for item in side)
         height_of_top = height_of(top)
+        
+        print "Setting: ", item, item_x, width_of(left), item_y, height_of_top, item_w, width_of(right), item_h, (height_of(bottom) + height_of_top)
         item.area = (item_x + width_of(left), item_y + height_of_top, 
                      item_w - width_of(right), item_h - (height_of(bottom) + height_of_top))                         
         
@@ -155,13 +157,30 @@ class Organizer(base.Base):
 
         if grid_size != floor(grid_size):
             grid_size = floor(grid_size) + 1
-        position = (int(floor((count / grid_size))), (count % grid_size))
+        position = (int(floor((count / grid_size))), int(count % grid_size))
 
-        item.z = parent.z + 1
-        item.size = int(parent.w / grid_size), int(parent.h / grid_size)
-        item.x = (item.w * position[1]) + parent.x
-        item.y = (item.h * position[0]) + parent.y
-
+        item.z = parent.z + 1        
+        
+        pack_modes = self._pack_modes[parent.reference]
+        right_objects = [pride.objects[reference] for reference in pack_modes["right"]]
+        left_objects = [pride.objects[reference] for reference in pack_modes["left"]]
+        main_objects = [pride.objects[reference] for reference in pack_modes["main"]]
+        horizontal_spacing = parent.w / ((len(left_objects) + len(right_objects) + len(main_objects)) or 1)
+        occupied_left_area =  sum((item.w or min(item.w_range[1], horizontal_spacing) for item in left_objects))
+        occupied_right_area = sum((item.w or min(item.w_range[1], horizontal_spacing) for item in right_objects))
+        
+        top_objects = [pride.objects[reference] for reference in pack_modes["top"]]
+        bottom_objects = [pride.objects[reference] for reference in pack_modes["bottom"]]
+        vertical_spacing = parent.h / ((len(top_objects) + len(bottom_objects) + len(main_objects)) or 1)
+        occupied_top_area = sum((item.h or min(item.h_range[1], vertical_spacing) for item in top_objects))
+        occupied_bottom_area = sum((item.h or min(item.h_range[1], vertical_spacing) for item in bottom_objects))
+        
+        available_width = parent.w - occupied_left_area - occupied_right_area
+        available_height = parent.h - occupied_top_area - occupied_bottom_area
+        item.size = int(available_width / grid_size), int(available_height / grid_size)
+        item.x = (item.w * position[1]) + parent.x + occupied_left_area
+        item.y = (item.h * position[0]) + parent.y + occupied_top_area
+        
     def pack_z(self, parent, item, count, length):
         item.z = parent.z + 1
 
@@ -224,6 +243,9 @@ class Organizer(base.Base):
         item.z = max(pride.objects[item.sdl_window + "->SDL_User_Input"]._coordinate_tracker.keys())
         w, h = pride.gui.SCREEN_SIZE
         item.position = (w / 4, h / 4)        
+        
+   # def pack_icon(self, parent, item, count, length):
+        
         
         
 class Window_Object(pride.gui.shapes.Bounded_Shape):

@@ -4,7 +4,7 @@ def shuffle_extract(data, key, state):
         # Fisher-Yates shuffle
         j = state & (i - 1)                
         data[i], data[j] = data[j], data[i]           
-        
+
         key[i] ^= data[j] ^ data[i] ^ i # randomize key value   
         state ^= key[i] ^ key[j] # randomize value with output feedback
         
@@ -73,11 +73,15 @@ def random_number_generator_subroutine(key, seed, tweak, output, output_size=256
             output[index] = seed[tweak[index]]   
         yield        
         
+def null_pad(seed, size):
+    return bytearray(seed + ("\x00" * (size - len(seed))))
+            
 def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
     """ Generates count random bytes using random_number_generator using the 
         supplied/default seed, key, tweak, and output_size. """      
     output = bytearray(256)
-    generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
+    key = null_pad(key, 256)
+    generator = random_number_generator_subroutine(key, bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size) 
     amount += 1 if extra else 0
     for chunk in range(amount):            
@@ -90,7 +94,8 @@ def _random_bytes(count, output, seed="\x00" * 256, key="\x00" * 256, tweak=tupl
     """ Generates count random bytes using random_number_generator using the 
         supplied/default seed, key, tweak, and output_size. 
         Identical to random_bytes, except uses a bytearray and avoids allocations"""         
-    generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
+    key = null_pad(key, 256)
+    generator = random_number_generator_subroutine(key, bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size) 
     amount += 1 if extra else 0
     for chunk in range(amount):            
@@ -111,10 +116,7 @@ else:
             self.key = key            
             self.rate = rate
             self.default_tweak = tuple(range(256))
-            
-        def pad(self, seed, size):
-            return bytearray(seed + ("\x00" * (size - len(seed))))
-            
+                        
         def encrypt(self, data, seed, tag=None):
             data = bytearray(data)
             xor_subroutine(data, self.random_bytes(len(data), seed))
@@ -127,7 +129,7 @@ else:
             
         def random_bytes(self, quantity, seed, tweak=None):
             output = bytearray(256)
-            _random_bytes(quantity, output, key=self.key, seed=self.pad(seed, 256), tweak=tweak or self.default_tweak)
+            _random_bytes(quantity, output, key=self.key, seed=null_pad(seed, 256), tweak=tweak or self.default_tweak)
             return output
             
         @classmethod
@@ -140,9 +142,9 @@ else:
         def encrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
             data_size = len(data)
-            seed = self.pad(seed, 256)
+            seed = null_pad(seed, 256)
             tweak = bytearray(tweak or self.default_tweak)
-            key = self.random_bytes(data_size, seed, tweak)
+            key = self.random_bytes(data_size, seed, tweak)            
             self.crypt(data, key, tweak, 0, 1)
             return bytes(data)
             
@@ -158,7 +160,7 @@ else:
             for count in range(0, data_size):                                                
                 state ^= data[index]                           
                 random_place = state & (data_size - 1)                                  
-                data[index] ^= tweak[random_place] ^ data[random_place & (index - 1)]
+                data[index] ^= data[random_place & (index - 1)] ^ random_place
                 state ^= data[index]                 
                 
                 index += direction
@@ -166,7 +168,7 @@ else:
         def decrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
             data_size = len(data)
-            seed = self.pad(seed, 256)
+            seed = null_pad(seed, 256)
             tweak = bytearray(tweak or self.default_tweak)
             key = self.random_bytes(data_size, seed, tweak)
             self.crypt(data, key, tweak, data_size - 1, -1)       
@@ -244,14 +246,13 @@ def test_stream_cipher2():
     plaintext2 = cipher.decrypt(ciphertext2, seed)
     assert message2 == plaintext2, (plaintext2, message2)
     
-    Stream_Cipher2.test_metrics(256)
+    Stream_Cipher2.test_metrics(256, avalanche_test=False)
     
 if __name__ == "__main__":
    # test_random_number_generator()
-    #test_shuffle_extract()
-    #test_Disco()  
+    #test_shuffle_extract()    
     #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
     #with open("pythonrng.bin", "wb") as _file:
     #    _file.write(random_bytes(1024 * 1024))
-    #test_stream_cipher2()
-    Stream_Cipher.test_metrics(256, performance_test_sizes=(1500, 4096), avalanche_test=False)
+    test_stream_cipher2()
+    #Stream_Cipher.test_metrics(256, performance_test_sizes=(1500, 4096), avalanche_test=False)
