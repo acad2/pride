@@ -65,12 +65,13 @@ def test_avalanche(hash_function, blocksize=16):
     
 def test_randomness(random_bytes):    
     size = len(random_bytes)
-    print "Testing randomness of {} bytes... ".format(size)    
-    with open("./random_data/Test_Data_{}.bin".format(size), 'wb') as _file:
+    print "Testing randomness of {} bytes... ".format(size)   
+    current_directory = os.getcwd()
+    with open(os.path.join(current_directory, "Test_Data_{}.bin".format(size)), 'wb') as _file:
         _file.write(random_bytes)
         _file.flush()    
     print "Data generated; Running ent..."
-    os.system(os.path.join(os.getcwd(), "ent.exe") + " ./random_data/Test_Data_{}.bin".format(size))
+    os.system(os.path.join(current_directory, "ent.exe") + " ./random_data/Test_Data_{}.bin".format(size))
             
 def test_period(hash_function, blocksize=16, test_size=2):
     output = '\x00' * blocksize

@@ -242,10 +242,7 @@ class Organizer(base.Base):
     def pack_popup_menu(self, parent, item, count, length):        
         item.z = max(pride.objects[item.sdl_window + "->SDL_User_Input"]._coordinate_tracker.keys())
         w, h = pride.gui.SCREEN_SIZE
-        item.position = (w / 4, h / 4)        
-        
-   # def pack_icon(self, parent, item, count, length):
-        
+        item.position = (w / 4, h / 4)                         
         
         
 class Window_Object(pride.gui.shapes.Bounded_Shape):

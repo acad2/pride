@@ -34,12 +34,14 @@ def xor_test(message, key, direction):
     xor_subroutine(message, key)
     state = xor_sum(message)
     
-    size = len(message)
-    index = 0 if direction == 1 else (len(message) - 1)
+    size = len(message) - 1
+    index = 0 if direction == 1 else size
     for counter in range(len(message)):    
         state ^= message[index]           
-        random_place = state & (size - 1)             
-        message[index] ^= state ^ key[random_place]
+        random_place = state & size
+        ephemeral_byte = (key[index] + (state ^ key[index]) + random_place) % 256
+        message[index] ^= (state + key[random_place] + ephemeral_byte) % 256
+        #message[index] ^= key[random_place & (index - 1)] ^ random_place ^ state
         state ^= message[index]
         
         index += direction
@@ -72,7 +74,10 @@ def test_xor_test():
     xor_test(ciphertext, key, 1)
     print len(crack_message(message, ciphertext))
      
-        
+    message2 = bytearray("Hj")
+    ciphertext2 = message2[:]
+    xor_test(ciphertext2, key, 1)
+    print len(crack_message(message2, ciphertext2))
 if __name__ == "__main__":
     test_xor_test()
     

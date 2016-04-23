@@ -54,6 +54,21 @@ def nonlinear_function4(byte):
     
     return byte
     
+def nonlinear_function5(byte, key=6): 
+    print "Function enter"
+    for offset, bit in enumerate(reversed(range(1, 8))):
+        random_bit = key & (bit - 1)
+        shift_amount = bit - random_bit
+        print format(byte, 'b').zfill(8), bit, random_bit
+        byte ^= ((1 << offset) & byte) << shift_amount
+        print format(byte, 'b').zfill(8), format(((1 << offset) & byte) << shift_amount, 'b').zfill(8)
+        byte ^= ((1 << shift_amount) & byte) >> shift_amount
+        print format(byte, 'b').zfill(8), format(((1 << shift_amount) & byte) >> shift_amount, 'b').zfill(8)
+        byte ^= ((1 << offset) & byte) << shift_amount
+        print format(byte, 'b').zfill(8)
+                                  
+    return byte
+    
 def __nonlinear_function2(data):
     for target_index, target_byte in enumerate(data):
         for source_index, source_byte in enumerate(data):
@@ -124,9 +139,23 @@ def test_nonlinear_function4():
             best_differential = info
     print best_differential
             
-        
+def test_nonlinear_function5():
+    from differential import build_difference_distribution_table, find_best_output_differential
+    cycle = find_cycle_length(nonlinear_function5, 1)
+    print len(cycle), set(range(256)).difference(cycle), cycle
+    
+   # sbox = bytearray(nonlinear_function4(index) for index in range(256))
+   # xor_ddt, rotational_ddt = build_difference_distribution_table(sbox)
+   # best_differential = (None, None, 0)
+   # for difference in range(1, 256):
+   #     info = find_best_output_differential(xor_ddt, difference)        
+   #     if info[-1] > best_differential[-1]:
+   #         best_differential = info
+   # print best_differential    
+    
 if __name__ == "__main__":
     #test_nonlinear_function()
     #test_nonlinear_function2()
     #test_nonlinear_function3()
-    test_nonlinear_function4()
+    #test_nonlinear_function4()
+    test_nonlinear_function5()

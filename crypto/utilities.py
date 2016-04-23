@@ -10,6 +10,9 @@ def slide(iterable, x=16):
         yield iterable[_position:_position + x]         
 # end copied code
     
+def null_pad(seed, size):
+    return bytearray(seed + ("\x00" * (size - len(seed))))
+    
 def xor_parity(data):
     bits = [int(bit) for bit in cast(bytes(data), "binary")]
     parity = bits[0]
