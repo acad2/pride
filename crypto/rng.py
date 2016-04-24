@@ -93,7 +93,7 @@ def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(2
 def _random_bytes(count, output, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
     """ Generates count random bytes using random_number_generator using the 
         supplied/default seed, key, tweak, and output_size. 
-        Identical to random_bytes, except uses a bytearray and avoids allocations"""         
+        Identical to random_bytes, except uses a bytearray and avoids allocations"""             
     key = null_pad(key, 256)
     generator = random_number_generator_subroutine(key, bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size) 
@@ -113,6 +113,7 @@ else:
         
         def __init__(self, key, rate=224):
             super(Stream_Cipher, self).__init__()
+            assert isinstance(key, str) or isinstance(key, bytearray), type(key)            
             self.key = key            
             self.rate = rate
             self.default_tweak = tuple(range(256))
@@ -128,21 +129,22 @@ else:
             return bytes(data)
             
         def random_bytes(self, quantity, seed, tweak=None):
-            output = bytearray(256)
+            output = bytearray(256)            
             _random_bytes(quantity, output, key=self.key, seed=null_pad(seed, 256), tweak=tweak or self.default_tweak)
             return output
             
         @classmethod
-        def test_metrics(cls, *args, **kwargs):
-            pride.crypto.metrics.test_stream_cipher(cls, *args, **kwargs)
-            
+        def test_metrics(cls, *args, **kwargs):        
+            pride.crypto.metrics.test_stream_cipher(lambda data, key, seed: cls(key).encrypt(data, seed),
+                                                    *args, **kwargs)    
+    
             
     class Stream_Cipher2(Stream_Cipher):
                             
         def encrypt(self, data, seed, tag=None, tweak=None):
             data = bytearray(data)
-            data_size = len(data)
-            seed = null_pad(seed, 256)
+            data_size = len(data)            
+            seed = null_pad(seed, 256)            
             tweak = bytearray(tweak or self.default_tweak)
             key = self.random_bytes(data_size, seed, tweak)            
             self.crypt(data, key, tweak, 0, 1)
@@ -246,7 +248,7 @@ def test_stream_cipher2():
     plaintext2 = cipher.decrypt(ciphertext2, seed)
     assert message2 == plaintext2, (plaintext2, message2)
     
-    Stream_Cipher2.test_metrics(256, avalanche_test=False)
+    Stream_Cipher2.test_metrics("\x00" * 256, "\x00" * 256, avalanche_test=False)
     
 if __name__ == "__main__":
    # test_random_number_generator()

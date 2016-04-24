@@ -34,11 +34,12 @@ def print_hamming_info(output1, output2):
     print "Hamming distance and ratio (.5 is ideal): ", _distance, _distance / float(bit_count)
     
 def test_bias_of_data(random_data):    
+    print "Testing for byte bias..."
     outputs = [[] for count in range(256)]
     for chunk in slide(random_data, 256):
         for index, byte in enumerate(chunk):
             outputs[index].append(byte)
-    print [len(set(item)) for item in outputs]
+    print "Byte bias: ", [len(set(_list)) for _list in outputs]       
     
 def test_avalanche(hash_function, blocksize=16):        
     print "Testing diffusion/avalanche... "
@@ -156,71 +157,76 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     if performance_test:
         test_prng_performance(hash_function)
     
-def test_block_cipher(encrypt_method, key, avalanche_test=True, randomness_test=True, bias_test=True,
+def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_test=True, bias_test=True,
                       period_test=True, performance_test=True, randomize_key=False, 
-                      keysize=None, blocksize=16):
+                      blocksize=16):
     """ Test statistical metrics of the supplied cipher. cipher should be a 
         pride.crypto.Cipher object or an object that supports an encrypt method
-        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""    
+        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""     
     if avalanche_test:
-        test_function = lambda data: encrypt_method(data, key)
+        test_function = lambda data: encrypt_method(data, key, iv)
         test_avalanche(test_function)
                
     if randomness_test:
-        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key)        
+        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)        
         test_randomness(random_bytes)
     
     if bias_test:
-        test_function = lambda byte: encrypt_method(("\x00" * 14) + byte, key)
+        test_function = lambda byte: encrypt_method(("\x00" * 14) + byte, key, iv)
         test_bias(test_function)
      
     if period_test:
-        test_function = lambda data: encrypt_method(data, key)
+        test_function = lambda data: encrypt_method(data, key, iv)
         test_period(test_function)
         
     if performance_test:
-        test_function = lambda data: encrypt_method(data or "\x00" * blocksize, key)
+        test_function = lambda data: encrypt_method(data or "\x00" * blocksize, key, iv)
         test_prng_performance(test_function)
     
-def test_stream_cipher(cipher, key, avalanche_test=True, randomness_test=True, bias_test=True,
+def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, rate=224,
-                       performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):
+                       performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):    
     if avalanche_test:
-#        print "Testing diffusion of seed..."
-#        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
-#        test_avalanche(test_function)
-               
-        print "Testing diffusion of key..."
+        print "Testing diffusion of seed..." # use variable data as seed for rng
+        test_function = lambda data: encrypt_method("\x00" * 16, key, data)
+        test_avalanche(test_function)
+        
+        print "Testing diffusion of key..." # use variable data as key for rng
         def test_function(data):
             _cipher = cipher(data, rate)
             return _cipher.encrypt("\x00" * 32, "\x00")
-        test_avalanche(test_function)                   
-        
+        test_avalanche(lambda data: encrypt_method("\x00" * 16, data, seed))                   
+    
+    random_bytes = None
     if randomness_test:
-        random_bytes = _cipher.encrypt("\x00" * 1024 * 1024 * 1, key)        
+        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, seed)        
         test_randomness(random_bytes)
     
     if bias_test:
-        test_function = lambda byte: _cipher.encrypt("\x00" * 16, byte)
-        test_bias(test_function)
-     
+        if random_bytes is None:
+            random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, seed)                
+        test_bias_of_data(random_bytes)
+        
     if period_test:
-        test_function = lambda data: _cipher.encrypt("\x00" * 16, data)
+        test_function = lambda data: encrypt_method("\x00" * 16, data, seed) # simulates MD construction
         test_period(test_function)
         
     if performance_test:
         for increment_size in performance_test_sizes:
-            print "Generating 10MB in {} byte increments... ".format(increment_size)
+            print "Testing time to generate 1MB in {} byte increments... ".format(increment_size)
             size = (1024 * 1024) / increment_size
-            start = timer_function()  
+            times = []
+            
             for round in range(10):
                 sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
                 sys.stdout.flush()
+                start = timer_function()  
                 for chunk in range(size):
-                    _cipher.random_bytes(increment_size, "\x00")                    
-            end = timer_function()
+                    encrypt_method("\x00" * increment_size, key, seed)                                    
+                end = timer_function()
+                times.append(end - start)
             sys.stdout.write("{}100%\r".format("=" * 76))
-            print "MB/s: ", 1 / ((end - start) / 10)
+            print "MB/s: ", sum(times) / float(len(times))
         #test_function = lambda data: _cipher.encrypt(data or "\x00" * rate, key)
         #test_prng_performance(test_function)
     
@@ -238,7 +244,7 @@ def test_random_metrics(test_options):
         def encrypt_block(self, plaintext, key):
             replacement_subroutine(plaintext, os.urandom(len(plaintext)))
             
-    Random_Cipher.test_metrics("\x00" * 16, **test_options)
+    Random_Cipher.test_metrics("\x00" * 16, "\x00" * 16, **test_options)
 
 def test_aes_metrics(test_options):     
     import pride.crypto

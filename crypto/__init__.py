@@ -125,8 +125,9 @@ class Cipher(object):
         return cipher
     
     @classmethod
-    def test_metrics(cls, *args, **kwargs):
-        test_block_cipher(lambda data, key: cls(key, "cbc").encrypt(data), *args, **kwargs)    
+    def test_metrics(cls, *args, **kwargs):        
+        test_block_cipher(lambda data, key, iv: cls(key, kwargs.pop("mode", "cbc")).encrypt(data, iv), *args, **kwargs)    
+    
     
 class Test_Cipher(Cipher):
     

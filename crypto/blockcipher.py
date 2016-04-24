@@ -269,8 +269,9 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics("\x00" * 16, avalanche_test=False, randomness_test=True, bias_test=True, performance_test=True,
-                             period_test=False, randomize_key=False)    
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)#, avalanche_test=False, randomness_test=True,
+                             #bias_test=True, performance_test=True, period_test=False,
+                             #randomize_key=False)    
 
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity
@@ -324,7 +325,7 @@ def test_generate_round_key():
             generate_round_key(data, constants)                        
             return bytes(data)
             
-    Test_Cipher.test_metrics("\x00" * 16)
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
     
     #key = bytearray(S_BOX[byte] for byte in bytearray(os.urandom(256)))#range(256))    
     #key_material = bytearray()
@@ -355,7 +356,7 @@ def test_extract_round_key():
         def encrypt_block(self, data, key):
             extract_round_key(data)            
             
-    Test_Cipher.test_metrics("\x00" * 16)
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
     
     #key = bytearray(S_BOX[byte] for byte in range(256))
     #key_material = bytearray()
