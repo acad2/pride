@@ -136,6 +136,23 @@ def test_prng_performance(hash_function):
     end = timer_function()
     print end - start    
     
+def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):  
+        for increment_size in performance_test_sizes:
+            print "Testing time to generate 1MB in {} byte increments... ".format(increment_size)
+            size = (1024 * 1024) / increment_size
+            times = []
+            
+            for round in range(10):
+                sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
+                sys.stdout.flush()
+                start = timer_function()  
+                for chunk in range(size):
+                    encrypt_method("\x00" * increment_size, key, seed)                                    
+                end = timer_function()
+                times.append(end - start)
+            sys.stdout.write("{}100%\r".format("=" * 76))
+            print "MB/s: ", 1 / (sum(times) / float(len(times)))
+            
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,
                        compression_test=True):
@@ -180,8 +197,10 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         test_period(test_function)
         
     if performance_test:
-        test_function = lambda data: encrypt_method(data or "\x00" * blocksize, key, iv)
-        test_prng_performance(test_function)
+        test_cipher_performance(performance_test_sizes, encrypt_method, key, iv)
+        
+        #test_function = lambda data: encrypt_method(data or "\x00" * blocksize, key, iv)
+        #test_prng_performance(test_function)
     
 def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, rate=224,
@@ -212,21 +231,8 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
         test_period(test_function)
         
     if performance_test:
-        for increment_size in performance_test_sizes:
-            print "Testing time to generate 1MB in {} byte increments... ".format(increment_size)
-            size = (1024 * 1024) / increment_size
-            times = []
-            
-            for round in range(10):
-                sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
-                sys.stdout.flush()
-                start = timer_function()  
-                for chunk in range(size):
-                    encrypt_method("\x00" * increment_size, key, seed)                                    
-                end = timer_function()
-                times.append(end - start)
-            sys.stdout.write("{}100%\r".format("=" * 76))
-            print "MB/s: ", sum(times) / float(len(times))
+        test_cipher_performance(performance_test_sizes, encrypt_method, key, seed)
+        
         #test_function = lambda data: _cipher.encrypt(data or "\x00" * rate, key)
         #test_prng_performance(test_function)
     

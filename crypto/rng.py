@@ -256,5 +256,5 @@ if __name__ == "__main__":
     #shuffle_extract(bytearray(range(256)), bytearray("\x00" * 256), bytearray(1))
     #with open("pythonrng.bin", "wb") as _file:
     #    _file.write(random_bytes(1024 * 1024))
-    test_stream_cipher2()
-    #Stream_Cipher.test_metrics(256, performance_test_sizes=(1500, 4096), avalanche_test=False)
+    #test_stream_cipher2()
+    Stream_Cipher.test_metrics("\x00" * 256, "\x00" * 256, performance_test_sizes=(1500, 4096), avalanche_test=False)
