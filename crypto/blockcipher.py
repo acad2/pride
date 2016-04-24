@@ -269,9 +269,8 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)#, avalanche_test=False, randomness_test=True,
-                             #bias_test=True, performance_test=True, period_test=False,
-                             #randomize_key=False)    
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, randomness_test=True,
+                             bias_test=True, performance_test=True, period_test=False)    
 
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity

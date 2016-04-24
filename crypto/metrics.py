@@ -176,7 +176,7 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     
 def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_test=True, bias_test=True,
                       period_test=True, performance_test=True, randomize_key=False, 
-                      blocksize=16):
+                      blocksize=16, performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):
     """ Test statistical metrics of the supplied cipher. cipher should be a 
         pride.crypto.Cipher object or an object that supports an encrypt method
         that accepts plaintext bytes and key bytes and returns ciphertext bytes"""     
@@ -184,13 +184,15 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         test_function = lambda data: encrypt_method(data, key, iv)
         test_avalanche(test_function)
                
+    random_bytes = None
     if randomness_test:
         random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)        
         test_randomness(random_bytes)
     
     if bias_test:
-        test_function = lambda byte: encrypt_method(("\x00" * 14) + byte, key, iv)
-        test_bias(test_function)
+        if random_bytes is None:
+            random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)                
+        test_bias_of_data(random_bytes)
      
     if period_test:
         test_function = lambda data: encrypt_method(data, key, iv)
