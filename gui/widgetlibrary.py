@@ -89,12 +89,11 @@ class Objects_Explorer(pride.gui.gui.Application):
         
 class Icon(Popup_Button):
             
-    defaults = {"h_range" : (0, 40), "w_range" : (0, 40), "pack_mode" : "grid",
-                "popup_alpha" : 255}
+    defaults = {"h_range" : (0, 40), "w_range" : (0, 40), "pack_mode" : "grid"}
     
     def left_click(self, mouse):
         if mouse.clicks == 2:
-            popup = self.parent.create(self.popup_type, a=self.popup_alpha)
+            popup = self.parent.create(self.popup_type)
             popup.pack()
             
     

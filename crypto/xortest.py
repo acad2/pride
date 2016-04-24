@@ -38,8 +38,7 @@ def xor_test(message, key, direction):
     index = 0 if direction == 1 else size
     for counter in range(len(message)):    
         state ^= message[index]           
-        random_place = state & size
-        ephemeral_byte = (key[index] + (state ^ key[index]) + random_place) % 256
+        random_place = state & size        
         message[index] ^= (state + key[random_place] + ephemeral_byte) % 256
         #message[index] ^= key[random_place & (index - 1)] ^ random_place ^ state
         state ^= message[index]

@@ -126,7 +126,7 @@ class Cipher(object):
     
     @classmethod
     def test_metrics(cls, *args, **kwargs):
-        test_block_cipher(cls, *args, **kwargs)    
+        test_block_cipher(lambda data, key: cls(key, "cbc").encrypt(data), *args, **kwargs)    
     
 class Test_Cipher(Cipher):
     

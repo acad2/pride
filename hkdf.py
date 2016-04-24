@@ -24,22 +24,26 @@ import six
 #from cryptography.hazmat.primitives import hashes
 #from security import BACKEND
 
-DEFAULT_HASH = hashlib.sha256
-OUTPUT_SIZES = {hashlib.sha1 : 20,
-                hashlib.sha224 : 28,
-                hashlib.sha256 : 32,
-                hashlib.sha384 : 48,
-                hashlib.sha512 : 64}
+DEFAULT_HASH = "sha256"
+OUTPUT_SIZES = {"sha1" : 20,
+                "sha224" : 28,
+                "sha256" : 32,
+                "sha384" : 48,
+                "sha512" : 64}
                     
 def extract(input_keying_material, salt, hash_function=DEFAULT_HASH):
-    return hash_function(salt + bytes(input_keying_material)).digest()    
+    hasher = getattr(hashlib, hash_function.lower())
+    return hasher(salt + bytes(input_keying_material)).digest()    
     
 def expand(psuedorandom_key, length=32, info='', hash_function=DEFAULT_HASH):
     outputs = [b'']
-    for counter in xrange(1, 1 + int(math.ceil(length / hash_function().digest_size))):
+    hasher = getattr(hashlib, hash_function)
+    blocks, extra = divmod(length, hasher().digest_size)
+    blocks += 1 if extra else 0
+    for counter in range(blocks):
         outputs.append(hmac.HMAC(psuedorandom_key, 
                                  outputs[-1] + info + six.int2byte(counter), 
-                                 hash_function).digest())    
+                                 hasher).digest())      
     return b''.join(outputs)[:length]
     
 def hkdf(input_keying_material, length, info='', salt='', hash_function=DEFAULT_HASH):
