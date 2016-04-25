@@ -39,7 +39,7 @@ def test_bias_of_data(random_data):
     for chunk in slide(random_data, 256):
         for index, byte in enumerate(chunk):
             outputs[index].append(byte)
-    print "Byte bias: ", [len(set(_list)) for _list in outputs]       
+    print "Symbols out of 256 that appeared at position: ", [len(set(_list)) for _list in outputs]       
     
 def test_avalanche(hash_function, blocksize=16):        
     print "Testing diffusion/avalanche... "

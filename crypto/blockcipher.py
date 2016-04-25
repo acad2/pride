@@ -89,13 +89,14 @@ def substitute_bytes(data, key, round_constants, counter, state):
         # simple byte ^ index would flip the low order bits more frequently then high order bits for smaller blocksizes       
         # S_BOX is applied twice to prevent index ^ place == 0 when index == place      
         present_modifier = S_BOX[S_BOX[S_BOX[index]] ^ S_BOX[place]]
-                                
+                                        
         state ^= data[place] ^ present_modifier
         ephemeral_byte = S_BOX[key[index] ^ S_BOX[state]] 
         data[place] ^= S_BOX[state ^ ephemeral_byte] # goal is forward secrecy in event of sbox input becoming known
         state ^= data[place] ^ present_modifier        
         
         second_place = round_constants[place]
+        
         state ^= data[second_place] ^ present_modifier
         ephemeral_byte = S_BOX[key[index] ^ S_BOX[state]]
         data[second_place] ^= S_BOX[state ^ ephemeral_byte]
@@ -137,7 +138,7 @@ def generate_default_constants(block_size):
         
 def encrypt_block(plaintext, key, rounds, tweak): 
     blocksize = len(plaintext)       
-    state = key[0]
+    state = key[0]    
     online_keyschedule(plaintext, key[:], tweak, bytearray(range(rounds)), range(blocksize), state)    
        
 def decrypt_block(ciphertext, key, rounds, tweak): 

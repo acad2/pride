@@ -7,7 +7,7 @@ from metrics import test_block_cipher
 from pride.errors import InvalidTag
                 
 def cbc_encrypt(block, iv, key, cipher, tag=None): 
-    xor_subroutine(block, iv)
+    xor_subroutine(block, iv)    
     cipher(block, key)          
     replacement_subroutine(iv, block)    
 
@@ -46,13 +46,26 @@ def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):
 ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
 DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
     
+def cbc_padding(datasize, blocksize):
+    padding_amount = (blocksize - (datasize % blocksize))         
+    if not padding_amount:
+        padding_characters = chr(0) * blocksize
+    elif padding_amount == blocksize:
+        padding_characters = chr(0) * blocksize
+    else:                        
+        padding_characters = chr(padding_amount) * padding_amount
+    return padding_characters
+    
 def encrypt(data, cipher, iv, tag=None):
     data = bytearray(data)
     mode = cipher.mode    
     blocksize = cipher.blocksize
+    datasize = len(data)
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
-    
+    if mode == "cbc":
+        data.extend(cbc_padding(datasize, blocksize))
+        
     tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), cipher.encrypt_block, 
                 ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
     if tag is not None:
@@ -77,6 +90,9 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
         if tag != cipher.mac_key:
             raise InvalidTag()
         return ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
+    elif mode == "cbc":
+        padding_amount = data[-1]            
+        return bytes(data)[:-(padding_amount or cipher.blocksize)]
     else:
         return bytes(data)
     
