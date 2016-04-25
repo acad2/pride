@@ -81,11 +81,11 @@ def test_period(hash_function, blocksize=16, test_size=2):
     print "Testing period with output truncated to {} byte: ".format(test_size)
     last_marker = 0
     for cycle_length in itertools.count():                
-        output = hash_function(output)
+        output = hash_function(output)          
         if output[:test_size] in outputs:            
             #print "cycled after {} with {} byte output: ".format(cycle_length - last_marker, test_size)
             cycle_lengths.append(cycle_length - last_marker)
-            last_marker = cycle_length
+            last_marker = cycle_length     
             if len(cycle_lengths) == 100:
                 break
         outputs.append(output[:test_size])
@@ -195,7 +195,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         test_bias_of_data(random_bytes)
      
     if period_test:
-        test_function = lambda data: encrypt_method(data, key, iv)
+        test_function = lambda data: encrypt_method(iv, key, data)
         test_period(test_function)
         
     if performance_test:
@@ -229,7 +229,7 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
         test_bias_of_data(random_bytes)
         
     if period_test:
-        test_function = lambda data: encrypt_method("\x00" * 16, data, seed) # simulates MD construction
+        test_function = lambda data: encrypt_method("\x00" * 16, data, seed) 
         test_period(test_function)
         
     if performance_test:

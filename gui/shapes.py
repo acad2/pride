@@ -4,6 +4,7 @@ import sdl2.ext # for Color
 
 class Shape(pride.base.Base):
     
+    defaults = {"transparency_enabled" : True}
     coordinates = ('x', 'y', 'w', 'h', 'z')  
     colors = ('r', 'g', 'b', 'a')         
        
@@ -71,7 +72,7 @@ class Shape(pride.base.Base):
     b = property(_get_b, _set_b)
      
     def _get_a(self):
-        return self._a
+        return self._a if self.transparency_enabled else 255
     def _set_a(self, value):
         self._on_set('a', value)
         self._color.a = value

@@ -245,6 +245,23 @@ class Organizer(base.Base):
         item.position = (w / 4, h / 4)                         
         
         
+class Theme(pride.base.Wrapper):
+    
+    def draw_texture(self):
+        raise NotImplementedError
+        
+        
+class Minimal_Theme(Theme):
+            
+    def draw_texture(self):
+        area = self.area
+        self.draw("fill", area, color=self.background_color)
+        self.draw("rect_width", area, color=self.color, width=self.outline_width)        
+        if self.text:
+            self.draw("text", area, self.text, 
+                      bg_color=self.background_color, color=self.text_color)
+
+                      
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
@@ -255,7 +272,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "_ignore_click" : False, "hidden" : False, "movable" : False, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
                 "sdl_window" : '', "scroll_bars_enabled" : False, 
-                "_scroll_bar_h" : None, "_scroll_bar_w" : None}    
+                "_scroll_bar_h" : None, "_scroll_bar_w" : None,
+                "theme_type" : "pride.gui.gui.Minimal_Theme"}    
         
     flags = {"scale_to_text" : False, "_texture_invalid" : False,
              "_texture_window_x" : 0, "_texture_window_y" : 0,
@@ -300,7 +318,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._background_color
     def _set_bg_color(self, color):
         self.texture_invalid = True
-        self._background_color = color#sdl2.ext.Color(*color)
+        self._background_color = color if self.transparency_enabled else color[:3] + (255, )#sdl2.ext.Color(*color)
     background_color = property(_get_bg_color, _set_bg_color)
     
     def _get_color(self):
@@ -370,6 +388,9 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.texture = None #create_texture(self.texture_size)
         self.texture_invalid = True
         
+        self.theme = self.create(self.theme_type, wrapped_object=self)
+        self._children.remove(self.theme)
+        
     def create(self, *args, **kwargs):
         kwargs.setdefault('z', self.z + 1)#["z"] = kwargs.get('z') or self.z + 1
         kwargs.setdefault("sdl_window", self.sdl_window)
@@ -380,7 +401,11 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         super(Window_Object, self).add(_object)
         
     def remove(self, _object):
-        self._children.remove(_object)
+        try:
+            self._children.remove(_object)
+        except ValueError:
+            if _object is not self.theme:
+                raise
         super(Window_Object, self).remove(_object)
         
     def press(self, mouse):
@@ -496,12 +521,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return instructions
         
     def draw_texture(self):
-        area = self.area
-        self.draw("fill", area, color=self.background_color)
-        self.draw("rect_width", area, color=self.color, width=self.outline_width)
-        if self.text:
-            self.draw("text", area, self.text, 
-                      bg_color=self.background_color, color=self.text_color)
+        self.theme.draw_texture()
         
     def pack(self, modifiers=None):        
         organizer = objects[self.sdl_window + "->Organizer"]
@@ -584,7 +604,8 @@ class Button(Window_Object):
 class Application(Window):
     
     defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", 
-                                        "pride.gui.gui.Window")}
+                                        "pride.gui.gui.Window"),
+                "transparency_enabled" : False}
     def _get_application_window(self):        
         return self.objects["Window"][0]
     application_window = property(_get_application_window)

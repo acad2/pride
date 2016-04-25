@@ -48,6 +48,7 @@ known bugs:
     fix z layer issue with multiple objects on the same space
             
 things that could be done:
+    patch inspect to get source from Compiler
     fix load
     preemptive multiprocessing?
     develop the gui

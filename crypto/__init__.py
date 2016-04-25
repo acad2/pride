@@ -7,10 +7,10 @@ from metrics import test_block_cipher
 from pride.errors import InvalidTag
                 
 def cbc_encrypt(block, iv, key, cipher, tag=None): 
-    xor_subroutine(block, iv)    
-    cipher(block, key)          
-    replacement_subroutine(iv, block)    
-
+    xor_subroutine(block, iv)        
+    cipher(block, key)        
+    replacement_subroutine(iv, block)        
+    
 def cbc_decrypt(block, iv, key, cipher, tag=None):    
     next_iv = block[:]        
     cipher(block, key)
@@ -142,7 +142,7 @@ class Cipher(object):
     
     @classmethod
     def test_metrics(cls, *args, **kwargs):        
-        test_block_cipher(lambda data, key, iv: cls(key, kwargs.pop("mode", "cbc")).encrypt(data, iv), *args, **kwargs)    
+        test_block_cipher(lambda data, key, iv: cls(key, kwargs.pop("mode", "ctr")).encrypt(data, iv), *args, **kwargs)    
     
     
 class Test_Cipher(Cipher):
