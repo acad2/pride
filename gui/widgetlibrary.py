@@ -79,12 +79,15 @@ class Objects_Explorer(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
         super(Objects_Explorer, self).__init__(**kwargs)
-        references = self.object_references_container = self.create("pride.gui.gui.Container", pack_mode="left")
+        references = self.references_container = self.create("pride.gui.gui.Container", pack_mode="left", 
+                                                             scroll_bars_enabled=True)
         viewer = self.object_attributes_viewer = self.create("pride.gui.gui.Container", pack_mode="right")
         viewer.current_object = viewer.create("pride.gui.pyobjecttest.Object_Button", objects["->Python"]).reference
         
         for key, item in pride.objects.items():
-            references.create("pride.gui.pyobjecttest.Object_Button", item, opener=viewer.reference)
+            references.create("pride.gui.pyobjecttest.Object_Button", item, 
+                              opener=viewer.reference, h_range=(20, 20),
+                              wrap_text=False)
             
         
 class Icon(Popup_Button):

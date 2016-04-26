@@ -132,8 +132,8 @@ class Organizer(base.Base):
         item.z = parent.z + 1
       #  assert parent.w, (parent, item)
         top_items = [objects[name] for name in self._pack_modes[parent.reference]["top"][:count]]
-        occupied_space = sum(top_item.h or min(top_size, top_item.h_range[1]) for top_item in top_items)  # bug hiding right here!
-        top_size = (parent.h - occupied_space) / (length - count) # name error with top_size
+        sizing = parent.h / length
+        occupied_space = sum(min(top_item.h, top_item.h_range[1]) or min(top_item.h_range[0], sizing) for top_item in top_items)  ## bug hiding right here!        
         if count:                       
             item.y = parent.y + occupied_space
         else:
@@ -149,7 +149,7 @@ class Organizer(base.Base):
                              bottom_object in bottom_objects)
             item.size = (parent.w, item_h)
         else:
-            item.size = (parent.w, top_size)  
+            item.size = (parent.w, (parent.h - occupied_space) / (length - count))  
        # assert item.w, (item.size, item)
             
     def pack_grid(self, parent, item, count, length):
@@ -258,7 +258,7 @@ class Minimal_Theme(Theme):
         self.draw("fill", area, color=self.background_color)
         self.draw("rect_width", area, color=self.color, width=self.outline_width)        
         if self.text:
-            self.draw("text", area, self.text, 
+            self.draw("text", area, self.text, width=self.w if self.wrap_text else None,
                       bg_color=self.background_color, color=self.text_color)
 
                       
@@ -268,7 +268,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 "texture_size" : pride.gui.SCREEN_SIZE, "outline_width" : 1,
                 "background_color" : (0, 0, 0, 0), #(25, 125, 225, 125),
                 "color" : (15, 165, 25, 255), "text_color" : (15, 165, 25, 255),
-                "held" : False, "allow_text_edit" : False,
+                "held" : False, "allow_text_edit" : False, "wrap_text" : True,
                 "_ignore_click" : False, "hidden" : False, "movable" : False, 
                 "texture" : None, "text" : '', "pack_mode" : '' ,      
                 "sdl_window" : '', "scroll_bars_enabled" : False, 
