@@ -79,9 +79,9 @@ class Objects_Explorer(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
         super(Objects_Explorer, self).__init__(**kwargs)
-        references = self.references_container = self.create("pride.gui.gui.Container", pack_mode="left", 
+        references = self.application_window.create("pride.gui.gui.Container", pack_mode="left", 
                                                              scroll_bars_enabled=True)
-        viewer = self.object_attributes_viewer = self.create("pride.gui.gui.Container", pack_mode="right")
+        viewer = self.object_attributes_viewer = self.application_window.create("pride.gui.gui.Container", pack_mode="right")
         viewer.current_object = viewer.create("pride.gui.pyobjecttest.Object_Button", objects["->Python"]).reference
         
         for key, item in pride.objects.items():
@@ -173,7 +173,7 @@ class Text_Box(gui.Container):
                 
 class Date_Time_Button(gui.Button):
 
-    defaults = {"pack_mode" : "left"}
+    defaults = {"pack_mode" : "left", "refresh_interval" : 59.9}
 
     def __init__(self, **kwargs):
         super(Date_Time_Button, self).__init__(**kwargs)        
@@ -181,8 +181,9 @@ class Date_Time_Button(gui.Button):
         self.update_time()        
   
     def update_time(self):
-        self.text = time.asctime()     
-        self.update_instruction.execute(priority=1)   
+        text = time.asctime()    
+        self.text = text[:-8] + text[-5:] # remove seconds
+        self.update_instruction.execute(priority=self.refresh_interval)   
         
     def delete(self):
         self.update_instruction.unschedule()

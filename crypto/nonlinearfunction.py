@@ -38,20 +38,16 @@ def nonlinear_function3(data, mask=1 << 7):
     
     return data
     
-def nonlinear_function4(byte):    
-    state = 1 
+def nonlinear_function4(byte):        
+    state = 0
     for bit in range(8):
         state ^= rotate_right(byte & rotate_left(1, bit), bit)                
-         
-    for round in range(1):
-        for bit in range(4, 8):            
-            byte ^= rotate_left(state, bit)                  
-            state ^= rotate_right(byte & rotate_left(1, bit), bit)
-        
-        byte ^= shift_left(byte, 4)
-        byte ^= shift_right(byte, 4)
-        byte ^= shift_left(byte, 4)  
+             
+    for bit in range(4):                        
+        byte ^= rotate_left(state, bit)                  
+        state ^= rotate_right(byte & rotate_left(1, bit), bit)
     
+    byte = rotate_left(byte, 6)
     return byte
     
 def nonlinear_function5(byte, key=6): 
@@ -127,9 +123,13 @@ def test_nonlinear_function3():
         
 def test_nonlinear_function4():
     from differential import build_difference_distribution_table, find_best_output_differential
+    #max_cycle = ([], 0)
+    #for state in range(256):
     cycle = find_cycle_length(nonlinear_function4, 1)
+ #       if len(cycle) > max_cycle[1]:
+ #           max_cycle = (len(cycle), cycle, state)
     print len(cycle), set(range(256)).difference(cycle), cycle
-    
+  #  print max_cycle
     sbox = bytearray(nonlinear_function4(index) for index in range(256))
     xor_ddt, rotational_ddt = build_difference_distribution_table(sbox)
     best_differential = (None, None, 0)
@@ -157,5 +157,5 @@ if __name__ == "__main__":
     #test_nonlinear_function()
     #test_nonlinear_function2()
     #test_nonlinear_function3()
-    #test_nonlinear_function4()
-    test_nonlinear_function5()
+    test_nonlinear_function4()
+    #test_nonlinear_function5()

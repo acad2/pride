@@ -2,15 +2,9 @@ import pride.utilities
 import pride.crypto
 
 import itertools
-from utilities import cast, slide, xor_sum, xor_subroutine
+from utilities import cast, slide, xor_sum, xor_subroutine, generate_s_box
 
 import random
-
-def generate_s_box(function):
-    S_BOX = bytearray(256)
-    for number in range(256):    
-        S_BOX[number] = function(number)        
-    return S_BOX
 
 #from scratch import aes_s_box as S_BOX    
 #from nonlinearfunction import nonlinear_function4 as nonlinear_function
@@ -270,8 +264,7 @@ def test_Cipher():
         assert plaintext2 == plaintext, plaintext2
         
 def test_cipher_metrics():        
-    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, randomness_test=True,
-                             bias_test=True, performance_test=True, period_test=False)    
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, performance_test_sizes=(1500, 4096))    
 
 def test_linear_cryptanalysis():       
     from pride.crypto.utilities import xor_parity

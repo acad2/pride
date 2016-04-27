@@ -107,3 +107,9 @@ def hamming_weight(byte):
     byte = byte - ((byte >> 1) & 0x55555555)
     byte = (byte & 0x33333333) + ((byte >> 2) & 0x33333333)
     return (((byte + (byte >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24    
+    
+def generate_s_box(function):
+    S_BOX = bytearray(256)
+    for number in range(256):    
+        S_BOX[number] = function(number)        
+    return S_BOX    

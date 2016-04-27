@@ -199,19 +199,16 @@ S-Box over each byte indivdually. The result is that each S-Box input/output
 consists of some bits of each the left/right byte. This means the ciphertext
 will exhibit more diffusion, which we can examine: 
 
-    def cipher_with_better_diffusion_rotation(data_bytes, key):
-        two_byte_word = bytearray(2)
+    def cipher_with_better_diffusion_rotation(data_bytes, key_bytes):    
         data_size = len(data_bytes)
         for index in range(data_size):
-            left_byte = index
-            right_byte = (index + 1) % data_size
+            left_byte_index = index
+            right_byte_index = (index + 1) % data_size
             
-            two_byte_word[0] = data_bytes[left_byte]
-            two_byte_word[1] = data_bytes[right_byte]
-            two_byte_word = rotate_left(two_byte_word, 5, bit_width=16)        
-            
-            data_bytes[left_byte] = S_BOX[two_byte_word[0] ^ key[left_byte]]       
-            data_bytes[right_byte] = S_BOX[two_byte_word[1] ^ key[right_byte]]"""
+            left_byte, right_byte = rotate_left(data_bytes[left_byte_index], data_bytes[right_byte_index], 3)
+                
+            data_bytes[left_byte_index] = S_BOX[left_byte ^ key_bytes[left_byte_index]]                
+            data_bytes[right_byte_index] = S_BOX[right_byte ^ key_bytes[right_byte_index]]"""
 
 def print_state():
     print """\nSummation into a state
@@ -266,26 +263,33 @@ rotations we learned about previously. Let's see how this works!:
             data_bytes[right_index] ^= S_BOX[state ^ key[right_index]]
             state ^= data_bytes[right_index]"""
     
+ 
+            
 if __name__ == "__main__":
-    print_intro()    
-    test_cipher_with_poor_diffusion()
-    print_p_box()
-    test_cipher_with_better_diffusion_p_box()
-    print_rotation()
-    test_cipher_with_better_diffusion_rotation()
-    print_state()
-    test_cipher_with_better_diffusion_state()
-    print_combined()
-    test_cipher_combined()
-    
-    import pride.crypto
-    class Test_Cipher(pride.crypto.Cipher):
+    import pride.crypto    
+    import sys
+    with open("diffusiontechniques.txt", "w") as _file:
+        sys.stdout = _file
+        print_intro()    
+        test_cipher_with_poor_diffusion()
+        print_p_box()
+        test_cipher_with_better_diffusion_p_box()
+        print_rotation()
+        test_cipher_with_better_diffusion_rotation()
+        print_state()
+        test_cipher_with_better_diffusion_state()
+        print_combined()
+        test_cipher_combined()        
+                
+        class Test_Cipher(pride.crypto.Cipher):
+            
+            def __init__(self, *args):
+                super(Test_Cipher, self).__init__(*args)
+                self.blocksize = 8
+                
+            def encrypt_block(self, data, key):              
+                cipher_combined(data, key) 
         
-        def __init__(self, *args):
-            super(Test_Cipher, self).__init__(*args)
-            self.blocksize = 8
-            
-        def encrypt_block(self, data, key):            
-            cipher_combined(data, key)                        
-            
-    Test_Cipher.test_metrics("\x00" * 8, "\x00" * 8, avalanche_test=False, randomness_test=False, bias_test=False)
+        print "\nExample metrics from the combined cipher: "
+        Test_Cipher.test_metrics("\x00" * 8, "\x00" * 8, performance_test=False)
+        _file.flush()

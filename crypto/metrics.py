@@ -41,7 +41,7 @@ def test_bias_of_data(random_data):
             outputs[index].append(byte)
     print "Symbols out of 256 that appeared at position: ", [len(set(_list)) for _list in outputs]       
     
-def test_avalanche(hash_function, blocksize=16):        
+def test_avalanche_hash(hash_function, blocksize=16):        
     print "Testing diffusion/avalanche... "
     beginning = "\x00" * (blocksize - 2)
     _bytes = ''.join(chr(byte) for byte in range(256))
@@ -50,8 +50,10 @@ def test_avalanche(hash_function, blocksize=16):
     for byte in _bytes:  
         last_output = hash_function(beginning + byte + _bytes[0])
         for byte2 in _bytes[1:]:
-            next_input = beginning + byte + byte2
+            next_input = beginning + byte + byte2      
+            #print next_input
             next_output = hash_function(next_input)
+           # print next_output
             distance = hamming_distance(last_output, next_output)
             ratio.append(distance)
             last_output = next_output
@@ -60,9 +62,48 @@ def test_avalanche(hash_function, blocksize=16):
     maximum = max(ratio)
     average = sum(ratio) / len(ratio)   
     bit_count = float(len(binary_form(last_output)))
-    print "Minimum Hamming distance and ratio: ", minimum / bit_count
-    print "Average Hamming distance and ratio: ", average / bit_count
-    print "Maximum Hamming distance and ratio: ", maximum / bit_count    
+    print "Minimum Hamming distance ratio: ", minimum / bit_count
+    print "Average Hamming distance ratio: ", average / bit_count
+    print "Maximum Hamming distance ratio: ", maximum / bit_count    
+    
+def test_avalanche_of_seed(encrypt_method, key, seedsize):
+    padding = "\x00" * (seedsize - 1)
+    print "Testing diffusion of seed: using variable data as seed for rng"
+    random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
+    random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
+    ratio = []
+    block_size = 16
+    for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
+        index = slice(block_number * block_size, (block_number + 1) * block_size)
+        ratio.append(hamming_distance(block_one, random_bytes2[index]))
+    
+    minimum = min(ratio)
+    average = sum(ratio) / float(len(ratio))
+    maximum = max(ratio)
+    bit_count = float(len(binary_form(block_one)))
+    print "Minimum Hamming distance ratio: ", minimum / bit_count
+    print "Average Hamming distance ratio: ", average / bit_count
+    print "Maximum Hamming distance ratio: ", maximum / bit_count 
+    
+def test_avalanche_of_key(encrypt_method, iv, keysize):
+    print "Testing diffusion of key: using variable data as key for rng"
+    padding = "\x00" * (keysize - 1)
+    random_bytes1 = encrypt_method("\x00" * (1024 * 1024), padding + "\x00", iv)
+    random_bytes2 = encrypt_method("\x00" * (1024 * 1024), padding + "\x01", iv)
+    ratio = []
+    block_size = 16
+    for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
+        index = slice(block_number * block_size, (block_number + 1) * block_size)
+        ratio.append(hamming_distance(block_one, random_bytes2[index]))
+    
+    minimum = min(ratio)
+    average = sum(ratio) / float(len(ratio))
+    maximum = max(ratio)
+    bit_count = float(len(binary_form(block_one)))
+    print "Minimum Hamming distance ratio: ", minimum / bit_count
+    print "Average Hamming distance ratio: ", average / bit_count
+    print "Maximum Hamming distance ratio: ", maximum / bit_count 
+
     
 def test_randomness(random_bytes):    
     size = len(random_bytes)
@@ -152,19 +193,20 @@ def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):
                 times.append(end - start)
             sys.stdout.write("{}100%\r".format("=" * 76))
             print "MB/s: ", 1 / (sum(times) / float(len(times)))
-            
+                        
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,
                        compression_test=True):
     """ Test statistical metrics of the given hash function. hash_function 
         should be a function that accepts one string of bytes as input and returns
         one string of bytes as output. """
+    output_size = len(hash_function(''))
     if avalanche_test:
-        test_avalanche(hash_function)
+        test_avalanche_hash(hash_function, output_size)
     if randomness_test:
         test_randomness(_hash_prng(hash_function, 1024 * 1024))        
     if period_test:
-        test_period(hash_function)    
+        test_period(hash_function, blocksize=len(hash_function('')))    
     if bias_test:
         test_bias(hash_function)
     if collision_test:
@@ -176,16 +218,20 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     
 def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_test=True, bias_test=True,
                       period_test=True, performance_test=True, randomize_key=False, 
-                      blocksize=16, performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):
+                      blocksize=None, performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):
     """ Test statistical metrics of the supplied cipher. cipher should be a 
         pride.crypto.Cipher object or an object that supports an encrypt method
-        that accepts plaintext bytes and key bytes and returns ciphertext bytes"""     
+        that accepts plaintext bytes and key bytes and returns ciphertext bytes""" 
+    keysize = len(key)
+    blocksize = blocksize if blocksize is not None else keysize
+    
     if avalanche_test:
-        test_function = lambda data: encrypt_method(data, key, iv)
-        test_avalanche(test_function)
+        #test_avalanche_of_key(encrypt_method, iv, keysize)
+        test_avalanche_of_seed(encrypt_method, key, len(iv))
                
     random_bytes = None
     if randomness_test:
+        print "Generating 1MB of random test data... "
         random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)        
         test_randomness(random_bytes)
     
@@ -194,9 +240,9 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
             random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)                
         test_bias_of_data(random_bytes)
      
-    if period_test:
+    if period_test:        
         test_function = lambda data: encrypt_method(iv, key, data)
-        test_period(test_function)
+        test_period(test_function, blocksize)
         
     if performance_test:
         test_cipher_performance(performance_test_sizes, encrypt_method, key, iv)
@@ -206,17 +252,11 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
     
 def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, rate=224,
-                       performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):    
+                       performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):  
+    keysize = len(key)
     if avalanche_test:
-        print "Testing diffusion of seed..." # use variable data as seed for rng
-        test_function = lambda data: encrypt_method("\x00" * 16, key, data)
-        test_avalanche(test_function)
-        
-        print "Testing diffusion of key..." # use variable data as key for rng
-        def test_function(data):
-            _cipher = cipher(data, rate)
-            return _cipher.encrypt("\x00" * 32, "\x00")
-        test_avalanche(lambda data: encrypt_method("\x00" * 16, data, seed))                   
+        test_avalanche_of_seed(encrypt_method, key)                
+        test_avalanche_of_key(encrypt_method, seed, keysize)                  
     
     random_bytes = None
     if randomness_test:
@@ -229,14 +269,13 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
         test_bias_of_data(random_bytes)
         
     if period_test:
-        test_function = lambda data: encrypt_method("\x00" * 16, data, seed) 
+        def test_function(data):
+            padding = "\x00" * (len(seed) - len(data))            
+            return encrypt_method("\x00" * 16, key, padding + data)       
         test_period(test_function)
         
     if performance_test:
         test_cipher_performance(performance_test_sizes, encrypt_method, key, seed)
-        
-        #test_function = lambda data: _cipher.encrypt(data or "\x00" * rate, key)
-        #test_prng_performance(test_function)
     
 def test_random_metrics(test_options):
     import pride.crypto
