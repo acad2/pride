@@ -1,6 +1,6 @@
 from ctypes import c_uint8 as eight_bit_integer, c_uint16 as word
 from utilities import rotate as _rotate
-from utilities import cast, hamming_weight, rotate_left, rotate_right, shift_left, shift_right
+from utilities import cast, hamming_weight, rotate_left, rotate_right, find_cycle_length
 
 def rotate(word, amount):
     bits = cast(word, "binary")    
@@ -70,16 +70,7 @@ def __nonlinear_function2(data):
         for source_index, source_byte in enumerate(data):
             if source_index == target_index:
                 continue
-            data[target_index] ^= nonlinear_function(source_byte)    
-             
-def find_cycle_length(function, _input, *args, **kwargs):
-    outputs = []        
-    while True:
-        outputs.append(_input)
-        _input = function(_input, *args, **kwargs)
-        if _input in outputs:
-            break
-    return outputs
+            data[target_index] ^= nonlinear_function(source_byte)                 
     
 def test_nonlinear_function():
     cycle = find_cycle_length(nonlinear_function, 235, 131)

@@ -1,3 +1,4 @@
+import os
 from operator import xor as _operator_xor
 import binascii
 
@@ -113,3 +114,21 @@ def generate_s_box(function):
     for number in range(256):    
         S_BOX[number] = function(number)        
     return S_BOX    
+    
+def find_cycle_length(function, _input, *args, **kwargs):
+    outputs = [_input[:]]        
+    while True:                
+        _input = function(_input, *args, **kwargs)         
+        if _input in outputs:            
+            break
+        else:
+            outputs.append(_input[:])
+    return outputs
+    
+def random_hash_function(input_data, memo={}):
+    try:
+        return memo[input_data]
+    except KeyError:
+        result = memo[input_data] = os.urandom(32)
+        return result
+        
