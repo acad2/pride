@@ -88,7 +88,7 @@ def shuffle(data, key):
         
 from sponge import sponge_factory
 tweak = list(set((x | 1 for x in range(256)))) # some odd numbers
-permute_hash = sponge_factory(mix_state_subroutine=lambda data: keyed_permute_diffusion(data, tweak),
+permute_hash = sponge_factory(mixing_subroutine=lambda data: keyed_permute_diffusion(data, tweak),
                               output_size=2, rate=2, capacity=1)      
 
 #def permute_hash(data):        
@@ -111,7 +111,7 @@ permute_hash = sponge_factory(mix_state_subroutine=lambda data: keyed_permute_di
 def test_permute():
     from utilities import find_long_cycle_length
     data = bytearray("\x00" * 2)
-    for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, [17, 251]):
+    for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, [(17 + 255) | 1, (255 + 251) | 1]):
         if isinstance(progress, int):
             print progress
     print len(progress)

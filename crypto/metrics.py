@@ -2,6 +2,7 @@ import itertools
 import random
 import sys
 import os
+
 from timeit import default_timer as timer_function
 
 ASCII = ''.join(chr(x) for x in range(256))
@@ -11,13 +12,14 @@ TEST_OPTIONS = {"avalanche_test" : True, "randomness_test" : True, "bias_test" :
 def binary_form(_bytes):
     return ''.join(format(byte, 'b').zfill(8) for byte in bytearray(_bytes))
     
-def _hash_prng(hash_function, digest_size, output_size=0):        
+def _hash_prng(hash_function, digest_size, output_size):        
     output = b''
+    hash_input = "\x00" * digest_size
     chunks, extra = divmod(output_size, digest_size)
-    chunks += 1 if extra else 0            
-    for chunk in range(chunks):           
-        output += hash_function(output[-digest_size:])
-    
+    chunks += 1 if extra else 0    
+    for chunk in range(chunks):                         
+        output += hash_function(hash_input)    
+        hash_input = output[-digest_size:]
     return output
     
 def hamming_distance(str1, str2):
@@ -108,12 +110,14 @@ def test_randomness(random_bytes):
     size = len(random_bytes)
     print "Testing randomness of {} bytes... ".format(size)   
     current_directory = os.getcwd()
-    with open(os.path.join(current_directory, "Test_Data_{}.bin".format(size)), 'wb') as _file:
+    filename = os.path.join(current_directory, "Test_Data.bin")
+    with open(filename, 'wb') as _file:
         _file.write(random_bytes)
         _file.flush()    
-    print "Data generated; Running ent..."
-    os.system(os.path.join(current_directory, "ent.exe") + " ./Test_Data_{}.bin".format(size))
-            
+    print "Data generated; Running ent...", _file.name
+    os.system(os.path.join(current_directory, "ent.exe ") + filename)
+    os.remove(filename)
+    
 def test_period(hash_function, blocksize=16, test_size=2):
     output = '\x00' * blocksize
     outputs = ['']    
@@ -172,7 +176,7 @@ def test_compression_performance(hash_function):
 def test_prng_performance(hash_function):    
     print "Testing time to generate 1024 * 1024 bytes... "
     start = timer_function()
-    output = _hash_prng(hash_function, len(hash_function('')), 1024 * 1024)
+    output = _hash_prng(hash_function, len(hash_function('\x00')), 1024 * 1024)
     end = timer_function()
     print end - start    
     
@@ -199,7 +203,7 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     """ Test statistical metrics of the given hash function. hash_function 
         should be a function that accepts one string of bytes as input and returns
         one string of bytes as output. """
-    output_size = len(hash_function(''))
+    output_size = len(hash_function("\x00"))
     if avalanche_test:
         test_avalanche_hash(hash_function, output_size)
     if randomness_test:
