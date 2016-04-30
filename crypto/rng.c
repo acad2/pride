@@ -4,12 +4,31 @@
     
 int shuffle_extract(unsigned char* data, unsigned char* key, unsigned char state)
 {       
-    unsigned int i, j, temp;
+    unsigned int i, i2, j, temp;
 
     for (i = 255; i > 0; i -= 1)
     {                
         j = state & (i - 1); 
         
+        //for (i2 = 0; i2 < i; i2 += 1)
+        //{
+        //    if (i2 == j)
+        //    {
+        //        temp = data[j];
+        //        data[j] = data[i];
+        //        data[i] = temp;
+        //        key[i] ^= data[j] ^ i ^ data[i];                      
+        //        state ^= key[i] ^ key[j];                 
+        //    }
+        //    else
+        //    {
+        //        temp = data[i];
+        //        data[i] = data[i];
+        //        data[i] = temp;
+        //        key[i] ^= data[i] ^ 0 ^ data[i];                      
+        //        state ^= key[i] ^ key[i];                 
+        //    }
+        //}
         temp = data[j];
         data[j] = data[i];
         data[i] = temp;
@@ -18,8 +37,8 @@ int shuffle_extract(unsigned char* data, unsigned char* key, unsigned char state
         state ^= key[i] ^ key[j];       
     }
         
-    key[0] ^= data[j] ^ data[i]; 
-    state ^= key[0] ^ key[j]; 
+    key[0] ^= data[1] ^ data[0]; 
+    state ^= key[0] ^ key[1]; 
     return state;
 }
 

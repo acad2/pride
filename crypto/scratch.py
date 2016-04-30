@@ -104,16 +104,7 @@ def unpack_factors(bits, initial_power=0, initial_output=1, power_increment=1):
         power += power_increment    
     output *= variable ** power       
     return output            
-    
-def mixing_subroutine(_bytes):    
-    byte_length = len(_bytes)
-    key = (45 + sum(_bytes)) * byte_length * 2    
-    for counter, byte in enumerate(_bytes):
-        _bytes[counter % byte_length] = counter ^ (pow(251, 
-                                                       key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 
-                                                       257) % 256)
-    return _bytes
-    
+        
 aes_s_box = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
             0x2b, 0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59,
             0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7,
@@ -167,6 +158,12 @@ def shuffle(data, key, indices):
     for index, place in indices:        
         output = rotate(output[:index + 1], key[index]) + output[index + 1:]    
     replacement_subroutine(data, output)            
+    
+def exotic_padding(hash_input, rate):
+    hash_input += '1'
+    while len(hash_input) < rate: 
+        hash_input = cast(unpack_factors(cast(hash_input, "binary")), "bytes")
+    return hash_input
     
 def test_shuffle():
     data = bytearray("Testing")

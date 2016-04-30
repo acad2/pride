@@ -11,11 +11,10 @@ TEST_OPTIONS = {"avalanche_test" : True, "randomness_test" : True, "bias_test" :
 def binary_form(_bytes):
     return ''.join(format(byte, 'b').zfill(8) for byte in bytearray(_bytes))
     
-def _hash_prng(hash_function, output_size=0):        
+def _hash_prng(hash_function, digest_size, output_size=0):        
     output = b''
-    chunks, extra = divmod(output_size, 32)
-    chunks += 1 if extra else 0        
-    digest_size = len(hash_function(''))    
+    chunks, extra = divmod(output_size, digest_size)
+    chunks += 1 if extra else 0            
     for chunk in range(chunks):           
         output += hash_function(output[-digest_size:])
     
@@ -151,7 +150,7 @@ def test_bias(hash_function, byte_range=slice(0, 16)):
 def test_collisions(hash_function, output_size=3):      
     outputs = {}        
     print "Testing for collisions with output of {} bytes... ".format(output_size)
-    for count, possibility in enumerate(itertools.product(ASCII, ASCII)):
+    for count, possibility in enumerate(itertools.product(*(ASCII for count in range(output_size)))):
         hash_input = ''.join(possibility)        
         hash_output = hash_function(hash_input)[:output_size]
         if hash_output in outputs:
@@ -173,7 +172,7 @@ def test_compression_performance(hash_function):
 def test_prng_performance(hash_function):    
     print "Testing time to generate 1024 * 1024 bytes... "
     start = timer_function()
-    output = _hash_prng(hash_function, 1024 * 1024)
+    output = _hash_prng(hash_function, len(hash_function('')), 1024 * 1024)
     end = timer_function()
     print end - start    
     
@@ -204,7 +203,7 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
     if avalanche_test:
         test_avalanche_hash(hash_function, output_size)
     if randomness_test:
-        test_randomness(_hash_prng(hash_function, 1024 * 1024))        
+        test_randomness(_hash_prng(hash_function, output_size, 1024 * 1024))        
     if period_test:
         test_period(hash_function, blocksize=len(hash_function('')))    
     if bias_test:
@@ -255,7 +254,7 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
                        performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):  
     keysize = len(key)
     if avalanche_test:
-        test_avalanche_of_seed(encrypt_method, key)                
+        test_avalanche_of_seed(encrypt_method, key, len(seed))                
         test_avalanche_of_key(encrypt_method, seed, keysize)                  
     
     random_bytes = None
@@ -277,22 +276,6 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
     if performance_test:
         test_cipher_performance(performance_test_sizes, encrypt_method, key, seed)
     
-def test_random_metrics(test_options):
-    import pride.crypto
-    from metrics import test_block_cipher
-    from utilities import replacement_subroutine
-        
-    class Random_Cipher(pride.crypto.Cipher):
-        
-        def __init__(self, *args):
-            super(Random_Cipher, self).__init__(*args)
-            self.blocksize = 16
-            
-        def encrypt_block(self, plaintext, key):
-            replacement_subroutine(plaintext, os.urandom(len(plaintext)))
-            
-    Random_Cipher.test_metrics("\x00" * 16, "\x00" * 16, **test_options)
-
 def test_aes_metrics(test_options):     
     import pride.crypto
     from pride.security import encrypt as aes_encrypt
@@ -317,11 +300,14 @@ def test_sha_metrics():
     from hashlib import sha256    
     test_hash_function(lambda data: sha256(data).digest())
     
+def test_random_metrics():
+    from utilities import random_oracle_hash_function
+    test_hash_function(random_oracle_hash_function)
+    
 if __name__ == "__main__":
     options = dict((key, not value) for key, value in TEST_OPTIONS.items())
     options["period_test"] = True
     options["randomize_key"] = False
     #test_aes_metrics(options)
-    test_sha_metrics()
-    #test_random_metrics(TEST_OPTIONS)
-    
+    test_sha_metrics()    
+    test_random_metrics()

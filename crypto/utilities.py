@@ -116,7 +116,7 @@ def generate_s_box(function):
     return S_BOX    
     
 def find_cycle_length(function, _input, *args, **kwargs):
-    outputs = [_input[:]]        
+    outputs = [_input[:]]            
     while True:                
         _input = function(_input, *args, **kwargs)         
         if _input in outputs:            
@@ -124,8 +124,27 @@ def find_cycle_length(function, _input, *args, **kwargs):
         else:
             outputs.append(_input[:])
     return outputs
+
+def find_long_cycle_length(max_size, block_size, function, _input, *args, **kwargs):
+    outputs = set([bytes(_input)])
+ 
+    blocks, extra = divmod(max_size, block_size)
+    exit_flag = False
+    for block in xrange(blocks if not extra else blocks + 1):        
+        for counter in xrange(block_size):                           
+            _input = bytes(function(bytearray(_input), *args, **kwargs))          
+            if _input in outputs:  
+                exit_flag = True
+                break
+            else:
+                outputs.add(_input)
+        if exit_flag:
+            break                
+        yield block * block_size
+
+    yield outputs
     
-def random_hash_function(input_data, memo={}):
+def random_oracle_hash_function(input_data, memo={}):
     try:
         return memo[input_data]
     except KeyError:

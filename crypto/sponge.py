@@ -1,13 +1,21 @@
 import functools
 
 from utilities import cast, slide, xor_subroutine, replacement_subroutine
-from scratch import unpack_factors, mixing_subroutine
     
-def pad_input(hash_input, rate):    
-    hash_input += '1'
-    while len(hash_input) < rate: 
-        hash_input = cast(unpack_factors(cast(hash_input, "binary")), "bytes")
+def pad_input(hash_input, size):
+    hash_input += chr(128)
+    padding = size - (len(hash_input) % size)
+    hash_input += ("\x00" * padding)
     return hash_input
+        
+def example_mixing_subroutine(_bytes):    
+    byte_length = len(_bytes)
+    key = (45 + sum(_bytes)) * byte_length * 2    
+    for counter, byte in enumerate(_bytes):
+        _bytes[counter % byte_length] = counter ^ (pow(251, 
+                                                       key ^ byte ^ (_bytes[(counter + 1) % byte_length] * counter), 
+                                                       257) % 256)
+    return _bytes
     
 def variable_length_hash(state, rate, output_size, mix_state_subroutine, absorb_mode):    
     output = state[:rate]
@@ -48,7 +56,7 @@ def absorb(data, state, rate, mix_state_subroutine, replacement_subroutine):
         mix_state_subroutine(state)
        
 def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
-                    mix_state_subroutine=mixing_subroutine,
+                    mix_state_subroutine=example_mixing_subroutine,
                     mode_of_operation=variable_length_hash,
                     absorb_mode=xor_subroutine):  
     state_size = capacity + rate
@@ -64,31 +72,31 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     mix_state_subroutine(state)
     return mode_of_operation(state, rate, output_size, mix_state_subroutine, absorb_mode)                
     
-def encrypt(data, key, iv, mix_state_subroutine=mixing_subroutine, rate=32):
+def encrypt(data, key, iv, mix_state_subroutine=example_mixing_subroutine, rate=32):
     encryptor = sponge_function(iv, key, mix_state_subroutine=mix_state_subroutine,
                                 mode_of_operation=encryption_generator)
     next(encryptor)
     return ''.join(encryptor.send(block) for block in slide(data, rate))
 
-def decrypt(data, key, iv, mix_state_subroutine=mixing_subroutine, rate=32):
+def decrypt(data, key, iv, mix_state_subroutine=example_mixing_subroutine, rate=32):
     decryptor = sponge_function(iv, key, mix_state_subroutine=mix_state_subroutine,
                                 mode_of_operation=decryption_generator)
     next(decryptor)    
     return ''.join(decryptor.send(block) for block in slide(data, rate))                    
                
-def psuedorandom_data(quantity, seed, key, mix_state_subroutine=mixing_subroutine, rate=32):
+def psuedorandom_data(quantity, seed, key, mix_state_subroutine=example_mixing_subroutine, rate=32):
     return sponge_function(seed, key, mix_state_subroutine=mix_state_subroutine, 
                            output_size=quantity, rate=rate)
     
 def sponge_factory(key='', output_size=32, capacity=32, rate=32, 
-                   mix_state_subroutine=mixing_subroutine,
+                   mix_state_subroutine=example_mixing_subroutine,
                    mode_of_operation=variable_length_hash,
                    absorb_mode=xor_subroutine):
     return functools.partial(sponge_function, key=key, output_size=output_size, 
                                               capacity=capacity, rate=rate,
                                               mix_state_subroutine=mix_state_subroutine,
                                               mode_of_operation=mode_of_operation, 
-                                              absorb=absorb)                       
+                                              absorb_mode=absorb_mode)                       
             
 class Hash_Object(object):
                         
