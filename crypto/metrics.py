@@ -119,13 +119,13 @@ def test_randomness(random_bytes):
     os.remove(filename)
     
 def test_period(hash_function, blocksize=16, test_size=2):
-    output = '\x00' * blocksize
+    output = '\x01' * blocksize
     outputs = ['']    
     cycle_lengths = []
     print "Testing period with output truncated to {} byte: ".format(test_size)
     last_marker = 0
     for cycle_length in itertools.count():                
-        output = hash_function(output)          
+        output = hash_function(output)           
         if output[:test_size] in outputs:            
             #print "cycled after {} with {} byte output: ".format(cycle_length - last_marker, test_size)
             cycle_lengths.append(cycle_length - last_marker)
