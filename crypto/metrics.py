@@ -114,7 +114,7 @@ def test_randomness(random_bytes):
     with open(filename, 'wb') as _file:
         _file.write(random_bytes)
         _file.flush()    
-    print "Data generated; Running ent...", _file.name
+    print "Data generated; Running ent..."
     os.system(os.path.join(current_directory, "ent.exe ") + filename)
     os.remove(filename)
     

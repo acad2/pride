@@ -50,10 +50,11 @@ known bugs:
 things that could be done:
     patch inspect to get source from Compiler
     fix load
+    make update work with gui objects
     preemptive multiprocessing?
     develop the gui
     improve executable
-    improve authentication2 - scrutiny for design pitfalls and errors
+    improve authentication2 - scrutiny for design pitfalls and errors - start anew with authentication3
     integrate ssl contexts into networkssl    
     pass in ssl commands and arguments to networkssl.generate_self_signed_certificate    
     class update feature
