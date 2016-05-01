@@ -44,8 +44,7 @@ deter — detect — alarm — delay — respond
 
 recently done:
 
-known bugs:
-    homescreen does not get deleted when sdl window is closed via x button
+known bugs:   
     fix z layer issue with multiple objects on the same space
             
 things that could be done:

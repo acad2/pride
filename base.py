@@ -447,7 +447,7 @@ class Base(object):
                 - Classes that instantiate base objects as a class attribute
                   will produce an additional object each time the class is
                   updated. Solution: instantiate base objects in __init__ """
-        self.alert("Beginning Update...", level=self.verbosity["update"])          
+        self.alert("Beginning Update ({})...", (id(self), ), level=self.verbosity["update"])          
         _already_updated = _already_updated or [self.reference]
         class_base = pride.utilities.updated_class(type(self))        
         class_base._required_modules.append(self.__class__.__name__)        
@@ -458,15 +458,21 @@ class Base(object):
             setattr(new_self, attribute, value)    
         if not hasattr(new_self, "reference"):
             new_self.reference = self.reference
+        if not hasattr(new_self, "references_to"):
+            new_self.references_to = self.references_to[:]
             
         assert "reference" not in self.__class__.__dict__, self.__class__.__dict__ 
         assert hasattr(self, "reference"), pprint.pformat(self.__dict__)
       #  assert "reference" in self.__dict__, pprint.pformat(self.__dict__.keys())
         assert hasattr(new_self, "reference"), pprint.pformat(new_self.__dict__)
-        for reference in self.references_to[:]:
+        references = self.references_to[:]
+        for reference in references:#self.references_to[:]:
             _object = pride.objects[reference]
             _object.remove(self)
+        for reference in references:
+            _object = pride.objects[reference]
             _object.add(new_self)
+            
         pride.objects[self.reference] = new_self
         if update_children:
             for child in self.children:
@@ -565,8 +571,8 @@ class Proxy(Base):
             super(type(wrapped_object), wrapped_object).__setattr__(attribute, value)
         except AttributeError:                                    
             super_object.__setattr__(attribute, value)
-
-            
+        
+        
 class Adapter(Base):
     """ Modifies the interface of the wrapped object. Effectively supplies
         the keys in the adaptations dictionary as attributes. The value 

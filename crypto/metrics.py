@@ -14,14 +14,15 @@ def binary_form(_bytes):
     
 def _hash_prng(hash_function, digest_size, output_size):        
     output = b''
-    hash_input = "\x00" * digest_size
+    hash_input = "\x01" * digest_size    
     chunks, extra = divmod(output_size, digest_size)
-    chunks += 1 if extra else 0    
-    for chunk in range(chunks):                         
+    chunks += 1 if extra else 0      
+    for chunk in range(chunks):                                 
         output += hash_function(hash_input)    
         hash_input = output[-digest_size:]
-    return output
     
+    return output
+        
 def hamming_distance(str1, str2):
   return sum(itertools.imap(str.__ne__, binary_form(str1), binary_form(str2)))
   
@@ -104,8 +105,7 @@ def test_avalanche_of_key(encrypt_method, iv, keysize):
     print "Minimum Hamming distance ratio: ", minimum / bit_count
     print "Average Hamming distance ratio: ", average / bit_count
     print "Maximum Hamming distance ratio: ", maximum / bit_count 
-
-    
+   
 def test_randomness(random_bytes):    
     size = len(random_bytes)
     print "Testing randomness of {} bytes... ".format(size)   
@@ -197,6 +197,10 @@ def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):
             sys.stdout.write("{}100%\r".format("=" * 76))
             print "MB/s: ", 1 / (sum(times) / float(len(times)))
                         
+def test_fixed_zero_point(hash_function):
+    if hash_function("\x00") == hash_function("\x00\x00"):
+        print "The supplied hash produces collisions for null input strings of varying length"
+                            
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,
                        compression_test=True):
@@ -204,9 +208,10 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
         should be a function that accepts one string of bytes as input and returns
         one string of bytes as output. """
     output_size = len(hash_function("\x00"))
+    test_fixed_zero_point(hash_function)
     if avalanche_test:
         test_avalanche_hash(hash_function, output_size)
-    if randomness_test:
+    if randomness_test:        
         test_randomness(_hash_prng(hash_function, output_size, 1024 * 1024))        
     if period_test:
         test_period(hash_function, blocksize=len(hash_function('')))    

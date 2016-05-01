@@ -17,11 +17,10 @@ def shuffle_extract(data, key, state):
 def slow_hash(seed, tweak, rounds=1, output_size=32, tables=256):
     seed = bytearray(null_pad(seed, 256))
     state = seed[0]
-    _rows = [bytearray(256) for amount in xrange(tables)]
-    print "Allocated!"
+    _rows = [rotate(tweak, amount) for amount in xrange(tables)]
+    
     for round in range(rounds):    
-        for i in reversed(range(1, 256)):
-            print i
+        for i in reversed(range(1, 256)):    
             for rows in slide(_rows, 256):
                 for row in rows:                
                     j = state & (i - 1)                
@@ -39,13 +38,13 @@ def slow_hash(seed, tweak, rounds=1, output_size=32, tables=256):
     
     output = []
     for index in range(output_size):
-        output.append(seed[rows[index][index]])
+        output.append(seed[rows[index][index]])    
     return bytearray(output)
     
 def test_slow_hash():
     _input = "Bad password lol"
     tweak = range(256)
-    print slow_hash(_input, tweak, rounds=1, tables=4096 * 256)
+    print slow_hash(_input, tweak, rounds=1, tables=4096)
     
 if __name__ == "__main__":
     test_slow_hash()
