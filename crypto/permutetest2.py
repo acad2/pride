@@ -88,7 +88,7 @@ def shuffle(data, key):
         
 from sponge import sponge_factory
 tweak = list(set((x | 1 for x in range(256)))) # some odd numbers
-permute_hash = sponge_factory(mixing_subroutine=lambda data: keyed_permute_diffusion(data, tweak),
+permute_hash = sponge_factory(lambda data: keyed_permute_diffusion(data, tweak),
                               output_size=2, rate=2, capacity=1)      
 
 #def permute_hash(data):        

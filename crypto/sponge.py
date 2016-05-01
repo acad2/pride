@@ -56,9 +56,10 @@ def absorb(data, state, rate, mixing_subroutine, replacement_subroutine):
         mixing_subroutine(state)
        
 def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32, 
-                    mixing_subroutine=example_mixing_subroutine,
+                    mixing_subroutine=None,
                     mode_of_operation=variable_length_hash,
-                    absorb_mode=xor_subroutine):  
+                    absorb_mode=xor_subroutine): 
+    assert mixing_subroutine is not None
     state_size = capacity + rate
     state = bytearray(state_size)
     if key:
@@ -72,24 +73,24 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     mixing_subroutine(state)
     return mode_of_operation(state, rate, output_size, mixing_subroutine, absorb_mode)                
     
-def encrypt(data, key, iv, mixing_subroutine=example_mixing_subroutine, rate=32):
+def encrypt(data, key, iv, mixing_subroutine, rate=32):
     encryptor = sponge_function(iv, key, mixing_subroutine=mixing_subroutine,
                                 mode_of_operation=encryption_generator)
     next(encryptor)
     return ''.join(encryptor.send(block) for block in slide(data, rate))
 
-def decrypt(data, key, iv, mixing_subroutine=example_mixing_subroutine, rate=32):
+def decrypt(data, key, iv, mixing_subroutine, rate=32):
     decryptor = sponge_function(iv, key, mixing_subroutine=mixing_subroutine,
                                 mode_of_operation=decryption_generator)
     next(decryptor)    
     return ''.join(decryptor.send(block) for block in slide(data, rate))                    
                
-def psuedorandom_data(quantity, seed, key, mixing_subroutine=example_mixing_subroutine, rate=32):
+def psuedorandom_data(quantity, seed, key, mixing_subroutine, rate=32):
     return sponge_function(seed, key, mixing_subroutine=mixing_subroutine, 
                            output_size=quantity, rate=rate)
     
-def sponge_factory(key='', output_size=32, capacity=32, rate=32, 
-                   mixing_subroutine=example_mixing_subroutine,
+def sponge_factory(mixing_subroutine,
+                   key='', output_size=32, capacity=32, rate=32,                    
                    mode_of_operation=variable_length_hash,
                    absorb_mode=xor_subroutine):
     return functools.partial(sponge_function, key=key, output_size=output_size, 
@@ -100,7 +101,9 @@ def sponge_factory(key='', output_size=32, capacity=32, rate=32,
             
 class Hash_Object(object):
                         
-    def __init__(self, hash_input='', output_size=32, capacity=32, rate=32, state=None):  
+    def __init__(self, mixing_subroutine, hash_input='', 
+                 output_size=32, capacity=32, rate=32, state=None):  
+        self.mixing_subroutine = mixing_subroutine
         self.rate = rate
         self.capacity = capacity
         self.output_size = output_size        
@@ -115,7 +118,8 @@ class Hash_Object(object):
                 self.state = self.hash(hash_input)
         
     def hash(self, hash_input, key=''):
-        return sponge_function(hash_input, key, self.output_size, self.capacity, self.rate)
+        return sponge_function(hash_input, key, self.output_size, self.capacity, self.rate,
+                               mixing_subroutine=self.mixing_subroutine,)
        
     def update(self, hash_input):
         self.state = xor_compression(self.state + self.hash(hash_input), self.state_size)
@@ -124,29 +128,30 @@ class Hash_Object(object):
         return self.state
 
     def copy(self):
-        return Hash_Object(output_size=self.output_size, capacity=self.state_size, 
-                           rate=self.rate, state=self.state)
+        return Hash_Object(self.mixing_subroutine, output_size=self.output_size, 
+                           capacity=self.state_size, rate=self.rate, state=self.state)
              
 def test_hash_object():
-    hasher = Hash_Object("Test data")
-    assert hasher.digest() == sponge_function("Test data")
+    hasher = Hash_Object(example_mixing_subroutine, "Test data")
+    assert hasher.digest() == sponge_function("Test data", mixing_subroutine=example_mixing_subroutine)
     
 def test_hash():
-    print sponge_function('')
+    hash_function = sponge_factory(mixing_subroutine=example_mixing_subroutine)
+    print hash_function('')
     for x in xrange(5):
-        print sponge_function(chr(x))
+        print hash_function(chr(x))
     
 def test_encrypt_decrypt():
     plaintext = "Awesome test message"
     iv = key = "\x00" * 16
-    ciphertext = encrypt(plaintext, key, iv)
-    _plaintext = decrypt(ciphertext, key, iv)
+    ciphertext = encrypt(plaintext, key, iv, example_mixing_subroutine)
+    _plaintext = decrypt(ciphertext, key, iv, example_mixing_subroutine)
     print len(ciphertext), ciphertext
     print len(plaintext), plaintext
     assert plaintext == _plaintext, (plaintext, _plaintext)
     
 def test_psuedorandom_data():
-    data = psuedorandom_data(257, "\x00" * 16, "\x00" * 16)    
+    data = psuedorandom_data(257, "\x00" * 16, "\x00" * 16, example_mixing_subroutine)    
     assert len(data) == 257
     print data
     
@@ -155,3 +160,4 @@ if __name__ == "__main__":
     test_hash_object()
     test_encrypt_decrypt()
     test_psuedorandom_data()
+    
