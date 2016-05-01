@@ -20,17 +20,22 @@ def permutation(data, key):
     data[index] = right_byte                    
     
     data[index - 1] ^= ((right_byte >> 5) | (right_byte << (8 - 5))) & 255             
-    
+
+def invert_permutation(data, key):
+    index = 0
+    data[index - 1] ^= ((data[index] >> 5) | (data[index] << (8 - 5))) & 255    
+        
+        
 from sponge import sponge_factory
 
 def _hash(data):
     key = range(len(data))    
-    for round in range(1):
+    for round in range(2):
         permutation(data, key)             
     return data
     
 permute_hash = sponge_factory(mixing_subroutine=_hash, 
-                              output_size=4, rate=4, capacity=1)
+                              output_size=32, rate=32, capacity=0)
 
 if __name__ == "__main__":
     from metrics import test_hash_function

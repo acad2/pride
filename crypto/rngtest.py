@@ -1,16 +1,16 @@
-def shuffle_extract(data, key, state):
+def shuffle_extract(data, key, state):    
     """ State update and round key extraction function. """
-    n = len(data)            
-    for i in reversed(range(1, n)):
+    for i in reversed(range(1, 256)):
         # Fisher-Yates shuffle
-        j = state[0] & (i - 1)        
-        data[i], data[j] = data[j], data[i]  
-                
-        key[i] ^= data[j] ^ data[i] # randomize key value
-        state[0] ^= key[i] ^ i ^ key[j] # update state with output feedback + nonce
+        j = state & (i - 1)                
+        data[i], data[j] = data[j], data[i]           
+        
+        key[i] ^= data[j] ^ data[i] ^ i # randomize key value   
+        state ^= key[i] ^ key[j] # randomize value with output feedback
         
     key[0] ^= data[j] ^ data[i] 
-    state[0] ^= key[0] ^ key[j]
+    state ^= key[0] ^ key[j]
+    return state
     
 def random_number_generator(key, seed, tweak, output_size=256):
     """ Psuedorandom number generator. Operates by randomly shuffling the
@@ -26,43 +26,37 @@ def random_number_generator(key, seed, tweak, output_size=256):
         similar to a cryptographic sponge function. 
         
         Internally, two states are used: The main state array, and an 8-bit
-        byte. The 8-bit byte contributes to diffusion and avalanche"""    
-    state = bytearray(1)            
-    for byte in seed:
-        state[0] ^= byte    
-    shuffle_extract(tweak, key, state)
-    shuffle_extract(tweak, seed, state)
-    
+        byte. The 8-bit byte contributes to diffusion and avalanche"""   
+    state = key[0]           
+    state = shuffle_extract(tweak, key, state)
+    state = shuffle_extract(tweak, seed, state)
     output = bytearray(output_size)
     while True:                  
-        shuffle_extract(tweak, seed, state)        
+        state = shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
         yield bytes(output)                                              
-      
-def _random_number_generator_subroutine(key, seed, tweak, output, output_size=256):
-    """ Identical to random_number_generator; This uses less allocations and is more performant. """
-    state = bytearray(1)        
-    for byte in seed:
-        state[0] ^= byte
-    shuffle_extract(tweak, key, state)
-    shuffle_extract(tweak, seed, state)
+   
+def random_number_generator_subroutine(key, seed, tweak, output, output_size=256):
+    """ Identical to random_number_generator; This uses less allocations and is more performant. """        
+    state = key[0]
+    state = shuffle_extract(tweak, key, state)
+    state = shuffle_extract(tweak, seed, state)
     
     while True:         
-        shuffle_extract(tweak, seed, state)        
+        state = shuffle_extract(tweak, seed, state)        
         for index in range(output_size):            
             output[index] = seed[tweak[index]]   
         yield        
         
-def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):   
+def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
     """ Generates count random bytes using random_number_generator using the 
-        supplied/default seed, key, tweak, and output_size. """
+        supplied/default seed, key, tweak, and output_size. """      
     output = bytearray(256)
-    generator = _random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
+    generator = random_number_generator_subroutine(bytearray(key), bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size)
     amount = amount + 1 if extra else amount
     for chunk in range(amount):
         next(generator)
         output.extend(output[:output_size])    
     return bytes(output[output_size:count + output_size])
-    

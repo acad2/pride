@@ -9,6 +9,7 @@ from pride.utilities import save_data, load_data
 from pride.errors import SecurityError, InvalidPassword, InvalidTag, InvalidSignature
         
 AEAD_MODES = ["GCM"]
+INVALID_TAG = [] # just needs to be a unique object
     
 try:                
     import cryptography
@@ -83,16 +84,17 @@ else:
                         
     def verify_mac(key, packed_data, algorithm="SHA256", backend=BACKEND):
         """ Verifies a message authentication code as obtained by apply_mac.
-            Successful comparison indicates integrity and authenticity of the data. """        
+            Successful comparison indicates integrity and authenticity of the data. 
+            Returns data is comparison succeeds; Otherwise returns pride.security.INVALID_TAG. """        
         mac, data = load_data(packed_data)
         hasher = HMAC(key, getattr(hashes, algorithm)(), backend=backend)
         hasher.update(algorithm + '::' + data)
         try:
             hasher.verify(mac)
         except InvalidSignature:
-            return False
+            return INVALID_TAG
         else:
-            return True
+            return data
                                 
     def encrypt(data='', key='', mac_key='', iv=None, extra_data='', algorithm="AES", 
                 mode="GCM", backend=BACKEND, iv_size=16, hash_algorithm="SHA256",

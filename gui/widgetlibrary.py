@@ -185,8 +185,9 @@ class Date_Time_Button(gui.Button):
         self.text = text[:-8] + text[-5:] # remove seconds
         self.update_instruction.execute(priority=self.refresh_interval)   
         
-    def delete(self):
+    def delete(self):        
         self.update_instruction.unschedule()
+        print pride.Instruction.instructions
         super(Date_Time_Button, self).delete()
         
         

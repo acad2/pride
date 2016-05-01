@@ -95,6 +95,17 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
             if 1 in s_box_applications:
                 print differential_chain[:s_box_applications[1]]
             
+def find_best_differential(sbox):    
+    """ Returns the single best xor differential for the supplied sbox.
+        Output consists of the input difference, output difference, and
+        probability that the difference will hold. """
+    xor_ddt, rotational_ddt = build_difference_distribution_table(sbox)
+    best_differential = (None, None, 0)
+    for difference in range(1, 256):
+        info = find_best_output_differential(xor_ddt, difference)        
+        if info[-1] > best_differential[-1]:
+            best_differential = info
+    return best_differential 
     
 def test_build_difference_distribution_table():
     import pprint

@@ -115,14 +115,16 @@ def generate_s_box(function):
         S_BOX[number] = function(number)        
     return S_BOX    
     
-def find_cycle_length(function, _input, *args, **kwargs):
-    outputs = [_input[:]]            
-    while True:                
-        _input = function(_input, *args, **kwargs)         
-        if _input in outputs:            
+def find_cycle_length(function, *args, **kwargs):
+    args = list(args)
+    _input = args[0]    
+    outputs = [_input]            
+    while True:                        
+        args[0] = function(*args, **kwargs)         
+        if args[0] in outputs:            
             break
         else:
-            outputs.append(_input[:])
+            outputs.append(args[0])
     return outputs
 
 def find_long_cycle_length(max_size, block_size, function, _input, *args, **kwargs):

@@ -265,7 +265,7 @@ class Base(object):
         if self.deleted:
             raise DeleteError("{} has already been deleted".format(self.reference))
                     
-        for child in self.children:
+        for child in list(self.children):
             child.delete()
             
         if self.references_to:

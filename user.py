@@ -6,6 +6,7 @@ import random
 import pride.base
 import pride.security
 import pride.shell
+import pride.persistence
 
 class InvalidUsername(BaseException): pass
 
@@ -167,7 +168,9 @@ class User(pride.base.Base):
         return pride.security.decrypt(packed_encrypted_data, self.encryption_key, self.mac_key)
     
     def authenticate(self, data):
-        """ Authenticates and provides integrity to a piece of data. 
+        """ Returns tagged data.
+            
+            Authenticates and provides integrity to a piece of data. 
             Authentication and integrity are generally requirements for any data
             that must be secured. Returns a message authentication code.
             
@@ -183,9 +186,22 @@ class User(pride.base.Base):
         """ Verifies data with the mac returned by authenticate. Data that is 
             verified has two extremely probable guarantees: that it did indeed
             come from who an authorized party, and that it was not manipulated 
-            by unauthorized parties in transit. """
+            by unauthorized parties in transit. 
+            
+            Returns data on successful verification; Returns False on failure. """
         return pride.security.verify_mac(self.mac_key, macd_data, self.hash_function)
                 
+    def save_data(self, *args):
+        package = pride.persistence.save_data(*args)
+        return self.authenticate(package)
+        
+    def load_data(self, package):
+        packed_bytes = self.verify(package)
+        if packed_bytes is not pride.security.INVALID_TAG:
+            return pride.persistence.load_data(packed_bytes)
+        else:
+            return packed_bytes # == INVALID_TAG
+        
 def test_User():
     import pride.interpreter
     python = pride.interpreter.Python()

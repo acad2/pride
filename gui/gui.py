@@ -577,6 +577,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.pack_mode = None # clear Organizer cache        
         objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
+        self.theme.delete()
         super(Window_Object, self).delete()                
                 
     def deselect(self, mouse, next_active_object):

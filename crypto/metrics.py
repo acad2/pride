@@ -301,11 +301,13 @@ def test_aes_metrics(test_options):
     test_block_cipher(Aes_Cipher.encrypt, "\x00" * 16, **test_options) 
     
 def test_sha_metrics():
-    from hashlib import sha256    
+    from hashlib import sha256  
+    print "Testing metrics of sha256..."
     test_hash_function(lambda data: sha256(data).digest())
     
 def test_random_metrics():
     from utilities import random_oracle_hash_function
+    print "Testing metrics of a random oracle hash function... "
     test_hash_function(random_oracle_hash_function)
     
 if __name__ == "__main__":
