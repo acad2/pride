@@ -5,7 +5,12 @@ import os
 
 from timeit import default_timer as timer_function
 
-from utilities import slide
+def slide(iterable, x=16):
+    """ Yields x bytes at a time from iterable """
+    slice_count, remainder = divmod(len(iterable), x)
+    for position in range((slice_count + 1 if remainder else slice_count)):
+        _position = position * x
+        yield iterable[_position:_position + x]  
 
 ASCII = ''.join(chr(x) for x in range(256))
 TEST_OPTIONS = {"avalanche_test" : True, "randomness_test" : True, "bias_test" : True,

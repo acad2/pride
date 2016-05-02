@@ -87,6 +87,7 @@ if __name__ == "__main__":
     from metrics import test_hash_function, test_block_cipher
     #test_hash_function(sbox_hash)
     #test_hash_function(base_conversion_hash)
-    test_hash_function(permute_hash)
-    test_block_cipher(permute_encrypt, "\x00" * 32, "\x00" * 32)
+    #test_hash_function(permute_hash)
+    #test_block_cipher(permute_encrypt, "\x00" * 32, "\x00" * 32)
+    test_block_cipher(sbox_hash_encrypt, "\x00" * 32, "\x00" * 32)
     

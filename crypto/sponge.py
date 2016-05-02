@@ -137,8 +137,8 @@ class Hash_Object(object):
              
 def symmetric_primitive_factory(mixing_subroutine, **kwargs):
     hash_function = sponge_factory(mixing_subroutine=mixing_subroutine, **kwargs)
-    encryption_function = lambda data, key, iv, **_kwargs: sponge.encrypt(data, key, iv, mixing_subroutine, **_kwargs)
-    decryption_function = lambda data, key, iv, **_kwargs: sponge.decrypt(data, key, iv, mixing_subroutine, **_kwargs)
+    encryption_function = lambda data, key, iv, **_kwargs: encrypt(data, key, iv, mixing_subroutine, **_kwargs)
+    decryption_function = lambda data, key, iv, **_kwargs: decrypt(data, key, iv, mixing_subroutine, **_kwargs)
     return (hash_function, encryption_function, decryption_function)
     
 def test_hash_object():
