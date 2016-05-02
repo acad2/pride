@@ -1,4 +1,5 @@
-from sponge import sponge_factory
+import sponge
+from sponge import symmetric_primitive_factory
 from utilities import slide, xor_sum, generate_s_box
 
 ASCII_CONSTANT = ''.join(chr(x) for x in xrange(256))
@@ -44,10 +45,10 @@ def permute(data, key, index):
     right_byte += key[index] # increment, potentially overflowing low order byte
     data[index - 1] = (data[index - 1] + (right_byte >> 8)) & 255 # add any bits in high order byte to next byte
     
-    right_byte &= 255 # mask to 8 bit unsigned int
+    right_byte &= 255 # mask to 8 bit unsigned int, truncating the high order byte that was just used
     data[index] = right_byte                    
     
-    data[index - 1] ^= ((right_byte >> 3) | (right_byte << (8 - 3))) & 255 # rotate
+    data[index - 1] ^= ((right_byte >> 3) | (right_byte << (8 - 3))) & 255 # rotate and xor; helps nonlinearity
     
 def permutation(data, key):    
     size = len(data)
@@ -61,15 +62,12 @@ def _permute_hash(data):
     key = range(len(data))    
     for round in range(2):
         permutation(data, key)             
-    return data
-        
-sbox_hash = sponge_factory(mixing_subroutine=one_way_function_s_box,
-                           output_size=32, rate=32, capacity=8)
-base_conversion_hash = sponge_factory(mixing_subroutine=one_way_function_base_conversion,
-                           output_size=32, rate=32, capacity=8)
-permute_hash = sponge_factory(mixing_subroutine=_permute_hash, 
-                              output_size=32, rate=32, capacity=8)
-
+    return data        
+    
+sbox_hash, sbox_hash_encrypt, sbox_hash_decrypt = symmetric_primitive_factory(one_way_function_s_box)
+base_conversion_hash, base_conversion_encrypt, base_conversion_decrypt = symmetric_primitive_factory(one_way_function_base_conversion)
+permute_hash, permute_encrypt, permute_decrypt = symmetric_primitive_factory(_permute_hash)                                                                
+                                 
 def test_one_way_function():
     from os import urandom
     print one_way_function("\x00")#chr(123)), chr(123)
@@ -86,8 +84,9 @@ def test_one_way_function():
     print len(set(outputs)), len(outputs), set([len(output) for output in outputs])
     
 if __name__ == "__main__":
-    from metrics import test_hash_function
-    test_hash_function(sbox_hash)
-    test_hash_function(base_conversion_hash)
+    from metrics import test_hash_function, test_block_cipher
+    #test_hash_function(sbox_hash)
+    #test_hash_function(base_conversion_hash)
     test_hash_function(permute_hash)
+    test_block_cipher(permute_encrypt, "\x00" * 32, "\x00" * 32)
     

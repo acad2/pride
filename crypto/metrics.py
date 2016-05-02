@@ -5,6 +5,8 @@ import os
 
 from timeit import default_timer as timer_function
 
+from utilities import slide
+
 ASCII = ''.join(chr(x) for x in range(256))
 TEST_OPTIONS = {"avalanche_test" : True, "randomness_test" : True, "bias_test" : True,
                 "period_test" : True, "performance_test" : True, "randomize_key" : False}                 
@@ -68,9 +70,9 @@ def test_avalanche_hash(hash_function, blocksize=16):
     print "Average Hamming distance ratio: ", average / bit_count
     print "Maximum Hamming distance ratio: ", maximum / bit_count    
     
-def test_avalanche_of_seed(encrypt_method, key, seedsize):
+def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     padding = "\x00" * (seedsize - 1)
-    print "Testing diffusion of seed: using variable data as seed for rng"
+    print "Testing diffusion of {}: using variable data as {} for rng".format(seedname, seedname)
     random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
     random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
     ratio = []
@@ -234,8 +236,8 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
     blocksize = blocksize if blocksize is not None else keysize
     
     if avalanche_test:
-        #test_avalanche_of_key(encrypt_method, iv, keysize)
-        test_avalanche_of_seed(encrypt_method, key, len(iv))
+        test_avalanche_of_key(encrypt_method, iv, keysize)
+        test_avalanche_of_seed(encrypt_method, key, len(iv), "iv")
                
     random_bytes = None
     if randomness_test:

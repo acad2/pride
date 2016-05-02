@@ -1,11 +1,13 @@
+import struct
 import functools
 
 from utilities import cast, slide, xor_subroutine, replacement_subroutine
     
 def pad_input(hash_input, size):
     hash_input += chr(128)
-    padding = size - (len(hash_input) % size)
-    hash_input += ("\x00" * padding)
+    input_size = len(hash_input)
+    padding = size - (input_size % size)
+    hash_input += ("\x00" * (padding - 8)) + (struct.pack("L", input_size))
     return hash_input
         
 def example_mixing_subroutine(_bytes):    
@@ -29,7 +31,7 @@ def prng_generator(state, rate, output_size, mixing_subroutine, absorb_mode):
         yield state[:rate]
         mixing_subroutine(state)    
     
-def encryption_generator(state, rate, output_size, mixing_subroutine, absorb_mode):    
+def encryption_mode(state, rate, output_size, mixing_subroutine, absorb_mode):    
     input_block = yield None        
     while input_block is not None:
         xor_subroutine(state, bytearray(input_block))
@@ -37,7 +39,7 @@ def encryption_generator(state, rate, output_size, mixing_subroutine, absorb_mod
         mixing_subroutine(state)        
     yield bytes(state[:rate])
     
-def decryption_generator(state, rate, output_size, mode_of_operation, absorb_mode):    
+def decryption_mode(state, rate, output_size, mode_of_operation, absorb_mode):    
     input_block = yield None       
     while input_block is not None:
         last_block = state[:len(input_block)]
@@ -73,15 +75,17 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
     mixing_subroutine(state)
     return mode_of_operation(state, rate, output_size, mixing_subroutine, absorb_mode)                
     
-def encrypt(data, key, iv, mixing_subroutine, rate=32):
+def encrypt(data, key, iv, mixing_subroutine, rate=32, **kwargs):
     encryptor = sponge_function(iv, key, mixing_subroutine=mixing_subroutine,
-                                mode_of_operation=encryption_generator)
+                                mode_of_operation=encryption_mode,
+                                **kwargs)
     next(encryptor)
     return ''.join(encryptor.send(block) for block in slide(data, rate))
 
-def decrypt(data, key, iv, mixing_subroutine, rate=32):
+def decrypt(data, key, iv, mixing_subroutine, rate=32, **kwargs):
     decryptor = sponge_function(iv, key, mixing_subroutine=mixing_subroutine,
-                                mode_of_operation=decryption_generator)
+                                mode_of_operation=decryption_mode,
+                                **kwargs)
     next(decryptor)    
     return ''.join(decryptor.send(block) for block in slide(data, rate))                    
                
@@ -131,6 +135,12 @@ class Hash_Object(object):
         return Hash_Object(self.mixing_subroutine, output_size=self.output_size, 
                            capacity=self.state_size, rate=self.rate, state=self.state)
              
+def symmetric_primitive_factory(mixing_subroutine, **kwargs):
+    hash_function = sponge_factory(mixing_subroutine=mixing_subroutine, **kwargs)
+    encryption_function = lambda data, key, iv, **_kwargs: sponge.encrypt(data, key, iv, mixing_subroutine, **_kwargs)
+    decryption_function = lambda data, key, iv, **_kwargs: sponge.decrypt(data, key, iv, mixing_subroutine, **_kwargs)
+    return (hash_function, encryption_function, decryption_function)
+    
 def test_hash_object():
     hasher = Hash_Object(example_mixing_subroutine, "Test data")
     assert hasher.digest() == sponge_function("Test data", mixing_subroutine=example_mixing_subroutine)
