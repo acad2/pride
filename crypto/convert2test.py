@@ -53,43 +53,58 @@ def arbitrary_base_subtraction(value1, value2, base):
         second_value = base.index(value2[current_index])
         
         new_value = first_value - second_value
-        if new_value > first_value:
+        if second_value > first_value:
             carry_index = current_index - 1
             while carry_index:
                 if value1[carry_index] != base[0]:                    
                     value1[carry_index] = base[base.index(value1[carry_index]) - 1]
                     break
                 else:
-                    carry_index -= 1
-        value1[current_index] = base[new_value]
+                    carry_index -= 1            
+            value1[current_index] = base[base_size + new_value]
+        else:            
+            value1[current_index] = base[new_value]
         
 def test_key_exchange_idea():
-    public_key1 = bytes(generate_key(256))
-    public_key2 = bytes(generate_key(256))
+    public_key1 = bytes(generate_key(256))    
     
     private_key1 = bytes(generate_key(256))
     private_key2 = bytes(generate_key(256))
     
-    message = ("\x00" * 31) + "\x01"#os.urandom(32)
-    
+    message = os.urandom(32)#("\x00" * 31) + "\x01"    
     message = convert(message, ASCII, private_key1)
     message = convert(message, private_key1, public_key1)
     
-    message2 = ("\x00" * 31) + "\x02"#os.urandom(32)
-    
+    message2 = os.urandom(32)#("\x00" * 31) + "\x02"#os.urandom(32)    
     message2 = convert(message2, ASCII, private_key2)
     message2 = convert(message2, private_key2, public_key1)
     
     message3 = list(message)
     arbitrary_base_addition(message3, message2, public_key1)
-    
-    
+        
+    print "Message: "
+    print
     print message
+    print
+    print "Message2: "
     print
     print message2
     print
+    print "Message3: "
+    print 
     print ''.join(message3)
+    print
+    print "In ascii: ", 
     print convert(convert(message3, public_key1, private_key1), private_key1, ASCII)
+    
+    arbitrary_base_subtraction(message3, message, public_key1)
+    print
+    print "Message3 - Message: "
+    print
+    print [ord(char) for char in message3]
+    print
+    print [ord(char) for char in message2]
+    assert message3 == list(message2)
     
 def test_arbitrary_base_addition():
     value1 = list("0123456789")
@@ -110,8 +125,8 @@ def test_arbitrary_base_addition():
     print convert(convert(value1_in_public_base, ASCII, base), base, "0123456789")        
                      
 def test_arbitrary_base_subtraction():
-    value1 = list("0000010001")
-    value2 = list("0000000002")
+    value1 = list("9876543210")
+    value2 = list("0123456789")
     
     base = bytes(generate_key(seed=range(10)))# list("3017845962")    
     
@@ -127,11 +142,10 @@ def test_arbitrary_base_subtraction():
     arbitrary_base_subtraction(value1_in_public_base, value2_in_public_base, ASCII) 
     print ''.join(value1_in_public_base), '        ({})'.format(value1_in_public_base)
     print convert(convert(value1_in_public_base, ASCII, base), base, "0123456789")
-    
+    print 9876543210 - 123456789
     
 if __name__ == "__main__":
     #test_arbitrary_base_addition()
     #test_arbitrary_base_subtraction()
-    test_key_exchange_idea()
-    
+    test_key_exchange_idea()    
     
