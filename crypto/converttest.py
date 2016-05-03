@@ -34,8 +34,12 @@ def shuffle(data, key):
         j = key[i] & (i - 1)
         data[i], data[j] = data[j], data[i]
     
-def generate_key(size=256):
-    key = bytearray(range(size))    
+def generate_key(size=256, seed=None):
+    if seed is None:
+        key = bytearray(range(size))            
+    else:
+        key = bytearray(seed)
+        size = len(seed)
     _key = bytearray(os.urandom(size))
     shuffle(key, _key)    
     return key
