@@ -8,41 +8,40 @@ from pride.errors import InvalidTag
                 
 def cbc_encrypt(block, iv, key, cipher, tag=None): 
     xor_subroutine(block, iv)        
-    cipher(block, key)        
+    cipher(block, key, tag)        
     replacement_subroutine(iv, block)        
     
 def cbc_decrypt(block, iv, key, cipher, tag=None):    
     next_iv = block[:]        
-    cipher(block, key)
+    cipher(block, key, tag)
     xor_subroutine(block, iv)        
     replacement_subroutine(iv, next_iv)    
     
 def ofb_mode(block, iv, key, cipher, tag=None):
-    cipher(iv, key)        
+    cipher(iv, key, tag)        
     xor_subroutine(block, iv)
         
 def ctr_mode(block, iv, key, cipher, tag=None):
-    cipher(iv, key)
+    cipher(iv, key, tag)
     xor_subroutine(block, iv)    
     replacement_subroutine(iv, bytearray(cast(cast(cast(bytes(iv), "binary"), "integer") + 1, "bytes")))
     
-def ella_mode(block, iv, key, cipher, tag):       
+def ella_mode(block, iv, key, cipher, tag):         
     datablock = tag + block
     cipher(datablock, key)
     replacement_subroutine(block, datablock[8:])
-    return datablock[:8]
+    replacement_subroutine(tag, datablock[:8])#tag[:8] = datablock[:8]        
     
 def ecb_mode(block, iv, key, cipher, tag=None):
-    cipher(block, key)
+    cipher(block, key, tag)
     
 def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):    
     output = bytearray()    
     for block in slide(data, blocksize):      
-        tag = mode_of_operation(block, iv, key, cipher, tag)        
+        mode_of_operation(block, iv, key, cipher, tag)        
         output.extend(block)
     replacement_subroutine(data, output)                       
-    return tag
-    
+        
 ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
 DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
     
@@ -57,7 +56,7 @@ def cbc_padding(datasize, blocksize):
     return padding_characters
     
 def encrypt(data, cipher, iv, tag=None):
-    data = bytearray(data)
+    #data = bytearray(data)
     mode = cipher.mode    
     blocksize = cipher.blocksize
     datasize = len(data)
@@ -66,17 +65,17 @@ def encrypt(data, cipher, iv, tag=None):
     if mode == "cbc":
         data.extend(cbc_padding(datasize, blocksize))
         
-    tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), cipher.encrypt_block, 
-                ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
-    if tag is not None:
-        return tag + bytes(data)
-    else:
-        return bytes(data)
+    crypt(data, cipher.key, iv, cipher.encrypt_block, 
+          ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
+    #if tag is not None:
+    #    return tag + bytes(data)
+    #else:
+    return bytes(data)
     
 def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, tweak=None):    
-    mode = cipher.mode
-    if mode != "ella":
-        assert not tag, (mode, data, cipher, iv, tag)
+    mode = cipher.mode    
+    #if mode != "ella":
+    #    assert not tag, (mode, data, cipher, iv, tag)
     if mode in ("cbc", "ella", "ecb"):
         crypt_block = cipher.decrypt_block
         if mode == "ella":                    
@@ -84,8 +83,8 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
     else:
         crypt_block = cipher.encrypt_block  
     
-    data = bytearray(data)        
-    tag = crypt(data, bytearray(cipher.key), bytearray(iv or ''), crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
+    #data = bytearray(data)        
+    crypt(data, cipher.key, iv, crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
     if mode == "ella":
         if tag != cipher.mac_key:
             raise InvalidTag()
@@ -99,7 +98,7 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
 class Cipher(object):
     
     def _get_key(self):
-        return self._key
+        return self._key[:]
     def _set_key(self, value):
         self._key = bytearray(value)
     key = property(_get_key, _set_key)
@@ -116,22 +115,27 @@ class Cipher(object):
         self.blocksize = 0
         self.iv = None
         
-    def encrypt_block(self, plaintext, key):
+    def encrypt_block(self, plaintext, key, tag=None):
         raise NotImplementedError()
     
-    def decrypt_block(self, ciphertext, key):
+    def decrypt_block(self, ciphertext, key, tag=None):
         raise NotImplementedError()
 
     def encrypt(self, data, iv=None, tag=None): 
         if self.iv:
             assert iv is None
             iv = self.iv           
+        self.tag = tag
+        data = bytearray(data)
+        iv = bytearray(iv or '')
         return encrypt(data, self, iv, tag)
                 
     def decrypt(self, data, iv=None, tag=None): 
         if self.iv:
             assert iv is None
-            iv = self.iv      
+            iv = self.iv    
+        data = bytearray(data)        
+        iv = bytearray(iv)
         return decrypt(data, self, iv, tag)    
                 
     @classmethod
@@ -142,18 +146,29 @@ class Cipher(object):
     
     @classmethod
     def test_metrics(cls, *args, **kwargs):        
-        test_block_cipher(lambda data, key, iv: cls(key, kwargs.pop("mode", "ctr")).encrypt(data, iv), *args, **kwargs)    
+        mode = kwargs.pop("mode", "ctr")
+        tag = bytearray(kwargs.pop("tag", "\x00" * 16))
+        test_block_cipher(lambda data, key, iv: cls(key, mode).encrypt(data, iv, tag), *args, **kwargs)    
     
-    
-class Test_Cipher(Cipher):
-    
-    def __init__(self, encrypt_block_method, *args):
-        super(Test_Cipher, self).__init__(*args)
-        self.blocksize = 16
-        self.encrypt_block = encrypt_block_method
+    @classmethod
+    def test_encrypt_decrypt(cls, *args, **kwargs):
+        cipher = cls(*args, **kwargs)
+        message = "\x00" * 16
+        iv = "\x00" * 16
+        tag = [0 for byte in range(16)]
+        ciphertext = cipher.encrypt(message, iv, tag)
+        plaintext = cipher.decrypt(ciphertext, iv, tag)
+        assert message == plaintext, (message, plaintext)
         
-    def encrypt_block(self, data, key):
-        pass  
+#class Test_Cipher(Cipher):
+#    
+#    def __init__(self, encrypt_block_method, *args):
+#        super(Test_Cipher, self).__init__(*args)
+#        self.blocksize = 16
+#        self.encrypt_block = encrypt_block_method
+#        
+#    def encrypt_block(self, data, key):
+#        pass  
         
 def test_encrypt_decrypt():
     data = "TestData" * 4
@@ -163,7 +178,7 @@ def test_encrypt_decrypt():
     from blockcipher import Test_Cipher
     #print data
     for mode in ("ctr", "ofb", "cbc", "ecb"):    
-        #print mode
+        print "Testing: ", mode
         cipher = Test_Cipher(key, mode)
         ciphertext = cipher.encrypt(data, iv)
         plaintext = cipher.decrypt(ciphertext, iv)    
@@ -177,15 +192,18 @@ def test_encrypt_decrypt():
     
     print "Beginning mac test..."
     cipher = Test_Cipher(key, "ella")
-    ciphertext = cipher.encrypt(data, iv)
-    plaintext = cipher.decrypt(ciphertext, iv)
-    assert plaintext == data, (mode, plaintext, data)
+    tag = cipher.mac_key[:]
+    ciphertext = cipher.encrypt(data, iv, tag)
+    try:
+        plaintext = cipher.decrypt(ciphertext, iv, tag)
+    except InvalidTag:        
+        raise
         
-    ciphertext = cipher.encrypt(data, iv)[:-2]
+    ciphertext = cipher.encrypt(data, iv, tag)[:-2]
     for x in xrange(256):
         for y in xrange(256):
             try:
-                plaintext = cipher.decrypt(ciphertext + chr(x) + chr(y), iv)
+                plaintext = cipher.decrypt(ciphertext + chr(x) + chr(y), iv, tag)
             except InvalidTag:
                 continue
             else:        

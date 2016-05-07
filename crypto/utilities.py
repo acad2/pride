@@ -153,3 +153,11 @@ def random_oracle_hash_function(input_data, memo={}):
         result = memo[input_data] = os.urandom(32)
         return result
         
+def generate_key(size, wordsize=8):
+    key_material = binary_form(os.urandom(size))
+    if wordsize == 8:
+        result = key_material
+    else:
+        result = [int(word, 2) for word in slide(key_material, wordsize)] 
+    return result
+    

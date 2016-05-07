@@ -48,7 +48,7 @@ def permute(data, key, index):
     right_byte &= 255 # mask to 8 bit unsigned int, truncating the high order byte that was just used
     data[index] = right_byte                    
     
-    data[index - 1] ^= ((right_byte >> 3) | (right_byte << (8 - 3))) & 255 # rotate and xor; helps nonlinearity
+    data[index - 1] ^= ((right_byte >> 3) | (right_byte << (8 - 3))) & 255 # rotate and xor; helps nonlinearity + diffusion
     
 def permutation(data, key):    
     size = len(data)

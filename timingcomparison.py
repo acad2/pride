@@ -30,4 +30,22 @@ def number_of_set_bits(i):
 def number_of_set_bits_sum(x):
     return sum( [x&(1<<i)>0 for i in range(8)] )
 
-timing_comparison((number_of_set_bits, (127, ), {}), (number_of_set_bits_sum, (127, ), {}))
+#timing_comparison((number_of_set_bits, (127, ), {}), (number_of_set_bits_sum, (127, ), {}))
+    
+def inplace_add_inplace_and(a, b):
+    a += b
+    a &= 255
+    
+def reallocate_add_and(a, b):
+    a = (a + b) & 255
+    
+#timing_comparison((inplace_add_inplace_and, (1, 10), {}), (reallocate_add_and, (1, 10), {}), iterations=1000000)
+
+def list_replace(_list, index, value):
+    _list[index] = value
+    
+def bytearray_replace(_bytearray, index, value):
+    _bytearray[index] = value
+    
+#timing_comparison((list_replace, ([0] * 256, 128, 65536), {}), 
+#                  (bytearray_replace, ([0] * 256, 128, 255), {}), iterations=100000) 

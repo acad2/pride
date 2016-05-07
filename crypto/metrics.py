@@ -30,8 +30,8 @@ def _hash_prng(hash_function, digest_size, output_size):
     
     return output
         
-def hamming_distance(str1, str2):
-  return sum(itertools.imap(str.__ne__, binary_form(str1), binary_form(str2)))
+def hamming_distance(str1, str2):    
+    return sum(itertools.imap(str.__ne__, binary_form(str1), binary_form(str2)))
   
 def print_hamming_info(output1, output2):    
     output1_binary = binary_form(output1)
@@ -89,26 +89,26 @@ def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     minimum = min(ratio)
     average = sum(ratio) / float(len(ratio))
     maximum = max(ratio)
-    bit_count = float(len(binary_form(block_one)))
+    bit_count = float(block_size * 8)
     print "Minimum Hamming distance ratio: ", minimum / bit_count
     print "Average Hamming distance ratio: ", average / bit_count
     print "Maximum Hamming distance ratio: ", maximum / bit_count 
     
 def test_avalanche_of_key(encrypt_method, iv, keysize):
     print "Testing diffusion of key: using variable data as key for rng"
-    padding = "\x00" * (keysize - 1)
-    random_bytes1 = encrypt_method("\x00" * (1024 * 1024), padding + "\x00", iv)
-    random_bytes2 = encrypt_method("\x00" * (1024 * 1024), padding + "\x01", iv)
+    padding = "\x00" * (keysize - 1)    
+    random_bytes1 = encrypt_method("\x01" * (1024 * 1024), padding + "\x00", iv)    
+    random_bytes2 = encrypt_method("\x01" * (1024 * 1024), padding + "\x01", iv)        
     ratio = []
     block_size = 16
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
         index = slice(block_number * block_size, (block_number + 1) * block_size)
         ratio.append(hamming_distance(block_one, random_bytes2[index]))
-    
+        
     minimum = min(ratio)
     average = sum(ratio) / float(len(ratio))
     maximum = max(ratio)
-    bit_count = float(len(binary_form(block_one)))
+    bit_count = float(block_size * 8)
     print "Minimum Hamming distance ratio: ", minimum / bit_count
     print "Average Hamming distance ratio: ", average / bit_count
     print "Maximum Hamming distance ratio: ", maximum / bit_count 
@@ -206,7 +206,17 @@ def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):
                         
 def test_fixed_zero_point(hash_function):
     if hash_function("\x00") == hash_function("\x00\x00"):
-        print "The supplied hash produces collisions for null input strings of varying length"
+        print "[*]The supplied hash produces collisions for null input strings of varying length"
+                         
+def test_for_involution(encrypt_function, blocksize, key, iv):
+    data = "\x00" * blocksize
+    ciphertext = encrypt_function(data, key, iv)
+    print len(ciphertext)
+    print
+    print len(encrypt_function(ciphertext, key, iv))
+    if encrypt_function(ciphertext, key, iv) == ("\x00" * blocksize):
+        print "[*]The supplied function is an involution (F(F(x)) == x)"
+        
                             
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,
@@ -216,6 +226,7 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
         one string of bytes as output. """
     output_size = len(hash_function("\x00"))
     test_fixed_zero_point(hash_function)
+    test_for_involution(lambda data, key, iv: hash_function(data))
     if avalanche_test:
         test_avalanche_hash(hash_function, output_size)
     if randomness_test:        
@@ -239,6 +250,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         that accepts plaintext bytes and key bytes and returns ciphertext bytes""" 
     keysize = len(key)
     blocksize = blocksize if blocksize is not None else keysize
+    test_for_involution(encrypt_method, blocksize, key, iv)
     
     if avalanche_test:
         test_avalanche_of_key(encrypt_method, iv, keysize)
@@ -260,10 +272,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         test_period(test_function, blocksize)
         
     if performance_test:
-        test_cipher_performance(performance_test_sizes, encrypt_method, key, iv)
-        
-        #test_function = lambda data: encrypt_method(data or "\x00" * blocksize, key, iv)
-        #test_prng_performance(test_function)
+        test_cipher_performance(performance_test_sizes, encrypt_method, key, iv)                        
     
 def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, rate=224,

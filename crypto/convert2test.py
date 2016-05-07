@@ -34,14 +34,16 @@ def arbitrary_base_addition(value1, value2, base):
     for offset in xrange(size + 1):                    
         current_index = size - offset              
         other_value = base.index(value2[current_index])
-        while other_value:               
-            first_value = base.index(value1[current_index])
-            new_value = first_value + other_value            
-            other_value, right_value = divmod(new_value, base_size)
-            value1[current_index] = base[right_value]
-            
-            # increment the byte to the left with any overflow
-            current_index -= 1            
+        first_value = base.index(value1[current_index])
+                
+        new_value = first_value + other_value        
+        carry, new_value = divmod(new_value, base_size)
+        print "Added: ", first_value, other_value, first_value + other_value, carry, ord(base[new_value])
+        value1[current_index] = base[new_value]
+        
+        if carry:            
+            left_value = base.index(value1[current_index - 1]) # careful about - indexing seeking from the back
+            value1[current_index - 1] = base[left_value + carry]                 
                 
 def arbitrary_base_subtraction(value1, value2, base):
     assert len(value1) == len(value2), (len(value1), len(value2))
@@ -60,9 +62,9 @@ def arbitrary_base_subtraction(value1, value2, base):
                     value1[carry_index] = base[base.index(value1[carry_index]) - 1]
                     break
                 else:
-                    carry_index -= 1            
+                    carry_index -= 1              
             value1[current_index] = base[base_size + new_value]
-        else:            
+        else:                        
             value1[current_index] = base[new_value]
         
 def test_key_exchange_idea():
@@ -70,42 +72,38 @@ def test_key_exchange_idea():
     
     private_key1 = bytes(generate_key(256))
     private_key2 = bytes(generate_key(256))
+    assert private_key1 != private_key2
     
-    message = os.urandom(32)#("\x00" * 31) + "\x01"    
-    message = convert(message, ASCII, private_key1)
+    message = ("\x00" * 7) + "\x01"  
+    print "Plaintext message: ", [ord(byte) for byte in message]
+    print
+   # message = convert(message, ASCII, private_key1)
     message = convert(message, private_key1, public_key1)
     
-    message2 = os.urandom(32)#("\x00" * 31) + "\x02"#os.urandom(32)    
-    message2 = convert(message2, ASCII, private_key2)
+    message2 = ("\xff" * 7) + "\x02"#os.urandom(32)    
+    print "Plaintext message 2: ", [ord(byte) for byte in message2]
+    print
+    #message2 = convert(message2, ASCII, private_key2)
     message2 = convert(message2, private_key2, public_key1)
     
-    message3 = list(message)
-    arbitrary_base_addition(message3, message2, public_key1)
-        
-    print "Message: "
+    message3 = list(message)    
+    arbitrary_base_addition(message3, message2, public_key1)  
+    print "Encoded Message: ", [ord(byte) for byte in message]
     print
-    print message
+    print "Encoded Message2: ", [ord(byte) for byte in message2]
     print
-    print "Message2: "
-    print
-    print message2
-    print
-    print "Message3: "
+    print "Encoded Message1 + Encoded Message2: ", [ord(char) for char in message3]
     print 
-    print ''.join(message3)
+    print "Real value of message3: ", [ord(char) for char in convert(message3, public_key1, private_key1)]
     print
-    print "In ascii: ", 
-    print convert(convert(message3, public_key1, private_key1), private_key1, ASCII)
-    
+    print "Incorrect value of message3: ", [ord(char) for char in convert(message3, public_key1, ASCII)]
+
     arbitrary_base_subtraction(message3, message, public_key1)
     print
-    print "Message3 - Message: "
+    print "Message3 - Message = Message2:", [ord(char) for char in convert(message3, public_key1, private_key1)]
     print
-    print [ord(char) for char in message3]
-    print
-    print [ord(char) for char in message2]
-    assert message3 == list(message2)
-    
+    assert message3 == list(message2), "Correct Message2: " + str([ord(char) for char in convert(message2, public_key1, private_key1)])    
+        
 def test_arbitrary_base_addition():
     value1 = list("0123456789")
     value2 = list("9876543210")
@@ -127,6 +125,10 @@ def test_arbitrary_base_addition():
 def test_arbitrary_base_subtraction():
     value1 = list("9876543210")
     value2 = list("0123456789")
+    from random import shuffle
+    shuffle(value1)
+    shuffle(value2)
+    value1_copy, value2_copy = value1[:], value2[:]
     
     base = bytes(generate_key(seed=range(10)))# list("3017845962")    
     
@@ -136,13 +138,13 @@ def test_arbitrary_base_subtraction():
     value1_in_public_base = list(convert(value1_in_base, base, ASCII))
     value2_in_public_base = list(convert(value2_in_base, base, ASCII))
     print "Subtracting encoded numbers: "
-    print ''.join(value1_in_public_base)
-    print ''.join(value2_in_public_base) + " -"
+    print ''.join(value1)#_in_public_base)
+    print ''.join(value2)#_in_public_base) + " -"
     print "_" * len(value1)
     arbitrary_base_subtraction(value1_in_public_base, value2_in_public_base, ASCII) 
     print ''.join(value1_in_public_base), '        ({})'.format(value1_in_public_base)
     print convert(convert(value1_in_public_base, ASCII, base), base, "0123456789")
-    print 9876543210 - 123456789
+    print int(''.join(str(item) for item in value1_copy)) - int(''.join(str(item) for item in value2_copy))
     
 if __name__ == "__main__":
     #test_arbitrary_base_addition()
