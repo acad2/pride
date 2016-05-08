@@ -146,9 +146,9 @@ class Cipher(object):
     
     @classmethod
     def test_metrics(cls, *args, **kwargs):        
-        mode = kwargs.pop("mode", "ctr")
+        _mode = kwargs.pop("mode", "ctr")
         tag = bytearray(kwargs.pop("tag", "\x00" * 16))
-        test_block_cipher(lambda data, key, iv: cls(key, mode).encrypt(data, iv, tag), *args, **kwargs)    
+        test_block_cipher(lambda data, key, iv, mode=_mode: cls(key, mode).encrypt(data, iv, tag), *args, **kwargs)    
     
     @classmethod
     def test_encrypt_decrypt(cls, *args, **kwargs):
