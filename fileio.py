@@ -281,7 +281,7 @@ class Database_File(File):
                 "encrypted" : False, "indexable" : True}
         
     def __init__(self, filename='', mode='', **kwargs):
-        super(Database_File, self).__init__(filename, mode, **kwargs)
+        super(Database_File, self).__init__(filename, mode, **kwargs)        
         data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, 
                                                                        self.tags, self.indexable)
         filename = {"filename" : self.filename}
@@ -316,12 +316,16 @@ class Database_File(File):
     def flush(self): 
         self.save()
         self.file.flush()
+
+    def close(self):
+        self.flush()
+        self.delete()
         
     def save(self):
         """ Saves file contents and metadata to ->Python-File_System. """
         file = self.file
         backup_position = file.tell()
-        file.seek(0)
+        file.seek(0)        
         pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
                                                          self.tags, self.encrypted,
                                                          self.indexable)                                                       
@@ -364,7 +368,7 @@ class File_System(pride.database.Database):
                 
     def save_file(self, filename, data, tags=tuple(), encrypt=False, indexable=True):
         now = time.time()
-        file_info = {}        
+        file_info = {}          
         if not indexable: 
             filename = self._hash(filename)                    
             

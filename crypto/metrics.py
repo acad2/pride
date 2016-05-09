@@ -214,7 +214,7 @@ def test_fixed_zero_point(hash_function):
 def test_for_involution(encrypt_function, blocksize, key, iv):
     data = "\x00" * blocksize
     ciphertext = encrypt_function(data, key, iv, "ecb")          
-    if encrypt_function(ciphertext, key, iv) == ("\x00" * blocksize):
+    if encrypt_function(ciphertext, key, iv, "ecb") == ("\x00" * blocksize):
         print "[*]The supplied function is an involution F(F(x)) == x"
         
                             
@@ -226,7 +226,7 @@ def test_hash_function(hash_function, avalanche_test=True, randomness_test=True,
         one string of bytes as output. """
     output_size = len(hash_function("\x00"))
     test_fixed_zero_point(hash_function)
-    test_for_involution(lambda data, key, iv: hash_function(data))
+    test_for_involution(lambda data, key, iv, mode: hash_function(data), output_size, 0, 0)
     if avalanche_test:
         test_avalanche_hash(hash_function, output_size)
     if randomness_test:        

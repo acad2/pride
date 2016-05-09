@@ -10,8 +10,18 @@ if "--site_config" in sys.argv:
     site_config_entries = sys.argv.pop(index)
     import site_config  
     for name_equals_value in site_config_entries.split(';'):
-        name, value = name_equals_value.split('=', 1)        
-        setattr(site_config, name, ast.literal_eval(value))                   
+        name, value = name_equals_value.split('=', 1)         
+        if name[-1] == ']':
+            opening_bracket = name.index('[')            
+            try:
+                site_config_entry = getattr(site_config, name[:opening_bracket])
+            except AttributeError:
+                site_config_entry = {}
+                setattr(site_config, name[:opening_bracket], site_config_entry)
+            key = name[opening_bracket + 1:-1].strip("'").strip('"')
+            site_config_entry[key] = value
+        else:           
+            setattr(site_config, name, ast.literal_eval(value))                   
             
 import preprocessing
         

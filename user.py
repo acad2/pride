@@ -138,19 +138,38 @@ class User(pride.base.Base):
             self._reset_mac_key = True
             
         # Create a password verifier by creating/finding a nonindexable encrypted file.
-        with self.create(self.verifier_filetype,
-                         "{}_password_verifier.bin".format(self.username),
-                         "a+b", indexable=False, encrypted=True) as _file:
-            _file.seek(0)
-            verifier = _file.read()
-            if verifier:
-                assert verifier == self.username, verifier
+        verifier_filename = "{}_password_verifier.bin".format(self.username)        
+        try:
+            verifier_file = self.create(self.verifier_filetype, verifier_filename,
+                                        'rb', indexable=False, encrypted=True)
+        except IOError:
+            message = "{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)
+            if pride.shell.get_permission(message):
+                verifier_file = self.create(self.verifier_filetype, verifier_filename,
+                                            "wb", indexable=False, encrypted=True)
+                verifier_file.write(self.username)
+                verifier_file.flush()                
             else:
-                if pride.shell.get_permission("{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)):
-                    _file.write(self.username)
-                else:
-                    _file.delete_from_filesystem()
-                    raise InvalidUsername              
+                raise InvalidUsername
+        else:
+            verifier_file.seek(0)
+            verifier = verifier_file.read()
+            assert verifier == self.username
+        verifier_file.close()
+       # with self.create(self.verifier_filetype,
+       #                  "{}_password_verifier.bin".format(self.username),
+       #                  "a+b", indexable=False, encrypted=True) as _file:
+       #     _file.seek(0)
+       #     verifier = _file.read()
+       #     print _file.filename
+       #     if verifier:
+       #         assert verifier == self.username, verifier
+       #     else:
+       #         if pride.shell.get_permission("{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)):
+       #             _file.write(self.username)
+       #         else:
+       #             _file.delete_from_filesystem()
+       #             raise InvalidUsername              
                                         
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 

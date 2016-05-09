@@ -62,7 +62,7 @@ def encrypt(data, cipher, iv, tag=None):
     datasize = len(data)
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
-    if mode == "cbc":
+    if mode in ("cbc", "ecb"):
         data.extend(cbc_padding(datasize, blocksize))
         
     crypt(data, cipher.key, iv, cipher.encrypt_block, 
@@ -89,7 +89,7 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
         if tag != cipher.mac_key:
             raise InvalidTag()
         return ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
-    elif mode == "cbc":
+    elif mode in ("cbc", "ecb"):
         padding_amount = data[-1]            
         return bytes(data)[:-(padding_amount or cipher.blocksize)]
     else:
@@ -126,7 +126,7 @@ class Cipher(object):
             assert iv is None
             iv = self.iv           
         self.tag = tag
-        data = bytearray(data)
+        data = data[:]
         iv = bytearray(iv or '')
         return encrypt(data, self, iv, tag)
                 
