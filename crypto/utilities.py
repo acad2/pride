@@ -162,11 +162,11 @@ def generate_key(size, wordsize=8):
         result = [int(word, 2) for word in slide(key_material, wordsize)] 
     return result
     
-def pad_input(hash_input, size):
+def pad_input(hash_input, size):        
     hash_input += chr(128)
-    input_size = len(hash_input)
+    input_size = len(hash_input) + 8 # + 8 for 64 bits for the size bytes at the end
     padding = size - (input_size % size)
-    hash_input += ("\x00" * (padding - 8)) + (struct.pack("L", input_size))
+    hash_input += ("\x00" * padding) + (struct.pack("Q", input_size))    
     return hash_input
     
     

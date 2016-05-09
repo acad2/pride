@@ -1,4 +1,4 @@
-from utilities import pad_input
+from utilities import pad_input, slide
 
 def permute(left_byte, right_byte, key_byte, modifier):        
     right_byte = (right_byte + key_byte + modifier) & 65535
@@ -14,16 +14,19 @@ def permutation(data, key):
         for index in reversed(range(len(data))):        
             permute_subroutine(data, key, index) 
             
-def permute_hash(data, rounds=2, blocksize=16):
-    data = list(bytearray(pad_input(data, blocksize)))
-    #data = list(bytearray((data + ("\x00" * (blocksize - len(data))))))
+def permute_hash(data, rounds=1, blocksize=16):
+    data = list(bytearray(pad_input(data, blocksize)))    
+    output = [0 for byte in range(blocksize)]
+    state = data[:blocksize]
     for round in range(rounds):
-        permutation(data, data)
-    return bytes(bytearray((byte >> 8) ^ (byte & 255) for byte in data))
+        for data_block in slide(data, blocksize):                
+            permutation(state, data_block)
+
+    return bytes(bytearray((byte >> 8) ^ (byte & 255) for byte in state))
     
 def test_permute_hash():
     data = "\x00"
-    #print permute_hash(data, blocksize=2)
+    print permute_hash(data, blocksize=8)
     from metrics import test_hash_function
     test_hash_function(permute_hash)
     
