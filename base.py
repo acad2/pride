@@ -54,6 +54,8 @@ import itertools
 import sys
 import heapq
 import pprint
+import inspect
+from six import with_metaclass
        
 import pride
 import pride.metaclass
@@ -63,8 +65,7 @@ from pride.errors import *
 #objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
-_blank_spaces = {}
-_NULL_SPACE = []#Placeholder()
+_NULL_SPACE = [] # Unique placeholder object
 
 def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
@@ -93,10 +94,7 @@ def load(attributes='', _file=None):
     new_self.on_load(attributes)
     return new_self
                 
-class Base(object):
-
-    __metaclass__ = pride.metaclass.Metaclass
-                
+class Base(with_metaclass(pride.metaclass.Metaclass, object)):                    
     # certain container type class attributes are "inherited" from base classes
     # these include defaults, required_attributes, mutable_defaults, verbosity
     # parser_ignore, and flags (all of which are explained below)
@@ -120,7 +118,7 @@ class Base(object):
     # for the same reason they should not be used as default arguments
     # the type associated with the attribute name will be instantiated with 
     # no arguments when the object initializes
-    mutable_defaults = {"_blank_spaces" : list}
+    mutable_defaults = {}
     
     # defaults have a pitfall that can be a problem in certain cases;
     # because dictionaries are unordered, the order in which defaults
@@ -291,14 +289,6 @@ class Base(object):
                 raise AddError    
             siblings.append(instance)
             
-            #try:
-            #    next_free_space = heapq.heappop(self._blank_spaces)
-            #except IndexError:
-            #    siblings.append(instance)
-            #else:                 
-            #    siblings.insert(next_free_space, instance)
-            #    del siblings[next_free_space + 1]
-                 
         instance.references_to.append(self.reference)          
         
     def remove(self, instance):
@@ -308,18 +298,7 @@ class Base(object):
             and instance.references_to."""    
         self.alert("Removing {}", [instance], level=self.verbosity["remove"])  
         self.objects[type(instance).__name__].remove(instance)
-        instance.references_to.remove(self.reference)      
-        
-        #try:
-        #    storage = self.objects[type(instance).__name__]#instance.__class__.__name__]
-        #    index = storage.index(instance)
-        #except (KeyError, ValueError):            
-        #    raise
-        #else:            
-        #    heapq.heappush(self._blank_spaces, index)        
-        #    storage.insert(index, _NULL_SPACE)
-        #    del storage[index + 1]
-        #instance.references_to.remove(self.reference)        
+        instance.references_to.remove(self.reference)                    
     
     def alert(self, message, format_args=tuple(), level=0, formatted=False):
         """usage: base.alert(message, format_args=tuple(), level=0)
@@ -374,10 +353,10 @@ class Base(object):
             to rebuild the object."""        
         self.alert("Saving")
         attributes = self.__getstate__()
-        objects = attributes.pop("objects", {})
+        self_objects = attributes.pop("objects", {})
         saved_objects = attributes["objects"] = {}
         found_objects = []
-        for component_type, values in objects.items():
+        for component_type, values in self_objects.items():
             saved_objects[component_type] = new_values = []
             for value in sorted(values, key=operator.attrgetter("reference")):
                 if hasattr(value, "save"):
@@ -394,8 +373,13 @@ class Base(object):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"  
         
+        module_name = self.__module__
+        module_source = inspect.getsource(sys.modules[module_name])
+        module_id = pride.objects["->User"].generate_tag(module_source)
+        attributes["__module_id__"] = module_id
+        #pride.objects["->Python->Version_Control"].save_module(module_name, module_source, module_id)
         try:
-            saved_data = pride.utilities.save_data(attributes)
+            saved_data = pride.objects["->User"].save_data(attributes)
         except TypeError:
             self.alert("Unable to save attributes '{}'".format(pprint.pformat(attributes)), level=0)
             raise

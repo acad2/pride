@@ -1,15 +1,7 @@
-import struct
 import functools
 
-from utilities import cast, slide, xor_subroutine, replacement_subroutine
-    
-def pad_input(hash_input, size):
-    hash_input += chr(128)
-    input_size = len(hash_input)
-    padding = size - (input_size % size)
-    hash_input += ("\x00" * (padding - 8)) + (struct.pack("L", input_size))
-    return hash_input
-        
+from utilities import cast, slide, xor_subroutine, replacement_subroutine, pad_input
+            
 def example_mixing_subroutine(_bytes):    
     byte_length = len(_bytes)
     key = (45 + sum(_bytes)) * byte_length * 2    

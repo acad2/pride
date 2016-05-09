@@ -155,21 +155,7 @@ class User(pride.base.Base):
             verifier_file.seek(0)
             verifier = verifier_file.read()
             assert verifier == self.username
-        verifier_file.close()
-       # with self.create(self.verifier_filetype,
-       #                  "{}_password_verifier.bin".format(self.username),
-       #                  "a+b", indexable=False, encrypted=True) as _file:
-       #     _file.seek(0)
-       #     verifier = _file.read()
-       #     print _file.filename
-       #     if verifier:
-       #         assert verifier == self.username, verifier
-       #     else:
-       #         if pride.shell.get_permission("{}: username '{}' does not exist. Create it?: (y/n) ".format(self, self.username)):
-       #             _file.write(self.username)
-       #         else:
-       #             _file.delete_from_filesystem()
-       #             raise InvalidUsername              
+        verifier_file.close()             
                                         
     def encrypt(self, data, extra_data=''):
         """ Encrypt and authenticates the supplied data; Authenticates, but 
@@ -209,7 +195,11 @@ class User(pride.base.Base):
             
             Returns data on successful verification; Returns False on failure. """
         return pride.security.verify_mac(self.mac_key, macd_data, self.hash_function)
-                
+    
+    def generate_tag(self, data):
+        """ Generates a unique, unforgeable tag based on supplied data. """
+        return pride.security.generate_mac(self.mac_key, data, self.hash_function)
+        
     def save_data(self, *args):
         package = pride.persistence.save_data(*args)
         return self.authenticate(package)
@@ -218,7 +208,7 @@ class User(pride.base.Base):
         packed_bytes = self.verify(package)
         if packed_bytes is not pride.security.INVALID_TAG:
             return pride.persistence.load_data(packed_bytes)
-        else:
+        else:            
             return packed_bytes # == INVALID_TAG
         
 def test_User():

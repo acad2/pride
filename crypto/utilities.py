@@ -1,4 +1,5 @@
 import os
+import struct
 from operator import xor as _operator_xor
 import binascii
 
@@ -160,4 +161,12 @@ def generate_key(size, wordsize=8):
     else:
         result = [int(word, 2) for word in slide(key_material, wordsize)] 
     return result
+    
+def pad_input(hash_input, size):
+    hash_input += chr(128)
+    input_size = len(hash_input)
+    padding = size - (input_size % size)
+    hash_input += ("\x00" * (padding - 8)) + (struct.pack("L", input_size))
+    return hash_input
+    
     

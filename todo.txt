@@ -36,7 +36,7 @@ history from storing hashes of shared secrets?
     return getattr(unpack_structure(get_attribute("memory")[:get_attribute("size")]), 
                 attribute)
   
-backport annotations ?
+
  
 # recursive sort? 
 
@@ -48,6 +48,7 @@ known bugs:
     fix z layer issue with multiple objects on the same space
             
 things that could be done:
+    backport annotations ?
     patch inspect to get source from Compiler
     fix load
     make update work with gui objects

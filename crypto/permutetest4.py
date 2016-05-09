@@ -1,5 +1,5 @@
-def permute(left_byte, right_byte, key_byte, modifier):        
-    right_byte = (right_byte + key_byte + modifier + 1) & 65535
+def permute(left_byte, right_byte, key_byte):        
+    right_byte = (right_byte + key_byte + 1) & 65535
     left_byte = (left_byte + (right_byte >> 8)) & 65535
     left_byte ^= ((right_byte >> 3) | (right_byte << (16 - 3))) & 65535
     return left_byte, right_byte
@@ -10,27 +10,27 @@ def permute(left_byte, right_byte, key_byte, modifier):
 #    a += b >> 8
 #    a ^= rotate_right(b, 3)
     
-def invert_permute(left_byte, right_byte, key_byte, modifier):    
+def invert_permute(left_byte, right_byte, key_byte):    
     left_byte ^= ((right_byte >> 3) | (right_byte << (16 - 3))) & 65535   
     left_byte = (65536 + (left_byte - (right_byte >> 8))) & 65535       
-    right_byte = (65536 + (right_byte - key_byte - modifier - 1)) & 65535   
+    right_byte = (65536 + (right_byte - key_byte - 1)) & 65535   
     return left_byte, right_byte
     
-def permute_subroutine(data, key, index, modifier):   
-    data[index - 1], data[index] = permute(data[index - 1], data[index], key[index], modifier)    
+def permute_subroutine(data, key, index):   
+    data[index - 1], data[index] = permute(data[index - 1], data[index], key[index])    
     
-def invert_permute_subroutine(data, key, index, modifier):    
-    data[index - 1], data[index] = invert_permute(data[index - 1], data[index], key[index], modifier)    
+def invert_permute_subroutine(data, key, index):    
+    data[index - 1], data[index] = invert_permute(data[index - 1], data[index], key[index])    
     
-def permutation(data, key, modifier):        
+def permutation(data, key):        
     for round in range(2):
         for index in reversed(range(len(data))):        
-            permute_subroutine(data, key, index, modifier)            
+            permute_subroutine(data, key, index)            
     
-def invert_permutation(data, key, modifier):    
+def invert_permutation(data, key):    
     for round in range(2):
         for index in range(len(data)):
-            invert_permute_subroutine(data, key, index, modifier)            
+            invert_permute_subroutine(data, key, index)            
     
 def encrypt_bytes(data, key, tag, rounds=1):
     size = len(data)    
@@ -61,7 +61,7 @@ def decrypt_bytes(data, key, tag, rounds=1):
         
     for index in range(size):
         tag[index] = data[index] >> 8           
-   
+      
 import pride.crypto
 from pride.crypto.utilities import replacement_subroutine
 
@@ -105,11 +105,6 @@ class Test_Cipher(pride.crypto.Cipher):
             super(Test_Cipher, self).encrypt(authenticated_data, iv, tag)
         assert tag == initial_tag, (tag, initial_tag)
         return plaintext
-        
-    def hash(self, data, tag=None): 
-        tag = tag or ([0] * self.blocksize)
-        self.encrypt(bytearray(data), "\x00" * self.blocksize, tag)
-        return ''.join((chr(byte) for byte in tag))
         
     def separate_data_and_tag(self, _data):
         return [byte & 255 for byte in _data], [byte >> 8 for byte in _data]

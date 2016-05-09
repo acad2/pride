@@ -3,7 +3,10 @@
     This script starts a python session, and the first positional argument supplied is
     interpreted as the filepath of the python script to execute. ."""
 from __future__ import unicode_literals
-        
+from platform import python_version_tuple
+if python_version_tuple()[0] == '3':
+    from past.builtins import xrange
+    
 def main(): 
     import pride.interpreter
     running = True
