@@ -45,9 +45,9 @@ def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):
 ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
 DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
     
-def cbc_padding(datasize, blocksize):
+def cbc_padding(datasize, blocksize, always_pad=True):
     padding_amount = (blocksize - (datasize % blocksize))         
-    if not padding_amount:
+    if not padding_amount:        
         padding_characters = chr(0) * blocksize
     elif padding_amount == blocksize:
         padding_characters = chr(0) * blocksize
@@ -62,9 +62,8 @@ def encrypt(data, cipher, iv, tag=None):
     datasize = len(data)
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
-    if mode in ("cbc", "ecb"):
+    elif mode in ("cbc", "ecb"):
         data.extend(cbc_padding(datasize, blocksize))
-        
     crypt(data, cipher.key, iv, cipher.encrypt_block, 
           ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
     #if tag is not None:
@@ -90,7 +89,7 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
             raise InvalidTag()
         return ''.join(reversed([block for block in slide(bytes(data), cipher.blocksize)]))
     elif mode in ("cbc", "ecb"):
-        padding_amount = data[-1]            
+        padding_amount = data[-1]                  
         return bytes(data)[:-(padding_amount or cipher.blocksize)]
     else:
         return bytes(data)
@@ -122,18 +121,15 @@ class Cipher(object):
         raise NotImplementedError()
 
     def encrypt(self, data, iv=None, tag=None): 
-        if self.iv:
-            assert iv is None
-            iv = self.iv           
-        self.tag = tag
-        data = data[:]
+        if self.mode != "ecb":
+            assert iv                          
+        data = bytearray(data)        
         iv = bytearray(iv or '')
         return encrypt(data, self, iv, tag)
                 
     def decrypt(self, data, iv=None, tag=None): 
-        if self.iv:
-            assert iv is None
-            iv = self.iv    
+        if self.mode != "ecb":
+            assert iv
         data = bytearray(data)        
         iv = bytearray(iv)
         return decrypt(data, self, iv, tag)    
@@ -156,7 +152,7 @@ class Cipher(object):
         message = "\x00" * 16
         iv = "\x00" * 16
         tag = [0 for byte in range(16)]
-        ciphertext = cipher.encrypt(message, iv, tag)
+        ciphertext = cipher.encrypt(message, iv, tag)        
         plaintext = cipher.decrypt(ciphertext, iv, tag)
         assert message == plaintext, (message, plaintext)
         

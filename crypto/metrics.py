@@ -80,9 +80,6 @@ def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     print "Testing diffusion of {}: using variable data as {} for rng".format(seedname, seedname)
     random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
     random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
-    print random_bytes1[:80]
-    print
-    print random_bytes2[:80]
     ratio = []
     block_size = 16
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
@@ -213,10 +210,9 @@ def test_fixed_zero_point(hash_function):
                          
 def test_for_involution(encrypt_function, blocksize, key, iv):
     data = "\x00" * blocksize
-    ciphertext = encrypt_function(data, key, iv, "ecb")          
-    if encrypt_function(ciphertext, key, iv, "ecb") == ("\x00" * blocksize):
+    ciphertext = encrypt_function(data, key, iv, "ecb")[:blocksize] # slice off padding block         
+    if encrypt_function(ciphertext, key, iv, "ecb")[:blocksize] == ("\x00" * blocksize):
         print "[*]The supplied function is an involution F(F(x)) == x"
-        
                             
 def test_hash_function(hash_function, avalanche_test=True, randomness_test=True, bias_test=True,
                        period_test=True, performance_test=True, randomize_key=False, collision_test=True,

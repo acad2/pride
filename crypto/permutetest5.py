@@ -17,15 +17,16 @@ def permutation(data, key):
 def permute_hash(data, rounds=1, blocksize=16):
     data = list(bytearray(pad_input(data, blocksize)))    
     output = [0 for byte in range(blocksize)]
-    state = data[:blocksize]
+    key = data[:blocksize]
     for round in range(rounds):
         for data_block in slide(data, blocksize):                
-            permutation(state, data_block)
-
-    return bytes(bytearray((byte >> 8) ^ (byte & 255) for byte in state))
+            permutation(data_block, key)
+            key = data_block           
+            
+    return bytes(bytearray((byte >> 8) ^ (byte & 255) for byte in data_block))
     
 def test_permute_hash():
-    data = "\x00"
+    data = "\x01"
     print permute_hash(data, blocksize=8)
     from metrics import test_hash_function
     test_hash_function(permute_hash)
