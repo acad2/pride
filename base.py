@@ -1,54 +1,5 @@
-""" Contains The root inheritance objects that provides many features of the package. 
-    An object that inherits from pride.base.Base will possess these capabilities:
-        
-        - When instantiating, arbitrary attributes may be assigned
-          via keyword arguments
-          
-        - The class includes a defaults attribute, which is a dictionary
-          of name:value pairs. These pairs will be assigned as attributes
-          to new instances; Any attribute specified via keyword argument
-          will override a default
-                
-        - A reference attribute, which provides access to the object from any context. 
-          References are mapped to objects in the pride.objects dictionary.
-          
-        - The flag parse_args=True may be passed to the call to 
-          instantiate a new object. If so, then the metaclass
-          generated parser will be used to interpret command
-          line arguments. Only command line arguments that are
-          in the class defaults dictionary will be assigned to 
-          the new instance. Arguments by default are supplied 
-          explicitly with long flags in the form --attribute value.
-          Arguments assigned via the command line will override 
-          both defaults and any keyword arg specified values. 
-          Consult the parser defintion for further information,
-          including using short/positional args and ignoring attributes.
-          
-        - The methods create/delete, and add/remove:
-            - The create method returns an instantiated object and
-              calls add on it automatically. This performs book keeping
-              with the environment regarding references and parent information.
-            - The delete method is used to explicitly destroy a component.
-              It calls remove internally to remove known locations
-              where the object is stored and update any tracking 
-              information in the environment
-        
-        - The alert method, which makes logging and statements 
-          of varying verbosity simple and straight forward.
-        
-        - Augmented docstrings. Information about class defaults
-          and method names + argument signatures + method docstrings (if any)
-          is included automatically when you print base.__doc__. 
-          
-    Note that some features are facilitated by the metaclass. These include
-    the argument parser, runtime decoration, and documentation.
-    
-    Instances of Base classes are counted and have a reference attribute.
-    This is equal to type(instance).__name__ + str(instance_count). There
-    is an exception to this; The first instance is number 0 and
-    its name is simply type(instance).__name__, without 0 at the end.
-    The reference can be used to reference the object from any scope, 
-    as long as the component exists at runtime."""
+""" Contains The root inheritance objects that provides many features of the package. """
+              
 import operator
 import itertools
 import sys
@@ -65,7 +16,6 @@ from pride.errors import *
 #objects = pride.objects
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
-_NULL_SPACE = [] # Unique placeholder object
 
 def load(attributes='', _file=None):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
@@ -94,10 +44,130 @@ def load(attributes='', _file=None):
     new_self.on_load(attributes)
     return new_self
                 
-class Base(with_metaclass(pride.metaclass.Metaclass, object)):                    
+class Base(with_metaclass(pride.metaclass.Metaclass, object)):  
+""" The root inheritance object. Provides many features:
+
+    - When instantiating, arbitrary attributes may be assigned
+          via keyword arguments
+          
+        - The class includes a defaults attribute, which is a dictionary
+          of name:value pairs. These pairs will be assigned as attributes
+          to new instances; Any attribute specified via keyword argument
+          will override a default
+                                  
+        - A reference attribute, which provides access to the object from any context. 
+            - References are human readable strings indicating the name of an object.
+            - References are mapped to objects in the pride.objects dictionary.          
+            - An example reference looks like "->Python->File_System". 
+            - Initial objects have no number appended to the end. The 0 is implied.
+                - Explicit is better then implicit, but for some objects, it 
+                  makes no sense to have multiple copies, so enumerating them
+                  accomplishes nothing.
+            - Subsequent objects have an incrementing number appended to the end.
+            
+        - The flag parse_args=True may be passed to the call to 
+          instantiate a new object. If so, then the metaclass
+          generated parser will be used to interpret command
+          line arguments. Only command line arguments that are
+          in the class defaults dictionary will be assigned to 
+          the new instance. Arguments by default are supplied 
+          explicitly with long flags in the form --attribute value.
+          Arguments assigned via the command line will override 
+          both defaults and any keyword arg specified values. 
+          Consult the parser defintion for further information,
+          including using short/positional args and ignoring attributes.
+          
+        - The methods create/delete, and add/remove:
+            - The create method returns an instantiated object and
+              calls add on it automatically. This performs book keeping
+              with the environment regarding references and parent information.
+            - The delete method is used to explicitly destroy a component.
+              It calls remove internally to remove known locations
+              where the object is stored and update any tracking 
+              information in the environment
+        
+        - The alert method, which makes logging and statements 
+          of varying verbosity simple and straight forward.
+            - The verbosity class dictionary is the ideal place to store
+              and dispatch alert levels, rather then hardcoding them.
+              
+        - Augmented docstrings. Information about class defaults
+          and method names + argument signatures + method docstrings (if any)
+          is included automatically when you print base_object.__doc__. 
+         
+        - Inherited class attributes. Attributes such as the class defaults
+          dictionary are automatically inherited from their ancestor class.
+            - This basically enables some syntatic sugar when declaring classes,
+              in that defaults don't need to be declared as a copy of the ancestor
+              classes defaults explicitly.             
+            - Attributes that are inherited on all Base objects are: 
+                - defaults
+                - mutable_defaults
+                - flags
+                - verbosity
+                - parser_ignore
+                - required_attributes 
+                - site_config_support
+            - Supported attributes are extensible when defining new classes.
+           
+        - Site config support. Using the site_config module, the values of any
+          accessible class attributes may be modified to customize the needs 
+          of where the software is deployed. 
+            - The attributes that are supported by default on all Base objects are:
+                - defaults
+                - mutable_defaults
+                - flags
+                - verbosity
+            - This list is extensible when defining a new class
+            
+    Note that some features are facilitated by the metaclass. These include
+    the argument parser, inherited class attributes, and documentation.
+    
+    How to use references
+    ------------            
+    Bad:
+        
+        my_base_object.other_base_object = other_base_object
+        
+    Good:
+        
+        my_base_object.add(other_base_object)
+        
+    Also good:
+        
+        my_base_object.other_base_object = other_base_object.reference
+        
+    In the first case, the other_base_object attribute stores a literal object in
+    the objects __dict__. This is a problem because the environment has no way 
+    of (efficiently) detecting that you have saved a reference to another 
+    object when the object is simply assigned as an attribute. This can cause
+    memory leaks when you try to delete other_base_object or my_base_object.
+    
+    In the second case, the add method is used to store the object. The add
+    method performs reference tracking information so that when my_base_object is
+    deleted, other_base_object will automatically be removed, eliminating reference
+    problems which can/will cause one object or both to become uncollectable
+    by the garbage collector.
+    
+    By default, the add method stores objects in the my_base_object.objects 
+    dictionary. The add method is extensible, so for example, if your object
+    has lots of one type of object added to it, you can simply append the
+    object to a list in the add method, but remember to call the base class 
+    add as well if you do (via super). This is because add does reference 
+    tracking as well as storing the supplied object. You would then access the
+    stored objects via enumerating the list you stored them all in and 
+    operating on them in a batch.
+    
+    In the third case, the object is not saved, just the objects reference.
+    This is good because it will avoid the hanging reference problem that can
+    cause memory leaks. This will work well when my_base_object only has the one
+    other_base_object to keep track of. other_base_object is then accessed by
+    looking up the reference in the pride.objects dictionary.
+    """
+    
     # certain container type class attributes are "inherited" from base classes
     # these include defaults, required_attributes, mutable_defaults, verbosity
-    # parser_ignore, and flags (all of which are explained below)
+    # parser_ignore, and flags (all of which are explained below and above)
     # when subclassing, creating new class defaults will automatically merge the
     # newly specified defaults with the base class defaults, and similarly so for each 
     # attribute inherited this way.
@@ -223,24 +293,19 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             pass
             
     def create(self, instance_type, *args, **kwargs):
-        """ usage: object.create("module_name.object_name", 
-                                 args, kwargs) => instance
+        """ usage: object.create(instance_type, args, kwargs) => instance
 
             Given a type or string reference to a type and any arguments,
             return an instance of the specified type. The creating
             object will call .add on the created object, which
-            performs reference tracking maintainence. The object
-            will be added to the environment if it is not yet in it.
+            performs reference tracking maintenance. 
             
-            Use of the create method provides an reference
-            reference to the instance. The instance does not need
-            to be a Base object to receive an reference this way.
-            Non Base objects can retrieve their instance name via
-            up to two ways. If the object can have arbitrary attributes
-            assigned, it will be provided with an reference attribute. 
-            If not (i.e. __slots__ is defined), the reference can be
-            obtained via the pride.environment.reference dictionary, 
-            using the instance as the key."""
+            Returns the created object.
+            Note, instance_type could conceivably be any callable, though a
+            class is usually supplied. 
+            
+            If create is overloaded, ensure that ancestor create is called
+            as well via super."""
         with pride.contextmanagers.backup(pride, "_last_creator"):
             pride._last_creator = self.reference
             try:
@@ -256,7 +321,12 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             
             Explicitly delete a component. This calls remove and
             attempts to clear out known references to the object so that
-            the object can be collected by the python garbage collector"""        
+            the object can be collected by the python garbage collector.
+            
+            The default alert level for object deletion is 'vv'
+            
+            If delete is overloaded, ensure that ancestor delete is called as
+            well via super."""        
         self.alert("Deleting", level=self.verbosity["delete"])
         if self.deleted:
             raise DeleteError("{} has already been deleted".format(self.reference))
@@ -265,9 +335,8 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             child.delete()
             
         if self.references_to:
-            # make a copy, as remove will mutate self.references_to
-            references = self.references_to[:]
-            for name in references:
+            # make a copy, as remove will mutate self.references_to            
+            for name in self.references_to[:]:
                 objects[name].remove(self)            
         del objects[self.reference]
         self.deleted = True           
@@ -276,10 +345,20 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         """ usage: object.add(instance)
 
             Adds an object to caller.objects[instance.__class__.__name__] and
-            notes the reference location."""    
+            notes the reference location.
+            
+            The default alert level for add is 'vv'
+            
+            Raises AddError if the supplied instance has already been added to
+            this object.
+            
+            If overloading the add method, ensure super is called to invoke the
+            ancestor version that performs bookkeeping.
+            
+            Make sure to overload remove if you modify add (if necessary)"""    
         self.alert("Adding: {}", (instance, ), level=self.verbosity["add"])
         self_objects = self.objects
-        instance_class = type(instance).__name__#.__class__.__name__         
+        instance_class = type(instance).__name__
         try:
             siblings = self_objects[instance_class]
         except KeyError:
@@ -295,12 +374,14 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         """ Usage: object.remove(instance)
         
             Removes an instance from self.objects. Modifies object.objects
-            and instance.references_to."""    
+            and instance.references_to.
+            
+            The default alert level for object removal is 'vv'"""    
         self.alert("Removing {}", [instance], level=self.verbosity["remove"])  
         self.objects[type(instance).__name__].remove(instance)
         instance.references_to.remove(self.reference)                    
     
-    def alert(self, message, format_args=tuple(), level=0, formatted=False):
+    def alert(self, message, format_args=tuple(), level=0):
         """usage: base.alert(message, format_args=tuple(), level=0)
 
         Display/log a message according to the level given. The alert may 
@@ -316,8 +397,15 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         indicates a message that should not be suppressed. log_level and
         print_level may passed in as command line arguments to globally control verbosity.
         
+        An objects verbosity can be modified without modifying the source code
+        via the site_config module.
+        
         format_args can sometimes make alerts more readable, depending on the
-        length of the message and the length of the format arguments.""" 
+        length of the message and the length of the format arguments.
+            - It is arguably better to do: 
+                [code]
+                message = 'string stuff {} and more string stuff {}'.format(variable1, variable2)
+                my_object.alert(message, level=level)[/code]""" 
         alert_handler = objects["->Alert_Handler"]               
         message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
@@ -336,21 +424,15 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
     def __str__(self):
         return self.reference
         
-    def save(self, attributes=None, _file=None):
-        """ usage: base.save([attributes], [_file])
+    def save(self, _file=None):
+        """ usage: base_object.save(_file=None)
             
             Saves the state of the calling objects __dict__. If _file is not
             specified, a pickled stream is returned. If _file is specified,
             the stream is written to the supplied file like object via 
-            pickle.dump.
+            pickle.dump and then returned.
             
-            The attributes argument, if specified, should be a dictionary
-            containing the attribute:value pairs to be pickled instead of 
-            the objects __dict__.
-            
-            If the calling object is one that has been created via the update
-            method, the returned state will include any required source code
-            to rebuild the object."""        
+            This method and load are under being reimplemented"""        
         self.alert("Saving")
         attributes = self.__getstate__()
         self_objects = attributes.pop("objects", {})
