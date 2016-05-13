@@ -112,7 +112,7 @@ class Test_Cipher(pride.crypto.Cipher):
         #if authenticated_data:
         #    super(Test_Cipher, self).encrypt(authenticated_data, iv, tag)
         if tag == initial_tag:
-            print "Tag valid!"
+            print "Tag valid!"  
         assert tag == initial_tag, (tag, initial_tag, plaintext)
         return plaintext
 

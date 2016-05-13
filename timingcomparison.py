@@ -49,3 +49,20 @@ def bytearray_replace(_bytearray, index, value):
     
 #timing_comparison((list_replace, ([0] * 256, 128, 65536), {}), 
 #                  (bytearray_replace, ([0] * 256, 128, 255), {}), iterations=100000) 
+
+def _func(byte):
+    _func.state ^= byte
+    return _func.state
+        
+def xor_sum(data1):       
+    _func.state = 0    
+    return map(_func, data1)[-1]
+    
+def xor_sum2(data1):
+    xor_sum2.state = 0
+    for byte in data1:
+        xor_sum2.state ^= byte
+    return xor_sum2.state
+    
+timing_comparison((xor_sum, (range(256), ), {}), (xor_sum2, (range(256), ), {}),
+                  iterations=10000)

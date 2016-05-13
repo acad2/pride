@@ -1,4 +1,12 @@
-from utilities import xor_sum
+""" A standalone module to demo an authenticated feistel network built from a prf """
+import itertools
+
+def xor_sum(data1):
+    state = 0
+    for index, byte in enumerate(data1):
+        data1[index] ^= byte
+    return state
+    
 def permute(left_byte, right_byte, key_byte, modifier):        
     """ Psuedorandom function. left_byte, right_byte, and key_byte are all
         16-bit unsigned integers. 
@@ -126,93 +134,46 @@ def crypt_data(data, key, tag, constant_selector, direction, rounds=3, constants
         current_index += direction # selects the next round constant   
         
     for index in range(half_size):
-        data[index], data[half_size + index] = data[half_size + index], data[index]                 
+        data[index], data[half_size + index] = data[half_size + index], data[index]   
+        
+def encrypt_block(data, key, rounds=3, constants=tuple(range(256))):
+    data = list(bytearray(data))
+    tag = list(bytearray(len(data) / 2))
+    key = list(bytearray(key))
+    key = [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)]
+    crypt_data(data, key, tag, 0, 1, rounds, constants)
+    return bytes(bytearray(data)), bytes(bytearray(tag))
     
-import pride.crypto
-
-class Feistel_Cipher(pride.crypto.Cipher):
-        
-    def __init__(self, *args):
-        super(Feistel_Cipher, self).__init__(*args)
-        self.blocksize = 16
-        self.rounds = 3
-        
-    def encrypt_block(self, plaintext, key, tag):            
-        #assert tag
-        data = list(plaintext)
-        assert isinstance(key, bytearray)
-        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, 0, 1)        
-        for index, byte in enumerate(data):
-            plaintext[index] = byte        
-        
-    def decrypt_block(self, ciphertext, key, tag):
-        data = list(ciphertext)
-        assert isinstance(key, bytearray)
-        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, self.rounds - 1, -1)        
-        for index, byte in enumerate(data):
-            ciphertext[index] = byte
-        
-    def decrypt(self, data, iv=None, tag=None): 
-        plaintext = super(Feistel_Cipher, self).decrypt(data, iv, tag)         
-        assert tag == [0] * len(tag), (tag, plaintext, data)
-        return plaintext
-        
-    @classmethod
-    def test_encrypt_decrypt(cls, *args, **kwargs):
-        cipher = cls(*args, **kwargs)
-        message = "\x00" * 16
-        iv = "\x00" * 16
-        tag = [0 for byte in range(8)]        
-        ciphertext = cipher.encrypt(message, iv, tag)        
-        plaintext = cipher.decrypt(ciphertext, iv, tag)
-        assert message == plaintext, (message, plaintext)    
-        
-def crypt_data_test():
-    data = [0, 0, 0, 0]  
-    tag = [0, 0]
-    key = [0, 0]#generate_key(8, wordsize=16)
+def decrypt_block(data, key, tag, rounds=3, constants=tuple(range(256))):
+    data = list(bytearray(data))
+    tag = list(bytearray(tag))
+    key = list(bytearray(key))    
+    key = [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)]
+    crypt_data(data, key, tag, len(data) - 2, -1, rounds, constants)
+    if tag != list(bytearray(len(data) / 2)):
+        raise ValueError("Invalid tag: {}; Expected: {}\nPlaintext was: {}".format(tag, list(bytearray(len(data) / 2)), bytearray(data)))
+    return bytes(bytearray(data))
     
-    crypt_data(data, key, tag, 0, 1, 5)#, 0, 1)    
-    print data, tag
-    crypt_data(data, key, tag, len(data), -1, 5)
-    print data, tag
-    #crypt_data(data, key, tag, 5)
-    #_data, _tag = data[:], tag[:] 
-    #collisions = []
-    ##for index in range(len(data)):
-    #index = 0
-    #for other_value in range(256):
-    #    print other_value, len(collisions)
-    #    for second_other_value in range(256):                
-    #        for third_other_value in range(256):
-    #            data = _data
-    #            data[index] = other_value
-    #            data[(index + 1) % len(data)] = second_other_value
-    #            data[(index + 2) % len(data)] = third_other_value
-    #            crypt_data(data, key, tag, 5)
-    #            if tag == _tag:
-    #                collisions.append((index, _data[index], _data[(index + 1) % 4], other_value, second_other_value))
-    #print collisions            
-    #crypt_data(data, key, tag)#, 3, -1)
-    #print data, tag
+def crypt_data_test():    
+    key = "\x00" * 4
+    data = "\x00" * 4
+    ciphertext, verifier_tag = encrypt_block(data, key)
+    real_ending = ciphertext[-2:]
+    all_but_last_bytes = ciphertext[:-2]
     
-    #key = [0, 0, 0, 1]
-    #tag = [0, 0]
-    #crypt_data(data, key, tag)
-    ##print data, tag
-    #crypt_data(data, key, tag)
-    ##print data, tag
-        
-if __name__ == "__main__":  
-    #permute_test()
+    import itertools
+    ASCII = ''.join(chr(x) for x in range(256))
+    print "Testing for duplicate tags when half the data is modified, using 65535 different endings: "
+    for ending in (''.join(_bytes) for _bytes in itertools.product(ASCII, ASCII)):                           
+        _ciphertext = all_but_last_bytes + ending
+        try:
+            plaintext = decrypt_block(_ciphertext, key, verifier_tag)
+        except ValueError:
+            pass            
+        else:
+            if ending != real_ending:
+                print ("Duplicate tag", ending, real_ending)
+            
+if __name__ == "__main__":
     crypt_data_test()
-    Feistel_Cipher.test_encrypt_decrypt([1 for number in range(16)], "cbc")
-    Feistel_Cipher.test_metrics([1 for number in range(16)], "\x00" * 16, mode="cbc")
     
-    #cipher = Feistel_Cipher([0 for number in range(16)], "ecb")
-    #tag = [0] * 4
-    #ciphertext = cipher.encrypt(("\x00" + "Message ") * 2, "\x00" * 16, tag)
-    #print ciphertext, tag
-    #ciphertext2 = cipher.encrypt(ciphertext, "\x00" * 16, tag)
-    #print ciphertext2, tag
-    #print cipher.encrypt(ciphertext2, "\x00" * 16, tag), tag
