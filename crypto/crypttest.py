@@ -107,6 +107,15 @@ def crypt_data(data, key, tag, constant_selector, direction, rounds=3, constants
         key = master_key[:]        
         round_constant = constants[current_index] + xor_sum(data[half_size:])
 
+        # This is more or less what the cipher does. (Not exactly because of wrap around) 
+        # It only looks more complicated because the implementation uses fused loops
+        # and has to actually load the bytes into the array first.
+        
+        #permutation(right, key, round_constant)
+        #permutation(key, right, round_constant)
+        #permutation(key, key, round_constant)
+        #permutation(right, key, round_constant)
+        
         # load bytes into the "right" buffer while permuting them and the key           
         right[last_byte_of_right] = data[size - 1]        
         right[last_byte_of_right - 1] = data[size - 2]
