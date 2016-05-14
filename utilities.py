@@ -68,30 +68,10 @@ def print_in_place(_string):
     sys.stdout.flush()
                                   
 def updated_class(_class):
-    # modules are garbage collected if not kept alive        
-    required_modules = []        
-    class_mro = _class.__mro__[:-1] # don't update object
-    class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
-    
+    # modules are garbage collected if not kept alive            
     import module_utilities
-    with module_utilities.modules_preserved(info[1] for info in class_info):
-        compiler = sys.meta_path[0]
-        for cls, module_name in class_info:
-            module = compiler.reload_module(module_name)
-            source = compiler.module_source[module_name]
-            
-            #try:
-            #    source = 
-            #except TypeError:
-            #    try:
-            #        source = module._source
-            #    except AttributeError:
-            #        error_string = "Could not locate source for {}".format(module.__name__)
-            #        import pride.errors
-            #        raise pride.errors.UpdateError(error_string)              
-            required_modules.append((module_name, source, module))
-    
-    class_base = getattr(module, _class.__name__)
+    required_modules = module_utilities.get_all_modules_for_class(_class)    
+    class_base = getattr(required_modules[-1][2], _class.__name__)
     class_base._required_modules = required_modules
     return class_base
     

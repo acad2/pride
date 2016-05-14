@@ -12,6 +12,7 @@ import pride
 import pride.metaclass
 import pride.utilities
 import pride.contextmanagers
+import pride.module_utilities
 from pride.errors import *
 #objects = pride.objects
 
@@ -45,7 +46,7 @@ def load(attributes='', _file=None):
     return new_self
                 
 class Base(with_metaclass(pride.metaclass.Metaclass, object)):  
-""" The root inheritance object. Provides many features:
+    """ The root inheritance object. Provides many features:
 
     - When instantiating, arbitrary attributes may be assigned
           via keyword arguments
@@ -162,8 +163,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
     This is good because it will avoid the hanging reference problem that can
     cause memory leaks. This will work well when my_base_object only has the one
     other_base_object to keep track of. other_base_object is then accessed by
-    looking up the reference in the pride.objects dictionary.
-    """
+    looking up the reference in the pride.objects dictionary."""
     
     # certain container type class attributes are "inherited" from base classes
     # these include defaults, required_attributes, mutable_defaults, verbosity
@@ -455,11 +455,18 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"  
         
-        module_name = self.__module__
-        module_source = inspect.getsource(sys.modules[module_name])
-        module_id = pride.objects["->User"].generate_tag(module_source)
-        attributes["__module_id__"] = module_id
-        #pride.objects["->Python->Version_Control"].save_module(module_name, module_source, module_id)
+        required_modules = pride.module_utilities.get_all_modules_for_class(self.__class__)
+        version_control = objects["->Python->Version_Control"]     
+        user = objects["->User"]
+        hash_function = user.generate_tag
+        repo_id = hash_function(user.username)
+        _required_modules = []
+        for module_name, source, module_object in required_modules:            
+            module_id = hash_function(source)
+            version_control.save_module(module_name, source, module_id, repo_id)
+            _required_modules.append((module_name, module_id))
+            
+        attributes["_required_modules"] = _required_modules + [self.__class__.__name__]        
         try:
             saved_data = pride.objects["->User"].save_data(attributes)
         except TypeError:
@@ -481,8 +488,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             times this will implement similar functionality as the objects
             __init__ method does (i.e. opening a file or database).
             
-            NOTE: Currently not implemented while changing to localized data"""  
-        raise NotImplementedError()
+            NOTE: Currently being reimplemented"""          
         [setattr(self, key, value) for key, value in attributes.items()]
                 
         if (self.replace_reference_on_load and 
@@ -504,9 +510,11 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
            
            Note that modules are preserved when update is called. Any
            modules used in the updated class will not necessarily be the
-           same as the modules in use in the current global scope. 
+           same as the modules in use in the current global scope.
            
-           Potential pitfalls/problems:
+           The default alert level for update is 'v'
+           
+           Potential pitfalls:
                
                 - Classes that instantiate base objects as a class attribute
                   will produce an additional object each time the class is
@@ -536,7 +544,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         for reference in references:
             _object = pride.objects[reference]
             _object.add(new_self)
-            
+          
         pride.objects[self.reference] = new_self
         if update_children:
             for child in self.children:
@@ -554,7 +562,12 @@ class Wrapper(Base):
         will be gotten from the underlying wrapped object. This class
         acts primarily as a wrapper and secondly as the wrapped object.
         This allows easy preemption/overloading/extension of methods by
-        defining them."""
+        defining them.
+        
+        The class supports a "wrapped_object_name" attribute. When creating
+        a new class of wrappers,  wrapped object can be made available as
+        an attribute using the name given. If this attribute is not assigned,
+        then the wrapped object can be accessed via the wrapped_object attribute"""
      
     defaults = {"wrapped_object" : None}
     
@@ -567,8 +580,7 @@ class Wrapper(Base):
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, self.wrapped_object)
             
-    def __getattr__(self, attribute):
-        #print repr(self), "Getting ", attribute, "From ", self.wrapped_object
+    def __getattr__(self, attribute):        
         try:
             return getattr(self.wrapped_object, attribute)
         except AttributeError:
@@ -580,23 +592,21 @@ class Wrapper(Base):
         self.wrapped_object = _object
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)
-        
-    #def __dir__(self):
-    #    wrapper_attributes = self.__dict__.keys()
-    #    wrapped_attributes = dir(self.wrapped_object)
-    #    return wrapped_attributes + wrapper_attributes
-        
+
         
 class Proxy(Base):
     """ usage: Proxy(wrapped_object=my_object) => proxied_object
     
        Produces an instance that will act as the object it wraps and as an
        Base object simultaneously. The object will act primarily as
-       the wrapped object and secondly as a proxy object. This means that       
+       the wrapped object and secondly as a Proxy object. This means that       
        Proxy attributes are get/set on the underlying wrapped object first,
        and if that object does not have the attribute or it cannot be
        assigned, the action is performed on the proxy instead. This
-       prioritization is the opposite of the Wrapper class."""
+       prioritization is the opposite of the Wrapper class.
+       
+       This class also supports a wrapped_object_name attribute. See 
+       Base.Wrapper for more information."""
     
     wrapped_object_name = ''
     
@@ -686,7 +696,7 @@ class Static_Wrapper(Base):
         will not be reflected in the Static_Wrapper object, unless the object
         is explicitly wrapped again using the wraps method.
         
-        Attribute access on a static wrapper is faster then a dynamic wrapper. """
+        Attribute access on a static wrapper is faster then the regular wrapper. """
     wrapped_attributes = tuple()
     wrapped_object_name = ''
     
@@ -709,3 +719,4 @@ class Static_Wrapper(Base):
         self.wrapped_object = _object
         if self.wrapped_object_name:
             setattr(self, self.wrapped_object_name, _object)        
+            

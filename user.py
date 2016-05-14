@@ -210,14 +210,27 @@ class User(pride.base.Base):
             return pride.persistence.load_data(packed_bytes)
         else:            
             return packed_bytes # == INVALID_TAG
+    
+    def hash(self, data):
+        """ Hash data using the user objects specified hashing algorithm """
+        hasher = pride.security.hash_function(self.hash_function)
+        hasher.update(data)
+        return hasher.finalize()
         
 def test_User():
-    import pride.interpreter
-    python = pride.interpreter.Python()
-    user = User(verbosity={"password_verified" : 0})
+    import pride    
+    user = pride.objects["->User"]
     data = "This is some test data!"
     packed_encrypted_data = user.encrypt(data)
     assert user.decrypt(packed_encrypted_data) == data
+
+    saved = user.save_data(data, packed_encrypted_data)
+    _data, _packed_encrypted_data = user.load_data(saved)
+    assert _data == data
+    assert _packed_encrypted_data == packed_encrypted_data
+    
+    user.hash(_data)
+    raise SystemExit()
     
 if __name__ == "__main__":
     test_User()

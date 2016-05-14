@@ -149,7 +149,8 @@ class Python(base.Base):
                 "environment_setup" : ("PYSDL2_DLL_PATH = " + 
                                        os.path.dirname(os.path.realpath(__file__)) +
                                        os.path.sep + "gui" + os.path.sep, ),
-                "startup_components" : ("pride.vmlibrary.Processor",
+                "startup_components" : ("pride.vcs.Version_Control",
+                                        "pride.vmlibrary.Processor",
                                         "pride.fileio.File_System",
                                         "pride.network.Network_Connection_Manager",
                                         "pride.network.Network", 

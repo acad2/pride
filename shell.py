@@ -72,7 +72,7 @@ class Command_Line(pride.vmlibrary.Process):
                 "default_programs" : ("pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
                 "idle_threshold" : 10000, 
-                "screensaver_type" : "pride.shell.CA_Screensaver"}
+                "screensaver_type" : "pride.shell.Random_Screensaver"}
                      
     def __init__(self, **kwargs):
         self._idle = True
@@ -181,9 +181,9 @@ class Command_Line(pride.vmlibrary.Process):
         if self._idle and not self.screensaver and not self.thread_started:            
             self._position = sys.stdout_log.tell()        
             sys.stdout.logging_enabled = False
-            self.screensaver = self.create(self.screensaver_type).reference            
+            self.screensaver = self.create(self.screensaver_type).reference
         self._idle = True        
-        priority = self.idle_threshold * self.priority
+        priority = self.idle_threshold * self.priority        
         pride.Instruction(self.reference, "handle_idle").execute(priority=priority)
         
     def clear(self):
@@ -313,10 +313,16 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
             
     def run(self):
         if not self.file_text:
-            name, instance = pride.objects.popitem() # get a random instance
-            pride.objects[name] = instance
-            self.file_text = '\n' + name + ':\n' + instance.__doc__
-            
+            if random.choice((True, False)):
+                name = random.choice(list(pride.objects))
+                instance = pride.objects[name] # get a random instance
+                pride.objects[name] = instance
+                self.file_text = '\n' + name + ':\n' + instance.__doc__
+            else:
+                name = random.choice(list(pride.compiler.module_source))
+                source = pride.compiler.module_source[name]
+                self.file_text = "\n" + source + "\n"
+                
         sys.stdout.write(self.file_text[:self.rate])
         if '\n' in self.file_text[:self.rate]:
             self.priority *= self.newline_scalar
@@ -324,6 +330,16 @@ class Terminal_Screensaver(pride.vmlibrary.Process):
             self.priority = self._priority
             
         self.file_text = self.file_text[self.rate:]
+                            
+         
+class Random_Screensaver(Terminal_Screensaver):
+            
+    choices = ["pride.shell.Terminal_Screensaver", "pride.shell.Matrix_Screensaver", "pride.shell.CA_Screensaver"]
+    
+    def __new__(cls, *args, **kwargs):
+        _type = random.choice(cls.choices)
+        __type = resolve_string(_type)
+        return __type(*args, **kwargs)
         
         
 class Matrix_Screensaver(Terminal_Screensaver):
@@ -451,3 +467,4 @@ class Wave_CAtest(Terminal_Screensaver):
             else:
                 return '*'
         print '\n'.join((''.join(decide_symbol(number) for number in row) for row in self.rows))
+        

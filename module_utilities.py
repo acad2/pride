@@ -110,3 +110,16 @@ def get_required_sources(modules):
                 module_source[module_name] = None
 
     return module_source       
+    
+def get_all_modules_for_class(_class):        
+    class_mro = _class.__mro__[:-1] # don't get objects source
+    class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
+    required_modules = []
+    with modules_preserved(info[1] for info in class_info):
+        compiler = sys.meta_path[0]
+        for cls, module_name in class_info:
+            module = compiler.reload_module(module_name)
+            source = ''.join(compiler.module_source[module_name][0])
+            required_modules.append((module_name, source, module))    
+    return required_modules
+    
