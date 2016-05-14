@@ -18,13 +18,31 @@ from pride.errors import *
 
 __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Proxy"]
 
-def load(attributes='', _file=None):
+def rebuild_object(saved_data):
+    """ usage: load(saved_data) => restored_instance, attributes """
+    user = pride.objects["->User"]
+    attributes = user.load_data(saved_data)
+    repo_id = user.generate_tag(user.username)
+    version_control = pride.objects["->Python->Version_Control"]
+    _required_modules = []
+    module_info = attributes.pop("_required_modules")
+    class_name = module_info.pop()
+    for module_name, module_id in module_info:
+        source = version_control.load_module(module_name, module_id, repo_id)        
+        module_object = pride.module_utilities.create_module(module_name, source)
+        _required_modules.append((module_name, module_id, module_object))     
+    
+    self_class = getattr(module_object, class_name)
+    attributes["_required_modules"] = _required_modules        
+           
+    self = self_class.__new__(self_class)
+    return self, attributes
+    
+def restore_attributes(new_self, attributes):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
         Currently being reimplemented"""
-    assert attributes or _file
-    raise NotImplementedError()
-    #new_self, attributes = pride.persistence.load(attributes, _file)
-    print "Loading: ", repr(new_self)
+        
+    print "Restoring: ", repr(new_self)
     saved_objects = attributes["objects"]
     objects = attributes["objects"] = {}
     
@@ -44,7 +62,11 @@ def load(attributes='', _file=None):
             
     new_self.on_load(attributes)
     return new_self
-                
+          
+def load(saved_object):
+    new_self, attributes = rebuild_object(saved_object)
+    return restore_attributes(new_self, attributes) 
+        
 class Base(with_metaclass(pride.metaclass.Metaclass, object)):  
     """ The root inheritance object. Provides many features:
 
@@ -477,7 +499,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             _file.write(saved_data)
         return saved_data            
             
-    load = staticmethod(load) # see base.load at beginning of file
+    load = staticmethod(load)       
         
     def on_load(self, attributes):
         """ usage: base.on_load(attributes)
@@ -491,10 +513,9 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             NOTE: Currently being reimplemented"""          
         [setattr(self, key, value) for key, value in attributes.items()]
                 
-        if (self.replace_reference_on_load and 
-            self.reference != attributes["reference"]):
-            print "Replacing instance"
-            pride.environment.replace(attributes["reference"], self)
+        if self.replace_reference_on_load:
+            print "Replacing instance", self
+            pride.objects[self.reference] = self
             print "Done"
         self.alert("Loaded", level='v')
         

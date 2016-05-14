@@ -25,8 +25,7 @@ def load(saved_data):
     attributes["_required_modules"] = _required_modules        
            
     self = self_class.__new__(self_class)
-    self.on_load(attributes)
-    return self
+    return self, attributes
     
 def test_load():
     user = pride.objects["->User"]

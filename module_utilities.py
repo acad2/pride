@@ -16,7 +16,7 @@ def create_module(module_name, source, context=None):
     module_code = compile(source, module_name, 'exec')
     new_module = types.ModuleType(module_name)
     if context:
-        new_module.__dict__.update(context) 
+        new_module.__dict__.update(context)            
     exec module_code in new_module.__dict__
     return new_module
   
@@ -103,23 +103,26 @@ def get_required_sources(modules):
     module_source = {}
     with modules_preserved(modules):
         for module_name in modules:
-            module = importlib.import_module(module_name)
             try:
-                module_source[module_name] = inspect.getsource(module)
-            except (IOError, TypeError):
-                module_source[module_name] = None
+                module_source[module_name] = ''.join(pride.compiler.module_source[module_name][0])
+            except KeyError:
+                module = importlib.import_module(module_name)
+                try:
+                    module_source[module_name] = inspect.getsource(module)
+                except (IOError, TypeError):                    
+                    module_source[module_name] = None
 
     return module_source       
     
-def get_all_modules_for_class(_class):        
+def get_all_modules_for_class(_class):            
     class_mro = _class.__mro__[:-1] # don't get objects source
     class_info = [(cls, cls.__module__) for cls in reversed(class_mro)]  # beginning at the root
     required_modules = []
     with modules_preserved(info[1] for info in class_info):
         compiler = sys.meta_path[0]
         for cls, module_name in class_info:
-            module = compiler.reload_module(module_name)
-            source = ''.join(compiler.module_source[module_name][0])
+            module = compiler.reload_module(module_name)            
+            source = ''.join(compiler.module_source[module_name][0])            
             required_modules.append((module_name, source, module))    
     return required_modules
     

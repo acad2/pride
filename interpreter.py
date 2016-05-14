@@ -16,6 +16,7 @@ import pride.base as base
 import pride.authentication2 as authentication2
 import pride.shell
 import pride.user
+import pride.site_config
 
 @contextlib.contextmanager
 def main_as_name():
@@ -147,7 +148,7 @@ class Python(base.Base):
         starts the execution of the Processor component."""
     defaults = {"command" : '',
                 "environment_setup" : ("PYSDL2_DLL_PATH = " + 
-                                       os.path.dirname(os.path.realpath(__file__)) +
+                                       pride.site_config.PRIDE_DIRECTORY +
                                        os.path.sep + "gui" + os.path.sep, ),
                 "startup_components" : ("pride.vcs.Version_Control",
                                         "pride.vmlibrary.Processor",
