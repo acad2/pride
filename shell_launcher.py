@@ -1,4 +1,4 @@
-# pride.shell_launcher - default module for launching the shell 
+# pride.shell_launcher - default module for launching the python shell 
 import pride.user
 
 if __name__ == "__main__":     

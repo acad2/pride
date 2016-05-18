@@ -255,7 +255,7 @@ class Socket(base.Wrapper):
             if ERROR_CODES[error.errno] == "CONNECTION_IS_CONNECTED":
                 self.on_connect()
             elif not self._connecting:
-                self._started_connecting_at = pride.utilities.timer_function()
+                self._started_connecting_at = pride.utilities.timestamp()
                 #self.latency = pride.datastructures.Latency(size=10)
                 self._connecting = True
                 objects["->Python->Network"].connecting.add(self)
@@ -530,7 +530,7 @@ class Network(vmlibrary.Process):
     defaults = {"priority" : .01, "run_condition" : "sockets"}
    
     mutable_defaults = {"connecting" : set, "sockets" : list, 
-                        "_timestamp" : pride.utilities.timer_function,
+                        "_timestamp" : pride.utilities.timestamp,
                         "error_handler" : Socket_Error_Handler}          
         
     def add(self, sock):
@@ -594,7 +594,7 @@ class Network(vmlibrary.Process):
             elapsed_time = self.priority
             
             old_timestamp = self._timestamp
-            self._timestamp = now = pride.utilities.timer_function()
+            self._timestamp = now = pride.utilities.timestamp()
             elapsed_time = now - old_timestamp
             
             for connection in still_connecting:                

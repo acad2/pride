@@ -1,3 +1,5 @@
+import pprint
+
 from utilities import rotate, cast
 
 def rotational_difference(input_one, input_two):
@@ -26,7 +28,9 @@ def build_difference_distribution_table(sbox):
                 if input_differential in xor_difference_distribution_table:
                     xor_difference_distribution_table[input_differential][output_differential] = 1
                 else:
-                     xor_difference_distribution_table[input_differential] = {output_differential : 1}
+                    new_table = dict((differential, 0) for differential in range(256))
+                    new_table[output_differential] = 1
+                    xor_difference_distribution_table[input_differential] = new_table
                      
             input_differential = rotational_difference(input_one, input_two)
             output_differential = rotational_difference(sbox[input_one], sbox[input_two])            
@@ -107,6 +111,20 @@ def find_best_differential(sbox):
             best_differential = info
     return best_differential 
     
+def find_impossible_differentials(xor_ddt):
+    impossible_differentials = {}
+    for difference in range(1, 256):
+        differentials = xor_ddt[difference]
+        impossible_differentials[difference] = [differential for differential, probability in differentials.items() if not probability]
+    return impossible_differentials
+    
+def test_find_impossible_differentials():
+    #from blockcipher import S_BOX as s_box
+    from scratch import aes_s_box as s_box
+    xor_ddt, table2 = build_difference_distribution_table(s_box)
+    impossible_differentials = find_impossible_differentials(xor_ddt)
+    pprint.pprint(impossible_differentials)
+    
 def test_build_difference_distribution_table():
     import pprint
     from blockcipher import S_BOX  
@@ -117,6 +135,8 @@ def test_build_difference_distribution_table():
     #print
     pprint.pprint(table2)
 
+    pprint.pprint(table1)
+    
 def test_calculate_differential_chain():
     from blockcipher import S_BOX    
     chain = calculate_differential_chain(build_difference_distribution_table(S_BOX)[0], 128)
@@ -130,6 +150,7 @@ def test_differential_attack():
     differential_attack(encryption_function, S_BOX, 2, 128, (2, 4))
     
 if __name__ == "__main__":
-    test_build_difference_distribution_table()
+    #test_build_difference_distribution_table()
     #test_calculate_differential_chain()
     #test_differential_attack()
+    test_find_impossible_differentials()

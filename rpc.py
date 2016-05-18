@@ -278,10 +278,7 @@ class Rpc_Worker(pride.base.Base):
             raise UnauthorizedError()
         else:            
             args, kwargs = self.deserealize(serialized_arguments)
-            with pride.contextmanagers.backup(instance, "current_session"):
-                instance.current_session = (session_id, peername)
-           #     print "Set session: ", instance, session_id, peername, instance.current_session
-                return getattr(instance, method)(*args, **kwargs) 
+            return instance.execute_remote_procedure_call(session_id, peername, method, args, kwargs)
         
     def deserealize(self, serialized_arguments):
         return DEFAULT_SERIALIZER.loads(serialized_arguments)        

@@ -90,7 +90,7 @@ class Objects_Explorer(pride.gui.gui.Application):
                               wrap_text=False)
             
         
-class Icon(Popup_Button):
+class Icon(pride.gui.gui.Button):
             
     defaults = {"h_range" : (0, 40), "w_range" : (0, 40), "pack_mode" : "grid"}
     
@@ -100,6 +100,18 @@ class Icon(Popup_Button):
             popup.pack()
             
     
+class Program_Icon(Icon):
+    
+    defaults = {"program" : '', "popup_type" : "pride.gui.terminal.Terminal"}
+    
+    required_attributes = ("program", )
+    
+    def left_click(self, mouse):
+        if mouse.clicks == 2:
+            popup = self.parent.create(self.popup_type, program=self.program)
+            popup.pack()
+            
+            
 class Homescreen(gui.Application):
     
     def __init__(self, **kwargs):
@@ -107,6 +119,7 @@ class Homescreen(gui.Application):
         self.application_window.create(Task_Bar, startup_components=("pride.gui.widgetlibrary.Date_Time_Button",
                                                   "pride.gui.widgetlibrary.Text_Box"))        
         self.application_window.create(Icon, popup_type=Objects_Explorer, text="Objects Explorer")
+        self.application_window.create(Program_Icon, program="->User->Command_Line->Python_Shell", text="Python")
         
 
 class Task_Bar(gui.Container):
@@ -186,8 +199,7 @@ class Date_Time_Button(gui.Button):
         self.update_instruction.execute(priority=self.refresh_interval)   
         
     def delete(self):        
-        self.update_instruction.unschedule()
-        print pride.Instruction.instructions
+        self.update_instruction.unschedule()        
         super(Date_Time_Button, self).delete()
         
         

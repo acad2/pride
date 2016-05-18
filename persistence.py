@@ -67,7 +67,7 @@ def unpack_data(packed_data):
         try:
             data = getattr(exceptions, packed_data[1:])()
         except AttributeError:
-            #import pride.errors
+            import pride.errors
             data = getattr(pride.errors, packed_data[1:])()
         
     elif _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      

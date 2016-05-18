@@ -7,6 +7,7 @@ from pride import Instruction
 import pride.security
 import pride.decorators
 import pride.contextmanagers
+import pride.utilities
 from pride.security import hash_function
 from pride.errors import SecurityError, UnauthorizedError             
 
@@ -156,6 +157,10 @@ class Authenticated_Service(pride.base.Base):
     
     def _get_current_user(self):
         return self.session_id[self.current_session[0]]
+#    def _set_current_user(self, session_id, ip, username):
+#        self.session_id[session_id] = username
+#        self.peer_ip[session_id] = ip
+        
     def _del_current_user(self):
         id = self.current_session[0]
         del self.session_id[id]
@@ -297,29 +302,38 @@ class Authenticated_Service(pride.base.Base):
                        self.allow_login, self.allow_registration),
                        level=0)#self.verbosity["validate_failure"])
             return False         
-       # if self.rate_limit and method_name in self.rate_limit:
-       #     _new_connection = False
-       #     try:
-       #         self._rate[session_id][method_name].mark()
-       #     except KeyError:
-       #         latency = pride.datastructures.Latency("{}_{}".format(session_id, method_name))
-       #         try:
-       #             self._rate[session_id][method_name] = latency
-       #         except KeyError:
-       #             self._rate[session_id] = {method_name : latency}   
-       #             _new_connection = True
-       #     if not _new_connection:
-       #         current_rate = self._rate[session_id][method_name].last_measurement                
-       #         if current_rate < self.rate_limit[method_name]:
-       #             self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
-       #                     (method_name, self.rate_limit[method_name], current_rate),                           
-       #                     level=self.verbosity["validate_failure"])
-       #             return False        
+        if self.rate_limit and method_name in self.rate_limit:
+            _new_connection = False
+            try:
+                self._rate[session_id][method_name].mark()
+            except KeyError:
+                latency = pride.datastructures.Latency("{}_{}".format(session_id, method_name))
+                try:
+                    self._rate[session_id][method_name] = latency
+                except KeyError:
+                    self._rate[session_id] = {method_name : latency}   
+                    _new_connection = True
+            if not _new_connection:
+                current_rate = self._rate[session_id][method_name].last_measurement                
+                if current_rate < self.rate_limit[method_name]:
+                    self.alert("Rate of {} calls exceeded 1/{}s ({}); Denying request",
+                            (method_name, self.rate_limit[method_name], current_rate),                           
+                            level=self.verbosity["validate_failure"])
+                    return False
+
+ #       if self.enforce_idle_timeout:
+ #           self.not_idle.add(session_id)            
+            
         self.alert("Authorizing: {} for {}", 
                   (peername, method_name), 
                   level=self.verbosity["validate_success"])
         return True        
-                        
+
+    def execute_remote_procedure_call(self, session_id, peername, method_name, args, kwargs):
+        with pride.contextmanagers.backup(self, "current_session"):
+            self.current_session = (session_id, peername)            
+            return getattr(self, method_name)(*args, **kwargs) 
+                
     def __getstate__(self):
         state = super(Authenticated_Service, self).__getstate__()
         del state["database"]
@@ -329,7 +343,11 @@ class Authenticated_Service(pride.base.Base):
         super(Authenticated_Service, self).on_load(attributes)
         self._load_database()
         
-        
+#    def disconnect_idle_clients(self):
+#        for session_id in self.not_idle.difference(self.session_id):
+#            del 
+  
+  
 class Authenticated_Client(pride.base.Base):   
     
     verbosity = {"register" : 0, "login" : 'v', "answer_challenge" : 'vv',
@@ -494,6 +512,7 @@ class Authenticated_Client(pride.base.Base):
                 packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key, shared_key)
             except ValueError:
                 self.alert("Login attempt failed", level=self.verbosity["login_failed"])
+                self._logging_in = False
             else:
                 new_key, login_message = pride.utilities.load_data(packed_key_and_message)
                 self.shared_key = new_key
@@ -553,6 +572,13 @@ class Authenticated_Client(pride.base.Base):
         attributes["session_id"] = '0'
         return attributes
     
+    def on_load(self, attributes):
+        super(Authenticated_Client, self).on_load(attributes)        
+        self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)                               
+                                       
+        #if self.auto_login:
+        #    self.alert("Auto logging in", level=self.verbosity["auto_login"])
+        #    self.login()
         
 def test_Authenticated_Service2():
     service = objects["->Python"].create(Authenticated_Service)

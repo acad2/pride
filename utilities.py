@@ -12,7 +12,7 @@ import traceback
 import timeit
 
 from persistence import save_data, load_data
-timer_function = timeit.default_timer    
+timestamp = timeit.default_timer    
      
 _TYPE_SYMBOL = {int : chr(0), float : chr(1), str : chr(2), 
                 bool : chr(3), list : chr(4), dict : chr(5),

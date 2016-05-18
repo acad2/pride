@@ -19,13 +19,14 @@ import time
 import traceback
 import timeit
 import pprint
+import itertools
 from functools import partial
 
 import pride
 import pride.base
 
 Instruction = pride.Instruction
-timer_function = timeit.default_timer
+timestamp = timeit.default_timer
         
 class Process(pride.base.Base):
     """ usage: Process(target=function, args=..., kwargs=...) => process_object
@@ -155,7 +156,7 @@ class Processor(Process):
                     if execute_flag:
                         call = _getattr(objects[component_name], method)
                             
-                        time_until = max(0, (execute_at - timer_function()))
+                        time_until = max(0, (execute_at - timestamp()))
                         if time_until:
                             sleep(time_until)
                                             
@@ -195,4 +196,21 @@ class Processor(Process):
                         callback_exception_alert((callback, ))
                     else:
                         exception_alert((component_name, method, format_traceback()))
+               
+
+class Idle_Process(pride.vmlibrary.Process):
+    
+    defaults = {"priority" : 300.0}
+    
+    def run(self):
+        for reference, method_name in itertools.ichain(self.callbacks, self.single_callbacks):
+            getattr(pride.objects[reference], method_name)()
+        del self.single_callbacks[:]
         
+    def register_callback(self, reference, method_name, single_use=False):
+        if single_use:
+            self.single_callbacks.append((reference, method_name))
+        else:
+            self.callbacks.append((reference, method_name))
+            
+                    

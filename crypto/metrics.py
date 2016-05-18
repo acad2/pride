@@ -3,7 +3,7 @@ import random
 import sys
 import os
 
-from timeit import default_timer as timer_function
+from timeit import default_timer as timestamp
 
 def slide(iterable, x=16):
     """ Yields x bytes at a time from iterable """
@@ -174,17 +174,17 @@ def test_collisions(hash_function, output_size=3):
     
 def test_compression_performance(hash_function):    
     print "Time testing compression function..."
-    start = timer_function()
+    start = timestamp()
     for round in range(10):
         hash_function("Timing test for input" * 1000)
-    end = timer_function()
+    end = timestamp()
     print (end - start) / 10
     
 def test_prng_performance(hash_function):    
     print "Testing time to generate 1024 * 1024 bytes... "
-    start = timer_function()
+    start = timestamp()
     output = _hash_prng(hash_function, len(hash_function('\x00')), 1024 * 1024)
-    end = timer_function()
+    end = timestamp()
     print end - start    
     
 def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):  
@@ -196,10 +196,10 @@ def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):
             for round in range(10):
                 sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
                 sys.stdout.flush()
-                start = timer_function()  
+                start = timestamp()  
                 for chunk in range(size):
                     encrypt_method("\x00" * increment_size, key, seed)                                    
-                end = timer_function()
+                end = timestamp()
                 times.append(end - start)
             sys.stdout.write("{}100%\r".format("=" * 76))
             print "MB/s: ", 1 / (sum(times) / float(len(times)))

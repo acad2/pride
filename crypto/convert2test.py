@@ -38,7 +38,7 @@ def arbitrary_base_addition(value1, value2, base):
                 
         new_value = first_value + other_value        
         carry, new_value = divmod(new_value, base_size)
-        print "Added: ", first_value, other_value, first_value + other_value, carry, ord(base[new_value])
+        #print "Added: ", first_value, other_value, first_value + other_value, carry, ord(base[new_value])
         value1[current_index] = base[new_value]
         
         if carry:            
@@ -146,8 +146,40 @@ def test_arbitrary_base_subtraction():
     print convert(convert(value1_in_public_base, ASCII, base), base, "0123456789")
     print int(''.join(str(item) for item in value1_copy)) - int(''.join(str(item) for item in value2_copy))
     
+def test_idea():
+    common_base = ASCII
+    alices_key = bytes(generate_key(256))
+    eves_key = bytes(generate_key(256))
+    random_value = bytes(bytearray(15) + bytearray("\x01"))#os.urandom(16)
+    print "Alices value: ", random_value
+    random_value_encoded = convert(random_value, alices_key, common_base)
+    print
+    print "Alices ciphertext: ", random_value_encoded
+    
+    
+    random_value2 = bytes(bytearray(15) + bytearray("\x02"))#os.urandom(16)
+    print "Bobs value: ", random_value2
+    bobs_key = bytes(generate_key(256))
+    random_value2_encoded = convert(random_value2, bobs_key, common_base)
+    print
+    print "Bobs ciphertext: ", random_value2_encoded
+    
+    ciphertext = list(random_value_encoded)
+    ciphertext2 = list(random_value2_encoded)
+    arbitrary_base_addition(ciphertext, ciphertext2, common_base)
+    
+    combined_message = list(convert(ciphertext, common_base, alices_key))
+    
+    arbitrary_base_subtraction(combined_message, ciphertext, alices_key)
+    
+    ciphertext2_in_alices_base = combined_message[:]
+    ciphertext2_in_common_base = convert(ciphertext2_in_alices_base, alices_key, common_base)
+    
+    print "Alice got: ", [byte for byte in bytearray(ciphertext2_in_common_base)]
+    
 if __name__ == "__main__":
-    #test_arbitrary_base_addition()
-    #test_arbitrary_base_subtraction()
-    test_key_exchange_idea()    
+    test_arbitrary_base_addition()
+    test_arbitrary_base_subtraction()
+    #test_key_exchange_idea()    
+    #test_idea()
     

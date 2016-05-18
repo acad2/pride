@@ -7,7 +7,7 @@ import collections
 import heapq
 import timeit
 
-timer_function = timeit.default_timer 
+timestamp = timeit.default_timer 
 
 class Latency(object):
     """ usage: Latency([name="component_name"], 
@@ -19,7 +19,7 @@ class Latency(object):
         try:
             return self._average.values[-1]
         except IndexError:
-            return timer_function() - self.started_at
+            return timestamp() - self.started_at
     last_measurement = property(_get_last_measurement, doc="Gets the last measurement")
     
     def _get_average_measurement(self):
@@ -44,10 +44,10 @@ class Latency(object):
         super(Latency, self).__init__()
         self.name = name
         self._average = Average(size=size)
-        self.started_at = timer_function()
+        self.started_at = timestamp()
         
     def mark(self):
-        now = timer_function()
+        now = timestamp()
         self._average.add(now - self.started_at)        
         self.started_at = now
         

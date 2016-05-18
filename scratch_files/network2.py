@@ -11,7 +11,7 @@ import pride
 import pride.base as base
 import pride.network as network
 import pride.fileio as fileio
-from pride.datastructures import Latency, timer_function
+from pride.datastructures import Latency, timestamp
 Instruction = pride.Instruction
 #objects = pride.objects
            
@@ -121,7 +121,7 @@ class Network_Service(network.Udp_Socket):
             self.expecting_response.append((to, id))
             
         self.packet_cache.append((id, packet))
-        self.sent_at[id] = timer_function()
+        self.sent_at[id] = timestamp()
         self.alert("sent packet {} {} to {} in response to {}",
                    [id, data[:32], to, response_to],
                    level='vv')                               
@@ -132,7 +132,7 @@ class Network_Service(network.Udp_Socket):
         resend_after = .2
         
         for target, id in self.expecting_response:
-            if timer_function() - sent_at[id] > resend_after:
+            if timestamp() - sent_at[id] > resend_after:
                 packet = packet_cache[id]
                 
                 self.alert("Resending {}", [id], level=0)

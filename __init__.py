@@ -33,7 +33,7 @@ import timeit
 import platform
 import mmap
 CURRENT_PLATFORM = platform.system()
-timer_function = timeit.default_timer
+timestamp = timeit.default_timer
         
 def preprocess(function):    
     raise ImportError("Failed to replace preprocess function with source")       
@@ -66,7 +66,7 @@ class Instruction(object):
     
     def __init__(self, component_name, method, *args, **kwargs):
         super(Instruction, self).__init__()
-        self.created_at = timer_function()
+        self.created_at = timestamp()
         self.component_name = component_name
         self.method = method
         self.args = args
@@ -79,7 +79,7 @@ class Instruction(object):
             The instruction will be executed in priority seconds.
             An optional callback function can be provided if the return value
             of the instruction is needed. """
-        heapq.heappush(self.instructions, [timer_function() + priority, self, 
+        heapq.heappush(self.instructions, [timestamp() + priority, self, 
                                            callback, self.component_name,
                                            self.method, self.args, self.kwargs,
                                            True])

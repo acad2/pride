@@ -196,7 +196,8 @@ class Command_Line(pride.vmlibrary.Process):
         
 class Program(pride.base.Base):
             
-    defaults = {"set_as_default" : False, "name" : ''}
+    defaults = {"set_as_default" : False, "name" : '', 
+                "command_line" : "->User->Command_Line"}
 
     def _get_name(self):
         return self._name or self.reference
@@ -205,13 +206,11 @@ class Program(pride.base.Base):
     name = property(_get_name, _set_name)
   
     def __init__(self, **kwargs):
-        super(Program, self).__init__(**kwargs)
-        command_line = objects["->User->Command_Line"]
-        
+        super(Program, self).__init__(**kwargs)                
         if self.set_as_default:
-            command_line.set_default(self.name, (self.reference, "handle_input"))
+            self.set_as_default_program()            
         else:
-            command_line.add_program(self.name, (self.reference, "handle_input"))       
+            self.add_to_programs()            
         
     def handle_input(self, input):
         try:
@@ -222,10 +221,16 @@ class Program(pride.base.Base):
         getattr(self, command, self.help)(input)
         
     def help(self, input):
-        self.alert("Unrecognized command '{}'".format(input), level=0)
+        self.alert("Unrecognised command '{}'".format(input), level=0)
         print self.__doc__
                     
-       
+    def set_as_default_program(self):
+        pride.objects[self.command_line].set_default_program(self.name, (self.reference, "handle_input"))
+        
+    def add_to_programs(self):
+        pride.objects[self.command_line].add_program(self.name, (self.reference, "handle_input"))
+        
+        
 class Python_Shell(Program):
         
     defaults = {"name" : "python", "shell" : "->User->Shell"}

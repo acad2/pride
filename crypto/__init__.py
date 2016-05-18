@@ -6,46 +6,46 @@ from utilities import slide, xor_subroutine, replacement_subroutine, cast
 from metrics import test_block_cipher
 from pride.errors import InvalidTag
                 
-def cbc_encrypt(block, iv, key, cipher, tag=None): 
+def cbc_encrypt(block, iv, key, cipher, tag=None, tweak=None): 
     xor_subroutine(block, iv)        
-    cipher(block, key, tag)        
+    cipher(block, key, tag, tweak)        
     replacement_subroutine(iv, block)        
     
-def cbc_decrypt(block, iv, key, cipher, tag=None):    
+def cbc_decrypt(block, iv, key, cipher, tag=None, tweak=None):    
     next_iv = block[:]        
-    cipher(block, key, tag)
+    cipher(block, key, tag, tweak)
     xor_subroutine(block, iv)        
     replacement_subroutine(iv, next_iv)    
     
-def ofb_mode(block, iv, key, cipher, tag=None):
-    cipher(iv, key, tag)        
+def ofb_mode(block, iv, key, cipher, tag=None, tweak=None):
+    cipher(iv, key, tag, twak)        
     xor_subroutine(block, iv)
         
-def ctr_mode(block, iv, key, cipher, tag=None):
-    cipher(iv, key, tag)
+def ctr_mode(block, iv, key, cipher, tag=None, tweak=None):
+    cipher(iv, key, tag, tweak)
     xor_subroutine(block, iv)    
     replacement_subroutine(iv, bytearray(cast(cast(cast(bytes(iv), "binary"), "integer") + 1, "bytes")))
     
-def ella_mode(block, iv, key, cipher, tag):         
+def ella_mode(block, iv, key, cipher, tag, tweak=None):         
     datablock = tag + block
     cipher(datablock, key)
     replacement_subroutine(block, datablock[8:])
     replacement_subroutine(tag, datablock[:8])#tag[:8] = datablock[:8]        
     
-def ecb_mode(block, iv, key, cipher, tag=None):
-    cipher(block, key, tag)
+def ecb_mode(block, iv, key, cipher, tag=None, tweak=None):
+    cipher(block, key, tag, tweak)
     
-def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag):    
+def crypt(data, key, iv, cipher, mode_of_operation, blocksize, tag, tweak):    
     output = bytearray()    
     for block in slide(data, blocksize):      
-        mode_of_operation(block, iv, key, cipher, tag)        
+        mode_of_operation(block, iv, key, cipher, tag, tweak)        
         output.extend(block)
     replacement_subroutine(data, output)                       
         
 ENCRYPTION_MODES = {"cbc" : cbc_encrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
 DECRYPTION_MODES = {"cbc" : cbc_decrypt, "ofb" : ofb_mode, "ctr" : ctr_mode, "ella" : ella_mode, "ecb" : ecb_mode}
     
-def cbc_padding(datasize, blocksize, always_pad=True):
+def cbc_padding(datasize, blocksize):
     padding_amount = (blocksize - (datasize % blocksize))         
     if not padding_amount:        
         padding_characters = chr(0) * blocksize
@@ -55,7 +55,7 @@ def cbc_padding(datasize, blocksize, always_pad=True):
         padding_characters = chr(padding_amount) * padding_amount
     return padding_characters
     
-def encrypt(data, cipher, iv, tag=None):
+def encrypt(data, cipher, iv, tag=None, tweak=None):
     #data = bytearray(data)
     mode = cipher.mode    
     blocksize = cipher.blocksize
@@ -65,13 +65,13 @@ def encrypt(data, cipher, iv, tag=None):
     elif mode in ("cbc", "ecb"):
         data.extend(cbc_padding(datasize, blocksize))
     crypt(data, cipher.key, iv, cipher.encrypt_block, 
-          ENCRYPTION_MODES[cipher.mode], blocksize, tag)                
+          ENCRYPTION_MODES[cipher.mode], blocksize, tag, tweak)                
     #if tag is not None:
     #    return tag + bytes(data)
     #else:
     return bytes(data)
     
-def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, tweak=None):    
+def decrypt(data, cipher, iv, tag=None, tweak=None):#key, iv, cipher, mode_of_operation, tweak=None):    
     mode = cipher.mode    
     #if mode != "ella":
     #    assert not tag, (mode, data, cipher, iv, tag)
@@ -83,7 +83,7 @@ def decrypt(data, cipher, iv, tag=None):#key, iv, cipher, mode_of_operation, twe
         crypt_block = cipher.encrypt_block  
     
     #data = bytearray(data)        
-    crypt(data, cipher.key, iv, crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag)  
+    crypt(data, cipher.key, iv, crypt_block, DECRYPTION_MODES[mode], cipher.blocksize, tag, tweak)  
     if mode == "ella":
         if tag != cipher.mac_key:
             raise InvalidTag()
@@ -114,25 +114,25 @@ class Cipher(object):
         self.blocksize = 0
         self.iv = None
         
-    def encrypt_block(self, plaintext, key, tag=None):
+    def encrypt_block(self, plaintext, key, tag=None, tweak=None):
         raise NotImplementedError()
     
-    def decrypt_block(self, ciphertext, key, tag=None):
+    def decrypt_block(self, ciphertext, key, tag=None, tweak=None):
         raise NotImplementedError()
 
-    def encrypt(self, data, iv=None, tag=None): 
+    def encrypt(self, data, iv=None, tag=None, tweak=None): 
         if self.mode != "ecb":
             assert iv                          
         data = bytearray(data)        
         iv = bytearray(iv or '')
-        return encrypt(data, self, iv, tag)
+        return encrypt(data, self, iv, tag, tweak)
                 
-    def decrypt(self, data, iv=None, tag=None): 
+    def decrypt(self, data, iv=None, tag=None, tweak=None): 
         if self.mode != "ecb":
             assert iv
         data = bytearray(data)        
         iv = bytearray(iv)
-        return decrypt(data, self, iv, tag)    
+        return decrypt(data, self, iv, tag, tweak)    
                 
     @classmethod
     def new(cls, key, mode, iv=None):

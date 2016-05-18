@@ -49,7 +49,7 @@ def permutation(data, key, modifier):
     for index in reversed(range(len(data))):
         permute_subroutine(data, key, index, modifier)
             
-def crypt_data(data, key, tag, constant_selector, direction, rounds=3, constants=tuple(range(256))):        
+def crypt_data(data, key, tag, tweak, constant_selector, direction, rounds=3, constants=tuple(range(256))):        
     """ Feistel network based which uses permute as the round function.
         Functions as a basic feistel network, with some extra details:
             
@@ -90,14 +90,14 @@ def crypt_data(data, key, tag, constant_selector, direction, rounds=3, constants
     assert len(key) == half_size
     last_byte_of_right = half_size - 1
     current_index = constant_selector
-    right = [0 for index in range(half_size)] # buffer of 16-bit wide unsigned integers  
+    right = [0 | (tweak[index] << 8) for index in range(half_size)] # buffer of 16-bit wide unsigned integers  
     master_key = list(key)
     key = master_key[:]    
     
     for round in range(rounds): 
         
         key = master_key[:]        
-        round_constant = constants[current_index] + xor_sum(data[half_size:])
+        round_constant = constants[current_index]# + xor_sum(data[half_size:])
 
         # This is more or less what the cipher does. 
         # It only looks more complicated because the implementation uses fused loops
@@ -147,24 +147,24 @@ class Feistel_Cipher(pride.crypto.Cipher):
         self.blocksize = 16
         self.rounds = 3
         
-    def encrypt_block(self, plaintext, key, tag):            
+    def encrypt_block(self, plaintext, key, tag, tweak):            
         #assert tag
         data = list(plaintext)
         assert isinstance(key, bytearray)
-        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, 0, 1)        
+        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, tweak, 0, 1)        
         for index, byte in enumerate(data):
             plaintext[index] = byte        
         
-    def decrypt_block(self, ciphertext, key, tag):
+    def decrypt_block(self, ciphertext, key, tag, tweak):
         data = list(ciphertext)
         assert isinstance(key, bytearray)
-        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, self.rounds - 1, -1)        
+        crypt_data(data, [key[index] | (key[index + 1] << 8) for index in range(0, len(key), 2)], tag, tweak, self.rounds - 1, -1)        
         for index, byte in enumerate(data):
             ciphertext[index] = byte
         
-    def decrypt(self, data, iv=None, tag=None): 
+    def decrypt(self, data, iv=None, tag=None, tweak=None): 
         plaintext = super(Feistel_Cipher, self).decrypt(data, iv, tag)         
-        assert tag == [0] * len(tag), (tag, plaintext, data)
+        assert tag == tweak, (tag, plaintext, data)
         return plaintext
         
     @classmethod

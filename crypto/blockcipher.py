@@ -205,19 +205,19 @@ class Test_Cipher(pride.crypto.Cipher):
         self.tweak = tweak or generate_default_constants(len(key))
         self.iv = None
         
-    def encrypt_block(self, plaintext, key, tag=None):
+    def encrypt_block(self, plaintext, key, tag=None, tweak=None):
         encrypt_block(plaintext, self.key, self.rounds, self.tweak)
         
-    def decrypt_block(self, ciphertext, key, tag=None):        
+    def decrypt_block(self, ciphertext, key, tag=None, tweak=None):        
         decrypt_block(ciphertext, self.key, self.rounds, self.tweak)
             
-    def encrypt(self, data, iv=None, tag=None):
+    def encrypt(self, data, iv=None, tag=None, tweak=None):
         if self.mode == "ella":
             assert tag #is None
         ciphertext = super(Test_Cipher, self).encrypt(data, iv, tag)
         return ciphertext
         
-    def decrypt(self, data, iv=None, tag=None):        
+    def decrypt(self, data, iv=None, tag=None, tweak=None):        
         mode = self.mode
         return super(Test_Cipher, self).decrypt(data[8:] if mode == "ella" else data, iv, data[:8] if mode == "ella" else None)
         
@@ -228,7 +228,7 @@ class Test_Embedded_Decryption_Cipher(Test_Cipher):
         super(Test_Embedded_Decryption_Cipher, self).__init__(*args)
         self.decryption_key = generate_embedded_decryption_key(self.key, range(self.rounds), self.tweak)
         
-    def decrypt_block(self, ciphertext, key, tag=None):
+    def decrypt_block(self, ciphertext, key, tag=None, tweak=None):
         return decrypt_block_embedded_decryption_key(ciphertext, self.decryption_key, self.rounds, self.tweak)
         
         

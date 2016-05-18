@@ -41,23 +41,19 @@ def rebuild_object(saved_data):
 def restore_attributes(new_self, attributes):
     """ Loads and instance from a bytestream or file produced by pride.base.Base.save. 
         Currently being reimplemented"""
-        
-    print "Restoring: ", repr(new_self)
+            
     saved_objects = attributes["objects"]
     objects = attributes["objects"] = {}
     
-    for instance_type, saved_instances in saved_objects.items(): 
-        print '\t', repr(new_self), "Restoring: ", instance_type
+    for instance_type, saved_instances in saved_objects.items():         
         objects[instance_type] = [load(instance) for instance in saved_instances]
-       # print '\t', repr(new_self), "Restored {} instances".format(len(objects[instance_type]))
+       
     attribute_modifier = attributes.pop("_attribute_type")
     for key, value in attributes.items():
         modifier = attribute_modifier.get(key, '')
-        if modifier == "reference":
-            print "\tRestored reference: ", value
+        if modifier == "reference":       
             attributes[key] = pride.objects[value]
-        elif modifier == "save":
-            print "\tLoading attribute: ", key
+        elif modifier == "save":            
             attributes[key] = load(value)
             
     new_self.on_load(attributes)
@@ -296,9 +292,11 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             for attribute in self.required_attributes:
                 try:
                     if not getattr(self, attribute):
-                        raise ArgumentError("Required argument {} not supplied".format(attribute))
+                        raise ArgumentError("Required attribute '{}' has no value".format(attribute))
                 except AttributeError:
-                    raise ArgumentError("Required argument {} not supplied".format(attribute))
+                    import pprint
+                    pprint.pprint(kwargs)
+                    raise ArgumentError("Required attribute '{}' not assigned".format(attribute))
          
         if self.parent:            
             self.parent.add(self)
