@@ -9,15 +9,11 @@ class Terminal(pride.vmlibrary.Process):
     defaults = {"auto_start" : False}
     
     def __init__(self, **kwargs):
-        print "Initialized!" * 10
-        self.screen = asciimatics.screen.Screen.wrapper(lambda screen: None)  
-        print "Screen: ", self.screen
         super(Terminal, self).__init__(**kwargs)                   
-        
+        self.screen = asciimatics.screen.Screen.wrapper(lambda screen: None)          
         #self.run_instruction.execute()
         
-    def run(self, screen=None):
-        print "Running", getattr(self, "screen", "wtf??")
+    def run(self):        
         screen = self.screen
         event = screen.get_event()
         while event is not None:

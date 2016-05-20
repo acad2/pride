@@ -48,11 +48,11 @@ known bugs:
     fix z layer issue with multiple objects on the same space
             
 things that could be done:
-    backport annotations ?
+    
     patch inspect to get source from Compiler
     fix load
     make update work with gui objects
-    preemptive multiprocessing?
+     
     develop the gui
     improve executable
     improve authentication2 - scrutiny for design pitfalls and errors - start anew with authentication3
@@ -62,8 +62,13 @@ things that could be done:
     --optimized flag that comments out alerts that are above a threshold. __debug__ flag
     persistent objects
     rotation descriptor on window objects. modify area based upon the given degrees of rotation about the center of the instance.
+    
+    preemptive multiprocessing?
+    backport annotations ?
     branch pruning based on runtime analysis of arguments
     store name pruning? retrieve the runtime value of an attribute and pass it as an argument instead of looking it up
+    
+   
    
 things other people could do:
 -------------------------
