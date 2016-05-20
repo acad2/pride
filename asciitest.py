@@ -11,8 +11,7 @@ class Terminal(pride.vmlibrary.Process):
     def __init__(self, **kwargs):
         super(Terminal, self).__init__(**kwargs)                   
         self.screen = asciimatics.screen.Screen.wrapper(lambda screen: None)          
-        #self.run_instruction.execute()
-        
+                
     def run(self):        
         screen = self.screen
         event = screen.get_event()
