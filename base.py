@@ -346,14 +346,18 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             The default alert level for object deletion is 'vv'
             
             If delete is overloaded, ensure that ancestor delete is called as
-            well via super."""        
+            well via super."""             
         self.alert("Deleting", level=self.verbosity["delete"])
-        if self.deleted:
+        if self.deleted:            
             raise DeleteError("{} has already been deleted".format(self.reference))
-                    
-        for child in list(self.children):
-            child.delete()
             
+        for child in list(self.children):
+            try:
+                child.delete()
+            except DeleteError:
+                if self.reference in child.references_to:
+                    raise        
+        
         if self.references_to:
             # make a copy, as remove will mutate self.references_to            
             for name in self.references_to[:]:
