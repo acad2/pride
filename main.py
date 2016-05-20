@@ -16,10 +16,8 @@ def main():
         try:            
             python.start_machine()                
         except BaseException as error:                        
-            running = False            
-            print "RUNNING FINALIZER"
-            pride.objects["/Finalizer"].run()            
-            print error, type(error)
+            running = False                        
+            pride.objects["/Finalizer"].run()                        
             if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
                 python.alert("Session shutdown intiated... ", level=python.verbosity["shutdown"])                   
                 if getattr(error, "code", '') == "Restart":
