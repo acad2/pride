@@ -22,7 +22,7 @@ def file_operation(filename, mode, method, file_type="open", offset=None, data=N
 class Data_Transfer_Client(pride.authentication2.Authenticated_Client):
     """ Client program for sending data securely to a party registered
         with the target service. """
-    defaults = {"target_service" : "->Python->Data_Transfer_Service"}
+    defaults = {"target_service" : "/Python/Data_Transfer_Service"}
     verbosity = {"send_to" : "vv"}
     
     @pride.authentication2.remote_procedure_call(callback_name="receive")

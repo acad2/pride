@@ -26,7 +26,7 @@ class User(pride.base.Base):
                 # login/key derivation can be bypassed by supplying keys directly
                 # note that encryption key, salt, and mac key must be supplied to
                 # skip the login/key derivation process
-                # filesystem_key is used to access nonindexable files in ->Python->File_System
+                # filesystem_key is used to access nonindexable files in /Python/File_System
                 "encryption_key" : bytes(), "salt" : bytes(), "mac_key" : bytes(),
                 "file_system_key" : bytes(),
                 
@@ -39,7 +39,7 @@ class User(pride.base.Base):
                 "hkdf_file_system_info_string" : "{} File_System key",
                 "password_prompt" : "{}: Please provide the pass phrase or word: ",
                 
-                # the salt and verifier file are stored in the ->Python->File_System
+                # the salt and verifier file are stored in the /Python/File_System
                 # nonindexable files have the filename hashed upon storing/search
                 "salt_filetype" : "pride.fileio.Database_File",
                 "verifier_filetype" : "pride.fileio.Database_File",
@@ -149,6 +149,11 @@ class User(pride.base.Base):
                                             "wb", indexable=False, encrypted=True)
                 verifier_file.write(self.username)
                 verifier_file.flush()                
+                
+                if not hasattr(pride.site_config, "pride_user_User_defaults"):
+                    message = "{}: Insert username into site config?: (y/n) ".format(self)
+                    if pride.shell.get_permission(message):
+                        pride.site_config.write_to("pride_user_User_defaults", username=self.username)
             else:
                 raise InvalidUsername
         else:
@@ -219,7 +224,7 @@ class User(pride.base.Base):
         
 def test_User():
     import pride    
-    user = pride.objects["->User"]
+    user = pride.objects["/User"]
     data = "This is some test data!"
     packed_encrypted_data = user.encrypt(data)
     assert user.decrypt(packed_encrypted_data) == data

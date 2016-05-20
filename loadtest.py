@@ -9,10 +9,10 @@ def load(saved_data):
     
         Loads state preserved by the persistence.save method. Loads an instance from either
         a bytestream or file, as returned by the save method."""
-    user = pride.objects["->User"]
+    user = pride.objects["/User"]
     attributes = user.load_data(saved_data)
     repo_id = user.generate_tag(user.username)
-    version_control = pride.objects["->Python->Version_Control"]
+    version_control = pride.objects["/Python/Version_Control"]
     _required_modules = []
     module_info = attributes.pop("_required_modules")
     class_name = module_info.pop()
@@ -28,7 +28,7 @@ def load(saved_data):
     return self, attributes
     
 def test_load():
-    user = pride.objects["->User"]
+    user = pride.objects["/User"]
     saved_data = user.save()
     new_self = load(saved_data)
     print id(new_self), id(user)

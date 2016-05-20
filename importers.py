@@ -76,15 +76,15 @@ class From_Disk(object):
 #    """ Currently NOT used. May become deprecated.
 #    
 #        Facilitates the macro for dereferencing instance names. Source
-#        handled by this object will have '->' lookup chains resolved to
+#        handled by this object will have '/' lookup chains resolved to
 #        a name resolution function with the instance names as arguments.
 #        Example:
 #            
-#            ->Python->Network->Rpc_Server->Rpc_Socket1
+#            /Python/Network/Rpc_Server/Rpc_Socket1
 #            # resolves to
-#            pride.objects["->Python"].objects["Network"][0].objects["Rpc_Server"][0].objects["Rpc_Socket"][1]
+#            pride.objects["/Python"].objects["Network"][0].objects["Rpc_Server"][0].objects["Rpc_Socket"][1]
 #            
-#            self->Network->Rpc_Server->Rpc_Socket1
+#            self/Network/Rpc_Server/Rpc_Socket1
 #            self.objects["Network"][0].objects["Rpc_Server"][0].objects["Rpc_Socket"][1]"""
 #        
 #    def handle_source(self, source):
@@ -93,8 +93,8 @@ class From_Disk(object):
 #        reference_start = None
 #        quote_open = is_string = False
 #        parenthesis_open = 0
-#        while '->' in source[source_index:]:
-#            indices = Parser.find_symbol('->', source, back_delimit=False,
+#        while '/' in source[source_index:]:
+#            indices = Parser.find_symbol('/', source, back_delimit=False,
 #                                         forward_delimit=False, start_index=source_index)
 #            if not indices:
 #                break  
@@ -113,7 +113,7 @@ class From_Disk(object):
 #            #            new_line += equals + '='
 #            #        
 #            #        new_line += "pride.dereference(packed_args=("
-#            #        names = _line.split("->")
+#            #        names = _line.split("/")
 #            #        for name in names:
 #            #            if '"' in name or "'" in name:
 #            #                new_line += str(split_reference(name)) + ", "
@@ -133,7 +133,7 @@ class From_Disk(object):
 #            names = []
 #            start, end = indices[0]
 #            #print "Looking for names in: ", source[end:]
-#            # look for the attribute/name before the ->
+#            # look for the attribute/name before the /
 #        #    _name = ''
 #        #    for pre_name_index, character in enumerate(reversed(source[:start])):
 #        #        print "Testing index: ", pre_name_index, character
@@ -159,7 +159,7 @@ class From_Disk(object):
 #                current_index = end + index
 #                _character = source[current_index:current_index+2]
 #                __character = source[current_index:current_index+3]
-#                if _character == '->':
+#                if _character == '/':
 #                    #for __character_ in source[index+2:]:
 #                    #    if __character_ in (' ', '\t', '('):
 #                    #        if __character_ == '(':

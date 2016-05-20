@@ -41,7 +41,7 @@ class Record_Service(pride.authentication2.Authenticated_Service):
         
 class Record_Service_Client(pride.authentication2.Authenticated_Client):
             
-    defaults = {"target_service" : "->Python->Record_Service",
+    defaults = {"target_service" : "/Python/Record_Service",
                 "token_file_encrypted" : False, "token_file_indexable" : True}
     
     verbosity = {"save_record" : 0, "load_record" : 0, "auto_login" : 0}
@@ -58,7 +58,7 @@ class Record_Service_Client(pride.authentication2.Authenticated_Client):
         
         
 def test_Record_Service():
-    service = objects["->Python"].create(Record_Service)    
+    service = objects["/Python"].create(Record_Service)    
     client = Record_Service_Client(username="Ella")
     record = ("public", "Wonderful test data :)", "test filename!", "cool description")
     record2 = ("private", "Nobody but you ;)", "secret filename!", "nondescript")

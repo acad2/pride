@@ -17,8 +17,8 @@ MAX_W, MAX_H = pride.gui.SCREEN_SIZE
 _OPPOSING_SIDE = {"left" : "right", "right" : "left", "top" : "bottom", "bottom" : "top"}
 
 def create_texture(size, access=sdl2.SDL_TEXTUREACCESS_TARGET,
-                   factory="->Python->SDL_Window->Renderer->SpriteFactory",
-                   renderer="->Python->SDL_Window->Renderer"):
+                   factory="/Python/SDL_Window/Renderer/SpriteFactory",
+                   renderer="/Python/SDL_Window/Renderer"):
     return objects[factory].create_texture_sprite(objects[renderer].wrapped_object,
                                                   size, access=access)
     
@@ -240,7 +240,7 @@ class Organizer(base.Base):
         item.z = parent.z + 1
         
     def pack_popup_menu(self, parent, item, count, length):        
-        item.z = max(pride.objects[item.sdl_window + "->SDL_User_Input"]._coordinate_tracker.keys())
+        item.z = max(pride.objects[item.sdl_window + "/SDL_User_Input"]._coordinate_tracker.keys())
         w, h = pride.gui.SCREEN_SIZE
         item.position = (w / 4, h / 4)                         
         
@@ -353,7 +353,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         return self._pack_mode
     def _set_pack_mode(self, value):
         self._pack_mode = value
-        objects[(self.sdl_window  or self.parent.sdl_window)+ "->Organizer"].set_pack_mode(self.reference, value)
+        objects[(self.sdl_window  or self.parent.sdl_window)+ "/Organizer"].set_pack_mode(self.reference, value)
     pack_mode = property(_get_pack_mode, _set_pack_mode)
     
     def _get_parent_application(self):
@@ -471,7 +471,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         
     def toggle_hidden(self):
         if not self.hidden:
-            sdl_user_input = pride.objects[self.sdl_window + "->SDL_User_Input"]
+            sdl_user_input = pride.objects[self.sdl_window + "/SDL_User_Input"]
             sdl_user_input._update_coordinates(self.reference,
                                                self.area, -1)            
         self.hidden = not self.hidden
@@ -489,7 +489,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _draw_texture(self):    
         if self.hidden:
             return []
-        pride.objects[self.sdl_window + "->SDL_User_Input"]._update_coordinates(self.reference, self.area, self.z)
+        pride.objects[self.sdl_window + "/SDL_User_Input"]._update_coordinates(self.reference, self.area, self.z)
         self.draw_texture()
         instructions = self._draw_operations[:]
 
@@ -524,7 +524,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self.theme.draw_texture()
         
     def pack(self, modifiers=None):        
-        organizer = objects[self.sdl_window + "->Organizer"]
+        organizer = objects[self.sdl_window + "/Organizer"]
         organizer.pack(self)
         if modifiers:
             for attribute, value in modifiers.items():
@@ -575,7 +575,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 
     def delete(self):
         self.pack_mode = None # clear Organizer cache        
-        objects[self.sdl_window + "->SDL_User_Input"]._remove_from_coordinates(self.reference) 
+        objects[self.sdl_window + "/SDL_User_Input"]._remove_from_coordinates(self.reference) 
         self.texture_invalid = True
         self.theme.delete()
         super(Window_Object, self).delete()                

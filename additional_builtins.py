@@ -25,15 +25,22 @@ def slide(iterable, x=1):
         
 # used in way too many places. no need to bother importing utilities everywhere       
 def resolve_string(module_name):
-    """Given an attribute string of a.b...z, return the object z, importing 
+    """Given a string of a.b...z, return the object z, importing 
        any required packages and modules to access z.
        
        Alternatively, resolves a reference from the objects dictionary, and 
        potentially loads a specified attribute i.e.:
         
-        resolve_string("->Python") == objects["->Python"]
-        resolve_string("->User->Shell.logged_in") == objects["->User->Shell"].logged_in"""
-    if module_name[:2] == "->":
+        resolve_string("/Python") == objects["/Python"]
+        resolve_string("/User/Shell.logged_in") == objects["/User/Shell"].logged_in
+        
+       Can also be used to import modules:
+        
+        resolve_string("audioop")
+        
+       Put simply: given a string that points to an object, module, or 
+       attribute, return the object, module, or attribute specified. """
+    if module_name[0] == "/":
         try:
             reference, attribute = module_name.split('.', 1)
         except ValueError:
@@ -85,7 +92,7 @@ if is_version_two:
             
             For documentation of the standard CPython raw_input function, consult
             the python interpreter or the internet. """        
-        if getattr(objects.get("->Python->Interpreter", None), "_disable_raw_input", None):
+        if getattr(objects.get("/Python/Interpreter", None), "_disable_raw_input", None):
             raise RequestDenied("raw_input does not function remotely and would block")        
         if must_reply:
             reply = ''
@@ -124,8 +131,8 @@ def restart():
     
 def system_update():
     for reference, root_object in ((reference, _object) for reference, _object in 
-                                    objects.items() if reference.count("->") == 1):      
-        if reference not in ("->Finalizer", "->Alert_Handler"):            
+                                    objects.items() if reference.count("/") == 1):      
+        if reference not in ("/Finalizer", "/Alert_Handler"):            
             root_object.update(True)
     
 def shutdown():

@@ -197,7 +197,7 @@ class Authenticated_Service(pride.base.Base):
         decorators. Currently uses the secure remote password protocol
         for authentication. """
     defaults = {"allow_registration" : True, "allow_login" : True,
-                "protocol_component" : "->Python->Secure_Remote_Password",
+                "protocol_component" : "/Python/Secure_Remote_Password",
                 "database_name" : '', "login_message" : '', 
                 "login_fail_message" : "Invalid username or password",
                 "current_session" : (None, None), "session_id_size" : 256,
@@ -241,7 +241,7 @@ class Authenticated_Service(pride.base.Base):
         
     def _load_database(self):
         if not self.database_name:
-            _reference = '_'.join(name for name in self.reference.split("->") if name)
+            _reference = '_'.join(name for name in self.reference.split("/") if name)
             name = self.database_name = "{}.db".format(_reference)
         else:
             name = self.database_name
@@ -270,7 +270,7 @@ class Authenticated_Service(pride.base.Base):
                 cursor = database.cursor
                 registered = cursor.fetchone()
                 if not registered:       
-                    salt, password_verifier = objects["->Python->Secure_Remote_Password"].new_verifier(username, password)
+                    salt, password_verifier = objects["/Python/Secure_Remote_Password"].new_verifier(username, password)
                     authentication_table = Authentication_Table().save()
                     try:
                         database.insert_into("Credentials", 
@@ -319,7 +319,7 @@ class Authenticated_Service(pride.base.Base):
         registered = cursor.fetchone()
         if not registered:
             # pretend to go through login process with a fake verifier
-            srp = objects["->Python->Secure_Remote_Password"]
+            srp = objects["/Python/Secure_Remote_Password"]
             salt, verifier = srp.new_verifier(username, srp.new_salt(64))
             self.alert("Verifying unregistered user", 
                        level=self.verbosity["login_unregistered"])
@@ -374,7 +374,7 @@ class Authenticated_Service(pride.base.Base):
             self.alert("Failed to logout session id {} @ {}; not logged in",
                        (session_id, host_info), 
                        level=self.verbosity["logout_failure"])
-        objects["->Python->Secure_Remote_Password"].abort_login(username)
+        objects["/Python/Secure_Remote_Password"].abort_login(username)
         
     def validate(self, session_id, peername, method_name):
         """ Determines whether or not the peer with the supplied
@@ -473,7 +473,7 @@ class Authenticated_Client(pride.base.Base):
                 
         self.password_prompt = self.password_prompt.format(self.reference)
         self.session = self.create("pride.rpc.Session", '0', self.host_info)
-        name = self.reference.replace("->", '_')
+        name = self.reference.replace("/", '_')
         self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
         self.history_file = self.history_file or "{}_history.key".format(name)
         if self.auto_login:

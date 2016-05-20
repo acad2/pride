@@ -266,7 +266,7 @@ class Parser(object):
                 
                 is_back_delimited = (start - 1 >= 0 and source[start - 1] in back_delimit or start == 0)
                 is_forward_delimited = (end == source_length or source[end + 1] in forward_delimit)
-    #            print "->Found potential match: {} in ".format(symbol), source[start-1:end+1], is_back_delimited, is_forward_delimited
+    #            print "/Found potential match: {} in ".format(symbol), source[start-1:end+1], is_back_delimited, is_forward_delimited
                 if back_delimit:
                     if is_back_delimited:
                         if forward_delimit:
@@ -321,7 +321,7 @@ class Parser(object):
                 else:
                     _character = character
                 if character in delimiters:
-                    if _character == "->":
+                    if _character == "/":
                         ignore_count += 2
                     else:
         #                print "Found word delimiter: ", character, source[symbol_start:symbol_start + index + 1]

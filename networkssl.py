@@ -170,21 +170,24 @@ class SSL_Server(pride.network.Server):
             else:
                 self.alert("Usage of ssl requires certificates and key files.", level=0)
             if pride.shell.get_permission("{}: Generate a new self signed certificate and key now?: ".format(self.reference)):
-                filename = raw_input("Please provide the name for the .key, .crt, and .csr files: ", must_reply=True)
-                if not os.path.split(filename)[0]: # no directory supplied
+                filename = raw_input("(Optional) Please provide the filepaths for the .key, .crt, and .csr files: ")  
+                if not filename:
+                    filename = "ssl_server"
+                if not os.path.split(filename)[0]: # no directory supplied or no filename
                     filename = os.path.join(pride.site_config.PRIDE_DIRECTORY, filename)
-                
+                                        
                 self.create("pride.programs.create_self_signed_certificate.Self_Signed_Certificate", name=filename)
                 self.alert("Self signed certificate generated; Continuing.", 
                            level=self.verbosity["certfile_generated"])
                 self.certfile = filename + ".crt"
                 self.keyfile = filename + ".key"
-                if self.update_site_config_on_new_certfile:                    
-                    with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
-                        print "Writing certfile info to site config"                        
-                        _file.write("\npride_rpc_Rpc_Server_defaults = " +
-                                    '{' + "'certfile' : r'{}.crt', 'keyfile' : r'{}.key'".format(filename, filename) + "}\n")                              
-                        _file.flush()          
+                
+                if (self.update_site_config_on_new_certfile and
+                    not hasattr(pride.site_config, "pride_rpc_Rpc_Server_defaults")):
+                    
+                    pride.site_config.write_to("pride_rpc_Rpc_Server_defaults", 
+                                               certfile=r"{}.crt".format(filename),
+                                               keyfile=r"{}.key".format(filename))       
             else:
                 raise ValueError("pride.network.SSL_Server requires a certificate and key;" +
                                  " Unable to load certificate file; Unable to continue")            

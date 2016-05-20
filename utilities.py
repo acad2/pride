@@ -268,7 +268,7 @@ def test_pack_unpack():
     assert _extra_data == extra_data             
     
 def test_isancestor_isdescendant():
-    descendant = objects["->Python->Rpc_Server->Rpc_Socket"]
-    ancestor = objects["->Python"]
+    descendant = objects["/Python/Rpc_Server/Rpc_Socket"]
+    ancestor = objects["/Python"]
     assert isancestor(ancestor, descendant)
     assert isdescendant(descendant, ancestor)

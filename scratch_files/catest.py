@@ -208,4 +208,4 @@ class Ca_Test3(pride.vmlibrary.Process):
 
                 
 if __name__ == "__main__":
-    pride.Instruction("->Python", "create", Ca_Test2).execute()
+    pride.Instruction("/Python", "create", Ca_Test2).execute()

@@ -255,11 +255,11 @@ class File(base.Wrapper):
             self.delete()
         else:
             raise ValueError("File type '{}' does not exist on file system".format(self.file_type))
-        pride.objects["->Python->File_System"].delete_file(self.filename)
+        pride.objects["/Python/File_System"].delete_file(self.filename)
                 
         
 class Database_File(File):
-    """ A file that persists in the ->Python->File_System when saved or flushed.
+    """ A file that persists in the /Python/File_System when saved or flushed.
         Standard read/write/seek operations take place with a file like object
         of type file_type. Data is manipulated in memory and is only saved to the 
         database when flush or save is called. 
@@ -282,7 +282,7 @@ class Database_File(File):
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)        
-        data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, 
+        data, tags = pride.objects["/Python/File_System"]._open_file(self.filename, self.mode, 
                                                                        self.tags, self.indexable)
         filename = {"filename" : self.filename}
         if tags != self.tags:
@@ -290,11 +290,11 @@ class Database_File(File):
                 self.delete_from(old_tag, where=filename)
         self.tags = self.tags or tags
         if self.encrypted and data:
-            data, _filename = pride.objects["->User"].decrypt(data)
+            data, _filename = pride.objects["/User"].decrypt(data)
             if self.indexable:
                 assert _filename == filename["filename"], (_filename, filename["filename"])
             else:                                               
-                filename = objects["->Python->File_System"]._hash(filename["filename"])
+                filename = objects["/Python/File_System"]._hash(filename["filename"])
                 assert _filename == filename, (_filename, filename)
                 
         self.file.write(data)
@@ -322,17 +322,17 @@ class Database_File(File):
         self.delete()
         
     def save(self):
-        """ Saves file contents and metadata to ->Python-File_System. """
+        """ Saves file contents and metadata to /Python-File_System. """
         file = self.file
         backup_position = file.tell()
         file.seek(0)        
-        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
+        pride.objects["/Python/File_System"].save_file(self.filename, file.read(), 
                                                          self.tags, self.encrypted,
                                                          self.indexable)                                                       
         file.seek(backup_position)
         
     def delete_from_filesystem(self):
-        pride.objects["->Python->File_System"].delete_file(self.filename)
+        pride.objects["/Python/File_System"].delete_file(self.filename)
         self.delete()
         
         
@@ -359,7 +359,7 @@ class File_System(pride.database.Database):
                 self.create_table(tag, ("filename TEXT PRIMARY_KEY", ))
     
     def _hash(self, filename):
-        user = objects["->User"]
+        user = objects["/User"]
         hasher = pride.security.hash_function(self.hash_function)
         assert user.file_system_key, filename
         assert user.salt, filename
@@ -373,7 +373,7 @@ class File_System(pride.database.Database):
             filename = self._hash(filename)                    
             
         if encrypt and data:
-            data = objects["->User"].encrypt(data, extra_data=filename)
+            data = objects["/User"].encrypt(data, extra_data=filename)
                
         file_info.update({"date_modified" : now, "date_created" : now, "data" : data, 
                          "file_type" : os.path.splitext(filename)[-1] if indexable else ''})

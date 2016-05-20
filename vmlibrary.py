@@ -198,7 +198,7 @@ class Processor(Process):
                         exception_alert((component_name, method, format_traceback()))
                
 
-class Idle_Process(pride.vmlibrary.Process):
+class Idle_Process(Process):
     
     defaults = {"priority" : 300.0}
     

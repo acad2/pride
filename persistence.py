@@ -24,7 +24,7 @@ def load_data(packed_data):
         size = int(size)
         output.append(unpack_data(packed_data[:size]))
         packed_data = packed_data[size:]
-    return tuple(output) if len(output) >1 else output[0]
+    return tuple(output) if len(output) > 1 else output[0]
         
 def pack_data(arg):
     """ Pack arguments into a stream, prefixed by size headers.
@@ -35,7 +35,7 @@ def pack_data(arg):
         The returned bytestream can be unpacked via unpack_data to
         return the original contents, in order. """       
     if isinstance(arg, BaseException):        
-        arg_string = _TYPE_SYMBOL[BaseException] + type(arg).__name__
+        arg_string = _TYPE_SYMBOL[BaseException] + pack_data((type(arg).__name__, arg.args))
     elif isinstance(arg, tuple) or isinstance(arg, list) or isinstance(arg, set):
         types = []
         sizes = []
@@ -64,11 +64,12 @@ def unpack_data(packed_data):
     if _type == _TYPE_SYMBOL[BaseException]:        
         # is it safe to do this? I feel like it should be; if an attacker has
         # control over the exceptions module, we've probably already lost
+        exception_type, args = unpack_data(packed_data[1:])
         try:
-            data = getattr(exceptions, packed_data[1:])()
+            data = getattr(exceptions, exception_type)(*args)
         except AttributeError:
             import pride.errors
-            data = getattr(pride.errors, packed_data[1:])()
+            data = getattr(pride.errors, exception_type)(*args)
         
     elif _type in (_TYPE_SYMBOL[tuple], _TYPE_SYMBOL[list], _TYPE_SYMBOL[set]):      
         data = []

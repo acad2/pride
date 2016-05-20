@@ -81,7 +81,7 @@ def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
     random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
     ratio = []
-    block_size = 16
+    block_size = seedsize
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
         index = slice(block_number * block_size, (block_number + 1) * block_size)
         ratio.append(hamming_distance(block_one, random_bytes2[index]))
@@ -249,7 +249,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
     test_for_involution(encrypt_method, blocksize, key, iv)
     
     if avalanche_test:
-        #test_avalanche_of_key(encrypt_method, iv, keysize)
+        test_avalanche_of_key(encrypt_method, iv, keysize)
         test_avalanche_of_seed(encrypt_method, key, len(iv), "iv")
                
     random_bytes = None

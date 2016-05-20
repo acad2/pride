@@ -66,7 +66,7 @@ class Socket_Error_Handler(pride.base.Base):
         else:            
             sock.timeout_count -= 1
             sock.alert("Waiting...", level=sock.verbosity["timeout_reset"])
-            objects["->Python->Network"].connecting.add(sock)
+            objects["/Python/Network"].connecting.add(sock)
        
        
 class Socket(base.Wrapper):
@@ -154,7 +154,7 @@ class Socket(base.Wrapper):
         else:
             self.setblocking(self.blocking)           
         try:
-            objects["->Python->Network"].add(self)
+            objects["/Python/Network"].add(self)
         except KeyError:
             self.alert("Network component does not exist", 
                        level=self.verbosity["network_nonexistant"])
@@ -224,7 +224,7 @@ class Socket(base.Wrapper):
 #        assert not self.closed
         if self.bypass_network_stack:
             if not self._endpoint_reference:                
-                self._endpoint_reference = pride.objects["->Python->Network_Connection_Manager"].socket_reference[self.peername]
+                self._endpoint_reference = pride.objects["/Python/Network_Connection_Manager"].socket_reference[self.peername]
             instance = pride.objects[self._endpoint_reference]
             instance._local_data += data
             try:
@@ -258,7 +258,7 @@ class Socket(base.Wrapper):
                 self._started_connecting_at = pride.utilities.timestamp()
                 #self.latency = pride.datastructures.Latency(size=10)
                 self._connecting = True
-                objects["->Python->Network"].connecting.add(self)
+                objects["/Python/Network"].connecting.add(self)
             else:
                 raise
         else:
@@ -281,9 +281,9 @@ class Socket(base.Wrapper):
     
     def close(self):
         self.alert("Closing", level=self.verbosity["close"])
-    #    objects["->Python->Network"].remove(self)
+    #    objects["/Python/Network"].remove(self)
         if self._saved_in_attribute:
-            connection_manager = objects["->Python->Network_Connection_Manager"]
+            connection_manager = objects["/Python/Network_Connection_Manager"]
             sockname = self.sockname
             #import pprint
             #print self, "Removing from connection manager"
@@ -313,7 +313,7 @@ class Socket(base.Wrapper):
         self.settimeout(self.timeout)                
         
         try:
-            pride.objects["->Python->Network"].add(self)
+            pride.objects["/Python/Network"].add(self)
         except KeyError: 
             self.alert("Network unavailable")
             
@@ -375,7 +375,7 @@ class Tcp_Socket(Socket):
                      
     def on_connect(self):
         super(Tcp_Socket, self).on_connect()
-        connection_manager = pride.objects["->Python->Network_Connection_Manager"]
+        connection_manager = pride.objects["/Python/Network_Connection_Manager"]
         sockname = self.sockname
         connection_manager.socket_reference[sockname] = self.reference
         connection_manager.inbound_connections[sockname] = self.peername
@@ -402,7 +402,7 @@ class Server(Tcp_Socket):
 #        self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, self.reuse_port)
         self.bind((self.interface, self.port))
         self.listen(self.backlog)
-        pride.objects["->Python->Network_Connection_Manager"].servers[(self.interface, self.port)] = self.reference
+        pride.objects["/Python/Network_Connection_Manager"].servers[(self.interface, self.port)] = self.reference
         
     def on_select(self):
         try:
@@ -453,7 +453,7 @@ class Tcp_Client(Tcp_Socket):
 
     def on_connect(self):
         super(Tcp_Client, self).on_connect()               
-        connection_manager = objects["->Python->Network_Connection_Manager"]
+        connection_manager = objects["/Python/Network_Connection_Manager"]
         sockname = self.sockname
         connection_manager.socket_reference[sockname] = self.reference
         connection_manager.outbound_connections[sockname] = self.peername

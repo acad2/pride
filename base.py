@@ -20,10 +20,10 @@ __all__ = ["DeleteError", "AddError", "load", "Base", "Reactor", "Wrapper", "Pro
 
 def rebuild_object(saved_data):
     """ usage: load(saved_data) => restored_instance, attributes """
-    user = pride.objects["->User"]
+    user = pride.objects["/User"]
     attributes = user.load_data(saved_data)
     repo_id = user.generate_tag(user.username)
-    version_control = pride.objects["->Python->Version_Control"]
+    version_control = pride.objects["/Python/Version_Control"]
     _required_modules = []
     module_info = attributes.pop("_required_modules")
     class_name = module_info.pop()
@@ -77,7 +77,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         - A reference attribute, which provides access to the object from any context. 
             - References are human readable strings indicating the name of an object.
             - References are mapped to objects in the pride.objects dictionary.          
-            - An example reference looks like "->Python->File_System". 
+            - An example reference looks like "/Python/File_System". 
             - Initial objects have no number appended to the end. The 0 is implied.
                 - Explicit is better then implicit, but for some objects, it 
                   makes no sense to have multiple copies, so enumerating them
@@ -256,7 +256,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         self.references_to = []
         parent_name = self.parent_name = pride._last_creator
         instance_count = 0   
-        _name = name = parent_name + "->" + self.__class__.__name__              
+        _name = name = parent_name + "/" + self.__class__.__name__              
         while name in objects:
             instance_count += 1
             name = _name + str(instance_count)
@@ -426,7 +426,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
                 [code]
                 message = 'string stuff {} and more string stuff {}'.format(variable1, variable2)
                 my_object.alert(message, level=level)[/code]""" 
-        alert_handler = objects["->Alert_Handler"]               
+        alert_handler = objects["/Alert_Handler"]               
         message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
@@ -476,8 +476,8 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
                 attribute_type[key] = "saved"  
         
         required_modules = pride.module_utilities.get_all_modules_for_class(self.__class__)
-        version_control = objects["->Python->Version_Control"]     
-        user = objects["->User"]
+        version_control = objects["/Python/Version_Control"]     
+        user = objects["/User"]
         hash_function = user.generate_tag
         repo_id = hash_function(user.username)
         _required_modules = []
@@ -488,7 +488,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             
         attributes["_required_modules"] = _required_modules + [self.__class__.__name__]        
         try:
-            saved_data = pride.objects["->User"].save_data(attributes)
+            saved_data = pride.objects["/User"].save_data(attributes)
         except TypeError:
             self.alert("Unable to save attributes '{}'".format(pprint.pformat(attributes)), level=0)
             raise

@@ -246,6 +246,6 @@ def test_srp():
   
 if __name__ == "__main__":
     if "Secure_Remote_Password" not in pride.objects:
-        pride.objects["->Python"].create(Secure_Remote_Password)
+        pride.objects["/Python"].create(Secure_Remote_Password)
     if test_srp():
         print "SRP Success"    

@@ -54,12 +54,12 @@ class Database(pride.base.Wrapper):
     def __init__(self, **kwargs):
         super(Database, self).__init__(**kwargs)
         self.database_name = self.database_name or os.path.join(pride.site_config.PRIDE_DIRECTORY,
-                                                                (self.reference.replace("->", '_') + ".db"))
+                                                                (self.reference.replace("/", '_') + ".db"))
         connection, self.cursor = self.open_database(self.database_name, 
                                                      self.text_factory)
         self.wraps(connection)
         try:
-            pride.objects["->Finalizer"].add_callback((self.reference, "delete"))
+            pride.objects["/Finalizer"].add_callback((self.reference, "delete"))
         except KeyError:
             self.alert("Unable to queue finalizer callback", 
                        level=self.verbosity["finalizer_unvailable"])

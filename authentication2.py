@@ -173,7 +173,7 @@ class Authenticated_Service(pride.base.Base):
                 
     def _load_database(self):
         if not self.database_name:
-            _reference = '_'.join(name for name in self.reference.split("->") if name)
+            _reference = '_'.join(name for name in self.reference.split("/") if name)
             name = self.database_name = os.path.join(pride.site_config.PRIDE_DIRECTORY,
                                                      "{}.db".format(_reference))
         else:
@@ -374,7 +374,7 @@ class Authenticated_Client(pride.base.Base):
                 "hkdf_table_update_info_string" : "Authentication Table Update",
                 
                 # non security related options
-                "target_service" : "->Python->Authenticated_Service",
+                "target_service" : "/Python/Authenticated_Service",
                 "username_prompt" : "{}: Please provide the user name for {}@{}: ",
                 "password_prompt" : "{}: Please provide the pass phrase or word for {}@{}: ",
                 "ip" : "localhost", "port" : 40022, "auto_login" : True, 
@@ -439,12 +439,11 @@ class Authenticated_Client(pride.base.Base):
         self._registering = False
         
         if pride.shell.get_permission("{}: Insert username into site_config?: ".format(self.reference)):
-            with open(pride.site_config.SITE_CONFIG_FILE, 'a') as _file:
-                module = self.__module__.replace('.', '_')
-                line = "\n" + '_'.join(module, self.__class__.__name__, "defaults") + " = {"
-                _file.write(line + "'username' : '{}'".format(self.username) + "}\n")
-                _file.flush()
-                
+            entry = '_'.join((self.__module__.replace('.', '_'),
+                              self.__class__.__name__,
+                              "defaults"))                            
+            pride.site_config.write_to(entry, username=self.username)
+
         if self.auto_login:
             self.login()
         else:
@@ -581,15 +580,15 @@ class Authenticated_Client(pride.base.Base):
         #    self.login()
         
 def test_Authenticated_Service2():
-    service = objects["->Python"].create(Authenticated_Service)
-    client = objects["->Python"].create(Authenticated_Client, auto_login=False)
+    service = objects["/Python"].create(Authenticated_Service)
+    client = objects["/Python"].create(Authenticated_Client, auto_login=False)
     client.register()
     Instruction(client.reference, "login").execute(priority=2.5)
     
 if __name__ == "__main__":
-    peer = objects["->Python"].create(Authenticated_Peer, target_service="->Python->Peer1")
-    peer1 = objects["->Python"].create(Authenticated_Peer, target_service="->Python->Peer")
-    client = peer.create(Authenticated_Client, target_service="->Python->Peer1", auto_login=False)
+    peer = objects["/Python"].create(Authenticated_Peer, target_service="/Python/Peer1")
+    peer1 = objects["/Python"].create(Authenticated_Peer, target_service="/Python/Peer")
+    client = peer.create(Authenticated_Client, target_service="/Python/Peer1", auto_login=False)
     client.register()
     #peer1.current_session = ("localhost", 40022)
     #peer1.on_login()

@@ -11,20 +11,22 @@ def main():
     import pride.interpreter
     running = True
     while running:
-        assert "->Python" not in pride.objects
+        assert "/Python" not in pride.objects
         python = pride.interpreter.Python(parse_args=True)                
         try:            
             python.start_machine()                
         except BaseException as error:                        
             running = False            
-            pride.objects["->Finalizer"].run()            
+            print "RUNNING FINALIZER"
+            pride.objects["/Finalizer"].run()            
+            print error, type(error)
             if isinstance(error, SystemExit) or isinstance(error, KeyboardInterrupt):
-                python.alert("Session shutdown intiated... ", level=python.verbosity["shutdown"])                
+                python.alert("Session shutdown intiated... ", level=python.verbosity["shutdown"])                   
                 if getattr(error, "code", '') == "Restart":
                     try:
-                        pride.objects["->User"].delete()
+                        pride.objects["/User"].delete()
                     except KeyError:
-                        if "->User" in pride.objects:
+                        if "/User" in pride.objects:
                             raise
                     python.alert("Initiating restart.. ", level=python.verbosity["restart"])        
                     python.delete()

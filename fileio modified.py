@@ -253,11 +253,11 @@ class File(base.Wrapper):
             self.delete()
         else:
             raise ValueError("File type '{}' does not exist on file system".format(self.file_type))
-        pride.objects["->Python->File_System"].delete_file(self.filename)
+        pride.objects["/Python/File_System"].delete_file(self.filename)
                 
         
 class Database_File(File):
-    """ A file that persists in the ->Python->File_System when saved or flushed.
+    """ A file that persists in the /Python/File_System when saved or flushed.
         Standard read/write/seek operations take place with a file like object
         of type file_type. Data is manipulated in memory and is only saved to the 
         database when flush or save is called. 
@@ -280,7 +280,7 @@ class Database_File(File):
         
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)
-        data, tags = pride.objects["->Python->File_System"]._open_file(self.filename, self.mode, 
+        data, tags = pride.objects["/Python/File_System"]._open_file(self.filename, self.mode, 
                                                                        self.tags, self.indexable,
                                                                        self.authenticated)
         filename = {"filename" : self.filename}
@@ -290,7 +290,7 @@ class Database_File(File):
         self.tags = self.tags or tags
         if self.encrypted and data:
             try:
-                data = pride.objects["->User"].decrypt(data)
+                data = pride.objects["/User"].decrypt(data)
             except KeyError:
                 self.alert("Unable to decrypt '{}'; User not logged in".format(filename), level=0)
 
@@ -315,17 +315,17 @@ class Database_File(File):
         self.file.flush()
         
     def save(self):
-        """ Saves file contents and metadata to ->Python-File_System. """
+        """ Saves file contents and metadata to /Python-File_System. """
         file = self.file
         backup_position = file.tell()
         file.seek(0)
-        pride.objects["->Python->File_System"].save_file(self.filename, file.read(), 
+        pride.objects["/Python/File_System"].save_file(self.filename, file.read(), 
                                                          self.tags, self.encrypted,
                                                          self.indexable, self.authenticated)                                                       
         file.seek(backup_position)
         
     def delete_from_filesystem(self):
-        pride.objects["->Python->File_System"].delete_file(self.filename)
+        pride.objects["/Python/File_System"].delete_file(self.filename)
         self.delete()
         
         
@@ -355,7 +355,7 @@ class File_System(pride.database.Database):
                   authenticated=True, save_metadata=True):      
         print "SAVING: ", filename
         _filename = filename
-        user = objects["->User"]
+        user = objects["/User"]
         if not indexable:            
             hasher = pride.security.hash_function(self.hash_function)
             hasher.update(user.file_system_key + user.salt + filename)            
@@ -380,7 +380,7 @@ class File_System(pride.database.Database):
                 self.insert_into(tag, (filename, )) 
         if authenticated:
             assert user.mac_key
-            mac = pride.security.generate_mac(objects["->User"].mac_key, "Files" + filename + data)
+            mac = pride.security.generate_mac(objects["/User"].mac_key, "Files" + filename + data)
             print "Generated tag for: ", _filename
             print
             print mac
@@ -403,7 +403,7 @@ class File_System(pride.database.Database):
     def _open_file(self, filename, mode, tags, indexable, authenticated):
         print "OPENING: ", filename
         _filename = filename
-        user = objects["->User"]
+        user = objects["/User"]
         if not indexable:            
             hasher = pride.security.hash_function(self.hash_function)
             hasher.update(user.file_system_key + user.salt + filename)
@@ -429,9 +429,9 @@ class File_System(pride.database.Database):
                 print
                 print result[1]
                 print
-                print pride.security.generate_mac(objects["->User"].mac_key, "Files" + filename + result[0])
+                print pride.security.generate_mac(objects["/User"].mac_key, "Files" + filename + result[0])
                 
-                if not pride.security.verify_mac(objects["->User"].mac_key, result[1], "Files" + filename + result[0]):
+                if not pride.security.verify_mac(objects["/User"].mac_key, result[1], "Files" + filename + result[0]):
                     raise pride.security.InvalidTag()
             return (result[0], result[2])
         else:

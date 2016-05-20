@@ -31,7 +31,7 @@ class SDL_Window(SDL_Component):
                 'position' : (0, 0), 'x' : 0, 'y' : 0, 'z' : 0,
                 'w' : pride.gui.SCREEN_SIZE[0], 'h' : pride.gui.SCREEN_SIZE[1],
                 "area" : (0, 0) + pride.gui.SCREEN_SIZE, "priority" : .04,
-                "name" : "->Python", "texture_access_flag" : sdl2.SDL_TEXTUREACCESS_TARGET,            
+                "name" : "/Python", "texture_access_flag" : sdl2.SDL_TEXTUREACCESS_TARGET,            
                 "renderer_flags" : sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_TARGETTEXTURE,
                 "window_flags" : None} #sdl2.SDL_WINDOW_BORDERLESS, # | sdl2.SDL_WINDOW_RESIZABLE   
     
@@ -67,7 +67,7 @@ class SDL_Window(SDL_Component):
                                        (self.size[0] * 10, self.size[1] * 10),
                                        access=self.texture_access_flag)
         
-        objects["->Finalizer"].add_callback((self.reference, "delete"))
+        objects["/Finalizer"].add_callback((self.reference, "delete"))
                         
     def invalidate_object(self, instance):
         if not self.running:
@@ -143,7 +143,7 @@ class SDL_Window(SDL_Component):
             if hasattr(child, "pack") and child is not self.organizer:
                 child.delete()
         super(SDL_Window, self).delete()
-        objects["->Finalizer"].remove_callback((self.reference, "delete"))
+        objects["/Finalizer"].remove_callback((self.reference, "delete"))
         pride.Instruction.purge(self.reference)
 
         
@@ -355,7 +355,7 @@ class SDL_User_Input(vmlibrary.Process):
 
     def handle_quit(self, event):
         self.parent.delete()
-        if "->User->Shell" not in pride.objects:
+        if "/User/Shell" not in pride.objects:
             raise SystemExit()
             
     def handle_mousebuttondown(self, event):        
@@ -432,9 +432,9 @@ class SDL_User_Input(vmlibrary.Process):
             instance = pride.objects[self.active_item]
         except KeyError:
             if self.active_item is not None:
-                self.alert("No instance '{}' to handle keystrokes".format(self.active_item), level='v')
+                self.alert("No instance of '{}' to handle keystrokes".format(self.active_item), level='v')
             else:
-                raise
+                self.alert("Active item is None; unable to handle keystrokes", level='v')
             return
             
         key_value = event.key.keysym.sym

@@ -46,7 +46,7 @@ class Function(pride.base.Wrapper):
         if self._keywords:
             _locals[self._keywords] = kwargs
         frame = Stack_Frame(_locals, self)
-        return objects["->Bytecode_Interpreter"].execute_code(self._code, frame)
+        return objects["/Bytecode_Interpreter"].execute_code(self._code, frame)
     
 class Stack_Frame(object):
     

@@ -46,7 +46,7 @@ class Navigation_Bar(pride.gui.gui.Container):
         self.create(History_Dropdown)
         self.create(Ascend_Button)
         self.create(Search_Bar, 
-                    callback=(self.parent_application.reference + "->Directory_Viewer",
+                    callback=(self.parent_application.reference + "/Directory_Viewer",
                               "handle_input"))
         
    
@@ -57,7 +57,7 @@ class Back_Button(pride.gui.widgetlibrary.Method_Button):
     
 class Forward_Button(pride.gui.widgetlibrary.Method_Button):
         
-    defaults = {"text" : "->", "method" : "forward", "pack_mode" : "left"}
+    defaults = {"text" : "/", "method" : "forward", "pack_mode" : "left"}
        
 
 class History_Dropdown(pride.gui.widgetlibrary.Popup_Button):

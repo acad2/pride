@@ -230,7 +230,7 @@ class Persistent_Object(pride.base.Base):
                 packed_struct = self.memory[:self.struct_size]
             except AttributeError:
                 reference = value if attribute == "reference" else self.reference
-                with open(reference.replace("->", '_'), 'a+b') as _file:
+                with open(reference.replace("/", '_'), 'a+b') as _file:
                     self.memory = mmap.mmap(_file.fileno(), 65535)
                 structure = new_struct_type(self.reference)()
             else:

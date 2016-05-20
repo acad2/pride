@@ -58,7 +58,7 @@ def cbc_padding(datasize, blocksize):
 def encrypt(data, cipher, iv, tag=None, tweak=None):
     #data = bytearray(data)
     mode = cipher.mode    
-    blocksize = cipher.blocksize
+    blocksize = cipher.blocksize    
     datasize = len(data)
     if mode == "ella" and tag is None:
         raise ValueError("Tag not supplied")
@@ -149,12 +149,22 @@ class Cipher(object):
     @classmethod
     def test_encrypt_decrypt(cls, *args, **kwargs):
         cipher = cls(*args, **kwargs)
-        message = "\x00" * 16
-        iv = "\x00" * 16
+        message = "\x00" * cipher.blocksize
+        iv = "\x00" * cipher.blocksize
         tag = [0 for byte in range(16)]
+        key = args[0]
+        
+        ciphertext_block = bytearray(message)
+        cipher.encrypt_block(ciphertext_block, key, tag, None)        
+                
+        plaintext_block = ciphertext_block[:]
+        cipher.decrypt_block(plaintext_block, key, tag, None)        
+        assert plaintext_block == message, (plaintext_block, message)
+        
         ciphertext = cipher.encrypt(message, iv, tag)        
         plaintext = cipher.decrypt(ciphertext, iv, tag)
         assert message == plaintext, (message, plaintext)
+        print "Passed encrypt/decrypt test"
         
 #class Test_Cipher(Cipher):
 #    

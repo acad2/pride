@@ -67,9 +67,9 @@ class Black_Box_Service(pride.authentication2.Authenticated_Service):
         
 class Black_Box_Client(pride.authentication2.Authenticated_Client):
                     
-    defaults = {"target_service" : "->Python->Black_Box_Service", 
+    defaults = {"target_service" : "/Python/Black_Box_Service", 
                 "mouse_support" : False, "refresh_interval" : .95,
-                "audio_support" : False, "audio_source" : "->Python->Audio_Manager->Audio_Input",
+                "audio_support" : False, "audio_source" : "/Python/Audio_Manager/Audio_Input",
                 "microphone_on" : False,
                 "response_methods" : ("handle_response_draw", )}
                 
@@ -78,7 +78,7 @@ class Black_Box_Client(pride.authentication2.Authenticated_Client):
         
     def __init__(self, **kwargs):
         super(Black_Box_Client, self).__init__(**kwargs)
-        pride.objects["->User->Command_Line"].set_default_program(self.reference, (self.reference, "handle_keyboard_input"))                 
+        pride.objects["/User/Command_Line"].set_default_program(self.reference, (self.reference, "handle_keyboard_input"))                 
         if self.mouse_support:
             pride.objects[self.sdl_window].create("pride.gui.blackbox.Client_Window", client=self.reference)
             self.refresh_instruction = pride.Instruction(self.reference, "_refresh")
@@ -130,12 +130,12 @@ def test_black_box_service():
     import pride.gui
     import pride.audio
     try:
-        pride.objects["->User->Command_Line"]
+        pride.objects["/User/Command_Line"]
     except KeyError:
-        pride.objects["->User"].create("pride.shell.Command_Line")    
+        pride.objects["/User"].create("pride.shell.Command_Line")    
     window = pride.gui.enable()
     pride.audio.enable()
-    service = pride.objects["->Python"].create(Black_Box_Service)
+    service = pride.objects["/Python"].create(Black_Box_Service)
     client = Black_Box_Client(username="localhost", sdl_window=window, mouse_support=True, audio_support=True)    
     
 if __name__ == "__main__":

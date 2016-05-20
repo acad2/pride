@@ -28,7 +28,7 @@ class Random_Oracle(pride.authentication2.Authenticated_Service):
 
 class Random_Oracle_Client(pride.authentication2.Authenticated_Client):
      
-    defaults = {"target_service" : "->Random_Oracle"}
+    defaults = {"target_service" : "/Random_Oracle"}
     verbosity = {"hash" : 0}
     
     @pride.authentication2.remote_procedure_call(callback_name="alert")

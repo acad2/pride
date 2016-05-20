@@ -103,7 +103,7 @@ class Graph(pride.gui.gui.Application):
             
 class Audio_Visualizer(Graph):
                 
-    defaults = {"audio_input" : "->Python->Audio_Manager->Audio_Input",
+    defaults = {"audio_input" : "/Python/Audio_Manager/Audio_Input",
                 "draw_average" : False, "draw_lines" : False, "step_size" : 8}
     
     def __init__(self, **kwargs):

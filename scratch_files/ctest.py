@@ -1,6 +1,6 @@
 import itertools
 def grouper(n, iterable, padvalue=None):
-    """grouper(3, 'abcdefg', 'x') --> ('a','b','c'), ('d','e','f'), ('g','x','x')"""
+    """grouper(3, 'abcdefg', 'x') -/ ('a','b','c'), ('d','e','f'), ('g','x','x')"""
     return itertools.izip_longest(*[iter(iterable)]*n, fillvalue=padvalue)
     
 def convert(old_value, old_base, new_base):

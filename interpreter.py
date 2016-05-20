@@ -31,7 +31,7 @@ class Shell(authentication2.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
     defaults = {"username" : "", "password" : "", "startup_definitions" : '', 
-                "target_service" : "->Python->Interpreter"}   
+                "target_service" : "/Python/Interpreter"}   
     
     verbosity = {"login" : 0, "execute_source" : "vv"}
                 
@@ -79,7 +79,7 @@ class Interpreter(authentication2.Authenticated_Service):
     def __init__(self, **kwargs):
         super(Interpreter, self).__init__(**kwargs)
         filename = os.path.join(pride.site_config.PRIDE_DIRECTORY, 
-                                '_'.join(word for word in self.reference.split("->") if word))
+                                '_'.join(word for word in self.reference.split("/") if word))
         self.log = self.create("pride.fileio.File", 
                                "{}.log".format(filename), 'a+',
                                persistent=False).reference
@@ -109,7 +109,8 @@ class Interpreter(authentication2.Authenticated_Service):
             sys.stdout = _logger                          
             try:
                 exec code in globals()
-            except SystemExit:                    
+            except SystemExit:  
+                sys.stdout = backup
                 raise
             except: # we explicitly really do want to catch everything here   
                 _logger.seek(0)
@@ -190,9 +191,9 @@ class Python(base.Base):
                                     "shell_launcher.py")
         else:
             try:
-                machine_info_file = pride.objects["->Python->File_System"].open_file("machine_credentials.bin", 'r')
+                machine_info_file = pride.objects["/Python/File_System"].open_file("machine_credentials.bin", 'r')
             except IOError:
-                machine_info_file = pride.objects["->Python->File_System"].open_file("machine_credentials.bin", 'w')
+                machine_info_file = pride.objects["/Python/File_System"].open_file("machine_credentials.bin", 'w')
                 urandom = os.urandom
                 machine_id, key1, key2, key3, salt = urandom(16), urandom(16), urandom(16), urandom(16), urandom(16)
                 machine_info_file.write(machine_id + key1 + key2 + key3 + salt)

@@ -61,7 +61,7 @@ def is_affirmative(input, affirmative_words=("affirmative", "true")):
         else:
             is_positive = None
     return is_positive
-
+    
 class Command_Line(pride.vmlibrary.Process):
     """ Captures user input and provides the input to the specified or default program.
     
@@ -197,7 +197,7 @@ class Command_Line(pride.vmlibrary.Process):
 class Program(pride.base.Base):
             
     defaults = {"set_as_default" : False, "name" : '', 
-                "command_line" : "->User->Command_Line"}
+                "command_line" : "/User/Command_Line"}
 
     def _get_name(self):
         return self._name or self.reference
@@ -233,7 +233,7 @@ class Program(pride.base.Base):
         
 class Python_Shell(Program):
         
-    defaults = {"name" : "python", "shell" : "->User->Shell"}
+    defaults = {"name" : "python", "shell" : "/User/Shell"}
     
     flags = {"user_is_entering_definition" : False, "prompt" : ">>> ",
              "lines" : ''}
@@ -272,7 +272,7 @@ class Python_Shell(Program):
                     self.prompt = "... "
         else:
             self.lines = ''
-        objects["->User->Command_Line"].set_prompt(self.prompt)        
+        objects["/User/Command_Line"].set_prompt(self.prompt)        
         sys.stdout.write("\b" * 4 + self.prompt)
         sys.stdout.flush()
         
@@ -290,7 +290,7 @@ class Switch_Program(Program):
     defaults = {"name" : "switch"}
             
     def handle_input(self, input):
-        command_line = pride.objects["->User->Command_Line"]
+        command_line = pride.objects["/User/Command_Line"]
         if not input:
             input = "__default"
         _input = input.strip()
@@ -303,7 +303,7 @@ class Messenger_Program(Program):
     
     def handle_input(self, user_input):
         destination, message = user_input.split(':', 1)
-        objects["->Messenger_Client"].send_message(destination, message, 
+        objects["/Messenger_Client"].send_message(destination, message, 
                                                    self.reference)
         
         
@@ -379,7 +379,7 @@ class Matrix_Screensaver(Terminal_Screensaver):
         self.column += 1
         if self.column >= self.height:
             self.row = None            
-            objects["->User->Command_Line"].clear()
+            objects["/User/Command_Line"].clear()
             
             
 class CA_Screensaver(Terminal_Screensaver):
@@ -407,7 +407,7 @@ class CA_Screensaver(Terminal_Screensaver):
             current_state = (_bytearray[index - 1], byte, _bytearray[(index + 1) % size])
             new_bytearray[index] = _state[current_state]
         self.bytearray = new_bytearray
-        objects["->User->Command_Line"].clear()
+        objects["/User/Command_Line"].clear()
         sys.stdout.write(new_bytearray)            
         
         
@@ -465,7 +465,7 @@ class Wave_CAtest(Terminal_Screensaver):
                     
                 self.rows[new_y_coord][new_x_coord] = (x_magnitude, y_magnitude)
                 
-        objects["->User->Command_Line"].clear()
+        objects["/User/Command_Line"].clear()
         def decide_symbol(number):
             if number[0] or number[1]:
                 return str(number[0]) + str(number[1])

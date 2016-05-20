@@ -82,7 +82,7 @@ class Objects_Explorer(pride.gui.gui.Application):
         references = self.application_window.create("pride.gui.gui.Container", pack_mode="left", 
                                                              scroll_bars_enabled=True)
         viewer = self.object_attributes_viewer = self.application_window.create("pride.gui.gui.Container", pack_mode="right")
-        viewer.current_object = viewer.create("pride.gui.pyobjecttest.Object_Button", objects["->Python"]).reference
+        viewer.current_object = viewer.create("pride.gui.pyobjecttest.Object_Button", objects["/Python"]).reference
         
         for key, item in pride.objects.items():
             references.create("pride.gui.pyobjecttest.Object_Button", item, 
@@ -119,7 +119,7 @@ class Homescreen(gui.Application):
         self.application_window.create(Task_Bar, startup_components=("pride.gui.widgetlibrary.Date_Time_Button",
                                                   "pride.gui.widgetlibrary.Text_Box"))        
         self.application_window.create(Icon, popup_type=Objects_Explorer, text="Objects Explorer")
-        self.application_window.create(Program_Icon, program="->User->Command_Line->Python_Shell", text="Python")
+        self.application_window.create(Program_Icon, program="/User/Command_Line/Python_Shell", text="Python")
         
 
 class Task_Bar(gui.Container):

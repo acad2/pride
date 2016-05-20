@@ -83,7 +83,7 @@ class Session(pride.base.Base):
         request = pride.utilities.save_data(self.id, component, method, 
                                             DEFAULT_SERIALIZER.dumps((instruction.args, 
                                                                       instruction.kwargs)))
-        host = pride.objects["->Python->Rpc_Connection_Manager"].get_host(self.host_info) 
+        host = pride.objects["/Python/Rpc_Connection_Manager"].get_host(self.host_info) 
         # we have to insert at the beginning things will happen inline, and
         # must append to the end when network round trips with callbacks are used
         if host.bypass_network_stack and host._endpoint_reference:
@@ -218,7 +218,7 @@ class Rpc_Socket(Packet_Socket):
         
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)
-        self.rpc_workers = itertools.cycle(objects["->Python"].objects["Rpc_Worker"])
+        self.rpc_workers = itertools.cycle(objects["/Python"].objects["Rpc_Worker"])
         
     def on_ssl_authentication(self):
         if self.idle_after:
@@ -240,10 +240,11 @@ class Rpc_Socket(Packet_Socket):
             try:
                 result = next(self.rpc_workers).handle_request(peername, session_id, component_name,
                                                                method, serialized_arguments)                                    
-            except BaseException as result:
+            except BaseException as result:    
                 if ((isinstance(result, KeyError) and component_name not in pride.objects) or
                     (isinstance(result, AttributeError) and not hasattr(objects[component_name], "validate"))):
                     result = UnauthorizedError()                
+                    
                 elif not isinstance(result, UnauthorizedError):
                     stack_trace = traceback.format_exc()
                     result.traceback = stack_trace  
@@ -281,4 +282,5 @@ class Rpc_Worker(pride.base.Base):
             return instance.execute_remote_procedure_call(session_id, peername, method, args, kwargs)
         
     def deserealize(self, serialized_arguments):
-        return DEFAULT_SERIALIZER.loads(serialized_arguments)        
+        return DEFAULT_SERIALIZER.loads(serialized_arguments)  
+        

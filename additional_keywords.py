@@ -19,11 +19,11 @@ def _export(*args):
         raise ValueError("Unable to find module {}".format(module_name))
     
     ip = socket.gethostbyname(fqdn)      
-    for shell in pride.objects["->User"].objects["Shell"]:
+    for shell in pride.objects["/User"].objects["Shell"]:
         if shell.ip == ip:
             shell.handle_input(module_source)
             break
     else:
-        pride.objects["->User"].create("pride.interpreter.Shell", ip=ip, 
+        pride.objects["/User"].create("pride.interpreter.Shell", ip=ip, 
                                        startup_definitions=module_source)
                   

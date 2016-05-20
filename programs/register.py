@@ -17,14 +17,14 @@ class Registration(pride.base.Base):
 
     def __init__(self, **kwargs):
         super(Registration, self).__init__(**kwargs)
-        client = pride.objects["->Python"].create(self.authentication_client_name,
+        client = pride.objects["/Python"].create(self.authentication_client_name,
                                                   parse_args=True, auto_login=False,
                                                   _register_results=sys.exit)        
         client.register()                   
         
 if __name__ == "__main__":
     #import pride.user
-  #  pride.Instruction("->User", "create", Registration, parse_args=True).execute(priority=.011)    
+  #  pride.Instruction("/User", "create", Registration, parse_args=True).execute(priority=.011)    
     #user = pride.user.User()
     #python = pride.interpreter.Python()
     registration = Registration(parse_args=True)

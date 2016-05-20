@@ -60,7 +60,7 @@ class Message_Database(pride.database.Database):
                                         "sender BLOB", "data_metadata BLOB")}                                               
         
     def store_message(self, sender, message, timestamp):
-        user = pride.objects["->User"]
+        user = pride.objects["/User"]
         if not self.indexable:            
             assert user.file_system_key, sender
             assert user.salt, sender
@@ -71,7 +71,7 @@ class Message_Database(pride.database.Database):
                          columns=("sender", "data_metadata"))
         
     def retrieve_message(self, sender, message_id=None): 
-        user = pride.objects["->User"]
+        user = pride.objects["/User"]
         if not self.indexable:
             assert user.file_system_key, sender
             assert user.salt, sender

@@ -23,4 +23,4 @@ class Self_Signed_Certificate(pride.base.Base):
         
 if __name__ == "__main__":
     certificate = Self_Signed_Certificate(parse_args=True)    
-    Instruction("->Python", "exit").execute()
+    Instruction("/Python", "exit").execute()
