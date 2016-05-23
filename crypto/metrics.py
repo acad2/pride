@@ -245,7 +245,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
         pride.crypto.Cipher object or an object that supports an encrypt method
         that accepts plaintext bytes and key bytes and returns ciphertext bytes""" 
     keysize = len(key)
-    blocksize = blocksize if blocksize is not None else keysize
+    blocksize = blocksize if blocksize is not None else keysize    
     test_for_involution(encrypt_method, blocksize, key, iv)
     
     if avalanche_test:

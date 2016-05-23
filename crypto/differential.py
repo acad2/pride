@@ -21,6 +21,7 @@ def build_difference_distribution_table(sbox):
     for input_one in range(size):
         for input_two in range(input_one + 1, size):
             input_differential = input_one ^ input_two
+            
             output_differential = sbox[input_one] ^ sbox[input_two]
             try:
                 xor_difference_distribution_table[input_differential][output_differential] += 1

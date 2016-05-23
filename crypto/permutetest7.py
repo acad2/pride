@@ -1,22 +1,26 @@
-def permute(left_byte, right_byte, key_byte, modifier):                             
-    right_byte = (right_byte + key_byte + modifier) & 65535
-    left_byte = (left_byte + (right_byte >> 8)) & 65535
-    left_byte ^= ((right_byte >> 3) | (right_byte << (16 - 3))) & 65535
-    return left_byte, right_byte
+def permute(left, right, key, diffuser, bit_width_and_mask=(16, 65535)):
+    bit_width, mask = bit_width_and_mask
+    for round in range(4):
+        right = (right + key + diffuser) & mask
+        left = (left + (right >> 8)) & mask
+        left ^= ((right >> 3) | (right << (bit_width - 3))) & mask
+        
+        left, right = right, left
+    return left, right
     
 def diffusion_layer(data, _storage=[0] * 16): 
+    diffuser = 0
+    # build the diffuser, and pbox the data
     for byte_index in range(16):     
         mask = 32768 >> byte_index        
         _byte = 0        
         for byte_position in range(16):            
             _byte |= (((data[byte_position] & mask) << byte_index) >> byte_position)
-        _storage[byte_index] = _byte      
-    
-    diffuser = 0
-    for index in range(16):
-        byte = _storage[index]
-        diffuser ^= byte
-        data[index] = byte
+        _storage[byte_index] = _byte          
+        diffuser ^= _byte
+            
+    for index in range(16):                
+        data[index] = _storage[index]
     return diffuser
         
 def xor_with_key(data, key):    
