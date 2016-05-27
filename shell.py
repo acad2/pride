@@ -72,7 +72,7 @@ class Command_Line(pride.vmlibrary.Process):
                 "default_programs" : ("pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
                 "idle_threshold" : 10000, 
-                "screensaver_type" : "pride.shell.Random_Screensaver"}
+                "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):
         self._idle = True
@@ -384,7 +384,7 @@ class Matrix_Screensaver(Terminal_Screensaver):
             
 class CA_Screensaver(Terminal_Screensaver):
                 
-    defaults = {"storage_size" : 1024}
+    defaults = {"storage_size" : 80}
     
     next_state = {(1, 1, 1) : 1, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
                   (0, 1, 1) : 0, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
@@ -392,11 +392,16 @@ class CA_Screensaver(Terminal_Screensaver):
     rule_30 = {(1, 1, 1) : 0, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
                (0, 1, 1) : 1, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
            
+    _RULE_30 = [0, 1, 1, 1, 1, 0, 0, 0]
+    
+    def rule_30(byte1, byte2, byte3):
+        return _RULE_30[(byte1 << 2) | (byte2 << 1) | byte3]    
+    
     def __init__(self, **kwargs):
         super(CA_Screensaver, self).__init__(**kwargs)
-        self.bytearray = bytearray(1024)
-        self.bytearray[sum(ord(random._urandom(1)) for x in xrange(4))] = 1
-        self._state = CA_Screensaver.rule_30 if random._urandom(1) < 128 else CA_Screensaver.next_state
+        self.bytearray = bytearray(self.storage_size)
+        self.bytearray[sum(ord(random._urandom(1)) for x in xrange(4)) % self.storage_size] = 1
+        self._state = CA_Screensaver.rule_30 if ord(random._urandom(1)) < 128 else CA_Screensaver.next_state
         
     def run(self):
         _bytearray = self.bytearray
@@ -406,9 +411,10 @@ class CA_Screensaver(Terminal_Screensaver):
         for index, byte in enumerate(_bytearray):
             current_state = (_bytearray[index - 1], byte, _bytearray[(index + 1) % size])
             new_bytearray[index] = _state[current_state]
-        self.bytearray = new_bytearray
-        objects["/User/Command_Line"].clear()
+        self.bytearray = new_bytearray        
         sys.stdout.write(new_bytearray)            
+        sys.stdout.write("\n")
+        sys.stdout.flush()
         
         
 class Wave_CAtest(Terminal_Screensaver):
@@ -472,4 +478,5 @@ class Wave_CAtest(Terminal_Screensaver):
             else:
                 return '*'
         print '\n'.join((''.join(decide_symbol(number) for number in row) for row in self.rows))
+        
         

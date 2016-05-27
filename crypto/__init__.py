@@ -3,10 +3,10 @@
 # use to protect data in the real world.
 
 from utilities import slide, xor_subroutine, replacement_subroutine, cast
-from metrics import test_block_cipher
+from metrics import test_block_cipher, test_cipher_performance
 from pride.errors import InvalidTag
                 
-def cbc_encrypt(block, iv, key, cipher, tag=None, tweak=None): 
+def cbc_encrypt(block, iv, key, cipher, tag=None, tweak=None):     
     xor_subroutine(block, iv)        
     cipher(block, key, tag, tweak)        
     replacement_subroutine(iv, block)        
@@ -21,7 +21,7 @@ def ofb_mode(block, iv, key, cipher, tag=None, tweak=None):
     cipher(iv, key, tag, twak)        
     xor_subroutine(block, iv)
         
-def ctr_mode(block, iv, key, cipher, tag=None, tweak=None):
+def ctr_mode(block, iv, key, cipher, tag=None, tweak=None):    
     cipher(iv, key, tag, tweak)
     xor_subroutine(block, iv)    
     replacement_subroutine(iv, bytearray(cast(cast(cast(bytes(iv), "binary"), "integer") + 1, "bytes")))
@@ -122,8 +122,8 @@ class Cipher(object):
 
     def encrypt(self, data, iv=None, tag=None, tweak=None): 
         if self.mode != "ecb":
-            assert iv                          
-        data = bytearray(data)        
+            assert iv, (type(iv), iv)
+        data = bytearray(data)                
         iv = bytearray(iv or '')
         return encrypt(data, self, iv, tag, tweak)
                 
@@ -149,22 +149,30 @@ class Cipher(object):
     @classmethod
     def test_encrypt_decrypt(cls, *args, **kwargs):
         cipher = cls(*args, **kwargs)
-        message = "\x00" * cipher.blocksize
+        assert cipher.blocksize
+        message = "\x01" * cipher.blocksize
         iv = "\x00" * cipher.blocksize
         tag = [0 for byte in range(16)]
         key = args[0]
         
-        ciphertext_block = bytearray(message)
+        ciphertext_block = bytearray(message)        
         cipher.encrypt_block(ciphertext_block, key, tag, None)        
                 
         plaintext_block = ciphertext_block[:]
         cipher.decrypt_block(plaintext_block, key, tag, None)        
         assert plaintext_block == message, (plaintext_block, message)
-        
+                
         ciphertext = cipher.encrypt(message, iv, tag)        
         plaintext = cipher.decrypt(ciphertext, iv, tag)
         assert message == plaintext, (message, plaintext)
         print "Passed encrypt/decrypt test"
+    
+    @classmethod
+    def test_performance(cls, *args, **kwargs):       
+        sizes = kwargs.pop("test_sizes", (32, 1500, 4096, 65536))
+        cipher = cls(*args, **kwargs)
+        assert cipher.blocksize
+        test_cipher_performance(sizes, cipher.encrypt, cipher.key, "\x00" * cipher.blocksize)
         
 #class Test_Cipher(Cipher):
 #    

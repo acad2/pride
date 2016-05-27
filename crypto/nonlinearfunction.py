@@ -99,23 +99,33 @@ def nonlinear_function7(left_byte, right_byte, key_byte):
                 
     return left_byte, right_byte
     
-def nonlinear_function8(left, right, key, mask=(2 ** 64) - 1, bit_width=64, _rotation=5):    
-    diffuser = ((left ^ right) + key) & mask
-        
+def nonlinear_function8(left, right, key, mask=(2 ** 64) - 1, bit_width=64, _rotation=5, constants=range(256)):    
+    diffuser = ((left ^ right) + key) & mask    
     for round in range(5):                
         diffuser ^= right
         
-        right = (right + key + diffuser) & mask
+        right = (right + key + diffuser + round) & mask
         
         diffuser ^= right ^ left        
         
-        left = (left + (right >> 8)) & mask        
+        left = (left + (right >> 32)) & mask        
         left ^= ((right >> _rotation) | (right << (bit_width - _rotation))) & mask
+        left = (left + diffuser + key) & mask
         diffuser ^= left
         
         left, right = right, left        
         diffuser = (diffuser + key) & mask
         
+    return left, right
+    
+def speck_round(left, right, key, mask=(2 ** 64) - 1):
+    for round in range(20):
+        left = key ^ ((rotate_right(left, 7) + right) & mask)
+        #left = (left + right) & mask
+        #left ^= key    
+        right = rotate_left(right, 3) ^ left
+        #right = rotate_left(right, 3)    
+        #right ^= left
     return left, right
     
 def test_nonlinear_function():
@@ -172,12 +182,12 @@ def test_nonlinear_function7():
 def test_nonlinear_function8():        
     #for _rotation in range(20):
     #    print "\nRotation: ", _rotation
-    #     
-    for key in range(1, 3):
+    _rotation = 5     
+    for key in (pow(251, x, 257) % 256 for x in range(1, 16)):
         sbox = bytearray()
         for right in range(256):
             left = 0
-            left, right = nonlinear_function8(left, right, key)
+            left, right = nonlinear_function8(left, right, key, _rotation=_rotation)
             sbox.append(left >> 56)
         
         differentials = find_best_differential(sbox)
@@ -185,6 +195,18 @@ def test_nonlinear_function8():
         print differentials
         print linearity
             
+def test_speck():
+    for key in (pow(251, x, 257) % 256 for x in range(256)):        
+        for left in range(256):
+            sbox = bytearray()
+            for right in range(256):
+                left, right = speck_round(left, right, key)
+                sbox.append(left & 255)
+            differentials = find_best_differential(sbox)
+            linearity = calculate_linearity(sbox)
+            print differentials
+            print linearity
+        
 def test_random_sbox():
     for x in range(16):
         sbox = bytearray(os.urandom(256))
@@ -199,5 +221,6 @@ if __name__ == "__main__":
     #test_nonlinear_function5()
     #test_nonlinear_function6()
     #test_nonlinear_function7()
-    test_nonlinear_function8()
+    #test_nonlinear_function8()
+    test_speck()
     #test_random_sbox()

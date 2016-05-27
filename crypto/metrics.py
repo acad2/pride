@@ -80,6 +80,11 @@ def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     print "Testing diffusion of {}: using variable data as {} for rng".format(seedname, seedname)
     random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
     random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
+    assert len(random_bytes1) == (1024 * 1024)
+    assert len(random_bytes2) == (1024 * 1024)
+    print random_bytes1[:256]
+    print
+    print random_bytes2[:256]
     ratio = []
     block_size = seedsize
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
@@ -99,6 +104,9 @@ def test_avalanche_of_key(encrypt_method, iv, keysize):
     padding = "\x00" * (keysize - 1)    
     random_bytes1 = encrypt_method("\x01" * (1024 * 1024), padding + "\x00", iv)    
     random_bytes2 = encrypt_method("\x01" * (1024 * 1024), padding + "\x01", iv)        
+    print random_bytes1[:256]
+    print
+    print random_bytes2[:256]
     ratio = []
     block_size = 16
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
@@ -186,23 +194,23 @@ def test_prng_performance(hash_function):
     output = _hash_prng(hash_function, len(hash_function('\x00')), 1024 * 1024)
     end = timestamp()
     print end - start    
-    
+        
 def test_cipher_performance(performance_test_sizes, encrypt_method, key, seed):  
-        for increment_size in performance_test_sizes:
-            print "Testing time to generate 1MB in {} byte increments... ".format(increment_size)
-            size = (1024 * 1024) / increment_size
-            times = []
-            
-            for round in range(10):
-                sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
-                sys.stdout.flush()
-                start = timestamp()  
-                for chunk in range(size):
-                    encrypt_method("\x00" * increment_size, key, seed)                                    
-                end = timestamp()
-                times.append(end - start)
-            sys.stdout.write("{}100%\r".format("=" * 76))
-            print "MB/s: ", 1 / (sum(times) / float(len(times)))
+    for increment_size in performance_test_sizes:
+        print "Testing time to generate 1MB in {} byte increments... ".format(increment_size)
+        size = (1024 * 1024) / increment_size
+        times = []
+        
+        for round in range(10):
+            sys.stdout.write("{}{}%\r".format("=" * (7 * round), 10 * round))
+            sys.stdout.flush()
+            start = timestamp()  
+            for chunk in range(size):
+                encrypt_method("\x00" * increment_size, key, seed)                                    
+            end = timestamp()
+            times.append(end - start)
+        sys.stdout.write("{}100%\r".format("=" * 76))
+        print "MB/s: ", 1 / (sum(times) / float(len(times)))
                         
 def test_fixed_zero_point(hash_function):
     if hash_function("\x00") == hash_function("\x00\x00"):

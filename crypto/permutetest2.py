@@ -110,8 +110,8 @@ permute_hash = sponge_factory(lambda data: keyed_permute_diffusion(data, tweak),
     
 def test_permute():
     from utilities import find_long_cycle_length
-    data = bytearray("\x00" * 2)
-    for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, [(17 + 255) | 1, (255 + 251) | 1]):
+    data = bytearray("\x00" * 3)
+    for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, [17, 3, 251]):
         if isinstance(progress, int):
             print progress
     print len(progress)
@@ -119,8 +119,8 @@ def test_permute():
     #print len(cycle)
 
 if __name__ == "__main__":
-    #test_permute()
-    from metrics import test_hash_function, test_collisions
+    test_permute()
+    #from metrics import test_hash_function, test_collisions
     #test_collisions(lambda data: bytes(permute_hash(bytearray(data))))
-    test_hash_function(lambda data: bytes(permute_hash(bytearray(data))))#permute_hash, collision_test=False)
+    #test_hash_function(lambda data: bytes(permute_hash(bytearray(data))))#permute_hash, collision_test=False)
     
