@@ -80,11 +80,6 @@ def test_avalanche_of_seed(encrypt_method, key, seedsize, seedname="seed"):
     print "Testing diffusion of {}: using variable data as {} for rng".format(seedname, seedname)
     random_bytes1 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x00")
     random_bytes2 = encrypt_method("\x00" * (1024 * 1024), key, padding + "\x01")
-    assert len(random_bytes1) == (1024 * 1024)
-    assert len(random_bytes2) == (1024 * 1024)
-    print random_bytes1[:256]
-    print
-    print random_bytes2[:256]
     ratio = []
     block_size = seedsize
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):
@@ -104,9 +99,6 @@ def test_avalanche_of_key(encrypt_method, iv, keysize):
     padding = "\x00" * (keysize - 1)    
     random_bytes1 = encrypt_method("\x01" * (1024 * 1024), padding + "\x00", iv)    
     random_bytes2 = encrypt_method("\x01" * (1024 * 1024), padding + "\x01", iv)        
-    print random_bytes1[:256]
-    print
-    print random_bytes2[:256]
     ratio = []
     block_size = 16
     for block_number, block_one in enumerate(slide(random_bytes1, block_size)):

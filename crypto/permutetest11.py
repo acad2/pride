@@ -1,5 +1,6 @@
 from utilities import (rotate_left, rotate_right, bytes_to_words, 
-                       words_to_bytes, high_order_byte, low_order_byte)             
+                       words_to_bytes, high_order_byte, low_order_byte,
+                       bytes_to_integer, integer_to_bytes)             
 
 def _unpack_bytes(left, right, low_byte, high_byte, half_size):
     top = (left & high_byte) >> half_size
@@ -29,52 +30,74 @@ def permute(left, right, key, mask, bit_width):
     left, right = right, left
     return left, right          
              
-def shift_rows(left, right, wordsize=8, bits=64, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32):
-    bits /= 2
-    return (left & high_byte | 
-            rotate_left(left & low_byte, 1 * wordsize, bits),
-            
-            (rotate_left(right & high_byte, 2 * wordsize, bits) << bits) |
-            rotate_left(right & low_byte, 3 * wordsize, bits))                         
+def shift_rows(top, second, third, bottom, wordsize=8, bits=32):    
+    return (top,
+            rotate_left(second, 1 * wordsize, bits),            
+            rotate_left(third, 2 * wordsize, bits),
+            rotate_left(bottom, 3 * wordsize, bits))                         
         
-def mix_rows(left, right, wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
-    top, second, third, bottom = _unpack_bytes(left, right, low_byte, high_byte, half_size)
+_high_order_byte = lambda byte: high_order_byte(byte, 16)
+_low_order_byte = lambda byte: low_order_byte(byte, 16) 
     
-    quarter_size = half_size / 2
-    right_half = (2 ** quarter_size) - 1
-    left_half = right_half << quarter_size
+def mix_rows(top, second, third, bottom, half_size=32, quarter_size=16, mask=(2 ** 16) - 1):    
+    top, second = permute(top, second, third, mask, quarter_size)
+    second, third = permute(second, third, bottom, mask, quarter_size)
+    third, bottom = permute(third, bottom, top, mask, quarter_size)
+    bottom, top = permute(bottom, top, second, mask, quarter_size)                
+    return top, second, third, bottom
 
-    _high_order_byte = lambda byte: high_order_byte(byte, quarter_size)
-    _low_order_byte = lambda byte: low_order_byte(byte, quarter_size)        
-         
-    left, right = permute(_high_order_byte(top), _low_order_byte(top), second, right_half, quarter_size)
-    top = (left << quarter_size) | right
+first_byte = lambda byte, mask=(2 ** 8) - 1: byte & mask
+second_byte = lambda byte, mask=((2 ** 16) - 1): (byte & mask) >> 8
+third_byte = lambda byte, mask=((2 ** 24) - 1): (byte & mask) >> 16
+fourth_byte = lambda byte, mask=((2 ** 32) - 1): (byte & mask) >> 24
     
-    left, right = permute(_high_order_byte(second), _low_order_byte(second), third, right_half, quarter_size)
-    second = (left << quarter_size) | right
-    
-    left, right = permute(_high_order_byte(third), _low_order_byte(third), bottom, right_half, quarter_size)
-    third = (left << quarter_size) | right
-    
-    left, right = permute(_high_order_byte(bottom), _low_order_byte(bottom), top, right_half, quarter_size)
-    bottom = (left << quarter_size) | right
-    return (top << half_size) | second, (third << half_size) | bottom
-
-first_byte = lambda byte: byte & ((2 ** 8) - 1)
-second_byte = lambda byte: (byte & ((2 ** 16) - 1)) >> 8
-third_byte = lambda byte: (byte & ((2 ** 24) - 1)) >> 16
-fourth_byte = lambda byte: (byte & ((2 ** 32) - 1)) >> 24
-    
-def rotate_state(left, right, wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
-    top, second, third, bottom = _unpack_bytes(left, right, low_byte, high_byte, half_size)    
-
+def rotate_state(top, second, third, bottom):    
     _top = (first_byte(top) << 24) | (first_byte(second) << 16) | (first_byte(third) << 8) | first_byte(bottom)
     _second = (second_byte(top) << 24) | (second_byte(second) << 16) | (second_byte(third) << 8) | second_byte(bottom)
     _third = (third_byte(top) << 24) | (third_byte(second) << 16) | (third_byte(third) << 8) | third_byte(bottom)
     _bottom = (fourth_byte(top) << 24) | (fourth_byte(second) << 16) | (fourth_byte(third) << 8) | fourth_byte(bottom)
     
-    return (_top << 32) | _second, (_third << 32) | _bottom
-          
+    return _top, _second, _third, _bottom
+
+def _encrypt(left, right, key, rounds=2, mask=(2 ** 64) - 1, bits=64):
+    top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+    for round in range(rounds):    
+        left, right = permute((top << 32) | second, (third << 32) | bottom, key, mask, bits)
+        top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+        top, second, third, bottom = shift_rows(top, second, third, bottom)
+        top, second, third, bottom = mix_rows(top, second, third, bottom)
+        top, second, third, bottom = rotate_state(top, second, third, bottom)
+        
+    left, right = permute(left, right, key, mask, bits)
+    return left, right
+    
+def encrypt(data, key):
+    left = bytes_to_integer(data[:8])
+    right = bytes_to_integer(data[8:])
+    key = bytes_to_integer(key)
+    left, right = _encrypt(left, right, key)
+    return integer_to_bytes(left, 8) + integer_to_bytes(right, 8)
+    
+import pride.crypto
+from pride.crypto.utilities import replacement_subroutine
+
+class Test_Cipher(pride.crypto.Cipher):
+        
+    def __init__(self, *args):
+        super(Test_Cipher, self).__init__(*args)
+        self.size_constants = (64, (2 ** 64) - 1)
+        self.rounds = 5
+        self.blocksize = 16
+        
+    def encrypt_block(self, data, key, tag=None, tweak=None):            
+        ciphertext = encrypt(data, self.key)        
+        replacement_subroutine(data, ciphertext)        
+        
+    def decrypt_block(self, data, key, tag=None, tweak=None):
+        plaintext = decrypt(data, self.key)
+        replacement_subroutine(data, plaintext)
+        
+        
 def invert_rotate_state(left, right, wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
     top, second, third, bottom = _unpack_bytes(left, right, low_byte, high_byte, half_size)    
 
@@ -281,6 +304,8 @@ if __name__ == "__main__":
     #test_unmix_rows()
     #test_shift_and_mix()
     #test_invert_permute()        
-    test_rotate_state()
-    test_invert_rotate_state()
+    #test_rotate_state()
+    #test_invert_rotate_state()
+    #Test_Cipher.test_encrypt_decrypt("\x00" * 16, "cbc")
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
     
