@@ -169,4 +169,46 @@ def pad_input(hash_input, size):
     hash_input += ("\x00" * padding) + (struct.pack("Q", input_size))    
     return hash_input
     
+def bytes_to_words(seed, wordsize):
+    state = []
+    seed_size = len(seed)
+    for offset in range(seed_size / wordsize):        
+        byte = 0
+        offset *= wordsize
+        for index in range(wordsize):        
+            byte |= seed[offset + index] << (8 * index)
+        state.append(byte)
+    return state
+    
+def words_to_bytes(state, wordsize):        
+    output = bytearray()
+    storage = state[:]
+    while storage:
+        byte = storage.pop(0)
+        for amount in range(wordsize):
+            output.append((byte >> (8 * amount)) & 255)
+    return output
+    
+def bytes_to_integer(data):
+    output = 0
+    size = len(data)
+    for index in range(size):
+        output |= data[index] << (8 * (size - 1 - index))
+    return output
+    
+def integer_to_bytes(integer, _bytes=16):
+    output = bytearray()
+    #_bytes /= 2
+    for byte in range(_bytes):        
+        output.append((integer >> (8 * (_bytes - 1 - byte))) & 255)
+    return output
+    
+def high_order_byte(byte, wordsize=8):
+    bits = (wordsize / 2) * 8
+    mask = ((2 ** bits) - 1) << bits
+    return (byte & mask) >> bits
+    
+def low_order_byte(byte, wordsize=8):
+    bits = (wordsize / 2) * 8    
+    return (byte & ((2 ** bits) - 1))
     

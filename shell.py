@@ -71,7 +71,7 @@ class Command_Line(pride.vmlibrary.Process):
                 "prompt" : ">>> ", "programs" : None,
                 "default_programs" : ("pride.shell.OS_Shell", 
                                       "pride.shell.Switch_Program"),
-                "idle_threshold" : 10000, 
+                "idle_threshold" : 100, 
                 "screensaver_type" : "pride.shell.CA_Screensaver"}
                      
     def __init__(self, **kwargs):
@@ -384,7 +384,7 @@ class Matrix_Screensaver(Terminal_Screensaver):
             
 class CA_Screensaver(Terminal_Screensaver):
                 
-    defaults = {"storage_size" : 80}
+    defaults = {"storage_size" : 80, "_injection_timer" : 0}
     
     next_state = {(1, 1, 1) : 1, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
                   (0, 1, 1) : 0, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
@@ -400,12 +400,19 @@ class CA_Screensaver(Terminal_Screensaver):
     def __init__(self, **kwargs):
         super(CA_Screensaver, self).__init__(**kwargs)
         self.bytearray = bytearray(self.storage_size)
-        self.bytearray[sum(ord(random._urandom(1)) for x in xrange(4)) % self.storage_size] = 1
+        self.bytearray[ord(os.urandom(1)) % self.storage_size] = 1
         self._state = CA_Screensaver.rule_30 if ord(random._urandom(1)) < 128 else CA_Screensaver.next_state
         
     def run(self):
         _bytearray = self.bytearray
         size = self.storage_size
+        if not self._injection_timer:
+            two_bytes = bytearray(os.urandom(2))            
+            _bytearray[two_bytes[0] % size] ^= 1
+            self._injection_timer = two_bytes[1]
+        else:
+            self._injection_timer -= 1            
+        
         new_bytearray = bytearray(size)
         _state = self._state
         for index, byte in enumerate(_bytearray):
