@@ -392,10 +392,10 @@ class CA_Screensaver(Terminal_Screensaver):
     rule_30 = {(1, 1, 1) : 0, (1, 1, 0) : 0, (1, 0, 1) : 0, (1, 0, 0) : 1,
                (0, 1, 1) : 1, (0, 1, 0) : 1, (0, 0, 1) : 1, (0, 0, 0) : 0}
            
-    _RULE_30 = [0, 1, 1, 1, 1, 0, 0, 0]
-    
-    def rule_30(byte1, byte2, byte3):
-        return _RULE_30[(byte1 << 2) | (byte2 << 1) | byte3]    
+   # _RULE_30 = [0, 1, 1, 1, 1, 0, 0, 0]
+   # 
+   # def rule_30(byte1, byte2, byte3):
+   #     return _RULE_30[(byte1 << 2) | (byte2 << 1) | byte3]    
     
     def __init__(self, **kwargs):
         super(CA_Screensaver, self).__init__(**kwargs)

@@ -44,7 +44,7 @@ def mix_rows(top, second, third, bottom, half_size=32, quarter_size=16, mask=(2 
     second, third = permute(second, third, bottom, mask, quarter_size)
     third, bottom = permute(third, bottom, top, mask, quarter_size)
     bottom, top = permute(bottom, top, second, mask, quarter_size)                
-    return top, second, third, bottom
+    return (top ^ second), (second + third) & mask, (third ^ bottom), (bottom + top) & mask
 
 first_byte = lambda byte, mask=(2 ** 8) - 1: byte & mask
 second_byte = lambda byte, mask=((2 ** 16) - 1): (byte & mask) >> 8
@@ -59,15 +59,16 @@ def rotate_state(top, second, third, bottom):
     
     return _top, _second, _third, _bottom
 
-def _encrypt(left, right, key, rounds=2, mask=(2 ** 64) - 1, bits=64):
+def _encrypt(left, right, key, rounds=1, mask=(2 ** 64) - 1, bits=64):
     top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+        
     for round in range(rounds):    
         left, right = permute((top << 32) | second, (third << 32) | bottom, key, mask, bits)
         top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
         top, second, third, bottom = shift_rows(top, second, third, bottom)
-        top, second, third, bottom = mix_rows(top, second, third, bottom)
-        top, second, third, bottom = rotate_state(top, second, third, bottom)
-        
+      #  top, second, third, bottom = rotate_state(top, second, third, bottom)
+        top, second, third, bottom = mix_rows(top, second, third, bottom)      
+    left, right = (top << 32) | second, (third << 32) | bottom    
     left, right = permute(left, right, key, mask, bits)
     return left, right
     
@@ -92,6 +93,7 @@ class Test_Cipher(pride.crypto.Cipher):
     def encrypt_block(self, data, key, tag=None, tweak=None):            
         ciphertext = encrypt(data, self.key)        
         replacement_subroutine(data, ciphertext)        
+        print data
         
     def decrypt_block(self, data, key, tag=None, tweak=None):
         plaintext = decrypt(data, self.key)
@@ -307,5 +309,5 @@ if __name__ == "__main__":
     #test_rotate_state()
     #test_invert_rotate_state()
     #Test_Cipher.test_encrypt_decrypt("\x00" * 16, "cbc")
-    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, randomness_test=False, bias_test=False)
     
