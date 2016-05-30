@@ -18,16 +18,16 @@ def _print_state(left, right, message):
     third = (right & high_byte) >> 32
     bottom = right & low_byte
     print message
-    print format(top, 'b').zfill(32)
-    print format(second, 'b').zfill(32)
-    print format(third, 'b').zfill(32)
-    print format(bottom, 'b').zfill(32)
-    
+    for value in (top, second, third, bottom):
+        print ' '.join(slide(format(value, 'b').zfill(32), 8))
+        print
+
 def permute(left, right, key, mask, bit_width):        
-    right = (right + key + key + 1) & mask
-    left = (left + (right >> 8)) & mask
-    left ^= ((right >> 5) | (right << (bit_width - 5))) & mask 
-    left, right = right, left
+    for round in range(1):
+        right = (right + key + key + 1) & mask
+        left = (left + (right >> (bit_width / 2))) & mask
+        left ^= ((right >> 5) | (right << (bit_width - 5))) & mask 
+        left, right = right, left
     return left, right          
              
 def shift_rows(top, second, third, bottom, wordsize=8, bits=32):    
@@ -39,18 +39,18 @@ def shift_rows(top, second, third, bottom, wordsize=8, bits=32):
 _high_order_byte = lambda byte: high_order_byte(byte, 16)
 _low_order_byte = lambda byte: low_order_byte(byte, 16) 
     
-def mix_rows(top, second, third, bottom, half_size=32, quarter_size=16, mask=(2 ** 16) - 1):    
-    top, second = permute(top, second, third, mask, quarter_size)
-    second, third = permute(second, third, bottom, mask, quarter_size)
-    third, bottom = permute(third, bottom, top, mask, quarter_size)
-    bottom, top = permute(bottom, top, second, mask, quarter_size)                
+def mix_rows(top, second, third, bottom, half_size=32, mask=(2 ** 32) - 1):    
+    top, second = permute(top, second, third, mask, half_size)
+    second, third = permute(second, third, bottom, mask, half_size)
+    third, bottom = permute(third, bottom, top, mask, half_size)
+    bottom, top = permute(bottom, top, second, mask, half_size)                
     return (top ^ second), (second + third) & mask, (third ^ bottom), (bottom + top) & mask
 
 first_byte = lambda byte, mask=(2 ** 8) - 1: byte & mask
 second_byte = lambda byte, mask=((2 ** 16) - 1): (byte & mask) >> 8
 third_byte = lambda byte, mask=((2 ** 24) - 1): (byte & mask) >> 16
 fourth_byte = lambda byte, mask=((2 ** 32) - 1): (byte & mask) >> 24
-    
+        
 def rotate_state(top, second, third, bottom):    
     _top = (first_byte(top) << 24) | (first_byte(second) << 16) | (first_byte(third) << 8) | first_byte(bottom)
     _second = (second_byte(top) << 24) | (second_byte(second) << 16) | (second_byte(third) << 8) | second_byte(bottom)
@@ -59,17 +59,37 @@ def rotate_state(top, second, third, bottom):
     
     return _top, _second, _third, _bottom
 
+def shift_and_rotate(top, second, third, bottom):
+    _top = (first_byte(top) << 24) | (fourth_byte(second) << 16) | (third_byte(third) << 8) | second_byte(bottom)
+    _second = (second_byte(top) << 24) | (first_byte(second) << 16) | (fourth_byte(third) << 8) | third_byte(bottom)
+    _third = (third_byte(top) << 24) | (second_byte(second) << 16) | (first_byte(third) << 8) | fourth_byte(bottom)
+    _bottom = (fourth_byte(top) << 24) | (third_byte(second) << 16) | (second_byte(third) << 8) | first_byte(bottom)    
+    return _top, _second, _third, _bottom
+
+def optimized_shifts_shift_and_rotate(top, second, third, bottom, mask8=(2 ** 8) - 1, 
+                                      mask16=((2 ** 16) - 1 >> 8) << 8, 
+                                      mask24=(((2 ** 24) - 1) >> 16) << 16, 
+                                      mask32=(((2 ** 32) - 1) >> 24) << 24):
+                                      
+    _top = ((top & mask8) << 24) | ((second & mask32) >> 8) | ((third & mask24) >> 8) | ((bottom & mask16) >> 8)
+    _second = ((top & mask16) << 16) | ((second & mask8) << 16) | ((third & mask32) >> 16) | ((bottom & mask24) >> 16)
+    _third = ((top & mask24) << 8) | ((second & mask16) << 8) | ((third & mask8) << 8) | ((bottom & mask32) >> 24)
+    _bottom = (top & mask32) | (second & mask24) | (third & mask16) | (bottom & mask8)    
+    return _top, _second, _third, _bottom
+    
 def _encrypt(left, right, key, rounds=1, mask=(2 ** 64) - 1, bits=64):
     top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
         
-    for round in range(rounds):    
-        left, right = permute((top << 32) | second, (third << 32) | bottom, key, mask, bits)
-        top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+    for round in range(rounds):                
         top, second, third, bottom = shift_rows(top, second, third, bottom)
-      #  top, second, third, bottom = rotate_state(top, second, third, bottom)
+        top, second, third, bottom = rotate_state(top, second, third, bottom)
         top, second, third, bottom = mix_rows(top, second, third, bottom)      
+        left, right = permute((top << 32) | second, (third << 32) | bottom, key, mask, bits)
+        
+        top, second, third, bottom = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+        
     left, right = (top << 32) | second, (third << 32) | bottom    
-    left, right = permute(left, right, key, mask, bits)
+    #left, right = permute(left, right, key, mask, bits)
     return left, right
     
 def encrypt(data, key):
@@ -92,23 +112,21 @@ class Test_Cipher(pride.crypto.Cipher):
         
     def encrypt_block(self, data, key, tag=None, tweak=None):            
         ciphertext = encrypt(data, self.key)        
-        replacement_subroutine(data, ciphertext)        
-        print data
+        replacement_subroutine(data, ciphertext)                
         
     def decrypt_block(self, data, key, tag=None, tweak=None):
         plaintext = decrypt(data, self.key)
         replacement_subroutine(data, plaintext)
         
         
-def invert_rotate_state(left, right, wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
-    top, second, third, bottom = _unpack_bytes(left, right, low_byte, high_byte, half_size)    
-
+def invert_rotate_state(top, second, third, bottom, wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
+    
     _top = (fourth_byte(bottom) << 24) | (fourth_byte(third) << 16) | (fourth_byte(second) << 8) | fourth_byte(top)        
     _second = (third_byte(bottom) << 24) | (third_byte(third) << 16) | (third_byte(second) << 8) | third_byte(top)
     _third = (second_byte(bottom) << 24) | (second_byte(third) << 16) | (second_byte(second) << 8) | second_byte(top)
     _bottom = (first_byte(bottom) << 24) | (first_byte(third) << 16) | (first_byte(second) << 8) | first_byte(top)
     
-    return (_top << 32) | _second, (_third << 32) | _bottom
+    return _top, _second, _third, _bottom
            
 def unmix_rows(left, right,  wordsize=8, low_byte=(2 ** 32) - 1, high_byte=((2 ** 32) - 1) << 32, half_size=32, bits=64):
     top, second, third, bottom = _unpack_bytes(left, right, low_byte, high_byte, half_size)
@@ -296,7 +314,48 @@ def test_permutation():
     for progress in _find_permutation_cycle_length((2 ** bits), 1024, permutation, list(bytearray("\x00" * size)), generate_key(size), (2 ** bits) - 1, bits):
         if isinstance(progress, int):
             print progress
-            
+
+def test_diffusion_visual():
+    state = (0, 1 << 16, 0, 0)
+    def __print_state(state, message):
+        _print_state((state[0] << 32) | state[1], (state[2] << 32) | state[3], message)
+    __print_state(state, "Before: ")
+    #for round in range(4):
+    while not raw_input(''):
+        state = shift_rows(*state)
+        __print_state(state, "Shifted:")
+        state = rotate_state(*state)
+        __print_state(state, "Rotated:")
+    #    top, second, third, bottom = state
+    #    top, second = second, top
+    #    second, third = third, second
+    #    third, bottom = bottom, third
+    #    bottom, top = top, bottom
+    #    state = (top, second, third, bottom)
+        
+        state = mix_rows(*state)
+        __print_state(state, "Mixed:  ")
+        left, right = permute((state[0] << 32) | state[1], (state[2] << 32) | state[3], 1, (2 ** 64) - 1, 64)
+        
+        state = high_order_byte(left), low_order_byte(left), high_order_byte(right), low_order_byte(right)
+        __print_state(state, "Permute:") 
+
+def test_shift_and_rotate():
+    top = second = third = bottom = 1
+    state = shift_rows(top, second, third, bottom)
+    _state = rotate_state(*state)
+    
+    state = shift_and_rotate(top, second, third, bottom)
+    assert _state == state
+
+def test_optimized_shifts_shift_and_rotate():
+    _state = (1, 2, 3, 4)
+    #_state = shift_rows(*_state)
+    #__state = rotate_state(*_state)
+    __state = shift_and_rotate(*_state)
+    state = optimized_shifts_shift_and_rotate(1, 2, 3, 4)
+    assert state == __state, (state, __state)
+    
 if __name__ == "__main__":
     #test_permute()
     #test_permutation()    
@@ -308,6 +367,9 @@ if __name__ == "__main__":
     #test_invert_permute()        
     #test_rotate_state()
     #test_invert_rotate_state()
+    #test_shift_and_rotate()
+    test_optimized_shifts_shift_and_rotate()
     #Test_Cipher.test_encrypt_decrypt("\x00" * 16, "cbc")
-    Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, randomness_test=False, bias_test=False)
+    #Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+    #test_diffusion_visual()
     

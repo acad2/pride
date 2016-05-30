@@ -37,15 +37,15 @@ class Terminal(pride.vmlibrary.Process):
             self.line.append(ordinal)     
             width = dimensions[1]
             if ordinal == 13 or len(self.line) == width: 
-                self.line_count += 1
-              #  self.clear_line(self.line_count)                
-                screen.print_at(bytes(self.line_count), 0, min(self.line_count, dimensions[0]))                
+                self.line_count = min(self.line_count + 1, dimensions[0] - 1)
+                self.clear_line(self.line_count)                
+                screen.print_at(bytes(self.line), 0, self.line_count)                  
                 self.line = bytearray()                              
                                   
-                if self.line_count == dimensions[0]:
-                #    #self.line_count = -1   
-                #    #self.clear_line(0)
-                    self.screen.scroll_to(self.line_count % dimensions[0])                        
+                if self.line_count == dimensions[0] - 1:
+                ##    #self.line_count = -1   
+                ##    #self.clear_line(0)
+                    self.screen.scroll_to(self.line_count)                        
 #        else:
 #            self.alert("Unsupported key: {}", (ordinal, ), level=0)
                                 
