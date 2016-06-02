@@ -131,7 +131,14 @@ class AES(object):
         for word in slide(state, 4):
             print ' '.join(format(byte, 'b').zfill(8) for byte in word)
             print
-            
+    
+    def shuffle(self, state, next_index=[7, 12, 14, 9, 2, 1, 5, 15, 11, 6, 13, 0, 4, 8, 10, 3]):        
+        temp = bytearray(16)
+        next_index = [int(symbol, 16) for symbol in "F4589721A30E6CDB"]
+        for index in range(16): # python style implementation            
+            temp[next_index[index]] = state[index]
+        state[:] = temp[:]
+        
     @classmethod
     def test_round_diffusion(cls):
         cipher = cls()
@@ -139,10 +146,12 @@ class AES(object):
         state.append(1)
         cipher.print_state(state, "Before: ")
         while not raw_input(''):
-            state = cipher.subBytes(state, False)
-            cipher.print_state(state, "Subbed: ")
-            state = cipher.shiftRows(state, False)
-            cipher.print_state(state, "Shifted:")
+   #         state = cipher.subBytes(state, False)
+   #         cipher.print_state(state, "Subbed: ")
+            #state = cipher.shiftRows(state, False)
+            #cipher.print_state(state, "Shifted:")
+            cipher.shuffle(state)
+            cipher.print_state(state, "Shuffled:")
             state = cipher.mixColumns(state, False)
             cipher.print_state(state, "Mixed  :")
             

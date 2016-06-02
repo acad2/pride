@@ -163,7 +163,9 @@ int _encrypt(char* state, unsigned long long key, unsigned int rounds)
         
     for (round = 0; round < rounds; round++)
     {
+        printf("State before shuffle: %s\n", state);
         shuffle(state);
+        printf("State before mix: %s\n", state);
         mix_rows(state);       
         
         left   = (state[0] << 24) | (state[1] << 16) | (state[2] << 8) | state[3]; 
@@ -178,10 +180,11 @@ int _encrypt(char* state, unsigned long long key, unsigned int rounds)
         right = (right + key + 1);
         left = (left + (right >> 32));
         left ^= ((right >> 5) | (right << (64 - 5))) & 0xFFFFFFFFFFFFFFFFL;
-        printf("Left (after): %llu\n", left);   
+        printf("Left (after): %llu\n", (left & mask32));   
+        printf("State before packing: %s\n", state);
         pack_bytes_to_state(state, (right & mask32) >> 32, right & 0xFFFFFFFFL,
                                    (left & mask32) >> 32, left & 0xFFFFFFFFL); // swaps the bytes
-                               
+        printf("State after packing: %s\n", state);   
     }
 }
 

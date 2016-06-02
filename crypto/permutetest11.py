@@ -81,7 +81,8 @@ def swap_places(top, second, third, bottom):
     # next_index=[7, 12, 14, 9, 2, 1, 5, 15, 11, 6, 13, 0, 4, 8, 10, 3]
     # for index in range(16): # python style implementation
     #     temp[next_index[index]] = _state[index]
-
+    
+    # to do: change to this sbox: F4589721A30E6CDB
     temp[7] = _state[0] # C style implementation
     temp[12] = _state[1]
     temp[14] = _state[2]
