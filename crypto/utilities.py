@@ -166,7 +166,8 @@ def pad_input(hash_input, size):
     hash_input += chr(128)
     input_size = len(hash_input) + 8 # + 8 for 64 bits for the size bytes at the end
     padding = size - (input_size % size)
-    hash_input += ("\x00" * padding) + (struct.pack("Q", input_size))    
+    hash_input += ("\x00" * padding) + (struct.pack("Q", input_size)) 
+    assert not len(hash_input) % size, (len(hash_input), size)
     return hash_input
     
 def bytes_to_words(seed, wordsize):

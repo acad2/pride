@@ -182,8 +182,8 @@ int _encrypt(char* state, unsigned long long key, unsigned int rounds)
         left ^= ((right >> 5) | (right << (64 - 5))) & 0xFFFFFFFFFFFFFFFFL;
         printf("Left (after): %llu\n", (left & mask32));   
         printf("State before packing: %s\n", state);
-        pack_bytes_to_state(state, (right & mask32) >> 32, right & 0xFFFFFFFFL,
-                                   (left & mask32) >> 32, left & 0xFFFFFFFFL); // swaps the bytes
+        pack_bytes_to_state(state, (right & mask64) >> 32, right & 0xFFFFFFFFL,
+                                   (left & mask64) >> 32, left & 0xFFFFFFFFL); // swaps the bytes
         printf("State after packing: %s\n", state);   
     }
 }

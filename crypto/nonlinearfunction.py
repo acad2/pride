@@ -157,21 +157,20 @@ def shuffle(_state):
     temp[10] = _state[14]
     temp[3] = _state[15]    
     replacement_subroutine(_state, temp)    
-       
+              
 def nonlinear_function9(data, key, mask=((2 ** 8) - 1)):
     xor_subroutine(data, key)        
             
     for index, byte in enumerate(p_box(data[:8]) + (p_box(data[8:]))):
         data[index] = byte
-        
+      
     shuffle(data)
-    round_key = xor_sum(data)
-    _key = int(''.join(format(byte, 'b').zfill(8) for byte in key), 2)
+    round_key = xor_sum(data)    
     for index in reversed(range(16)):
         next_index = index - 1
         round_key ^= data[index] ^ data[next_index]
         
-        right = (data[index] + round_key + _key) & mask
+        right = (data[index] + round_key + key[index]) & mask
         left = (data[next_index] + (right >> 4)) & mask
         left ^= rotate_right(right, 5)
         

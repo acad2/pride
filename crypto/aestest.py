@@ -141,19 +141,24 @@ class AES(object):
         
     @classmethod
     def test_round_diffusion(cls):
-        cipher = cls()
-        state = bytearray(15)
-        state.append(1)
-        cipher.print_state(state, "Before: ")
-        while not raw_input(''):
-   #         state = cipher.subBytes(state, False)
-   #         cipher.print_state(state, "Subbed: ")
-            #state = cipher.shiftRows(state, False)
-            #cipher.print_state(state, "Shifted:")
-            cipher.shuffle(state)
-            cipher.print_state(state, "Shuffled:")
-            state = cipher.mixColumns(state, False)
-            cipher.print_state(state, "Mixed  :")
+        cipher = cls()        
+        for index in range(16):
+            state = bytearray(16)
+            state[index] = 1
+            cipher.print_state(state, "\nIndex: {}".format(index))
+            #while not raw_input(''):
+            for round in range(2):
+    #            state = cipher.subBytes(state, False)
+   #             cipher.print_state(state, "Subbed: ")
+                #state = cipher.shiftRows(state, False)
+                #cipher.print_state(state, "Shifted:")
+                cipher.shuffle(state)
+                #cipher.print_state(state, "Shuffled:")
+                state = cipher.mixColumns(state, False)
+                cipher.print_state(state, "Mixed  :")
+            state[index] = 0
+            raw_input("Waiting...")
+            
             
 if __name__ == "__main__":
     AES.test_round_diffusion()
