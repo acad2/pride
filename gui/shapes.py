@@ -4,7 +4,7 @@ import sdl2.ext # for Color
 
 class Shape(pride.base.Base):
     
-    defaults = {"transparency_enabled" : True}
+    flags = {"transparency_enabled" : True}
     coordinates = ('x', 'y', 'w', 'h', 'z')  
     colors = ('r', 'g', 'b', 'a')         
        

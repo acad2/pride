@@ -135,7 +135,7 @@ Q: I want to help develop pride!
 Q: I can't get it to work!
 Q: How do I do xyz? Can pride do xyz?
 
-A: Tell me about it and I'll do my best to get back to you: erose1337@hotmail.com
+A: Tell me about it and I'll do my best to get back to you: python_pride@protonmail.com
 
 
 *Technically, the framework uses a second thread for non blocking keyboard 

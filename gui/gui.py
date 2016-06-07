@@ -383,16 +383,17 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     sdl_window = property(_get_sdl_window, _set_sdl_window)
     
     def __init__(self, **kwargs):               
-        super(Window_Object, self).__init__(**kwargs)               
+        super(Window_Object, self).__init__(**kwargs)       
         self.texture_window_x = self.texture_window_y = 0
-        self.texture = None #create_texture(self.texture_size)
+        self.texture = None
         self.texture_invalid = True
         
         self.theme = self.create(self.theme_type, wrapped_object=self)
         self._children.remove(self.theme)
+        pride.objects[self.sdl_window + "/SDL_User_Input"]._update_coordinates(self.reference, self.area, self.z)
         
     def create(self, *args, **kwargs):
-        kwargs.setdefault('z', self.z + 1)#["z"] = kwargs.get('z') or self.z + 1
+        kwargs.setdefault('z', self.z + 1)
         kwargs.setdefault("sdl_window", self.sdl_window)
         return super(Window_Object, self).create(*args, **kwargs)
         
@@ -605,8 +606,9 @@ class Button(Window_Object):
 class Application(Window):
     
     defaults = {"startup_components" : ("pride.gui.widgetlibrary.Task_Bar", 
-                                        "pride.gui.gui.Window"),
-                "transparency_enabled" : False}
+                                        "pride.gui.gui.Window")}
+    flags = {"transparency_enabled" : False}
+    
     def _get_application_window(self):        
         return self.objects["Window"][0]
     application_window = property(_get_application_window)

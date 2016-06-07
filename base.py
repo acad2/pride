@@ -251,6 +251,8 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         return (child for child in itertools.chain(*self.objects.values()) if child)
     children = property(_get_children)
     
+    post_initializer = ''
+    
     def __init__(self, **kwargs):               
         super(Base, self).__init__() # facilitates complicated inheritance - otherwise does nothing          
         self.references_to = []
@@ -266,11 +268,11 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             
         # the objects attribute keeps track of instances created by this self
         self.objects = {}
-                            
+
         for value, attributes in itertools.chain(self._localized_flags.items(), 
                                                  self._localized_defaults.items()):
             value = value[0]
-            for attribute in attributes:                
+            for attribute in attributes:
                 setattr(self, attribute, value)             
         for value_type, attributes in self._localized_mutable_defaults.items():
             value_type = value_type[0]
@@ -311,6 +313,9 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         except (AttributeError, KeyError): 
             # Alert handler can not exist in some situations or not have its log yet
             pass
+         
+        if self.post_initializer:
+            getattr(self, self.post_initializer)()
             
     def create(self, instance_type, *args, **kwargs):
         """ usage: object.create(instance_type, args, kwargs) => instance

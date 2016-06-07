@@ -45,17 +45,15 @@ SITE_CONFIG_FILE = __file__ if __file__[-1] != 'c' else __file__[:-1]
 del os
 
 import sys
-def write_to(entry, **values):
-    
+def write_to(entry, **values):    
     site_config_module = sys.modules[__name__]
     if hasattr(site_config_module, entry):
-        old_entry = getattr(site_config_module, entry)
-        old_entry.update(values)
-        value = str(old_entry)
-    else:
-        value = str(values)
+        file_data = "\n{}.update({})\n"
+    else:        
+        file_data = "\n{} = {}\n"
+    file_data.format(entry, str(value))
     with open(SITE_CONFIG_FILE, 'a') as _file:
-        _file.write("\n{} = {}\n".format(entry, value))
+        _file.write(file_data)
         _file.flush()
         
 pride_interpreter_Shell_defaults = {"startup_definitions" : \
@@ -79,8 +77,8 @@ def delete(reference):
     objects[reference].delete()       
 #import pride.audio
 #pride.audio.enable()
-#import pride.gui
-#window = pride.gui.enable()
+import pride.gui
+window = pride.gui.enable()
 
 #graph = objects["/Python/SDL_Window"].create("pride.gui.graph.Graph")
 #explorer = objects["/Python/SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")
@@ -88,8 +86,11 @@ def delete(reference):
 #cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")
 #messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
 #homescreen = objects[window].create('pride.gui.widgetlibrary.Homescreen')
+quadword = objects[window].create("pride.gui.grid.Quadword")
 """}
 
+
 pride_rpc_Rpc_Server_defaults = {'keyfile': 'c:\\users\\_\\pythonbs\\pride\\ssl_server.key', 'certfile': 'c:\\users\\_\\pythonbs\\pride\\ssl_server.crt'}
+
 pride_user_User_defaults = {'username': 'localhost'}
-pride_interpreter_Shell_defaults = {'username': 'localhost'}
+pride_interpreter_Shell_defaults.update({'username': 'localhost', 'startup_definitions': 'import pride.base\nimport pride\n\nfrom pride.utilities import documentation, usage\n\ndef open_firefox():\n    try:\n        import selenium.webdriver\n    except ImportError:\n        pass\n    else:\n        return selenium.webdriver.Firefox()\n        \ndef create(instance_type, *args, **kwargs):\n    return objects["/Python"].create(instance_type, *args, **kwargs)\n\ndef delete(reference):\n    objects[reference].delete()       \n#import pride.audio\n#pride.audio.enable()\nimport pride.gui\nwindow = pride.gui.enable()\n\n#graph = objects["/Python/SDL_Window"].create("pride.gui.graph.Graph")\n#explorer = objects["/Python/SDL_Window"].create("pride.gui.fileexplorer.File_Explorer")\n#chess = objects["/Python/SDL_Window"].create("pride.gui.chess.Chess")\n#cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")\n#messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")\n#homescreen = objects[window].create(\'pride.gui.widgetlibrary.Homescreen\')\nquadword = objects[window].create("pride.gui.grid.Quadword")\n'})
