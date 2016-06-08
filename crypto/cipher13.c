@@ -23,9 +23,13 @@ int xor_sum(unsigned char* state)
 }
     
 unsigned char rotate_left(unsigned char x, unsigned char r)
-{    
-    r %= 8;
+{        
     return ((x << r) | (x >> (8 - r))) & 255;  
+}
+
+unsigned char rotate_right(unsigned char x, unsigned char r)
+{        
+    return ((x >> r) | (x << (8 - r))) & 255;  
 }
 
 int shuffle_bytes(unsigned char* state)   
@@ -53,38 +57,47 @@ int shuffle_bytes(unsigned char* state)
     memcpy(state, temp, 16);
 }
         
-int p_box(unsigned char* state)
+int p_box(unsigned char* state, unsigned char decryption_flag)
 {
-    unsigned char temp[8];
-    int index;
-    
-    temp[0] = ((state[0] & 1) | ((state[1] & 1) << 1) | ((state[2] & 1) << 2) | ((state[3] & 1) << 3) |
-              ((state[4] & 1) << 4) | ((state[5] & 1) << 5) | ((state[6] & 1) << 6) | ((state[7] & 1) << 7));
-    
-    temp[1] = (((state[0] & 2) >> 1) | (state[1] & 2) | ((state[2] & 2) << 1) | ((state[3] & 2) << 2) |
-               ((state[4] & 2) << 3) | ((state[5] & 2) << 4) | ((state[6] & 2) << 5) | ((state[7] & 2) << 6));
-              
-    temp[2] = (((state[0] & 4) >> 2) | ((state[1] & 4) >> 1) | (state[2] & 4) | ((state[3] & 4) << 1) |
-               ((state[4] & 4) << 2) | ((state[5] & 4) << 3) | ((state[6] & 4) << 4) | ((state[7] & 4) << 5));             
-    
-    temp[3] = (((state[0] & 8) >> 3)| ((state[1] & 8) >> 2) | ((state[2] & 8) >> 1) | (state[3] & 8) |
-               ((state[4] & 8) << 1) | ((state[5] & 8) << 2) | ((state[6] & 8) << 3) | ((state[7] & 8) << 4));
-
-    temp[4] = (((state[0] & 16) >> 4) | ((state[1] & 16) >> 3) | ((state[2] & 16) >> 2) | ((state[3] & 16) >> 1) |
-                (state[4] & 16) | ((state[5] & 16) << 1) | ((state[6] & 16) << 2) | ((state[7] & 16) << 3));
-
-    temp[5] = (((state[0] & 32) >> 5) | ((state[1] & 32) >> 4) | ((state[2] & 32) >> 3) | ((state[3] & 32) >> 2) |
-               ((state[4] & 32) >> 1) | (state[5] & 32) | ((state[6] & 32) << 1) | ((state[7] & 32) << 2));
-
-    temp[6] = (((state[0] & 64) >> 6) | ((state[1] & 64) >> 5) | ((state[2] & 64) >> 4) | ((state[3] & 64) >> 3) |
-               ((state[4] & 64) >> 2) | ((state[5] & 64) >> 1) | (state[6] & 64) | ((state[7] & 64) << 1));
-              
-    temp[7] = (((state[0] & 128) >> 7) | ((state[1] & 128) >> 6) | ((state[2] & 128) >> 5) | ((state[3] & 128) >> 4) |
-               ((state[4] & 128) >> 3) | ((state[5] & 128) >> 2) | ((state[6] & 128) >> 1) | (state[7] & 128));  
-    
-    memcpy(state, temp, 8);     
+    unsigned char output[16], byte;
+    int index, index2;
+        
+    for (index = 0; index < 8; index++)
+    {
+        output[index] = 0;
+        for (index2 = 0; index2 < 8; index2++)
+        {
+            byte = state[index2];                      
+            output[index] |= ((byte & 1) << index2) & 255;                 
+            state[index2] = rotate_right(byte, 1);               
+        }   
+        if (decryption_flag == 0)
+        {
+            output[index + 8] = rotate_right(state[index + 8], 1);
+        }
+        else
+        {
+            output[index + 8] = rotate_left(state[index + 8], 1);
+        }
+    }
+    memcpy(state, output, 16);     
 }    
-            
+                
+int test_p_box()
+{
+    unsigned char state[16], index;
+    for (index = 0; index < 16; index++)
+    {
+        state[index] = index;
+    }
+    
+    print_state(state);
+    p_box(state, 0);
+    print_state(state);
+    p_box(state, 1);
+    print_state(state);
+}
+
 unsigned char permute(unsigned char* state, unsigned char round_key, unsigned char key_byte, unsigned char left_index, unsigned char right_index)
 {
     unsigned char left, right;
@@ -108,12 +121,10 @@ int encrypt(unsigned char* state, unsigned char* key, unsigned int rounds)
     unsigned int round, index, left, right, round_key;
     
     xor_subroutine(state, key);    
-    p_box(state); // makes halves orthogonal - 8 bytes vertical, 8 bytes horizontal  
-    
+        
     for (round=0; round < rounds; round++)
     {
-        p_box(state);        
-        p_box(state + 8);
+        p_box(state, 0);                
         shuffle_bytes(state);                
         round_key = xor_sum(state);      
         for (index=15; index > 0; index--)
@@ -179,15 +190,35 @@ int decrypt(unsigned char* state, unsigned char* key, unsigned int rounds)
         }
         
         invert_shuffle_bytes(state);        
-        p_box(state); 
-        p_box(state + 8);
-    }    
-    p_box(state);
+        p_box(state, 1);         
+    }        
     xor_subroutine(state, key);
 }
 
-//int main()
-//{
-//    return 0;
-//}
+int print_state(unsigned char* state)
+{
+    int index;
+    for (index = 0; index < 16; index++)
+    {
+        printf("%i: %i\n", index, state[index]);
+    }
+}
 
+int main()
+{
+    unsigned char data[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    unsigned char key[16] = {0xe9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+    int rounds = 1;
+        
+    test_p_box();
+    
+    //printf("Before: %s\n", data);
+    //print_state(data);
+    //encrypt(data, key, rounds);
+    //printf("After: %s\n", data);
+    //print_state(data);
+    //
+    //decrypt(data, key, rounds);
+    //printf("After decryption: %s\n", data);
+    //print_state(data); 
+}

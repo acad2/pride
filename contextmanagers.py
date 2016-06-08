@@ -45,12 +45,13 @@ def current_working_directory(directory_name):
         os.chdir(backup)
         
 @contextlib.contextmanager
-def backup(_object, attribute):
-    value = getattr(_object, attribute)
+def backup(_object, *args):
+    backups = dict((attribute, getattr(_object, attribute)) for attribute in args)
     try:
         yield
     finally:
-        setattr(_object, attribute, value)
+        for attribute, value in backups.items():
+            setattr(_object, attribute, value)        
 
 @contextlib.contextmanager        
 def inplace_swap(target, new_mutable_sequence):

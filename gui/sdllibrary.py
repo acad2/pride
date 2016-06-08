@@ -272,6 +272,9 @@ class SDL_User_Input(vmlibrary.Process):
         for index, character in enumerate(letters[:26]):
             uppercase[character] = letters[index+26]
         
+        self.setup_event_handler()
+        
+    def setup_event_handler(self):
         unhandled = self.handle_unhandled_event
         self.handlers = {"sdl2.SDL_DOLLARGESTURE" : unhandled,
                          "sdl2.SDL_DROPFILE" : unhandled,
@@ -484,7 +487,18 @@ class SDL_User_Input(vmlibrary.Process):
     def handle_keyup(self, event):
         pass
 
-
+    def save(self):        
+        with pride.contextmanagers.backup(self, "handlers", "_coordinate_tracker"):
+            self.handlers = None
+            self._coordinate_tracker = self._coordinate_tracker.items()
+            attributes = super(SDL_User_Input, self).save()
+        return attributes
+        
+    def on_load(self, attributes):
+        super(SDL_User_Input, self).on_load(attributes)
+        self.setup_event_handler()
+        
+        
 class Renderer(SDL_Component):
 
     defaults = {"flags" : sdl2.SDL_RENDERER_ACCELERATED,

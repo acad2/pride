@@ -80,6 +80,7 @@ def on_exception(exception, callback):
                 callback(*args, **kwargs)
         return new_call
     return decorate
+    
 class Pystone_Test(object):
 
     def __init__(self, function):        
