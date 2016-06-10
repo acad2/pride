@@ -585,8 +585,8 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         pass
         
     def select(self, mouse):
-        pass
-
+        pass    
+    
     
 class Window(Window_Object):
 

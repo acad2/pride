@@ -36,7 +36,8 @@ CURRENT_PLATFORM = platform.system()
 timestamp = timeit.default_timer
         
 def preprocess(function):    
-    raise ImportError("Failed to replace preprocess function with source")       
+    import pride.errors
+    raise pride.errors.PreprocesserError("Failed to replace preprocess function with source")       
         
 class Instruction(object):
     """ usage: Instruction(component_name, method_name,

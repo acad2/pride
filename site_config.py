@@ -86,7 +86,7 @@ window = pride.gui.enable()
 #cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")
 #messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
 #homescreen = objects[window].create('pride.gui.widgetlibrary.Homescreen')
-quadword = objects[window].create("pride.gui.grid.Quadword")
+
 """}
 
 

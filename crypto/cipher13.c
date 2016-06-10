@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int xor_subroutine(unsigned char* state, unsigned char* state2)
 {
@@ -120,8 +121,7 @@ int encrypt(unsigned char* state, unsigned char* key, unsigned int rounds)
 {
     unsigned int round, index, left, right, round_key;
     
-    xor_subroutine(state, key);    
-        
+    xor_subroutine(state, key);           
     for (round=0; round < rounds; round++)
     {
         p_box(state, 0);                
@@ -133,8 +133,8 @@ int encrypt(unsigned char* state, unsigned char* key, unsigned int rounds)
         }
         permute(state, round_key, key[0], 15, 0);
     }
-}
-  
+    xor_subroutine(state, key); 
+}  
 
 unsigned char invert_permute(unsigned char* state, unsigned char round_key, unsigned char key_byte, unsigned int left_index, unsigned int right_index)
 {   
@@ -180,6 +180,7 @@ int invert_shuffle_bytes(unsigned char* state)
 int decrypt(unsigned char* state, unsigned char* key, unsigned int rounds)
 {
     unsigned int round, index, left, right, round_key;
+    xor_subroutine(state, key);
     for (round=0; round < rounds; round++)
     {    
         round_key = xor_sum(state);
@@ -208,17 +209,31 @@ int main()
 {
     unsigned char data[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     unsigned char key[16] = {0xe9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
-    int rounds = 1;
+    int rounds = 10;
         
-    test_p_box();
+    //test_p_box();
     
-    //printf("Before: %s\n", data);
-    //print_state(data);
-    //encrypt(data, key, rounds);
-    //printf("After: %s\n", data);
-    //print_state(data);
-    //
-    //decrypt(data, key, rounds);
-    //printf("After decryption: %s\n", data);
-    //print_state(data); 
+    printf("Before: %s\n", data);
+    print_state(data);
+    encrypt(data, key, rounds);
+    printf("After: %s\n", data);
+    print_state(data);
+    
+    decrypt(data, key, rounds);
+    printf("After decryption: %s\n", data);
+    print_state(data); 
+    
+        clock_t start, end;
+    double cpu_time_used;
+    int index;
+    
+    while(1){
+        start = clock();    
+        for (index = 0; index < 64; index++)
+        {
+            encrypt(data, key, rounds);   
+        }
+        end = clock();
+        cpu_time_used =  ((double) (end - start)) / CLOCKS_PER_SEC;
+        printf("Time taken: %f\n", cpu_time_used);}    
 }

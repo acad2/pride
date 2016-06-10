@@ -10,14 +10,12 @@ class Grid(pride.gui.gui.Window):
                 "square_colors" : ((0, 0, 0, 255), (255, 255, 255, 255)),
                 "square_outline_colors" : ((0, 0, 0, 255), (255, 255, 255, 255))}
     
-    def _get_size(self):
+    def _get_grid_size(self):
         return self.rows, self.columns
-    def _set_size(self, value):
+    def _set_grid_size(self, value):
         self.rows, self.columns = value
         self.setup_grid()        
-    grid_size = property(_get_size, _set_size)
-    
-    post_initializer = "setup_grid"
+    grid_size = property(_get_grid_size, _set_grid_size)       
             
     def setup_grid(self):
         for child in self.children:
@@ -25,7 +23,7 @@ class Grid(pride.gui.gui.Window):
         background_color = itertools.cycle(self.square_colors)
         outline_color = itertools.cycle(self.square_outline_colors)
         
-        for row in range(self.rows):
+        for row in range(self.rows):            
             container = self.create(self.row_container_type, pack_mode="left")
             for column in range(self.columns):
                 button = container.create(self.column_button_type, pack_mode="top",
@@ -47,11 +45,3 @@ class Square(Grid):
         super(Square, self).__init__(**kwargs)        
         self.grid_size = (self.base_size, self.base_size)
         
-        
-class Quadword(Square):
-    
-    defaults = {"base_size" : 8, "square_colors" : ((0, 0, 0, 255), (0, 0, 0, 255)),
-                "square_outline_colors" : ((125, 125, 125, 255), (125, 125, 125, 255)),
-                "h_range" : (320, 320), "w_range" : (320, 320)}
-                
-                

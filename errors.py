@@ -19,5 +19,5 @@ class UpdateError(BaseException):
 class ArgumentError(TypeError):
     meaning = "Required argument(s) not supplied"
     
-    
- 
+class PreprocesserError(ImportError):
+    meaning = "Preprocessor failed to return valid source code"

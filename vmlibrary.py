@@ -44,7 +44,8 @@ class Process(pride.base.Base):
         or periodic event."""
 
     defaults = {"priority" : .04, "context_managed" : False, "running" : True,
-                "run_callback" : None, "run_condition" : '', "_run_queued" : False}
+                "run_callback" : None, "run_condition" : '', "_run_queued" : False,
+                "reschedule_run_after_exception" : True}
     
     parser_ignore = ("priority", "run_callback", "context_managed", "_run_queued", "run_condition")
     
@@ -67,7 +68,7 @@ class Process(pride.base.Base):
     def _run(self):
         self._run_queued = False
         if self.context_managed:
-            with self:
+            with self as current_process:
                 result = self.run()
         else:
             result = self.run()
@@ -108,6 +109,10 @@ class Process(pride.base.Base):
         if traceback:
             raise
         return value
+        
+    def handle_instruction_exception(self, method, error, callback, result):
+        if self.reschedule_run_after_exception:
+            self.run_instruction.execute(priority=self.priority)
         
     
 class Processor(Process):
@@ -196,8 +201,12 @@ class Processor(Process):
                         callback_exception_alert((callback, ))
                     else:
                         exception_alert((component_name, method, format_traceback()))
-               
-
+                    try:
+                        objects[component_name].handle_instruction_exception(method, error, callback, result)
+                    except AttributeError:
+                        pass
+                        
+    
 class Idle_Process(Process):
     
     defaults = {"priority" : 300.0}

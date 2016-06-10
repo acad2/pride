@@ -33,7 +33,10 @@ unused = ('$', '?')
 misc = ("\'", "\"", "\#", "\\")
 
 special_symbols = misc + unused + DELIMITERS + OPERATORS
-            
+      
+def find_unquoted_symbol(symbol, data):
+    re.split('''{}(?=(?:[^'"]|'[^']*'|"[^"]*")*$)'''.format(symbol), data)
+    
 class Compiler(object):
     """ Compiles python source to bytecode. Source may be preprocessed.
         This object is automatically instantiated and inserted into
@@ -171,7 +174,7 @@ class Compiler(object):
             source = preprocessor.handle_source(source)
         return source
         
-    def compile(self, source, filename=''):
+    def compile(self, source, filename=''):        
         return compile(self.preprocess(source), filename, 'exec')  
         
 
@@ -416,7 +419,7 @@ class Preprocess_Decorator(Preprocessor):
             index = Parser.find_symbol("@pride.preprocess", source, ' ', " \n\t(", quantity=1)
             if not index:
                 break
-            start, end = index[0]
+            start, end = index[0]            
             _source = source[end:].split('\n')[1:]
             first_line = _source[0].replace('\t', '    ')
             
@@ -434,13 +437,14 @@ class Preprocess_Decorator(Preprocessor):
                 if _indentation == indentation or not line.strip():
                     break            
             code = compile(textwrap.dedent('\n'.join(function_source)), "preprocessor_decorator", "exec")
-            namespace = {}
+            namespace = {}            
             exec code in namespace, namespace
             new_source = namespace[name]()
             assert new_source, "Preprocessor function failed to return new source"            
             #print 'end of source next\n'
             #print source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
-            source = source[:start - 4] + new_source + source[(end - 4) + sum((len(line) for line in function_source[:-1])) + len("@pride.preprocess"):]            
+            source = source[:start] + new_source + '\n'.join(_source)[sum((len(line) for line in function_source[:])):]            
+            print source
         return source
             
   

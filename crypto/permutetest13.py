@@ -1,5 +1,18 @@
 from utilities import xor_subroutine, xor_sum, rotate_left, rotate_right
 
+def bit_transposition(self):
+    output = bytearray(16)
+    for index in range(8):
+        output[index] = 0
+        for index2 in range(8):            
+            byte = state[index2]
+            output[index] |= ((byte & 1) << index2) & 255
+            state[index2] = rotate_right(byte, 1)        
+        
+        output[index + 8] = rotate_left(state[index + 8], 1)
+    
+    state[:] = output[:]    
+        
 def p_box_half(state, temp=bytearray(8)):    
     temp[0] = ((state[0] & 1) | ((state[1] & 1) << 1) | ((state[2] & 1) << 2) | ((state[3] & 1) << 3) |
               ((state[4] & 1) << 4) | ((state[5] & 1) << 5) | ((state[6] & 1) << 6) | ((state[7] & 1) << 7))

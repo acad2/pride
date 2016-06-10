@@ -128,6 +128,16 @@ def find_cycle_length(function, *args, **kwargs):
             outputs.append(args[0])
     return outputs
 
+def find_cycle_length_subroutine(function, data, output_size=1, *args, **kwargs):       
+    outputs = [data[:1]]            
+    while True:                        
+        function(data, *args, **kwargs)         
+        if data[:output_size] in outputs:            
+            break
+        else:
+            outputs.append(data[:output_size])
+    return outputs
+    
 def find_long_cycle_length(max_size, block_size, function, _input, *args, **kwargs):
     outputs = set([bytes(_input)])
  

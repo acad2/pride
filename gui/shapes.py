@@ -23,8 +23,8 @@ class Shape(pride.base.Base):
         for coordinate in ('x', 'y', 'w', 'h', 'z'):
             source += "    def _get_{}(self):\n        return self._{}".format(coordinate, coordinate)
             source += "\n    def _set_{}(self, value):\n        self._on_set('{}', value)".format(coordinate, coordinate)
-            source += "\n    {} = property(_get_{}, _set_{})\n\n".format(coordinate, coordinate, coordinate)        
-        return source
+            source += "\n    {} = property(_get_{}, _set_{})\n\n".format(coordinate, coordinate, coordinate)           
+        return source[4:] # slice off initial 4 spaces
         
     def _get_position(self):
         return (self.x, self.y)
@@ -105,7 +105,7 @@ class Bounded_Shape(Shape):
             source += "\n    def _set_{}_range(self, value):\n        ".format(coordinate)
             source += "self._{}_range = value\n        self.{} = self._{}".format(coordinate, coordinate, coordinate)
             source += "\n    {}_range = property(_get_{}_range, _set_{}_range)\n\n".format(coordinate, coordinate, coordinate)        
-        return source            
+        return source[4:]           
     
     def __init__(self, **kwargs):
         max_width, max_height = pride.gui.SCREEN_SIZE

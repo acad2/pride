@@ -310,6 +310,10 @@ class Inherited_Attributes(type):
                     _attribute += getattr(_class, attribute_name, [])
                 _attribute += attributes.get(attribute_name, [])
                 _attribute = list(set(_attribute))
+                
+            elif issubclass(attribute_type, str):
+                _attribute = getattr(_class, attribute_name, '')
+                
             attributes[attribute_name] = _attribute
                 
         return super(Inherited_Attributes, cls).__new__(cls, name, bases, attributes)
@@ -320,7 +324,7 @@ class Defaults(Inherited_Attributes):
     inherited_attributes = {"defaults" : dict, "verbosity" : dict, 
                             "parser_ignore" : tuple, "flags" : dict,
                             "mutable_defaults" : dict, "required_attributes" : tuple,
-                            "site_config_support" : tuple}
+                            "site_config_support" : tuple, "post_initializer" : str}
        
  
 class Site_Configuration(type):
