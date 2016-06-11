@@ -1,4 +1,4 @@
-from utilities import xor_sum, rotate_left, rotate_right, slide, xor_subroutine, integer_to_bytes, bytes_to_words
+from utilities import xor_sum, rotate_left, rotate_right, slide, xor_subroutine, integer_to_bytes, bytes_to_words, words_to_bytes
     
 def prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
     for index in range(len(data)):
@@ -47,65 +47,68 @@ def test_prf():
     from metrics import test_hash_function
     test_hash_function(test_hash)
     
+def xor_subroutine2(data, key):
+    data_xor = 0
+    for index, byte in enumerate(key):
+        data[index] ^= byte
+        data_xor ^= data[index]
+    return data_xor
     
-def encrypt(data, key, rounds=1):     
+def encrypt(data, key, rounds=1, size=(8, 255, 5)):     
     key = key[:]
-    round_key = bytearray(16)
+    round_key = list(bytearray(len(key)))
     key_xor = xor_sum(key)
     data_xor = xor_sum(data)
+    bit_width, mask, rotation_amount = size    
+    
     for round in range(rounds):       
-        key_xor = prp(key, key_xor) # generate key        
+        key_xor = prp(key, key_xor, mask, rotation_amount, bit_width) # generate key        
         round_key[:] = key[:] # maintain invertible keyschedule
                 
-        round_key_xor = prf(round_key, key_xor) # one way extraction: class 2B keyschedule
-       # data_xor ^= round_key_xor
-       # print "\nRound key:\n", round_key
-       # print "Pre whitening:\n", data
-        xor_subroutine(data, round_key) # pre-whitening                   
-       # print "Applying prp:\n", data, data_xor
-        print "Before prp:\n", data, data_xor
-        data_xor = prp(data, data_xor ^ round_key_xor) # high diffusion prp     
-        print "After prp:\n", data, data_xor
-       # print "Post whitening:\n", data
-        xor_subroutine(data, round_key) # post_whitening
+        round_key_xor = prf(round_key, key_xor, mask, rotation_amount, bit_width) # one way extraction: class 2B keyschedule
+
+        data_xor = xor_subroutine2(data, round_key) # pre-whitening                   
+        data_xor = prp(data, data_xor, mask, rotation_amount, bit_width) # high diffusion prp     
+        data_xor = xor_subroutine2(data, round_key) # post_whitening
         
-def decrypt(data, key, rounds=1):
+def decrypt(data, key, rounds=1, size=(8, 255, 5)):
     round_keys = []
     key = key[:]
-    round_key = bytearray(16)
+    round_key = list(bytearray(len(key)))
     key_xor = xor_sum(key)
     data_xor = xor_sum(data)
+    bit_width, mask, rotation_amount = size
+    
     for round in range(rounds):
-        key_xor = prp(key, key_xor)
+        key_xor = prp(key, key_xor, mask, rotation_amount, bit_width)
         round_key[:] = key[:]
-        round_key_xor = prf(round_key, key_xor)
+        round_key_xor = prf(round_key, key_xor, mask, rotation_amount, bit_width)
         round_keys.append((round_key_xor, round_key[:]))
-    print "\nDecrypting"    
+      
     for round in reversed(range(rounds)):
         round_key_xor, round_key = round_keys[round]
-       # print "\nRound key:\n", round_key
-       # print "Removing post whitening\n: ", data
-        xor_subroutine(data, round_key)
-        print "Inverting prp:\n", data, data_xor
-        data_xor = invert_prp(data, data_xor) 
-        print "After inversion:\n", data, data_xor
-    #    print "Removing pre whitening\n: ", data
-        xor_subroutine(data, round_key)
-        #print "    After: \n", data
-       # data_xor ^= round_key_xor
+
+        data_xor = xor_subroutine2(data, round_key)        
+        data_xor = invert_prp(data, data_xor, mask, rotation_amount, bit_width) 
+        data_xor = xor_subroutine2(data, round_key)               
         
 def test_encrypt_decrypt():
-    data = bytearray(16)
-    plaintext = data[:]
+    data = bytearray(16)    
     key = bytearray(16)
     rounds = 1
+    byte_size = 4
+    bit_size = byte_size * 8
+    size = (bit_size, ((2 ** bit_size) - 1), bit_size - 5)
+    data = bytes_to_words(data, byte_size)
+    key = bytes_to_words(key, byte_size)
+    plaintext = data[:]
     
-    encrypt(data, key, rounds)
-    print "Ciphertext: "
-    print data
+    encrypt(data, key, rounds, size)
     
-    decrypt(data, key, rounds)
-    assert data == plaintext, data
+    print ''.join(bytes(integer_to_bytes(block, byte_size)) for block in data)
+    
+    decrypt(data, key, rounds, size)
+    assert data == plaintext, (data, plaintext)
     
 def invert_prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
     for index in reversed(range(len(data))):
@@ -163,7 +166,7 @@ if __name__ == "__main__":
     #test_prp_cycle_length()
     #test_prp_metrics()    
     #test_prp_s_box()
-    #test_encrypt_decrypt()
+    test_encrypt_decrypt()
     #test_prf()
-    test_prp64()
+    #test_prp64()
     
