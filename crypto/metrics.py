@@ -61,8 +61,7 @@ def test_avalanche_hash(hash_function, blocksize=16):
         for byte2 in _bytes[1:]:
             next_input = beginning + byte + byte2      
             #print next_input
-            next_output = hash_function(next_input)
-           # print next_output
+            next_output = hash_function(next_input)            
             distance = hamming_distance(last_output, next_output)
             ratio.append(distance)
             last_output = next_output
