@@ -70,8 +70,7 @@ void encrypt(unsigned char* data, unsigned char* _key, int rounds)
         
         data_xor ^= data[index];
     }
-    printf("Encrypting:\n");
-    
+        
     for (index = 0; index < rounds; index++)
     {                
         key_xor = prp(key, key_xor, 16); // generate key 
