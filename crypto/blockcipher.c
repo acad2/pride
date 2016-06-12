@@ -71,6 +71,7 @@ unsigned char xor_with_key(unsigned char* data, unsigned char* key)
 void encrypt(unsigned char* data, unsigned char* _key, int rounds)
 {
     unsigned char key[16];
+    unsigned char round_keys[16 * rounds];
     unsigned char round_key[16], key_xor = 0, data_xor = 0, key_byte;
     int index, index2;
     for (index = 0; index < 16; index++)
@@ -84,12 +85,18 @@ void encrypt(unsigned char* data, unsigned char* _key, int rounds)
     }
         
     for (index = 0; index < rounds; index++)
-    {                
-        key_xor = prp(key, key_xor, 16); // generate key 
-        memcpy_s(round_key, key, 16); // maintain invertible keyschedule                
+    {          
+        key_xor = prp(key, key_xor, 16);        
+        memcpy_s(round_key, key, 16);
+                
+        prf(round_key, key_xor, 16);
+        memcpy_s(round_keys + (index * 16), round_key, 16);                
+    }
         
-        prf(round_key, key_xor, 16); // one way extraction: class '2B' keyschedule        
-        
+    for (index = 0; index < rounds; index++)
+    {            
+        memcpy_s(round_key, round_keys + (index * 16), 16);    
+    
         data_xor = xor_with_key(data, round_key); // pre-whitening
         data_xor = prp(data, data_xor, 16); // high diffusion prp
         xor_with_key(data, round_key); // post-whitening
@@ -133,8 +140,8 @@ void decrypt(unsigned char* data, unsigned char* _key, int rounds)
         prf(round_key, key_xor, 16);
         memcpy_s(round_keys + (index * 16), round_key, 16);                
     }
-    
-    for (index = (rounds - 1); index != -1; index--)
+        
+    for (index = rounds; index--;)
     {            
         memcpy_s(round_key, round_keys + (index * 16), 16);
         
@@ -145,11 +152,11 @@ void decrypt(unsigned char* data, unsigned char* _key, int rounds)
 }
         
 void test_encrypt_decrypt()
-{
-    unsigned char null_string[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    unsigned char data[16], key[16], plaintext[16];
+{    
+    unsigned char data[16], key[16], plaintext[16], null_string[16];
     int rounds = 16, index;
     
+    memset(null_string, 0, 16);
     memcpy_s(data, null_string, 16);       
     data[15] = 1;
     memcpy_s(plaintext, data, 16);
