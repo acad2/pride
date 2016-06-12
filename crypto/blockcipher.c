@@ -13,24 +13,14 @@ void memcpy_s(unsigned char* s1, unsigned char* s2, size_t n)
 }
 #endif
 
-void print_data(unsigned char* data)
-{
-    int index;
-    printf("\n");
-    for (index = 0; index < 16; index++)
-    {
-        printf("%i: %i\n", index, data[index]);
-    }
-}   
-
 unsigned char rotate_left(unsigned char word8, int amount)
 {    
-    return ((word8 << amount) | (word8 >> (8 - amount))) & 255;
+    return ((word8 << amount) | (word8 >> (8 - amount)));
 }
 
 unsigned char rotate_right(unsigned char word8, int amount)
 {              
-    return ((word8 >> amount) | (word8 << (8 - amount))) & 255;
+    return ((word8 >> amount) | (word8 << (8 - amount)));
 }
 
 int prp(unsigned char* data, unsigned char key, unsigned char data_size)
@@ -40,7 +30,7 @@ int prp(unsigned char* data, unsigned char key, unsigned char data_size)
     {    
         data_byte = data[index];
         key ^= data_byte;                       
-        data[index] = rotate_left((data_byte + key + index) & 255, 5);        
+        data[index] = rotate_left((data_byte + key + index), 5);        
         key ^= data[index]; 
     }
     return key;
@@ -51,7 +41,7 @@ int prf(unsigned char* data, unsigned char key, unsigned char data_size)
     unsigned char index, byte;
     for (index = 0; index < data_size; index++)
     {    
-        byte = rotate_left((data[index] + key + index) & 255, 5);  
+        byte = rotate_left((data[index] + key + index), 5);  
         key ^= byte;
         data[index] = byte;           
     }
@@ -108,7 +98,7 @@ unsigned char invert_prp(unsigned char* data, unsigned char key, int data_size)
     {                    
         data_byte = data[index];
         key ^= data_byte;                
-        data[index] = (256 + (rotate_right(data_byte, 5) - key - index)) & 255;       
+        data[index] = (256 + (rotate_right(data_byte, 5) - key - index));       
         key ^= data[index];
     }
     return key;
@@ -145,7 +135,17 @@ void decrypt(unsigned char* data, unsigned char* _key, int rounds)
         xor_with_key(data, round_key);
     }
 }
-        
+ 
+void print_data(unsigned char* data)
+{
+    int index;
+    printf("\n");
+    for (index = 0; index < 16; index++)
+    {
+        printf("%i: %i\n", index, data[index]);
+    }
+}  
+ 
 void test_encrypt_decrypt()
 {    
     unsigned char data[16], key[16], plaintext[16], null_string[16];

@@ -19,18 +19,18 @@ void print_data(unsigned int* data)
     printf("\n");
     for (index = 0; index < 16; index++)
     {
-        printf("%i: %i\n", index, data[index]);
+        printf("%u: %u\n", index, data[index]);
     }
 }   
 
 unsigned int rotate_left(unsigned int word8, int amount)
 {    
-    return ((word8 << amount) | (word8 >> (8 - amount))) & 255;
+    return ((word8 << amount) | (word8 >> (64 - amount))) & 0xFFFFFFFF;
 }
 
 unsigned int rotate_right(unsigned int word8, int amount)
 {              
-    return ((word8 >> amount) | (word8 << (8 - amount))) & 255;
+    return ((word8 >> amount) | (word8 << (64 - amount))) & 0xFFFFFFFF;
 }
 
 int prp(unsigned int* data, unsigned int key, unsigned int data_size)
@@ -40,7 +40,7 @@ int prp(unsigned int* data, unsigned int key, unsigned int data_size)
     {    
         data_byte = data[index];
         key ^= data_byte;                       
-        data[index] = rotate_left((data_byte + key + index) & 255, 5);        
+        data[index] = rotate_left((data_byte + key + index) & 0xFFFFFFFF, 5);        
         key ^= data[index]; 
     }
     return key;
@@ -51,7 +51,7 @@ int prf(unsigned int* data, unsigned int key, unsigned int data_size)
     unsigned int index, byte;
     for (index = 0; index < data_size; index++)
     {    
-        byte = rotate_left((data[index] + key + index) & 255, 5);  
+        byte = rotate_left((data[index] + key + index) & 0xFFFFFFFF, 5);  
         key ^= byte;
         data[index] = byte;           
     }
@@ -97,9 +97,9 @@ void encrypt(unsigned int* data, unsigned int* _key, int rounds)
     {            
         memcpy_s(round_key, round_keys + (index * 16), 16);    
     
-        data_xor = xor_with_key(data, round_key); // pre-whitening
+        //data_xor = xor_with_key(data, round_key); // pre-whitening
         data_xor = prp(data, data_xor, 16); // high diffusion prp
-        xor_with_key(data, round_key); // post-whitening
+        //xor_with_key(data, round_key); // post-whitening
     }
 }
 
@@ -111,7 +111,7 @@ unsigned int invert_prp(unsigned int* data, unsigned int key, int data_size)
     {                    
         byte = data[index];
         key ^= byte;                
-        data[index] = (256 + (rotate_right(byte, 5) - key - index)) & 255;       
+        data[index] = (0xFFFFFFFF + 1 + (rotate_right(byte, 5) - key - index)) & 0xFFFFFFFF;       
         key ^= data[index];
     }
     return key;
@@ -145,18 +145,18 @@ void decrypt(unsigned int* data, unsigned int* _key, int rounds)
     {            
         memcpy_s(round_key, round_keys + (index * 16), 16);
         
-        data_xor = xor_with_key(data, round_key);         
+        //data_xor = xor_with_key(data, round_key);         
         data_xor = invert_prp(data, data_xor, 16);
-        xor_with_key(data, round_key);
+        //xor_with_key(data, round_key);
     }
 }
         
 void test_encrypt_decrypt()
 {    
     unsigned int data[16], key[16], plaintext[16], null_string[16];
-    int rounds = 16, index;
+    int rounds = 1, index;
     
-    memset(null_string, 0x00000000, 16);
+    memset(null_string, 0, 16);
     memcpy_s(data, null_string, 16);       
     data[15] = 1;
     memcpy_s(plaintext, data, 16);
