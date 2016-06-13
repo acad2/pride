@@ -72,6 +72,19 @@ unsigned int xor_with_key(unsigned int* data, unsigned int* key)
     return data_xor;
 }
 
+void key_schedule(unsigned int* key, unsigned int* round_keys, unsigned int* round_key, unsigned int key_xor, int rounds)
+{        
+    int index;    
+    for (index = 0; index < rounds; index++)
+    {          
+        key_xor = prp(key, key_xor);        
+        memcpy_s(round_key, key, DATA_SIZE);
+                
+        prf(round_key, key_xor);
+        memcpy_s(round_keys + (index * DATA_SIZE), round_key, DATA_SIZE);                
+    }
+}  
+
 void encrypt(unsigned int* data, unsigned int* _key, int rounds)
 {
     unsigned int key[DATA_SIZE];
@@ -84,16 +97,9 @@ void encrypt(unsigned int* data, unsigned int* _key, int rounds)
         key[index] = key_byte;
         key_xor ^= key_byte;                
     }
-        
-    for (index = 0; index < rounds; index++)
-    {          
-        key_xor = prp(key, key_xor);        
-        memcpy_s(round_key, key, DATA_SIZE);
-                
-        prf(round_key, key_xor);
-        memcpy_s(round_keys + (index * DATA_SIZE), round_key, DATA_SIZE);                
-    }
-        
+      
+    key_schedule(key, round_keys, round_key, key_xor, rounds);
+          
     for (index = 0; index < rounds; index++)
     {            
         memcpy_s(round_key, round_keys + (index * DATA_SIZE), DATA_SIZE);    
@@ -131,15 +137,8 @@ void decrypt(unsigned int* data, unsigned int* _key, int rounds)
         key[index] = key_byte;
     }      
     
-    for (index = 0; index < rounds; index++)
-    {          
-        key_xor = prp(key, key_xor);        
-        memcpy_s(round_key, key, DATA_SIZE);
-                
-        prf(round_key, key_xor);
-        memcpy_s(round_keys + (index * DATA_SIZE), round_key, DATA_SIZE);                
-    }
-        
+    key_schedule(key, round_keys, round_key, key_xor, rounds);
+    
     for (index = rounds; index--;)
     {            
         memcpy_s(round_key, round_keys + (index * DATA_SIZE), DATA_SIZE);
