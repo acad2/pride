@@ -57,3 +57,34 @@ Temporary Items
 *.pyo
 .py.cache
 /crypto/random_data
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.d
+*.obj
+bin*
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
