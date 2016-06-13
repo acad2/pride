@@ -436,8 +436,8 @@ class Bytecode_Interpreter(pride.base.Base):
     @pride.preprocess
     def generate_binary_inplace_methods():
         source = []
-        method_source = "def {}_{}(self, argument, code_object, stack, frame):\n\tstack.append(stack.pop() {} stack.pop())"
-        subscr_source = "def {}_subscr(self, argument, code_object, stack, frame):\n\tstack.append(stack.pop()[stack.pop()])"
+        method_source = "    def {}_{}(self, argument, code_object, stack, frame):\n\tstack.append(stack.pop() {} stack.pop())"
+        subscr_source = "    def {}_subscr(self, argument, code_object, stack, frame):\n\tstack.append(stack.pop()[stack.pop()])"
         operations = {"power" : "**", "multiply" : '*', "divide" : '/', 
                       "floor_divide" : "//",  "true_divide" : '/', "modulo" : '%', 
                       "add" : '+', "subtract" : '-', "lshift" : "<<", 
@@ -448,7 +448,7 @@ class Bytecode_Interpreter(pride.base.Base):
         source.append(subscr_source.format("binary"))
         source.append(subscr_source.format("inplace"))
         source.append('\n')        
-        return '\n    '.join(source)
+        return '\n'.join(source)[4:]
     
 def _test(keyword=True, *args, **kwargs):
     print keyword, args, kwargs

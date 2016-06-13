@@ -28,7 +28,7 @@ class Graph(pride.gui.gui.Application):
             source.append("    def _set_draw_{}(self, value):".format(draw_type))
             source.append("        self._draw_{} = value; self.texture_invalid = True".format(draw_type))
             source.append("    draw_{} = property(_get_draw_{}, _set_draw_{})\n".format(draw_type, draw_type, draw_type))
-        return '\n'.join(source)
+        return '\n'.join(source)[4:]
         
     def __init__(self, **kwargs):
         super(Graph, self).__init__(**kwargs)     

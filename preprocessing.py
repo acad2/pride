@@ -440,11 +440,8 @@ class Preprocess_Decorator(Preprocessor):
             namespace = {}            
             exec code in namespace, namespace
             new_source = namespace[name]()
-            assert new_source, "Preprocessor function failed to return new source"            
-            #print 'end of source next\n'
-            #print source[end + sum((len(line) for line in function_source)) + len("@pride.preprocess"):]
-            source = source[:start] + new_source + '\n'.join(_source)[sum((len(line) for line in function_source[:])):]            
-            print source
+            assert new_source, "Preprocessor function failed to return new source"                                    
+            source = source[:start] + new_source + '\n'.join(_source)[sum((len(line) for line in function_source[:])) + len(function_source):]                        
         return source
             
   

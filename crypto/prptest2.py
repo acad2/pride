@@ -9,7 +9,7 @@ def xor_sum(data):
 def interleaved_sum(data):
     output = 0
     for index, byte in enumerate(data):        
-        output = byte ^ (((output ^ byte) + byte + index) & 255)
+        output = ((output + byte + index) & 255) ^ byte
     return output
     
 def prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
@@ -33,12 +33,13 @@ def test_prp():
         prp(data, function(data))
         prp(data2, function(data2))
         prp(data3, function(data3))
+        binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
         print "Using function: ", function
-        print "Data: ", data
+        print "Data: ", data#binary(data)
         print
-        print "Data2: ", data2
+        print "Data2: ", data2#binary(data2)
         print
-        print "Data3: ", data3
+        print "Data3: ", data3#binary(data3)
         
     
     
