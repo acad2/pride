@@ -43,7 +43,7 @@ int prp(unsigned int* data, unsigned int key)
     for (index = 0; index < DATA_SIZE; index++)
     {    
         data_byte = data[index];
-        key ^= data_byte;                       
+        key ^= data_byte;                               
         data[index] = rotate_left((data_byte + key + index), 20);        
         key ^= data[index]; 
     }
@@ -112,7 +112,7 @@ unsigned int invert_prp(unsigned int* data, unsigned int key)
     {                    
         byte = data[index];
         key ^= byte;                
-        data[index] = rotate_right(byte, 5) - key - index;       
+        data[index] = rotate_right(byte, 20) - key - index;       
         key ^= data[index];
     }
     return key;
