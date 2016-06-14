@@ -152,7 +152,7 @@ def test_decorrelation_layer():
     print binary(data)
     
 def test_encrypt_decrypt():
-    byte_size = 1
+    byte_size = 4
     data = bytearray(16 * byte_size)    
     key = bytearray(16 * byte_size)
     data[-1] = 1
@@ -233,35 +233,36 @@ def test_prf():
     test_hash_function(test_hash)
         
 def test_prp():       
-    data = list(bytearray(8))
+    data = list(bytearray(16))
     data[-1] = 1
     
-    data2 = list(bytearray(8))
+    data2 = list(bytearray(16))
     data2[-2] = 1    
     
-    data3 = list(bytearray(8))
+    data3 = list(bytearray(16))
     data3[-2] = 2
     
-    size = (((2 ** 32) - 1), 20, 32)
+    wordsize = 64
+    size = (((2 ** wordsize) - 1), 40, wordsize)
     data_xor = prp(data, xor_sum(data), *size)
-    #prf(data, data_xor, *size)          
-    #prp(data, xor_sum(data), *size)
+    prf(data, data_xor, *size)          
+    prp(data, xor_sum(data), *size)
     
     data_xor = prp(data2, xor_sum(data2), *size)
-    #prf(data2, data_xor, *size)    
-    #prp(data2, xor_sum(data), *size)
+    prf(data2, data_xor, *size)    
+    prp(data2, xor_sum(data), *size)
     
     data_xor = prp(data3, xor_sum(data3), *size)
-    #prf(data3, data_xor, *size)    
-    #prp(data3, xor_sum(data), *size)
+    prf(data3, data_xor, *size)    
+    prp(data3, xor_sum(data), *size)
    
-    binary = lambda _data: ''.join(format(byte, 'b').zfill(32) for byte in _data)  
-    _bytes = lambda _data: ''.join(bytes(integer_to_bytes(word, 4)) for word in _data)
-    print _bytes(data)#binary(data)
+    binary = lambda _data: ''.join(format(byte, 'b').zfill(wordsize) for byte in _data)  
+    _bytes = lambda _data: ''.join(bytes(integer_to_bytes(word, wordsize / 8)) for word in _data)
+    print binary(data).count('1') / float(wordsize * 16)
     print 
-    print _bytes(data2)#binary(data2)
+    print binary(data2).count('1') / float(wordsize * 16) 
     print 
-    print _bytes(data3)#binary(data3)
+    print binary(data3).count('1') / float(wordsize * 16) 
     
 if __name__ == "__main__":
     #test_invert_prp()
