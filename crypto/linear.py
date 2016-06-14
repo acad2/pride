@@ -4,8 +4,8 @@ def build_linear_approximation_table(sbox):
     approximations = {}
     for byte in range(256):        
         for mask1 in range(1, 256):
-            #for mask2 in range(256):
-                mask2 = mask1
+            for mask2 in range(256):
+            #    mask2 = mask1
                 input = byte
                 input_parity = hamming_weight(input & mask1) % 2
                 output_parity = hamming_weight(sbox[input] & mask2) % 2

@@ -45,7 +45,7 @@ def bit_mixing(data, start=0, direction=1, bit_width=8):
     index = start
     key = 0
     for counter in range(size):
-        data[(index + 1) % size] ^= rotate_left(data[index], (index + index + 1) % 8, bit_width)
+        data[(index + 1) % size] ^= rotate_left(data[index], (index % bit_width), bit_width)
         key ^= data[(index + 1) % size]
         index += direction
     return key
@@ -152,7 +152,7 @@ def test_decorrelation_layer():
     print binary(data)
     
 def test_encrypt_decrypt():
-    byte_size = 4
+    byte_size = 8
     data = bytearray(16 * byte_size)    
     key = bytearray(16 * byte_size)
     data[-1] = 1
