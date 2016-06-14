@@ -87,12 +87,17 @@ class SDL_Window(SDL_Component):
                 self.on_screen.append(instance)        
         return instance
         
-    def remove(self, instance):
+    def remove(self, instance):        
         try:
             self.on_screen.remove(instance)
         except ValueError:
             if hasattr(instance, "pack") and instance.__class__.__name__ != "Organizer":
                 raise ValueError("Unable to remove {} from on_screen".format(instance))
+        except AttributeError:
+            print "That was weird"
+            import pprint
+            pprint.pprint(dict((key, getattr(self, key)) for key in sorted(self.__dict__)))
+            raise
         super(SDL_Window, self).remove(instance)
         
     def run(self):        
@@ -506,10 +511,12 @@ class Renderer(SDL_Component):
                 
     def __init__(self, window, **kwargs):      
         super(Renderer, self).__init__(**kwargs)
+        
         self.wraps(sdl2.ext.Renderer(window, flags=self.flags))
+        
         self.blendmode = self.blendmode_flag
         
-        self.sprite_factory = self.create(Sprite_Factory, renderer=self)
+        self.sprite_factory = self.create(Sprite_Factory)
         self.font_manager = self.create(Font_Manager)
         self.instructions = dict((name, getattr(self, "draw_" + name)) for 
                                   name in ("point", "line", "rect", "rect_width", "text"))
@@ -585,11 +592,18 @@ class Renderer(SDL_Component):
         
 class Sprite_Factory(SDL_Component):
 
-    def __init__(self, **kwargs):
-        kwargs["wrapped_object"] = sdl2.ext.SpriteFactory(renderer=kwargs["renderer"])
+    def __init__(self, **kwargs):        
         super(Sprite_Factory, self).__init__(**kwargs)
-
-
+        self.wraps(sdl2.ext.SpriteFactory(renderer=self.parent))
+        
+    def save(self):
+        sprite_factory = self.wrapped_object
+        self.wraps(None)
+        attributes = super(Sprite_Factory, self).save()
+        self.wraps(sprite_factory)
+        return attributes
+        
+        
 class Font_Manager(SDL_Component):
 
     defaults = {"font_path" : os.path.join(pride.gui.PACKAGE_LOCATION,
@@ -605,3 +619,4 @@ class Font_Manager(SDL_Component):
                    "bg_color" : _defaults["default_background"]}
         kwargs["wrapped_object"] = sdl2.ext.FontManager(**options)
         super(Font_Manager, self).__init__(**kwargs)
+        
