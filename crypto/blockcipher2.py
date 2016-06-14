@@ -152,11 +152,12 @@ def test_decorrelation_layer():
     print binary(data)
     
 def test_encrypt_decrypt():
-    data = bytearray(16 * 4)    
-    key = bytearray(16 * 4)
+    byte_size = 1
+    data = bytearray(16 * byte_size)    
+    key = bytearray(16 * byte_size)
     data[-1] = 1
     rounds = 16
-    byte_size = 4
+    
     bit_size = byte_size * 8
     size = (bit_size, ((2 ** bit_size) - 1), bit_size - (3 * byte_size))
     data = bytes_to_words(data, byte_size)    

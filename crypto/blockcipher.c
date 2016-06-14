@@ -84,7 +84,7 @@ unsigned char decorrelation_layer(unsigned char* data, int data_size)
 int prp(unsigned char* data, unsigned char key, unsigned char data_size)
 {
     unsigned char index, data_byte;
-    decorrelation_layer(data, data_size);
+    key = decorrelation_layer(data, data_size);
     
     for (index = 0; index < data_size; index++)
     {    
