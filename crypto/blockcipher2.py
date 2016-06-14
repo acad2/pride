@@ -1,16 +1,5 @@
 from utilities import xor_sum, rotate_left, rotate_right, slide, xor_subroutine, integer_to_bytes, bytes_to_words, words_to_bytes
 
-def bit_mixing(data, start=0, direction=1):
-    size = len(data)
-    index = start
-    key = 0
-    for counter in range(size):        
-        next_index = (index + 1) % size
-        data[next_index] ^= rotate_left(data[index], ((index + index + 1) % 8))  
-        key ^= data[next_index]
-        index += direction
-    return key
-    
 def shuffle_bytes(_state, temp=list(range(16))):          
     temp[7] = _state[0] 
     temp[12] = _state[1]
@@ -31,34 +20,7 @@ def shuffle_bytes(_state, temp=list(range(16))):
             
     _state[:] = temp[:]
     
-def decorrelation_layer(data, start=0, direction=1):
-    key = bit_mixing(data, start, direction)    
-    shuffle_bytes(data)
-    return key
-    
-def prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
-    key = decorrelation_layer(data)
-    for index in range(len(data)):
-        byte = data[index]
-        key ^= byte                                
-        data[index] = rotate_left((byte + (key ^ index) + index) & mask, rotation_amount, bit_width)
-        key ^= data[index]         
-    return key
-          
-def prf(data, key, mask=255, rotation_amount=5, bit_width=8):    
-    for index in range(len(data)):        
-        new_byte = rotate_left((data[index] + key + index) & mask, rotation_amount, bit_width)    
-        key ^= new_byte
-        data[index] = new_byte            
-            
-def xor_subroutine2(data, key):
-    data_xor = 0
-    for index, byte in enumerate(key):
-        data[index] ^= byte
-        data_xor ^= data[index]
-    return data_xor
-      
-def invert_shuffle_bytes(state, temp=list(range(16))):        
+def invert_shuffle_bytes(state, temp=list(range(16))):       
     temp[11] = state[0]
     temp[5] = state[1]
     temp[4] = state[2]
@@ -77,10 +39,43 @@ def invert_shuffle_bytes(state, temp=list(range(16))):
     temp[7] = state[15]
     
     state[:] = temp[:]
+    
+def bit_mixing(data, start=0, direction=1, bit_width=8):
+    size = len(data)
+    index = start
+    key = 0
+    for counter in range(size):
+        data[(index + 1) % size] ^= rotate_left(data[index], (index + index + 1) % 8, bit_width)
+        key ^= data[(index + 1) % size]
+        index += direction
+    return key
+    
+def decorrelation_layer(data, bit_width):
+    key = bit_mixing(data, 0, 1, bit_width)    
+    shuffle_bytes(data)
+    return key
+    
+def prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
+    key = decorrelation_layer(data, bit_width)
+    for index in range(len(data)):
+        byte = data[index]
+        key ^= byte                          
+        data[index] = rotate_left((byte + key + index) & mask, rotation_amount, bit_width)        
+        key ^= data[index]                    
+    return key
         
-def invert_decorrelation_layer(data):
-    invert_shuffle_bytes(data)
-    bit_mixing(data, len(data) - 1, -1)
+def prf(data, key, mask=255, rotation_amount=5, bit_width=8):    
+    for index in range(len(data)):        
+        new_byte = rotate_left((data[index] + key + index) & mask, rotation_amount, bit_width)    
+        key ^= new_byte
+        data[index] = new_byte            
+            
+def xor_subroutine2(data, key):
+    data_xor = 0
+    for index, byte in enumerate(key):
+        data[index] ^= byte
+        data_xor ^= data[index]
+    return data_xor
     
 def encrypt(data, key, rounds=1, size=(8, 255, 5)):     
     key = key[:]
@@ -97,17 +92,21 @@ def encrypt(data, key, rounds=1, size=(8, 255, 5)):
         prf(round_key, key_xor, mask, rotation_amount, bit_width) # one way extraction: class 2B keyschedule
         
         data_xor = xor_subroutine2(data, round_key) # pre-whitening                   
-        data_xor = prp(data, data_xor, mask, rotation_amount, bit_width) # high diffusion prp     
+        data_xor = prp(data, xor_sum(data), mask, rotation_amount, bit_width) # high diffusion prp     
         data_xor = xor_subroutine2(data, round_key) # post_whitening
-        
+
+def invert_decorrelation_layer(data, bit_width):
+    invert_shuffle_bytes(data)
+    return bit_mixing(data, len(data) - 1, -1, bit_width)
+    
 def invert_prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
     for index in reversed(range(len(data))):
         byte = data[index]
-        key ^= byte        
-        data[index] = ((mask + 1) + (rotate_right(byte, rotation_amount, bit_width) - key - index)) & mask
+        key ^= byte                
+        data[index] = ((mask + 1) + (rotate_right(byte, rotation_amount, bit_width) - key - index)) & mask        
         key ^= data[index]
-    return key
-    
+    return invert_decorrelation_layer(data, bit_width)
+              
 def decrypt(data, key, rounds=1, size=(8, 255, 5)):
     round_keys = []
     key = key[:]
@@ -125,10 +124,33 @@ def decrypt(data, key, rounds=1, size=(8, 255, 5)):
     for round in reversed(range(rounds)):
         round_key = round_keys[round]
 
-        data_xor = xor_subroutine2(data, round_key)        
-        data_xor = invert_prp(data, data_xor, mask, rotation_amount, bit_width) 
+        data_xor = xor_subroutine2(data, round_key)                      
+        data_xor = invert_prp(data, xor_sum(data), mask, rotation_amount, bit_width)               
         data_xor = xor_subroutine2(data, round_key)               
-        
+ 
+def test_bit_mixing():
+    data = bytearray(range(8))
+    binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
+    print binary(data)
+    
+    bit_mixing(data)
+    print binary(data)
+    
+    bit_mixing(data, len(data) - 1, -1)
+    print binary(data)
+    
+def test_decorrelation_layer():
+    data = bytearray(range(16))
+    
+    binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
+    print binary(data)
+    print
+    decorrelation_layer(data)
+    print binary(data)
+    print
+    invert_decorrelation_layer(data)
+    print binary(data)
+    
 def test_encrypt_decrypt():
     data = bytearray(16 * 4)    
     key = bytearray(16 * 4)
@@ -137,32 +159,22 @@ def test_encrypt_decrypt():
     byte_size = 4
     bit_size = byte_size * 8
     size = (bit_size, ((2 ** bit_size) - 1), bit_size - (3 * byte_size))
-    data = bytes_to_words(data, byte_size)
+    data = bytes_to_words(data, byte_size)    
     key = bytes_to_words(key, byte_size)
     plaintext = data[:]
+
+    encrypt(data, key, rounds, size)        
+    print ''.join(bytes(integer_to_bytes(block, byte_size)) for block in data)
+    print [byte for byte in data]
     
-    bits, mask, rotation = size
-    data_xor = xor_sum(data)
-    data_xor = prp(data, data_xor, mask, rotation, bits)
-    
-    print "After prp: "
-    import pprint
-    pprint.pprint(data) #''.join(bytes(integer_to_bytes(block, byte_size)) for block in data)
-    
-    data_xor = invert_prp(data, data_xor, mask, rotation, bits)
-    print "After inversion: ", data
-    #encrypt(data, key, rounds, size)        
-    #print ''.join(bytes(integer_to_bytes(block, byte_size)) for block in data)
-    #print [byte for byte in data]
-    #
-    #decrypt(data, key, rounds, size)
-    #assert data == plaintext, (data, plaintext)
+    decrypt(data, key, rounds, size)
+    assert data == plaintext, (data, plaintext)
         
 def test_invert_prp():
-    data = bytearray("Testing!")
+    data = bytearray("Testing!" * 2)
     data_xor = prp(data, xor_sum(data))
     invert_prp(data, data_xor)
-    assert data == "Testing!", data
+    assert data == "Testing!" * 2, data
     
 def test_prp_cycle_length():
     from utilities import find_cycle_length_subroutine
@@ -175,8 +187,8 @@ def test_prp_metrics():
         data = data + ("\x00" * (16 - size))
         if size == 16:            
             output = bytearray(data)
-            for round in range(1):                
-                prp(output, xor_sum(output))                 
+            for round in range(1):
+                prp(output, xor_sum(output))            
         else:
             output = bytearray(16)
             for block in slide(bytearray(data), 16):            
@@ -220,13 +232,13 @@ def test_prf():
     test_hash_function(test_hash)
         
 def test_prp():       
-    data = list(bytearray(16))
+    data = list(bytearray(8))
     data[-1] = 1
     
-    data2 = list(bytearray(16))
+    data2 = list(bytearray(8))
     data2[-2] = 1    
     
-    data3 = list(bytearray(16))
+    data3 = list(bytearray(8))
     data3[-2] = 2
     
     size = (((2 ** 32) - 1), 20, 32)
@@ -244,48 +256,19 @@ def test_prp():
    
     binary = lambda _data: ''.join(format(byte, 'b').zfill(32) for byte in _data)  
     _bytes = lambda _data: ''.join(bytes(integer_to_bytes(word, 4)) for word in _data)
-    print _bytes(data)
-    print
-    print _bytes(data2)
-    print
-    print _bytes(data3)
-    
-    #print binary(data).count('1')
-    #print 
-    #print binary(data2).count('1')
-    #print 
-    #print binary(data3).count('1')
-    
-def test_bit_mixing():
-    data = bytearray(range(8))
-    binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
-    print binary(data)
-    
-    bit_mixing(data)
-    print binary(data)
-    
-    bit_mixing(data, len(data) - 1, -1)
-    print binary(data)
-    
-def test_decorrelation_layer():
-    data = bytearray(range(16))
-    
-    binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
-    print binary(data)
-    print
-    decorrelation_layer(data)
-    print binary(data)
-    print
-    invert_decorrelation_layer(data)
-    print binary(data)
+    print _bytes(data)#binary(data)
+    print 
+    print _bytes(data2)#binary(data2)
+    print 
+    print _bytes(data3)#binary(data3)
     
 if __name__ == "__main__":
     #test_invert_prp()
+    #test_decorrelation_layer()
     #test_prp_cycle_length()
-    test_prp_metrics()    
+    #test_prp_metrics()    
     #test_prp_s_box()
-    #test_encrypt_decrypt()
+    test_encrypt_decrypt()
     #test_prf()    
     #test_prp()
-    #test_decorrelation_layer()
     
