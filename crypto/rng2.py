@@ -35,7 +35,7 @@ def decorrelation_layer(data, bit_width):
     shuffle_bytes(data)
     return key
     
-def prp(data, key, mask=255, rotation_amount=5, bit_width=8):    
+def prp(data, mask=255, rotation_amount=5, bit_width=8):    
     key = decorrelation_layer(data, bit_width)
     for index in range(len(data)):
         byte = data[index]
@@ -49,14 +49,7 @@ def prf(data, key, mask=255, rotation_amount=5, bit_width=8):
         new_byte = rotate_left((data[index] + key + index) & mask, rotation_amount, bit_width)    
         key ^= new_byte
         data[index] = new_byte            
-            
-def xor_subroutine2(data, key):
-    data_xor = 0
-    for index, byte in enumerate(key):
-        data[index] ^= byte
-        data_xor ^= data[index]
-    return data_xor
-    
+                
 def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):     
     key = key[:]
     seed = seed[:]
@@ -66,12 +59,12 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
     output = bytearray()
     block_count, extra = divmod(output_size, len(seed) * (bit_width / 8))
     for block in range(block_count + 1 if extra else block_count):        
-        key_xor = prp(key, key_xor, mask, rotation_amount, bit_width) # generate key                       
-        key_xor = prf(key, key_xor, mask, rotation_amount, bit_width) # one way extraction: class 2B keyschedule
+        key_xor = prp(key, mask, rotation_amount, bit_width) 
+        prf(key, key_xor, mask, rotation_amount, bit_width) 
         
-        xor_subroutine(seed, key) # pre-whitening                   
-        prf(seed, xor_sum(seed), mask, rotation_amount, bit_width) # high diffusion prp             
-        xor_subroutine2(seed, key) # post_whitening
+        xor_subroutine(seed, key) 
+        prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
+        xor_subroutine(seed, key)
         
         output.extend(seed[:])
     return output
@@ -109,11 +102,19 @@ class Stream_Cipher(pride.crypto.Cipher):
         iv = bytearray(16)        
                 
         ciphertext = cipher.encrypt(message, iv)        
+        print ciphertext
         plaintext = cipher.decrypt(ciphertext, iv)
         assert message == plaintext, (message, plaintext)
         print "Passed encrypt/decrypt test"
         
+    @classmethod
+    def test_performance(cls, *args, **kwargs):  
+        from metrics import test_cipher_performance
+        cipher = cls("\x00" * 16, None)
+        test_cipher_performance((32, 1500, 4096, 1024 * 1024), cipher.encrypt, "\x00" * 16, "\x00" * 16)
+        
 if __name__ == "__main__":
-    #Stream_Cipher.test_encrypt_decrypt("\x00" * 16, "stream!")
-    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+    Stream_Cipher.test_encrypt_decrypt("\x00" * 16, "stream!")
+    #Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+    #Stream_Cipher.test_performance()
     
