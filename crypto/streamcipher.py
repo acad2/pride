@@ -61,11 +61,12 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
     
     for block in range(block_count + 1 if extra else block_count):        
         key_xor = prp(key, mask, rotation_amount, bit_width) 
-        prf(key, key_xor, mask, rotation_amount, bit_width)
+        round_key = key[:]
+        prf(round_key, key_xor, mask, rotation_amount, bit_width)
         
-        xor_subroutine(seed, key)         
+        xor_subroutine(seed, round_key)         
         prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
-        xor_subroutine(seed, key)
+        xor_subroutine(seed, round_key)
         
         output.extend(seed[:])
     return output
