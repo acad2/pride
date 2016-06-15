@@ -36,7 +36,7 @@ def sponge(input_data, output_bytes, rate=256):
             output[((chunk + 1) * 256) + index] = seed[tweak[index]]
     return bytes(output)
     
-def random_number_generator(key, seed, tweak, output_size=256):
+def random_number_generator(key, seed, output_size=256, tweak=range(256)):
     """ Psuedorandom number generator. Operates by randomly shuffling the
         set of 256 elements according to an internal state array.
         
@@ -52,6 +52,7 @@ def random_number_generator(key, seed, tweak, output_size=256):
         Internally, two states are used: The main state array, and an 8-bit
         byte. The 8-bit byte contributes to diffusion and avalanche"""   
     state = key[0]           
+    tweak = tweak[:]
     state = shuffle_extract(tweak, key, state)
     state = shuffle_extract(tweak, seed, state)
     output = bytearray(output_size)
@@ -81,6 +82,7 @@ def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(2
         supplied/default seed, key, tweak, and output_size. """      
     output = bytearray(256)
     key = null_pad(key, 256)
+    seed = null_pad(seed, 256)
     generator = random_number_generator_subroutine(key, bytearray(seed), bytearray(tweak), output, output_size)    
     amount, extra = divmod(count, output_size) 
     amount += 1 if extra else 0
@@ -88,7 +90,7 @@ def random_bytes(count, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(2
         next(generator)           
         output.extend(output[:output_size])
         
-    return bytes(output[:count])
+    return output[:count]
     
 def _random_bytes(count, output, seed="\x00" * 256, key="\x00" * 256, tweak=tuple(range(256)), output_size=256):  
     """ Generates count random bytes using random_number_generator using the 
@@ -182,9 +184,9 @@ def test_random_number_generator():
     tweak = range(256)    
     import pride.datastructures
     from metrics import hamming_distance, cast, test_randomness, test_prng_performance, test_bias_of_data
-    random_megabyte = random_bytes(1024 * 1024, "\x00" * 256, key=key)
+    random_megabyte = bytes(random_bytes(1024 * 1024, "\x00" * 256, key=key))
     test_randomness(random_megabyte)
-    random_megabyte2 = random_bytes(1024 * 1024, "\x00" * 255 + "\x01", key=key)
+    random_megabyte2 = bytes(random_bytes(1024 * 1024, "\x00" * 255 + "\x01", key=key))
     ratio = pride.datastructures.Average(size=65535)
     for chunk in range((1024 * 1024) / 256):
         _slice = slice(chunk * 256, (chunk + 1) * 256)
@@ -198,7 +200,7 @@ def test_random_number_generator():
     print "Maximum Hamming distance and ratio: ", maximum / bit_count     
         
     test_bias_of_data(random_megabyte)    
-    test_prng_performance(lambda data, output_size: random_bytes(output_size, key=key))               
+    test_prng_performance(lambda data, output_size: bytes(random_bytes(output_size, key=key)))               
     
 def test_shuffle_extract():
     from metrics import test_randomness, test_avalanche

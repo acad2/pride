@@ -4,9 +4,41 @@ import dis
 
 import pride
 
-X = 1
+class Stack(object):
+        
+    def __init__(self):
+        self.stack = []
+        
+    def append(self, value):
+        self.stack.append(value)
+        
+    def push(self, value):
+        self.stack.append(value)
+        
+    def pop(self, index=-1):
+        return self.stack.pop(index)
+        
+    def __getitem__(self, value):        
+        return self.stack[value]
+        
+    def __setitem__(self, index, value):
+        self.stack[index] = value
+        
+    def __delitem__(self, index):
+        del self.stack[index]
+        
+        
+class Stack_Frame(object):
     
+    def __init__(self, _locals, parent, stack_type=Stack):
+        self.locals = _locals
+        self.parent = parent
+        self.stack = stack_type()
+                
+                
 class Function(pride.base.Wrapper):
+    
+    defaults = {"stack_frame_type" : Stack_Frame}
     
     wrapped_object_name = "function"
     
@@ -45,16 +77,9 @@ class Function(pride.base.Wrapper):
             _locals[self._varargs] = args[index + 1:]
         if self._keywords:
             _locals[self._keywords] = kwargs
-        frame = Stack_Frame(_locals, self)
+        frame = self.stack_frame_type(_locals, self)
         return objects["/Bytecode_Interpreter"].execute_code(self._code, frame)
-    
-class Stack_Frame(object):
-    
-    def __init__(self, _locals, parent):
-        self.locals = _locals
-        self.parent = parent
-        self.stack = []
-        
+          
         
 class Bytecode_Interpreter(pride.base.Base):
             
@@ -430,8 +455,7 @@ class Bytecode_Interpreter(pride.base.Base):
         raise NotImplementedError
         
     def setup_finally(self, argument, code_object, stack, frame):
-        raise NotImplementedError
-        
+        raise NotImplementedError      
         
     @pride.preprocess
     def generate_binary_inplace_methods():
@@ -449,6 +473,8 @@ class Bytecode_Interpreter(pride.base.Base):
         source.append(subscr_source.format("inplace"))
         source.append('\n')        
         return '\n'.join(source)[4:]
+    
+X = 1 # test global
     
 def _test(keyword=True, *args, **kwargs):
     print keyword, args, kwargs

@@ -601,6 +601,7 @@ class Sprite_Factory(SDL_Component):
         self.wraps(None)
         attributes = super(Sprite_Factory, self).save()
         self.wraps(sprite_factory)
+        print "\n\n\nReturning: ", attributes
         return attributes
         
         
@@ -619,4 +620,35 @@ class Font_Manager(SDL_Component):
                    "bg_color" : _defaults["default_background"]}
         kwargs["wrapped_object"] = sdl2.ext.FontManager(**options)
         super(Font_Manager, self).__init__(**kwargs)
+        
+    def save(self):        
+        raise NotImplementedError()
+        with pride.contextmanagers.backup(self, "_bgcolor", "_textcolor", "_default_font", "fonts"):
+            color = self._bgcolor
+            self._bgcolor = (color.r, color.g, color.b, color.a)
+            
+            text_color = self._textcolor
+            self._textcolor = (color.r, color.g, color.b, color.a)
+            
+            self.fonts = {}
+            
+            default_font = self._default_font
+            self._default_font = self.defaults["font_path"]
+            attributes = super(Font_Manager, self).save()                
+        return attributes
+        
+    def on_load(self, attributes):
+        color = attributes["_bgcolor"]
+        attributes["_bgcolor"] = sdl2.ext.Color(*color)
+        
+        text_color = attributes["_textcolor"]
+        attributes["_textcolor"] = sdl2.ext.Color(*text_color)
+        raise NotImplementedError()       
+        #options = {"font_path" : attributes["font_path"],
+        #           "size" : attributes["default_font_size"],
+        #           "color" : attributes["default_color"],
+        #           "bg_color" : attributes["default_background"]}
+        #attributes["wrapped_object"] = sdl2.ext.FontManager(**options)
+        
+        super(Font_Manager, self).on_load(attributes)
         

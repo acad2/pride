@@ -121,7 +121,7 @@ def get_all_modules_for_class(_class):
     with modules_preserved(info[1] for info in class_info):
         compiler = sys.meta_path[0]
         for cls, module_name in class_info:
-            module = compiler.reload_module(module_name)            
+            module = compiler.reload_module(module_name)                    
             source = ''.join(compiler.module_source[module_name][0])            
             required_modules.append((module_name, source, module))    
     return required_modules

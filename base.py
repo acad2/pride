@@ -483,8 +483,8 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             elif hasattr(value, "save") and not getattr(value, "dont_save"):
                 attributes[key] = value.save()
                 attribute_type[key] = "saved"  
-        
-        required_modules = pride.module_utilities.get_all_modules_for_class(self.__class__)
+                
+        required_modules = pride.module_utilities.get_all_modules_for_class(type(self))
         version_control = objects["/Python/Version_Control"]     
         user = objects["/User"]
         hash_function = user.generate_tag

@@ -246,23 +246,29 @@ def test_prp():
     size = (((2 ** wordsize) - 1), 40, wordsize)
     data_xor = prp(data, xor_sum(data), *size)
     prf(data, data_xor, *size)          
-    prp(data, xor_sum(data), *size)
+    #prp(data, xor_sum(data), *size)
     
     data_xor = prp(data2, xor_sum(data2), *size)
     prf(data2, data_xor, *size)    
-    prp(data2, xor_sum(data), *size)
+    #prp(data2, xor_sum(data), *size)
     
     data_xor = prp(data3, xor_sum(data3), *size)
     prf(data3, data_xor, *size)    
-    prp(data3, xor_sum(data), *size)
+    #prp(data3, xor_sum(data), *size)
    
     binary = lambda _data: ''.join(format(byte, 'b').zfill(wordsize) for byte in _data)  
     _bytes = lambda _data: ''.join(bytes(integer_to_bytes(word, wordsize / 8)) for word in _data)
-    print binary(data).count('1') / float(wordsize * 16)
-    print 
-    print binary(data2).count('1') / float(wordsize * 16) 
-    print 
-    print binary(data3).count('1') / float(wordsize * 16) 
+    #print binary(data).count('1') / float(wordsize * 16)
+    #print 
+    #print binary(data2).count('1') / float(wordsize * 16) 
+    #print 
+    #print binary(data3).count('1') / float(wordsize * 16) 
+    
+    print _bytes(data)
+    print
+    print _bytes(data2)
+    print
+    print _bytes(data3)
     
 if __name__ == "__main__":
     #test_invert_prp()
@@ -270,7 +276,7 @@ if __name__ == "__main__":
     #test_prp_cycle_length()
     #test_prp_metrics()    
     #test_prp_s_box()
-    test_encrypt_decrypt()
+    #test_encrypt_decrypt()
     #test_prf()    
-    #test_prp()
+    test_prp()
     
