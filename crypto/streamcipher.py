@@ -64,8 +64,8 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
         prf(key, key_xor, mask, rotation_amount, bit_width)
         
         xor_subroutine(seed, key)         
-        #prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
-        #xor_subroutine(seed, key)
+        prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
+        xor_subroutine(seed, key)
         
         output.extend(seed[:])
     return output
