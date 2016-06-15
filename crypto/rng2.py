@@ -63,11 +63,8 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
     key_xor = xor_sum(key)    
     bit_width, mask, rotation_amount = size    
     
-    output = bytearray(output_size)
-    _view = memoryview(output)
-    seedview = memoryview(seed)
-    blocksize = len(seed) * (bit_width / 8)
-    block_count, extra = divmod(output_size, len(seed) * blocksize)
+    output = bytearray()
+    block_count, extra = divmod(output_size, len(seed) * (bit_width / 8))
     for block in range(block_count + 1 if extra else block_count):        
         key_xor = prp(key, key_xor, mask, rotation_amount, bit_width) # generate key                       
         key_xor = prf(key, key_xor, mask, rotation_amount, bit_width) # one way extraction: class 2B keyschedule
@@ -76,7 +73,7 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
         prf(seed, xor_sum(seed), mask, rotation_amount, bit_width) # high diffusion prp             
         xor_subroutine2(seed, key) # post_whitening
         
-        _view[block * blocksize:(block + 1) * blocksize] = seedview[:]
+        output.extend(seed[:])
     return output
     
 def encrypt(data, key, seed, size=(8, 255, 5)):
