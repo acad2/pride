@@ -49,7 +49,7 @@ def prf(data, key, mask=255, rotation_amount=5, bit_width=8):
         new_byte = rotate_left((data[index] + key + index) & mask, rotation_amount, bit_width)    
         key ^= new_byte
         data[index] = new_byte            
-                
+                  
 def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):     
     key = key[:]
     seed = seed[:]
@@ -58,13 +58,14 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
     
     output = bytearray()
     block_count, extra = divmod(output_size, len(seed) * (bit_width / 8))
+    
     for block in range(block_count + 1 if extra else block_count):        
         key_xor = prp(key, mask, rotation_amount, bit_width) 
-        prf(key, key_xor, mask, rotation_amount, bit_width) 
+        prf(key, key_xor, mask, rotation_amount, bit_width)
         
-        xor_subroutine(seed, key) 
-        prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
-        xor_subroutine(seed, key)
+        xor_subroutine(seed, key)         
+        #prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)
+        #xor_subroutine(seed, key)
         
         output.extend(seed[:])
     return output
@@ -77,7 +78,6 @@ def decrypt(data, key, seed, size=(8, 255, 5)):
     key_material = seed[:]    
     xor_subroutine(data, stream_cipher(key_material, key, len(data), size))    
                
-
 import pride.crypto
 
 class Stream_Cipher(pride.crypto.Cipher):
@@ -98,14 +98,15 @@ class Stream_Cipher(pride.crypto.Cipher):
     def test_encrypt_decrypt(cls, *args, **kwargs):
         cipher = cls(*args, **kwargs)
         
-        message = bytearray(range(16))
+        message = bytearray(16)
         iv = bytearray(16)        
-                
+        message[-1] = 1
+        
         ciphertext = cipher.encrypt(message, iv)        
-        print ciphertext
-        plaintext = cipher.decrypt(ciphertext, iv)
-        assert message == plaintext, (message, plaintext)
-        print "Passed encrypt/decrypt test"
+        print [byte for byte in bytearray(ciphertext)]
+        #plaintext = cipher.decrypt(ciphertext, iv)
+        #assert message == plaintext, (message, plaintext)
+        #print "Passed encrypt/decrypt test"
         
     @classmethod
     def test_performance(cls, *args, **kwargs):  

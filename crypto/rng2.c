@@ -128,10 +128,11 @@ void stream_cipher(unsigned char* data, unsigned char* _seed, unsigned char* _ke
     {            
         key_xor = prp(key, 16);                        
         prf(key, key_xor, 16);        
-    
-        data_xor = xor_with_key(seed, key);
-        prf(seed, data_xor, 16); 
-        xor_with_key(seed, key);
+            
+        data_xor = xor_with_key(seed, key);                      
+       // prf(seed, data_xor, 16); 
+       // xor_with_key(seed, key);
+               
         
         xor_with_key(data + (index * 16), seed);
     }
@@ -167,13 +168,15 @@ void test_encrypt_decrypt()
     memcpy_s(key, null_string, 16); 
     memcpy_s(seed, null_string, 16);
     
+    printf("Plaintext:\n");
+    print_data(data);
     encrypt(data, key, seed, 16);
     
-    printf("Data:\n %s\n", data);    
+    printf("Ciphertext:\n %s\n", data);    
     print_data(data);
         
-    decrypt(data, key, seed, 16);
-    print_data(data);
+ //   decrypt(data, key, seed, 16);
+ //   print_data(data);
 }
 
 void main()
