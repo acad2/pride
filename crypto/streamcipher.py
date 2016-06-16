@@ -19,38 +19,24 @@ def shuffle_bytes(_state, temp=list(range(16))):
     temp[3] = _state[15]
             
     _state[:] = temp[:]
-        
-def bit_mixing(data, start=0, direction=1, bit_width=8):
-    size = len(data)
-    index = start
-    key = 0
-    for counter in range(size):
-        data[(index + 1) % size] ^= rotate_left(data[index], (index % bit_width), bit_width)
-        key ^= data[(index + 1) % size]
-        index += direction
-    return key
-    
-def decorrelation_layer(data, bit_width):
-    key = bit_mixing(data, 0, 1, bit_width)    
+           
+def prp(data, mask=255, rotation_amount=5, bit_width=8): 
     shuffle_bytes(data)
-    return key
-    
-def prp(data, mask=255, rotation_amount=5, bit_width=8):    
-    key = decorrelation_layer(data, bit_width)        
-    for index in range(len(data)):
-        #left, right = data[index], data[(index + 1) % 16]
-        #key ^= right
-        #right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)     
-        #key ^= right ^ left
-        #left = (left + (right >> (bit_width / 2))) & mask
-        #key ^= left
-        #
-        #data[index], data[(index + 1) % 16] = left, right
+    key = xor_sum(data)
+    key ^= data[0]
+    data[0] = (data[0] + key) & mask
+    key ^= data[0]
+    for index in range(len(data)):       
+        left, right = data[index], data[(index + 1) % 16]
         
-        byte = data[index]
-        key ^= byte                         
-        data[index] = rotate_left((byte + key + index) & mask, rotation_amount, bit_width)     
-        key ^= data[index]                    
+        key ^= right
+        right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)
+        key ^= right ^ left
+        left = (left + (right >> (bit_width / 2))) & mask
+        left ^= rotate_left(right, index)
+        key ^= left
+        
+        data[index], data[(index + 1) % 16] = left, right                 
     return key
         
 def prf(data, key, mask=255, rotation_amount=5, bit_width=8):    
@@ -67,7 +53,7 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
     
     output = list()
     block_count, extra = divmod(output_size, len(seed) * (bit_width / 8))
-    
+        
     for block in range(block_count + 1 if extra else block_count):        
         key_xor = prp(key, mask, rotation_amount, bit_width) 
         round_key = key[:]
@@ -75,7 +61,7 @@ def stream_cipher(seed, key, output_size=16, size=(8, 255, 5)):
                 
         xor_subroutine(seed, round_key)                           
         seed_xor = prp(seed, mask, rotation_amount, bit_width)        
-        #prf(seed, seed_xor, mask, rotation_amount, bit_width)        
+        prf(seed, seed_xor, mask, rotation_amount, bit_width)        
         xor_subroutine(seed, round_key)
         
         output.extend(seed[:])
@@ -96,8 +82,8 @@ class Stream_Cipher(pride.crypto.Cipher):
     def encrypt(self, data, key, iv): 
         assert iv, (type(iv), iv)        
         output = list(bytearray(data))                
-        encrypt(output, list(bytearray(key)), list(bytearray(iv)), (64, 0xFFFFFFFFFFFFFFFF, 40))        
-        return bytes(words_to_bytes(output, 8))
+        encrypt(output, list(bytearray(key)), list(bytearray(iv)), (8, 255, 5))#(64, 0xFFFFFFFFFFFFFFFF, 40))        
+        return bytes(bytearray(output))
     
     def decrypt(self, data, iv=None, tag=None, tweak=None):
         assert iv
@@ -162,10 +148,35 @@ def test_stream_cipher_diffusion():
     print
     print [format(byte, 'b').zfill(8) for byte in data2]
     
+def test_prp_diffusion():
+    data = bytearray(16)
+    data2 = data[:]
+    data3 = data2[:]
+    data[-1] = 1
+    data2[-1] = 2
+    data3[-2] = 1
+    for round in range(1):
+        prp(data)
+        prp(data2)
+        prp(data3)
     
+    binary = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _data)
+    print binary(data)
+    print
+    print binary(data2)
+    print
+    print binary(data3)
+    
+    xor_subroutine(data, data3)
+    print binary(data).count('1')
+    xor_subroutine(data2, data3)
+    print binary(data2).count('1')
+    
+        
 if __name__ == "__main__":
     #Stream_Cipher.test_encrypt_decrypt("\x00" * 16, "stream!")
-    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False)
+    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
     #Stream_Cipher.test_performance()
     #test_stream_cipher_diffusion()
+    #test_prp_diffusion()
     
