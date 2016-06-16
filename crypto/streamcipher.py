@@ -96,8 +96,8 @@ class Stream_Cipher(pride.crypto.Cipher):
     def encrypt(self, data, key, iv): 
         assert iv, (type(iv), iv)        
         output = list(bytearray(data))                
-        encrypt(output, list(bytearray(key)), list(bytearray(iv)), (8, 255, 5))# (64, 0xFFFFFFFFFFFFFFFF, 40))        
-        return bytes(output)
+        encrypt(output, list(bytearray(key)), list(bytearray(iv)), (64, 0xFFFFFFFFFFFFFFFF, 40))        
+        return bytes(words_to_bytes(output, 8))
     
     def decrypt(self, data, iv=None, tag=None, tweak=None):
         assert iv
@@ -128,8 +128,8 @@ class Stream_Cipher(pride.crypto.Cipher):
     @classmethod
     def test_metrics(cls, *args, **kwargs):
         from metrics import test_stream_cipher
-        cipher = cls(*args, **kwargs)
-        test_stream_cipher(cipher.encrypt, "\x00" * 16, "\x00" * 16)
+        cipher = cls(*args)
+        test_stream_cipher(cipher.encrypt, "\x00" * 16, "\x00" * 16, **kwargs)
         
         
 def test_stream_cipher_diffusion():
@@ -165,7 +165,7 @@ def test_stream_cipher_diffusion():
     
 if __name__ == "__main__":
     #Stream_Cipher.test_encrypt_decrypt("\x00" * 16, "stream!")
-    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False)
     #Stream_Cipher.test_performance()
     #test_stream_cipher_diffusion()
     
