@@ -255,7 +255,7 @@ def test_block_cipher(encrypt_method, key, iv, avalanche_test=True, randomness_t
     random_bytes = None
     if randomness_test:
         print "Generating 1MB of random test data... "
-        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)        
+        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, iv)             
         test_randomness(random_bytes)
     
     if bias_test:
@@ -281,12 +281,7 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
     random_bytes = None
     if randomness_test:
         random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, seed)
-        print type(random_bytes[0])
-        output1 = ''.join(byte for byte in random_bytes[:80])
-        output2 =  ''.join(byte for byte in random_bytes[80:160])
-        print type(output1), output1
-        print
-        print type(output2), output2
+        print random_bytes[:1024]
         test_randomness(random_bytes)
     
     if bias_test:
