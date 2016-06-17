@@ -280,8 +280,7 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
     
     random_bytes = None
     if randomness_test:
-        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, seed)
-        print random_bytes[:1024]
+        random_bytes = encrypt_method("\x00" * 1024 * 1024 * 1, key, seed)        
         test_randomness(random_bytes)
     
     if bias_test:

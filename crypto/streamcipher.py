@@ -213,7 +213,7 @@ def test_prp_diffusion():
         
 if __name__ == "__main__":
     #Stream_Cipher64.test_encrypt_decrypt("\x00" * 16, "stream!")
-    Stream_Cipher64.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, performance_test=False)
+    Stream_Cipher64.test_metrics("\x00" * 16, "\x00" * 16)
     #Stream_Cipher.test_performance()
     #test_stream_cipher_diffusion()
     #test_prp_diffusion()
