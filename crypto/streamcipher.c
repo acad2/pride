@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define WORDSIZE unsigned char
-#define WORDSIZE_BITS 8
-#define ROTATIONS 5
-#define PRINT_STRING "%u: %u\n"
+#define WORDSIZE unsigned long long
+#define WORDSIZE_BITS 64
+#define ROTATIONS 40
+#define PRINT_STRING "%i: %016llX\n"
 
 #ifndef memcpy_s
 void memcpy_s(WORDSIZE* s1, WORDSIZE* s2, size_t n)

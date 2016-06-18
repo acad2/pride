@@ -68,12 +68,15 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
         prf(round_key, key_xor, mask, rotation_amount, bit_width)
                 
         xor_subroutine(seed, round_key)                           
-        seed_xor = prp(seed, mask, rotation_amount, bit_width)        
-        prf(seed, seed_xor, mask, rotation_amount, bit_width)        
+        prp(seed, mask, rotation_amount, bit_width)                
         xor_subroutine(seed, round_key)
+        
+        prf(seed, xor_sum(seed), mask, rotation_amount, bit_width)        
         
         key_material.extend(seed)
     xor_subroutine(data, key_material)    
+    
+#from streamcipher2 import stream_cipher
     
 def encrypt(data, key, seed, size=(8, 255, 5)):
     stream_cipher(data, seed, key, size)
@@ -86,9 +89,12 @@ import pride.crypto
 class Stream_Cipher(pride.crypto.Cipher):
     
     def encrypt(self, data, key, iv, size=(8, 255, 5)): 
-        assert iv, (type(iv), iv)        
-        encrypt(data, key, iv, size)
-    
+        key += "\x00" * (16 - len(key))                        
+        iv += "\x00" * (16 - len(iv))                
+        output = bytearray(data)
+        encrypt(output, bytearray(key), bytearray(iv), size)
+        return bytes(output)
+        
     def decrypt(self, data, key, iv):
         return self.encrypt(data, key, iv)
      
@@ -161,12 +167,14 @@ def test_stream_cipher_diffusion():
     stream_cipher(data2, seed2, key[:15] + [1], size)
     stream_cipher(data3, seed3, key[:14] + [1, 0], size)
     
-    _bytes = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in words_to_bytes(_data, wordsize))
-    print _bytes(data).count('1')
-    print
-    print _bytes(data2).count('1')
-    print
-    print _bytes(data3).count('1')
+    _bytes = lambda _data: words_to_bytes(_data, wordsize)
+    bits = lambda _data: ''.join(format(byte, 'b').zfill(8) for byte in _bytes(_data))
+    
+    print _bytes(data)
+    #print
+    #print _bytes(data2).count('1')
+    #print
+    #print _bytes(data3).count('1')
     
     #seed = bytearray(16)
     #key = seed[:]
@@ -213,8 +221,9 @@ def test_prp_diffusion():
         
 if __name__ == "__main__":
     #Stream_Cipher64.test_encrypt_decrypt("\x00" * 16, "stream!")
-    Stream_Cipher64.test_metrics("\x00" * 16, "\x00" * 16)
+    #Stream_Cipher64.test_metrics("\x00" * 16, "\x00" * 16)
     #Stream_Cipher.test_performance()
+    Stream_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
     #test_stream_cipher_diffusion()
     #test_prp_diffusion()
     

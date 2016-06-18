@@ -147,3 +147,6 @@ class Board_Game(pride.gui.gui.Application):
                                        square_outline_colors=(self.white_square_outline_color, self.black_square_outline_color))
         self.setup_game()        
         
+    def setup_game(self):
+        raise NotImplementedError()
+        
