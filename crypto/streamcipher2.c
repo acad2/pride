@@ -37,8 +37,7 @@ WORDSIZE rotate_left(WORDSIZE word, int amount)
 void shuffle_bytes(WORDSIZE* _state)
 {
     WORDSIZE temp[16];
-    //WORDSIZE key = 0, index, data_byte;
-    
+        
     temp[7]  = _state[0];
     temp[12] = _state[1];
     temp[14] = _state[2];
@@ -56,15 +55,7 @@ void shuffle_bytes(WORDSIZE* _state)
     temp[10] = _state[14];
     temp[3]  = _state[15];
     
-    //for (index = 0; index < 16; index++)
-    //{
-    //    data_byte = temp[index];
-    //    key ^= data_byte;
-    //    _state[index] = data_byte;
-    //}
-    memcpy_s(_state, temp, 16);   
-    //return key;    
-    
+    memcpy_s(_state, temp, 16);           
 }    
     
 int prp(WORDSIZE* data, WORDSIZE key)
@@ -74,28 +65,27 @@ int prp(WORDSIZE* data, WORDSIZE key)
     shuffle_bytes(data);
     shuffle_bytes(data+16);
         
-    for (index = STATESIZE - 1; index >= 0; index--)
-    {                    
+    for (index = STATESIZE - 2; index >= 0; index--)
+    {                                    
         right = data[index + 1];
         left = data[index];
         
-        key ^= right;
-        right = rotate_left((right + key + index), ROTATIONS);
+        key ^= right;        
+        right = rotate_left((right + key + index), ROTATIONS);    
         key ^= right ^ left;                       
         
+        key ^= left;        
+        left = (left + (right >> (WORDSIZE_BITS / 2)));        
+        left ^= rotate_left(right, ROTATIONS);        
         key ^= left;
-        left = (left + (right >> (WORDSIZE_BITS / 2)));
-        left ^= rotate_left(right, ROTATIONS);
-        key ^= left;
-        
+                
         data[index + 1] = right;        
         data[index] = left;
     }
     
     key ^= data[0];
     data[0] = data[0] + key;
-    key ^= data[0];
-    
+    key ^= data[0];    
     return key;
 }
         
@@ -126,23 +116,24 @@ void stream_cipher(WORDSIZE* data, WORDSIZE* _seed, WORDSIZE* _key, unsigned lon
     WORDSIZE* key_material = malloc(blocks * 16 * sizeof(WORDSIZE));
     
     unsigned long index;
- 
+    
     for (index = 0; index < 16; index++)
     {                
         state[index] = data[index];        
         state[(index + 1) + 16] = _key[index];
     }                         
- 
+    
     for (index = 0; index < blocks; index++)
     {                     
         state_xor = prp(state, state_xor);
         key_material_xor ^= key_material_xor;
         memcpy_s(key_material + (index * 16), state, 16);
     }
-   
+    
     prf(key_material, key_material_xor, blocks * 16);
-   
+    
     xor_with_key(data, key_material, blocks * 16 * sizeof(WORDSIZE));
+    free(key_material);
 }
   
 void encrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_size)
@@ -164,19 +155,21 @@ void decrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_s
 
 void test_encrypt_decrypt()
 {    
-    WORDSIZE data[16], key[16], plaintext[16], null_string[16], seed[16];    
+    WORDSIZE data[32], key[16], plaintext[16], null_string[16], seed[16];    
     
     memset(null_string, 0, 16);
-    memcpy_s(data, null_string, 16);       
+    memcpy_s(data, null_string, 16);
+    memcpy_s(data+16, null_string, 16);
     //data[15] = 1;
     memcpy_s(plaintext, data, 16);
     memcpy_s(key, null_string, 16); 
     memcpy_s(seed, null_string, 16);
-    
-    prp(data, 0);
-    //prf(data, xor, 16);
-    //printf("Data:%u \n%s\n", xor, data);
-    //print_data(data);
+   
+    WORDSIZE xor = 0;
+    xor = prp(data, 0);
+    prf(data, xor, 16);
+    printf("Data:\n%s\n", data);
+    print_data(data);
     
     //encrypt(data, key, seed, 16);
     //

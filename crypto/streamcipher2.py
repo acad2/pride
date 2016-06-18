@@ -24,19 +24,19 @@ def prp(data, key, mask=255, rotation_amount=5, bit_width=8, key_slice=slice(16,
     shuffle_bytes(data, key_slice)
     shuffle_bytes(data, data_slice)       
             
-    for index in reversed(range(len(data))):       
-        left, right = data[index], data[(index + 1) % 16]
+    for index in reversed(range(len(data) - 1)):       
+        left, right = data[index], data[index + 1]
         
-        key ^= right
-        right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)
+        key ^= right        
+        right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)        
         key ^= right
         
+        key ^= left        
+        left = (left + (right >> (bit_width / 2))) & mask        
+        left ^= rotate_left(right, rotation_amount)        
         key ^= left
-        left = (left + (right >> (bit_width / 2))) & mask
-        left ^= rotate_left(right, rotation_amount)
-        key ^= left
-
-        data[index], data[(index + 1) % 16] = left, right                 
+        
+        data[index], data[index + 1] = left, right                 
 
     key ^= data[0]
     data[0] = (data[0] + key) & mask
@@ -70,11 +70,13 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
     
     xor_subroutine(data, key_material)    
         
-def test_prp():
-    data = bytearray(16)
-    prp(data, 0)
-    print [byte for byte in data[:16]]
+def test_prp_prf():
+    data = bytearray(32)
+    xor = prp(data, 0)
+    prf(data, xor)
+    print data
+    print [byte for byte in data]
     
 if __name__ == "__main__":
-    test_prp()
+    test_prp_prf()
     
