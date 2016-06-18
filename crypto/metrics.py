@@ -275,7 +275,7 @@ def test_stream_cipher(encrypt_method, key, seed, avalanche_test=True, randomnes
                        performance_test_sizes=(32, 256, 1500, 4096, 65536, 1024 * 1024)):  
     keysize = len(key)
     if avalanche_test:
-        test_avalanche_of_seed(encrypt_method, key, len(seed))                
+#        test_avalanche_of_seed(encrypt_method, key, len(seed))                
         test_avalanche_of_key(encrypt_method, seed, keysize)                  
     
     random_bytes = None
