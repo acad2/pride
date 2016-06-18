@@ -76,7 +76,7 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
         key_material.extend(seed)
     xor_subroutine(data, key_material)    
     
-#from streamcipher2 import stream_cipher
+from streamcipher2 import stream_cipher
     
 def encrypt(data, key, seed, size=(8, 255, 5)):
     stream_cipher(data, seed, key, size)
