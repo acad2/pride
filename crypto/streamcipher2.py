@@ -56,10 +56,10 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
     state = seed + key
     key_material = list()       
     
-    bit_width, mask, rotation_amount = size    
-        
+    bit_width, mask, rotation_amount = size          
     block_count, extra = divmod(len(data), 16) 
-    prf_state_xor = 0
+    prf_state_xor = 0    
+    
     state_xor = xor_sum(state)
     for block in range(block_count + 1 if extra else block_count):       
         state_xor = prp(state, state_xor, mask, rotation_amount, bit_width)
@@ -68,7 +68,9 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
     
     prf(key_material, prf_state_xor, mask, rotation_amount, bit_width)        
     
-    xor_subroutine(data, key_material)    
+    data_xor = xor_subroutine(data, key_material)    
+    prp(data, data_xor, mask, rotation_amount, bit_width)
+    xor_subroutine(data, key_material)
     
 def test_prp_prf():
     data = bytearray(32)
@@ -87,7 +89,10 @@ def test_prp_prf():
             data[-2] = 1
             prp(data, byte)
             prf(data, xor_sum(data))
-            sbox.append(data[index])        
+            sbox.append(data[index])     
+        import os
+        sbox = bytearray(os.urandom(256))
+        from scratch import aes_s_box as sbox
         print "Calculating best differential/linearity for byte at index: {}...".format(index)        
         print find_best_differential(sbox)
         print calculate_linearity(sbox)

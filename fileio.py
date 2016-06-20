@@ -283,7 +283,7 @@ class Database_File(File):
     def __init__(self, filename='', mode='', **kwargs):
         super(Database_File, self).__init__(filename, mode, **kwargs)        
         data, tags = pride.objects["/Python/File_System"]._open_file(self.filename, self.mode, 
-                                                                       self.tags, self.indexable)
+                                                                     self.tags, self.indexable)
         filename = {"filename" : self.filename}
         if tags != self.tags:
             for old_tag in set(self.tags).difference(tags):

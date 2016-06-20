@@ -1,3 +1,4 @@
+import operator
 import pprint
 
 from utilities import rotate, cast, rotate_left 
@@ -13,7 +14,7 @@ def rotational_difference(input_one, input_two):
             if rotate(input_one_bits, rotation_amount) == input_two_bits:
                 return rotation_amount 
             
-def _difference(input_one, input_difference, sbox, distribution_table, difference_function1, difference_function2=None):
+def _difference(input_one, input_difference, sbox, distribution_table, difference_function1, difference_function2=None):    
     input_two = difference_function1(input_one, input_difference)            
     output_differential = (difference_function2 or difference_function1)(sbox[input_one], sbox[input_two])
     try:
@@ -33,18 +34,16 @@ def _xor_difference(input_one, input_difference, sbox, distribution_table):
 def _rotational_difference(input_one, input_difference, sbox, distribution_table):        
     _difference(input_one, input_difference, sbox, distribution_table, rotate_left, rotational_difference)
                     
-def build_difference_distribution_table(sbox):
-    xor_difference_distribution_table = {}
-    rotational_ddt = {}
+def build_difference_distribution_table(sbox, differences=((operator.xor, None), (rotate_left, rotational_difference))):
+    difference_tables = dict((index, {}) for index in range(len(differences)))    
     size = len(sbox)
     
     for input_one in range(size):
-        for input_difference in range(size):                                   
-            _xor_difference(input_one, input_difference, sbox, xor_difference_distribution_table)                     
-            if input_difference < 8:
-                _rotational_difference(input_one, input_difference, sbox, rotational_ddt)                           
+        for input_difference in range(size):      
+            for index, difference_functions in enumerate(differences):
+                _difference(input_one, input_difference, sbox, difference_tables[index], *difference_functions)                           
                 
-    return xor_difference_distribution_table, rotational_ddt
+    return difference_tables[0], difference_tables[1]
     
 def find_best_output_differential(xor_ddt, input_difference):    
     best_find = 0
@@ -101,14 +100,17 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
             if 1 in s_box_applications:
                 print differential_chain[:s_box_applications[1]]
             
-def find_best_differential(sbox):    
+def find_best_differential(sbox, functions=((operator.xor, None), (rotate_left, rotational_difference))):
+    tables = build_difference_distribution_tables(sbox)
+    return [find_best_differential_in_table(table) for index, table in tables.items()]   
+    
+def find_best_differential_in_table(difference_table):    
     """ Returns the single best xor differential for the supplied sbox.
         Output consists of the input difference, output difference, and
-        probability that the difference will hold. """
-    xor_ddt, rotational_ddt = build_difference_distribution_table(sbox)
+        probability that the difference will hold. """    
     best_differential = (None, None, 0)
     for difference in range(1, 256):
-        info = find_best_output_differential(xor_ddt, difference)        
+        info = find_best_output_differential(difference_table, difference)        
         if info[-1] > best_differential[-1]:
             best_differential = info
     return best_differential 
@@ -131,11 +133,12 @@ def test_build_difference_distribution_table():
     import pprint
     #from blockcipher import S_BOX  
     from scratch import aes_s_box as S_BOX       
-    table1, table2 = build_difference_distribution_table(S_BOX)
+    table1, table2 = build_difference_distribution_table(S_BOX, ((operator.and_, None), (lambda x, y: operator.mul(x, y) % 256, None)))    
    # print max(table1[1].values())
-    print find_best_output_differential(table1, 128)
+    print find_best_differential_in_table(table1)
+    print find_best_differential_in_table(table2)
     #print
-    pprint.pprint(table2)
+    #pprint.pprint(table2)
 
     #pprint.pprint(table1)
     

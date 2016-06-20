@@ -1,5 +1,16 @@
 from utilities import hamming_weight
 
+#def build_test(sbox):
+#    approximations = {}
+#    for byte in range(256):
+#        for operator in (operator.xor, operator.and_, modular_addition, 
+#                         modular_multiplication, moduler_exponentiation,
+#                         rotate, 
+#        for value in range(1, 256):
+#            first_input = byte
+#            second_input = byte & value
+    
+    
 def build_linear_approximation_table(sbox, exhaustive=False):
     approximations = {}
     if exhaustive:

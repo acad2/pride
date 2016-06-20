@@ -14,4 +14,10 @@ functions.remove("attrgetter")
 functions.remove("itemgetter")
 functions.remove("methodcaller")
 
-import pprint; pprint.pprint(functions)
+#import pprint
+#pprint.pformat(functions)
+
+def build_difference_distribution_table(sbox):
+    for byte in range(1, 256):
+        for difference in range(1, 256):
+            

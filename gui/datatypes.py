@@ -14,8 +14,8 @@ class Outline(pride.gui.gui.Button):
         top_edge = y + outline_width
         bottom_edge = top_edge + h
         
-        if mouse_position[0] in (left_edge, right_edge):
-            if mouse_position[1] in (top_edge, bottom_edge):
+        #if mouse_position[0] in (left_edge, right_edge):
+        #    if mouse_position[1] in (top_edge, bottom_edge):
                 
 
        
@@ -25,7 +25,7 @@ class Python_Datatype_Button(pride.gui.gui.Button):
         super(Python_Datatype_Button, self).__init__(**kwargs)
         self.value = value
         self.text = str(value)
-
+    
         
 class int_Button(Python_Datatype_Button): pass
     
