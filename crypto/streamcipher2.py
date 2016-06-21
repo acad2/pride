@@ -20,20 +20,21 @@ def shuffle_bytes(_state, section, temp=list(range(16))):
             
     _state[section] = temp[:]
            
-def prp(data, key, mask=255, rotation_amount=5, bit_width=8, key_slice=slice(16, 32), data_slice=slice(0, 16)):     
-    shuffle_bytes(data, key_slice)
-    shuffle_bytes(data, data_slice)       
-            
+def prp(data, key, mask=255, rotation_amount=5, bit_width=8, key_slice=slice(16, 32), data_slice=slice(0, 16), transpose=True):     
+    if transpose:
+        shuffle_bytes(data, key_slice)
+        shuffle_bytes(data, data_slice)       
+    
     for index in reversed(range(len(data) - 1)):       
         left, right = data[index], data[index + 1]
         
-        key ^= right        
-        right = rotate_left((right + key + index) & mask, index, bit_width)        
+        key ^= right                 
+        right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)                
         key ^= right
         
         key ^= left        
         left = (left + (right >> (bit_width / 2))) & mask        
-        left ^= rotate_left(right, (index % len(data)) ^ rotation_amount)        
+        left ^= rotate_left(right, (index % bit_width) ^ rotation_amount)            
         key ^= left
         
         data[index], data[index + 1] = left, right                 
@@ -50,6 +51,13 @@ def prf(data, key, mask=255, rotations=5, bit_width=8):
         key ^= new_byte        
         data[index] = new_byte             
     
+def xor_with_key(data, key):
+    data_xor = 0
+    for index, byte in enumerate(key):
+        data[index] ^= byte
+        data_xor ^= data[index]
+    return data_xor
+    
 def stream_cipher(data, seed, key, size=(8, 255, 5)):     
     key = list(key)
     seed = list(seed)
@@ -61,15 +69,16 @@ def stream_cipher(data, seed, key, size=(8, 255, 5)):
     prf_state_xor = 0    
     
     state_xor = xor_sum(state)
+    
     for block in range(block_count + 1 if extra else block_count):       
         state_xor = prp(state, state_xor, mask, rotation_amount, bit_width)
-        prf_state_xor ^= state_xor
+        prf_state_xor ^= state_xor                
         key_material.extend(state[0:16])    
     
     prf(key_material, prf_state_xor, mask, rotation_amount, bit_width)        
     
-    data_xor = xor_subroutine(data, key_material)    
-    prp(data, data_xor, mask, rotation_amount, bit_width)
+    data_xor = xor_with_key(data, key_material)    
+    prp(data, data_xor, mask, rotation_amount, bit_width, transpose=False)
     xor_subroutine(data, key_material)
     
 def test_prp_prf():
@@ -79,24 +88,35 @@ def test_prp_prf():
     print data
     print [byte for byte in data]
     
-    from differential import find_best_differential
-    from linear import calculate_linearity
-    for index in range(16):
-        sbox = bytearray()        
-        for byte in range(256):
-            data = bytearray(32)
-            data[15] = byte
-            data[-2] = 1
-            prp(data, byte)
-            prf(data, xor_sum(data))
-            sbox.append(data[index])     
-        import os
-        sbox = bytearray(os.urandom(256))
-        from scratch import aes_s_box as sbox
-        print "Calculating best differential/linearity for byte at index: {}...".format(index)        
-        print find_best_differential(sbox)
-        print calculate_linearity(sbox)
+    #from differential import find_best_differential
+    #from linear import calculate_linearity
+    #for index in range(16):
+    #    sbox = bytearray()        
+    #    for byte in range(256):
+    #        data = bytearray(32)
+    #        data[15] = byte
+    #        data[-2] = 1
+    #        prp(data, byte)
+    #        prf(data, xor_sum(data))
+    #        sbox.append(data[index])     
+    #    import os
+    #    sbox = bytearray(os.urandom(256))
+    #    from scratch import aes_s_box as sbox
+    #    print "Calculating best differential/linearity for byte at index: {}...".format(index)        
+    #    print find_best_differential(sbox)
+    #    print calculate_linearity(sbox)
     
+def test_streamcipher2():
+    data = bytearray(16)
+    key = bytearray(16)
+    seed = bytearray(16)
+    stream_cipher(data, key, seed)
+    print data
+    print [byte for byte in data]
+    
+    
+        
 if __name__ == "__main__":
-    test_prp_prf()
+    #test_prp_prf()
+    test_streamcipher2()
     

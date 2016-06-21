@@ -58,25 +58,29 @@ void shuffle_bytes(WORDSIZE* _state)
     memcpy_s(_state, temp, 16);           
 }    
     
-int prp(WORDSIZE* data, WORDSIZE key)
+int prp(WORDSIZE* data, WORDSIZE key, int transpose, unsigned long datasize)
 {
     WORDSIZE left, right;    
     int index;
-    shuffle_bytes(data);
-    shuffle_bytes(data+16);
-        
-    for (index = STATESIZE - 2; index >= 0; index--)
+    if (transpose)
+    {
+        shuffle_bytes(data);
+        shuffle_bytes(data+16);
+    }
+    
+    for (index = datasize - 2; index != -1; index--)
     {                                    
+        
         right = data[index + 1];
         left = data[index];
         
-        key ^= right;        
-        right = rotate_left((right + key + index), ROTATIONS);    
-        key ^= right ^ left;                       
+        key ^= right;                       
+        right = rotate_left((right + key + index), ROTATIONS);            
+        key ^= right;                       
         
         key ^= left;        
         left = (left + (right >> (WORDSIZE_BITS / 2)));        
-        left ^= rotate_left(right, ROTATIONS);        
+        left ^= rotate_left(right, (index % WORDSIZE_BITS) ^ ROTATIONS);                
         key ^= left;
                 
         data[index + 1] = right;        
@@ -100,40 +104,45 @@ void prf(WORDSIZE* data, WORDSIZE key, WORDSIZE data_size)
     }
 }
     
-void xor_with_key(WORDSIZE* data, WORDSIZE* key, unsigned int datasize)
+WORDSIZE xor_with_key(WORDSIZE* data, WORDSIZE* key, unsigned int datasize)
 {
-    WORDSIZE index;
+    WORDSIZE index, new_key = 0;
     for (index = 0; index < datasize; index++)
     {           
-        data[index] ^= key[index];        
+        data[index] ^= key[index];   
+        new_key ^= data[index];
     }        
+    return new_key;
 }
 
 void stream_cipher(WORDSIZE* data, WORDSIZE* _seed, WORDSIZE* _key, unsigned long blocks)
 {
     WORDSIZE state[32];   
     WORDSIZE state_xor = 0, key_material_xor = 0;
-    WORDSIZE* key_material = malloc(blocks * 16 * sizeof(WORDSIZE));
+    unsigned long byte_count = blocks * 16 * sizeof(WORDSIZE);
+    WORDSIZE* key_material = malloc(byte_count);
     
     unsigned long index;
     
     for (index = 0; index < 16; index++)
     {                
         state[index] = data[index];        
-        state[(index + 1) + 16] = _key[index];
+        state[index + 16] = _key[index];
+        state_xor ^= state[index] ^ state[index + 16];
     }                         
-    
+        
     for (index = 0; index < blocks; index++)
-    {                     
-        state_xor = prp(state, state_xor);
-        key_material_xor ^= key_material_xor;
-        memcpy_s(key_material + (index * 16), state, 16);
+    {                             
+        state_xor = prp(state, state_xor, 1, STATESIZE);
+        key_material_xor ^= state_xor;        
+        memcpy_s(key_material + (index * 16), state, 16);        
     }
     
-    prf(key_material, key_material_xor, blocks * 16);
-    
-    xor_with_key(data, key_material, blocks * 16 * sizeof(WORDSIZE));
-    free(key_material);
+    prf(key_material, key_material_xor, blocks * 16);     
+    state_xor = xor_with_key(data, key_material, byte_count);
+    prp(data, state_xor, 0, byte_count);
+    xor_with_key(data, key_material, byte_count);
+    free(key_material);    
 }
   
 void encrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_size)
@@ -155,34 +164,34 @@ void decrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_s
 
 void test_encrypt_decrypt()
 {    
-    WORDSIZE data[32], key[16], plaintext[16], null_string[16], seed[16];    
+    WORDSIZE data[16], key[16], plaintext[16], null_string[16], seed[16];    
     
     memset(null_string, 0, 16);
     memcpy_s(data, null_string, 16);
-    memcpy_s(data+16, null_string, 16);
+   // memcpy_s(data+16, null_string, 16);
     //data[15] = 1;
     memcpy_s(plaintext, data, 16);
     memcpy_s(key, null_string, 16); 
     memcpy_s(seed, null_string, 16);
    
-    WORDSIZE xor = 0;
-    xor = prp(data, 0);
-    prf(data, xor, 16);
-    printf("Data:\n%s\n", data);
-    print_data(data);
+    //WORDSIZE xor = 0;
+    //xor = prp(data, 0, 1, 32);
+    //prf(data, xor, 32);
+    //printf("Data:\n%s\n", data);
+    //print_data(data);
     
-    //encrypt(data, key, seed, 16);
-    //
-    //printf("Ciphertext:\n %s\n", data);    
-    //print_data(data);
-    //    
-    //decrypt(data, key, seed, 16);
-    //printf("Decrypted:\n");
-    //print_data(data);
+    encrypt(data, key, seed, 16);
+    
+    printf("Ciphertext:\n %s\n", data);    
+    print_data(data);
+        
+    decrypt(data, key, seed, 16);
+    printf("Decrypted:\n");
+    print_data(data);    
 }
 
 int main()
 {
-    test_encrypt_decrypt();        
+    test_encrypt_decrypt();            
     return 0;
 }
