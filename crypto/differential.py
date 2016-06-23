@@ -3,6 +3,25 @@ import pprint
 
 from utilities import rotate, cast, rotate_left 
 
+function_names = ['and_', 
+                  'floordiv',    
+                  'mod',                  
+                  'or_',
+                  'pow',                                                      
+                  'xor']
+ 
+def modular_addition(x, y, modulus=256):
+    return (x + y) % modulus
+    
+def modular_subtraction(x, y, modulus=256):
+    return abs(x - y) % modulus
+    
+def modular_multiplication(x, y, modulus=256):
+    return (x * y) % modulus
+        
+def xor(x, y):
+    return x ^ y
+ 
 def rotational_difference(input_one, input_two):
     if input_one == input_two:
         return 0
@@ -13,7 +32,11 @@ def rotational_difference(input_one, input_two):
         for rotation_amount in range(1, 8):
             if rotate(input_one_bits, rotation_amount) == input_two_bits:
                 return rotation_amount 
-            
+                
+ALL_FUNCTIONS = ((modular_addition, modular_subtraction), (xor, xor), 
+                 (modular_multiplication, modular_subtraction), 
+                 (rotate_left, rotational_difference))            
+                       
 def _difference(input_one, input_difference, sbox, distribution_table, difference_function1, difference_function2=None):    
     input_two = difference_function1(input_one, input_difference)            
     output_differential = (difference_function2 or difference_function1)(sbox[input_one], sbox[input_two])
@@ -27,14 +50,8 @@ def _difference(input_one, input_difference, sbox, distribution_table, differenc
                 distribution_table[input_difference][output_differential] = 1
         else:
             distribution_table[input_difference] = {output_differential : 1}
-    
-def _xor_difference(input_one, input_difference, sbox, distribution_table):            
-    _difference(input_one, input_difference, sbox, distribution_table, operator.xor)
-
-def _rotational_difference(input_one, input_difference, sbox, distribution_table):        
-    _difference(input_one, input_difference, sbox, distribution_table, rotate_left, rotational_difference)
-                    
-def build_difference_distribution_table(sbox, differences=((operator.xor, None), (rotate_left, rotational_difference))):
+      
+def build_difference_distribution_table(sbox, differences=ALL_FUNCTIONS):
     difference_tables = dict((index, {}) for index in range(len(differences)))    
     size = len(sbox)
     
