@@ -15,14 +15,9 @@
         cryptographic systems.  Its goal is to take some source of initial
         keying material and derive from it one or more cryptographically
         strong secret keys."""
-import math
 import hashlib
 import hmac
-import six
-
-#from cryptography.hazmat.primitives.hmac import HMAC
-#from cryptography.hazmat.primitives import hashes
-#from security import BACKEND
+import six # python 2/3 compatibility
 
 DEFAULT_HASH = "sha256"
 OUTPUT_SIZES = {"sha1" : 20,

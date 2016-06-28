@@ -167,31 +167,7 @@ void encrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_s
     free(key_material);    
 }
 
-void invert_shuffle_bytes(WORDSIZE* state)
-{
-    WORDSIZE temp[16];
-    
-    temp[11] = state[0];
-    temp[5]  = state[1];
-    temp[4]  = state[2];
-    temp[15] = state[3];
-    temp[12] = state[4];
-    temp[6]  = state[5];
-    temp[9]  = state[6];
-    temp[0]  = state[7];
-    temp[13] = state[8];
-    temp[3]  = state[9];
-    temp[14] = state[10];
-    temp[8]  = state[11];
-    temp[1]  = state[12];
-    temp[10] = state[13];
-    temp[2]  = state[14];
-    temp[7]  = state[15];
-    
-    memcpy_s(state, temp, 16);    
-}
-
-WORDSIZE invert_prp(WORDSIZE* data, WORDSIZE key, int transpose, unsigned long data_size)
+WORDSIZE invert_prp(WORDSIZE* data, WORDSIZE key, unsigned long data_size)
 {
     WORDSIZE left, right;    
     int index;
@@ -218,12 +194,6 @@ WORDSIZE invert_prp(WORDSIZE* data, WORDSIZE key, int transpose, unsigned long d
         data[index + 1] = right;        
         data[index] = left;
     }
-
-    if (transpose)
-    {
-        invert_shuffle_bytes(data);
-        invert_shuffle_bytes(data+16);
-    }
     
     return key;
 }
@@ -245,7 +215,7 @@ void decrypt(WORDSIZE* data, WORDSIZE* key, WORDSIZE* seed, unsigned long data_s
     stream_cipher(key_material, seed, key, blocks);   
     
     state_xor = xor_with_key(data, key_material, byte_count);    
-    invert_prp(data, state_xor, 0, byte_count);
+    invert_prp(data, state_xor, byte_count);
     xor_with_key(data, key_material, byte_count);
     
     free(key_material);    

@@ -223,3 +223,16 @@ def low_order_byte(byte, wordsize=8):
     bits = (wordsize / 2) * 8    
     return (byte & ((2 ** bits) - 1))
     
+def modular_addition(x, y, modulus=256):
+    return (x + y) % modulus
+    
+def modular_subtraction(x, y, modulus=256):
+    return abs(x - y) % modulus
+
+def print_state_4x4(state, message=''):
+    if message:
+        print message    
+    for word in slide(state, 4):
+        print ' '.join(format(byte, 'b').zfill(8) for byte in word)
+        print
+            

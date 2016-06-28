@@ -132,15 +132,23 @@ def psuedorandom_bytes(key, seed, count, hash_function="SHA256"):
         output += next(generator)
     return output[:count]       
             
-def _hash_stream_cipher(data, key, nonce, hash_function="SHA256"):    
+def _hash_stream_cipher_hmac(data, key, nonce, hash_function="SHA256"):    
     """ Generates key material and XORs with data. Provides confidentiality,
-        but not authenticity or integrity. As such, this should seldom be used alone. """    
+        but not authenticity or integrity. As such, this should seldom be used alone. """
     output = bytearray(data)
     for index, key_byte in enumerate(bytearray(psuedorandom_bytes(key, nonce, len(data), hash_function))):
         output[index] ^= key_byte
     return bytes(output)    
         
-def _encrypt(data, key, mac_key, nonce='', extra_data='', hash_function="SHA256", nonce_size=32):
+def _hash_stream_cipher_hkdf(data, key, seed, algorithm="sha256"):
+    data = bytearray(data)    
+    keystream = bytearray(hkdf.hkdf(key, len(data), seed, algorithm))
+    for index, byte in enumerate(keystream):
+        data[index] ^= byte
+    return bytes(data)
+    
+def _encrypt(data, key, mac_key, nonce='', extra_data='', algorithm="sha256", nonce_size=32, hmac_algorithm="sha256",
+             cipher_priority=("hkdf", "hmac")):
     """ usage: _encrypt(data, key, extra_data='', nonce='', 
                 hash_function="SHA256", nonce_size=32) => encrypted_packet
     
@@ -151,34 +159,50 @@ def _encrypt(data, key, mac_key, nonce='', extra_data='', hash_function="SHA256"
         
         Encryption is provided by _hash_stream_cipher.
         Integrity/authenticity are provided via HMAC. 
-        nonce is randomly generated when not supplied (recommended)
-        nonce_size defaults to 32; decreasing below 16 may destroy security"""    
-    nonce = nonce or os.urandom(nonce_size)
-    hash_function = hash_function.upper()
-    encrypted_data = _hash_stream_cipher(data, key, nonce, hash_function)
-    header = hash_function + '_' + hash_function + "_" + hash_function
-    mac_tag = hmac.HMAC(mac_key, header + extra_data + nonce + encrypted_data, getattr(hashlib, hash_function.lower())).digest()
+        nonce is randomly generated when not supplied.
+        nonce_size defaults to 32; decreasing below 16 may destroy security.
+        A nonce_size of 16 with a random nonce shortens key lifetime when encrypting many messages. """    
+    nonce = nonce or os.urandom(nonce_size)        
+    try:
+        cipher = _hash_stream_cipher_hkdf
+    except NameError:
+        cipher = _hash_stream_cipher_hmac
+        mode = "hmac"
+    else:
+        mode = "hkdf"
+    algorithm = algorithm.lower()
+    hmac_algorithm = hmac_algorithm.lower()
+        
+    encrypted_data = cipher(data, key, nonce, algorithm)
+
+    header = algorithm + '_' + mode + '_' + hmac_algorithm
+    mac_tag = hmac.HMAC(mac_key, header + extra_data + nonce + encrypted_data, getattr(hashlib, hmac_algorithm)).digest()
     return save_data(header, encrypted_data, nonce, mac_tag, extra_data)
         
-def _decrypt(data, key, mac_key, hash_function="SHA256"):
-    """ usage: _decrypt(data, key, mac_key,
-                        hash_function) => (plaintext, extra_data)
-                                           or
-                                           plaintext
+def _decrypt(data, key, mac_key):
+    """ usage: _decrypt(data, key, mac_key) => (plaintext, extra_data)
+                                                or
+                                                plaintext
                                           
         Returns (extra_data, plaintext) when extra data is available
         Otherwise, just returns plaintext data. 
         Authenticity and integrity of the plaintext/extra data is guaranteed. """
     header, encrypted_data, nonce, mac_tag, extra_data = load_data(data)
-    hash_function, _, hash_function = header.split('_', 2)
-    hash_function = hash_function.lower()
+    algorithm, mode, mac_algorithm = header.split('_', 2)
+    mac_algorithm = mac_algorithm.lower()
     try:
-        hasher = getattr(hashlib, hash_function)
+        hasher = getattr(hashlib, mac_algorithm)
     except AttributeError:
         raise ValueError("Unsupported mode {}".format(header))
         
     if hmac.HMAC(mac_key, header + extra_data + nonce + encrypted_data, hasher).digest() == mac_tag:
-        plaintext = _hash_stream_cipher(encrypted_data, key, nonce, hash_function)
+        if mode == "hkdf":
+            cipher = _hash_stream_cipher_hkdf            
+        else:
+            assert mode == "hmac"
+            ciphert = _hash_stream_cipher_hmac
+            
+        plaintext = cipher(encrypted_data, key, nonce, algorithm)
         if extra_data:
             return (plaintext, extra_data)
         else:

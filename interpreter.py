@@ -199,14 +199,13 @@ class Python(base.Base):
                 machine_info_file.write(machine_id + key1 + key2 + key3 + salt)
                 machine_info_file.flush()
             else:
-                machine_info = machine_info_file.read()
-                assert machine_info
+                machine_info = machine_info_file.read()                
                 machine_id = machine_info[:16]
                 key1, key2, key3, salt = machine_info[16:32], machine_info[32:48], machine_info[48:64], machine_info[64:80]
             user = pride.user.User(username=machine_id, encryption_key=key1, mac_key=key2, 
                                    file_system_key=key3, salt=salt, open_command_line=False)                    
             command = self.command  
-            #main_callback = lambda *args: self.exit()
+            
         with open(command, 'r') as module_file:
             source = module_file.read()            
         pride.Instruction(self.interpreter, "_exec_command", source).execute()
