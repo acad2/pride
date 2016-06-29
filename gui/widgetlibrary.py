@@ -102,7 +102,7 @@ class Icon(pride.gui.gui.Button):
     
 class Program_Icon(Icon):
     
-    defaults = {"program" : '', "popup_type" : "pride.gui.terminal.Terminal"}
+    defaults = {"program" : '', "popup_type" : ''}
     
     required_attributes = ("program", )
     
@@ -119,7 +119,8 @@ class Homescreen(gui.Application):
         self.application_window.create(Task_Bar, startup_components=("pride.gui.widgetlibrary.Date_Time_Button",
                                                   "pride.gui.widgetlibrary.Text_Box"))        
         self.application_window.create(Icon, popup_type=Objects_Explorer, text="Objects Explorer")
-        self.application_window.create(Program_Icon, program="/User/Command_Line/Python_Shell", text="Python")
+        self.application_window.create(Program_Icon, popup_type="pride.gui.shell.Python_Shell",
+                                       program="/User/Command_Line/Python_Shell", text="Python")
         
 
 class Task_Bar(gui.Container):

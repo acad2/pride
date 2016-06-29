@@ -85,8 +85,8 @@ window = pride.gui.enable()
 #chess = objects["/Python/SDL_Window"].create("pride.gui.chess.Chess")
 #cyvasse = objects[window].create("pride.gui.cyvasse.Cyvasse")
 #messenger = objects[window].create("pride.gui.messenger.Messenger", username="Ella")
-#homescreen = objects[window].create('pride.gui.widgetlibrary.Homescreen')
-visualized_list = objects[window].create("pride.gui.datatypes.List")
+homescreen = objects[window].create('pride.gui.widgetlibrary.Homescreen')
+#visualized_list = objects[window].create("pride.gui.datatypes.List")
 """}
 
 

@@ -118,8 +118,9 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
                 print differential_chain[:s_box_applications[1]]
             
 def find_best_differential(sbox, functions=((operator.xor, None), (rotate_left, rotational_difference))):
-    tables = build_difference_distribution_tables(sbox)
-    return [find_best_differential_in_table(table) for index, table in tables.items()]   
+    tables = build_difference_distribution_table(sbox)
+    return find_best_differential_in_table(tables[0])
+    #return [find_best_differential_in_table(table) for table in tables]   
     
 def find_best_differential_in_table(difference_table):    
     """ Returns the single best xor differential for the supplied sbox.

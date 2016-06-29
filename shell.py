@@ -218,7 +218,7 @@ class Program(pride.base.Base):
         except ValueError:
             command = input
             input = ''
-        getattr(self, command, self.help)(input)
+        return getattr(self, command, self.help)(input)
         
     def help(self, input):
         self.alert("Unrecognised command '{}'".format(input), level=0)
@@ -246,7 +246,8 @@ class Python_Shell(Program):
             
         self.lines += user_input
         lines = self.lines
-        write_prompt = True          
+        write_prompt = True       
+        output = None
         if lines != "\n":     
             try:
                 code = codeop.compile_command(lines, "<stdin>", "exec")
@@ -261,7 +262,7 @@ class Python_Shell(Program):
                         if lines[-2:] == "\n\n":
                             self.prompt = ">>> "
                             self.lines = ''
-                            objects[self.shell].execute_source(lines)                            
+                            objects[self.shell].execute_source(lines)                         
                             self.user_is_entering_definition = False
                     else:
                         self.lines = ''
@@ -275,7 +276,7 @@ class Python_Shell(Program):
         objects["/User/Command_Line"].set_prompt(self.prompt)        
         sys.stdout.write("\b" * 4 + self.prompt)
         sys.stdout.flush()
-        
+     
         
 class OS_Shell(Program):
             

@@ -98,7 +98,7 @@ class Organizer(base.Base):
         height_of = lambda side: sum(item.h or min(height_spacing, item.h_range[1]) for item in side)
         height_of_top = height_of(top)
         
-        print "Setting: ", item, item_x, width_of(left), item_y, height_of_top, item_w, width_of(right), item_h, (height_of(bottom) + height_of_top)
+      #  print "Setting: ", item, item_x, width_of(left), item_y, height_of_top, item_w, width_of(right), item_h, (height_of(bottom) + height_of_top)
         item.area = (item_x + width_of(left), item_y + height_of_top, 
                      item_w - width_of(right), item_h - (height_of(bottom) + height_of_top))                         
         
@@ -198,7 +198,7 @@ class Organizer(base.Base):
                 top_objects = [objects[name] for name in pack_modes["top"]]
                 top_size = parent.h / len(top_objects)
                 item.h = min(item.h_range[1], parent.h - sum(item.h or min(top_size, item.h_range[1]) for item in top_objects))
-                print "Adjusted height", item, item.h, item.h_range, parent.h, sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
+    #            print "Adjusted height", item, item.h, item.h_range, parent.h, sum(item.h or min(top_size, item.h_range[1]) for item in top_objects)
         else:
             item.y = parent.y + parent.h - item.h         
         item.x = parent.x

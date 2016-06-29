@@ -1,6 +1,12 @@
 import pride
 import pride.gui.widgetlibrary
 
+class Gui_Shell(pride.interpreter.Shell):
+    
+    def result(self, packet):
+            
+    
+    
 class Prompt(pride.gui.widgetlibrary.Text_Box):
     
     defaults = {"pack_mode" : "main", "prompt" : "\n>>> ", "program" : '',
@@ -15,8 +21,8 @@ class Prompt(pride.gui.widgetlibrary.Text_Box):
         
     def _set_text(self, value):
         if value and value[-1] == '\n':
-            pride.objects[self.program].handle_input(value[self.end_of_field:])
-            value = value + self.prompt
+            output = pride.objects[self.program].handle_input(value[self.end_of_field:])
+            value = value + (output or self.prompt)
             self.end_of_field = len(value)
         super(Prompt, self)._set_text(value)        
     text = property(pride.gui.widgetlibrary.Text_Box._get_text, _set_text)      
@@ -28,6 +34,6 @@ class Terminal(pride.gui.gui.Application):
     
     def __init__(self, **kwargs):
         super(Terminal, self).__init__(**kwargs)
-        self.create("pride.gui.terminal.Prompt", program=self.program)  
+        self.create("pride.gui.shell.Prompt", program=self.program)  
     
     
