@@ -243,7 +243,9 @@ class SDL_User_Input(vmlibrary.Process):
 
     defaults = {"event_verbosity" : 0, "_ignore_click" : False, "active_item" : None}
     mutable_defaults = {"coordinate_tracker" : dict, "_coordinate_tracker" : collections.OrderedDict}
-                        
+    
+    verbosity = {"handle_text_input" : "vvv"}
+    
     def _get_active_item(self):
         return self._active_item
     def _set_active_item(self, value):
@@ -352,11 +354,12 @@ class SDL_User_Input(vmlibrary.Process):
         cursor = event.edit.start
         selection_length = event.edit.length
         self.alert("Handling textinput {} {} {}",
-                   (text, cursor, selection_length), level='vv')
+                   (text, cursor, selection_length), level=self.verbosity["handle_text_input"])
         if self.active_item:
-            instance = objects[self.active_item]
-            if instance.allow_text_edit:
-                instance.text += text
+            instance = objects[self.active_item]            
+            instance.text_entry(text)
+            #if instance.allow_text_edit:
+            #    instance.text += text
         
     def handle_unhandled_event(self, event):        
         self.alert("{0} passed unhandled", [event.type], 'vv')
@@ -452,13 +455,12 @@ class SDL_User_Input(vmlibrary.Process):
             
         try:
             key = chr(key_value)
-        except ValueError:
-      #      if print "Returning early. key: ", event.key.keysym.sym
+        except ValueError:      
             return # key was a modifier key
-        else:
-      #      print "Handling keydown: ", key
+        else:      
             if key == "\r":
                 key = "\n"
+            key_press = [key, None]
             
             if modifier in self.uppercase_modifiers:
                 try:
@@ -466,28 +468,22 @@ class SDL_User_Input(vmlibrary.Process):
                 except KeyError:
                     pass            
             elif modifier:
-                hotkey = self.get_hotkey(instance, (key, modifier))
-                if hotkey:
-                    hotkey.execute()
-                
-            elif instance.allow_text_edit:                
-                if ord(key) == 8: # backspace
-                    instance.text = instance.text[:-1]
-                elif key == '\n':
-                    instance.text += key
-            #    else:
-            #        instance.text += key
-                                    
-                #print "Changed {}.text to {}".format(self.active_item, self.active_item.text)
+                key_press[1] = modifier
+                            
+            if ord(key) < 32 or key_press[1] is not None:                            
+                reference, method = self.get_hotkey(instance, tuple(key_press))
+                if reference is not None:                    
+                    getattr(pride.objects[reference], method)()
                 
     def get_hotkey(self, instance, key_press):
-        try:
-            hotkey = instance.hotkeys.get(key_press)
-            if not hotkey:
-                hotkey = self.get_hotkey(instance.parent, key_press)
-        except AttributeError:
-            hotkey = None
-        return hotkey
+        if key_press in instance.hotkeys:
+            callback_info = (instance.reference, instance.hotkeys[key_press])
+        else:
+            try:
+                callback_info = self.get_hotkey(instance.parent, key_press)
+            except AttributeError:
+                callback_info = (None, None)
+        return callback_info
 
     def handle_keyup(self, event):
         pass

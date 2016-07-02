@@ -118,7 +118,7 @@ class Authenticated_Service(pride.base.Base):
                 "authentication_table_size" : 256, "challenge_size" : 9,
                 
                 # specific applications may wish to modify this
-                "hkdf_table_update_info_string" : "Authentication Table Update",
+                "hkdf_table_update_info_string" : "Authentication Table Update",                             
                 
                 # non security related configuration options
                 "database_type" : "pride.database.Database", 
@@ -366,7 +366,7 @@ class Authenticated_Client(pride.base.Base):
                 # meaning only a hash of the filename is stored
                 "token_file_type" : "pride.fileio.Database_File",
                 "token_file_encrypted" : True, "token_file_indexable" : False,
-                
+                                
                 # application specific needs may configure this when necessary
                 "hkdf_table_update_info_string" : "Authentication Table Update",
                 
@@ -379,7 +379,9 @@ class Authenticated_Client(pride.base.Base):
                 # a callback function may be passed to the constructor to handle
                 # successful registration without defining/extending a class
                 # this is convenient sometimes; otherwise forget about it
-                 "_register_results" : None}
+                 "_register_results" : None,
+                 
+                 "_user_database" : ''}
     
     mutable_defaults = {"_delayed_requests" : list}
     flags = {"_registering" : False, "logged_in" : False, "_logging_in" : False,
@@ -412,7 +414,9 @@ class Authenticated_Client(pride.base.Base):
         self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
-        name = module + '.' + type(self).__name__ + ":{}".format(self.username)
+        name = ((self._user_database or module + '.' + type(self).__name__)
+                + ":{}".format(self.username))
+        
         self.authentication_table_file = "{}_auth_table.key".format(name)
         self.history_file = "{}_history.key".format(name)
                                        
@@ -506,9 +510,10 @@ class Authenticated_Client(pride.base.Base):
             shared_key = _file.read(self.shared_key_size)
             try:
                 packed_key_and_message = pride.security.decrypt(encrypted_key, shared_key, shared_key)
-            except ValueError:
+            except ValueError:                
                 self.alert("Login attempt failed", level=self.verbosity["login_failed"])
                 self._logging_in = False
+                self.handle_login_failure()
             else:
                 new_key, login_message = pride.utilities.load_data(packed_key_and_message)
                 self.shared_key = new_key
@@ -575,6 +580,10 @@ class Authenticated_Client(pride.base.Base):
         #if self.auto_login:
         #    self.alert("Auto logging in", level=self.verbosity["auto_login"])
         #    self.login()
+    
+    def handle_login_failure(self):
+        pass
+        
         
 def test_Authenticated_Service2():
     service = objects["/Python"].create(Authenticated_Service)

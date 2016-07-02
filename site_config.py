@@ -74,7 +74,11 @@ def create(instance_type, *args, **kwargs):
     return objects["/Python"].create(instance_type, *args, **kwargs)
 
 def delete(reference):
-    objects[reference].delete()       
+    objects[reference].delete()     
+
+def logout(program="/User/Shell"):
+    objects[program].logout()
+    
 #import pride.audio
 #pride.audio.enable()
 import pride.gui

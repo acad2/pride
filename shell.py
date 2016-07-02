@@ -233,7 +233,7 @@ class Program(pride.base.Base):
         
 class Python_Shell(Program):
         
-    defaults = {"name" : "python", "shell" : "/User/Shell"}
+    defaults = {"name" : "python", "shell_connection" : "/User/Shell"}
     
     flags = {"user_is_entering_definition" : False, "prompt" : ">>> ",
              "lines" : ''}
@@ -248,6 +248,7 @@ class Python_Shell(Program):
         lines = self.lines
         write_prompt = True       
         output = None
+        
         if lines != "\n":     
             try:
                 code = codeop.compile_command(lines, "<stdin>", "exec")
@@ -262,11 +263,11 @@ class Python_Shell(Program):
                         if lines[-2:] == "\n\n":
                             self.prompt = ">>> "
                             self.lines = ''
-                            objects[self.shell].execute_source(lines)                         
+                            objects[self.shell_connection].execute_source(lines)                         
                             self.user_is_entering_definition = False
                     else:
                         self.lines = ''
-                        objects[self.shell].execute_source(lines)                        
+                        objects[self.shell_connection].execute_source(lines)                        
                         write_prompt = False
                 else:
                     self.user_is_entering_definition = True

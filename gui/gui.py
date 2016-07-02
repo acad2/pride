@@ -261,7 +261,7 @@ class Minimal_Theme(Theme):
             self.draw("text", area, self.text, width=self.w if self.wrap_text else None,
                       bg_color=self.background_color, color=self.text_color)
 
-                      
+                                
 class Window_Object(pride.gui.shapes.Bounded_Shape):
 
     defaults = {'x' : 0, 'y' : 0, 'z' : 0, "size" : (0, 0),
@@ -282,7 +282,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     mutable_defaults = {"_draw_operations" : list, "pack_count" : dict, "_children" : list}
     verbosity = {"texture_resized" : "vvv", "press" : "vv", "release" : "vv", "packed" : "packed"} 
     
-    Hotkeys = {}
+    hotkeys = {("\b", None) : "handle_backspace", ("\n", None) : "handle_return"}
     
     def _get_texture_invalid(self):
         return self._texture_invalid
@@ -301,10 +301,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def _get_text(self):
         return self._text
     def _set_text(self, value):
-        if self.text_entry:
-            self.text_entry(value)
-        else:
-            self._text = value
+        self._text = value
         if value and self.scale_to_text:
             assert self.sdl_window
             w, h = objects[self.sdl_window].renderer._get_text_size(self.area, value)
@@ -465,11 +462,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
                 instance.held = True
                 instance.mousemotion(x_difference, y_difference, top_level=False)
                 instance.held = False
-    
-    text_entry = None
-    #def text_entry(self, value):
-    #    pass
-        
+            
     def toggle_hidden(self):
         if not self.hidden:
             sdl_user_input = pride.objects[self.sdl_window + "/SDL_User_Input"]
@@ -587,7 +580,17 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
     def select(self, mouse):
         pass    
     
-    
+    def text_entry(self, text):
+        if self.allow_text_edit:
+            self.text += text        
+        
+    def handle_return(self):
+        pass
+        
+    def handle_backspace(self):
+        if self.allow_text_edit:
+            self.text = self.text[:-1]
+        
 class Window(Window_Object):
 
     defaults = {"pack_mode" : "main", "size" : pride.gui.SCREEN_SIZE}
