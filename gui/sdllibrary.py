@@ -93,11 +93,11 @@ class SDL_Window(SDL_Component):
         except ValueError:
             if hasattr(instance, "pack") and instance.__class__.__name__ != "Organizer":
                 raise ValueError("Unable to remove {} from on_screen".format(instance))
-        except AttributeError:
-            print "That was weird"
-            import pprint
-            pprint.pprint(dict((key, getattr(self, key)) for key in sorted(self.__dict__)))
-            raise
+        #except AttributeError:            
+        #    print "That was weird"
+        #    import pprint
+        #    pprint.pprint(dict((key, getattr(self, key)) for key in sorted(self.__dict__)))
+        #    raise
         super(SDL_Window, self).remove(instance)
         
     def run(self):        

@@ -31,7 +31,7 @@ class Shell(authentication2.Authenticated_Client):
     """ Handles keystrokes and sends python source to the Interpreter to 
         be executed. This requires authentication via username/password."""
     defaults = {"username" : "", "password" : "", "startup_definitions" : '', 
-                "target_service" : "/Python/Interpreter"}
+                "target_service" : "/Python/Interpreter", "stdout" : None}
     
     verbosity = {"login" : 0, "execute_source" : "vv"}
                 
@@ -59,7 +59,7 @@ class Shell(authentication2.Authenticated_Client):
                                     
     def handle_result(self, packet):
         if packet:        
-            sys.stdout.write('\r' + packet)                            
+            (self.stdout or sys.stdout).write('\r' + packet)                            
             
 
 class Interpreter(authentication2.Authenticated_Service):

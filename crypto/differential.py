@@ -60,7 +60,7 @@ def build_difference_distribution_table(sbox, differences=ALL_FUNCTIONS):
             for index, difference_functions in enumerate(differences):
                 _difference(input_one, input_difference, sbox, difference_tables[index], *difference_functions)                           
                 
-    return difference_tables[0], difference_tables[1]
+    return difference_tables.values()
     
 def find_best_output_differential(xor_ddt, input_difference):    
     best_find = 0
@@ -118,9 +118,9 @@ def differential_attack(encryption_function, cipher_s_box, blocksize,
                 print differential_chain[:s_box_applications[1]]
             
 def find_best_differential(sbox, functions=((operator.xor, None), (rotate_left, rotational_difference))):
-    tables = build_difference_distribution_table(sbox)
-    return find_best_differential_in_table(tables[0])
-    #return [find_best_differential_in_table(table) for table in tables]   
+    tables = build_difference_distribution_table(sbox, functions)
+    #return find_best_differential_in_table(tables[0])
+    return [find_best_differential_in_table(table) for table in tables]   
     
 def find_best_differential_in_table(difference_table):    
     """ Returns the single best xor differential for the supplied sbox.
@@ -151,7 +151,7 @@ def test_build_difference_distribution_table():
     import pprint
     #from blockcipher import S_BOX  
     from scratch import aes_s_box as S_BOX       
-    table1, table2 = build_difference_distribution_table(S_BOX, ((operator.and_, None), (lambda x, y: operator.mul(x, y) % 256, None)))    
+    table1, table2 = build_difference_distribution_table(S_BOX, ((xor, None), (rotate_left, rotational_difference)))    
    # print max(table1[1].values())
     print find_best_differential_in_table(table1)
     print find_best_differential_in_table(table2)

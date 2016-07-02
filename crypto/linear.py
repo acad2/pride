@@ -53,7 +53,7 @@ def find_best_linear_approximation(sbox):
 def calculate_linearity(sbox, bits=8, max_key_max_value=None):
     if not max_key_max_value:
         max_key_max_value = find_best_linear_approximation(sbox)
-    return abs(max_key_max_value[1] - (2 ** 8) / 2)
+    return max_key_max_value[0], abs(max_key_max_value[1] - (2 ** 8) / 2)
     
 def test_build_linear_approximation_table():
     from blockcipher import S_BOX as sbox

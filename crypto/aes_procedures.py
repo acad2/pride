@@ -92,15 +92,15 @@ def _galois_multiplication(a, b):
     return p
         
 # iterate over the 4 rows and call _shiftRow() with that row
-def shiftRows(state, isInv):
+def shiftRows(state, invert=False):
     for i in range(4):
-        state = _shiftRow(state, i*4, i, isInv)
+        state = _shiftRow(state, i*4, i, invert)
     return state
 
 # each iteration shifts the row to the left by 1
-def _shiftRow(state, statePointer, nbr, isInv):
+def _shiftRow(state, statePointer, nbr, invert):
     for i in range(nbr):
-        if isInv:
+        if invert:
             state[statePointer:statePointer+4] = \
                     state[statePointer+3:statePointer+4] + \
                     state[statePointer:statePointer+3]
