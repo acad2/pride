@@ -367,9 +367,6 @@ class Authenticated_Client(pride.base.Base):
                 "token_file_type" : "pride.fileio.Database_File",
                 "token_file_encrypted" : True, "token_file_indexable" : False,
                 
-                # these may be passed explicitly when required
-                "authentication_table_file" : '', "history_file" : '',
-                
                 # application specific needs may configure this when necessary
                 "hkdf_table_update_info_string" : "Authentication Table Update",
                 
@@ -415,9 +412,9 @@ class Authenticated_Client(pride.base.Base):
         self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
-        name = self.reference
-        self.authentication_table_file = self.authentication_table_file or "{}_auth_table.key".format(name)
-        self.history_file = self.history_file or "{}_history.key".format(name)
+        name = module + '.' + type(self).__name__ + ":{}".format(self.username)
+        self.authentication_table_file = "{}_auth_table.key".format(name)
+        self.history_file = "{}_history.key".format(name)
                                        
         if self.auto_login:
             self.alert("Auto logging in", level=self.verbosity["auto_login"])
@@ -457,7 +454,7 @@ class Authenticated_Client(pride.base.Base):
         
     def _token_not_registered(self): # called when login fails because user is not registered
         if not self._registering:
-            self.alert("Login token for '{}' not found", (self.username, ), level=0)            
+            self.alert("Login token for '{}' not found ({})", (self.username, self.authentication_table_file), level=0)            
             if self.auto_register or pride.shell.get_permission("Register now? "):                  
                 if self.ip in ("localhost", "127.0.0.1"):
                     local_service = objects[self.target_service]

@@ -1,12 +1,6 @@
 import pride
-import pride.gui.widgetlibrary
-
-class Gui_Shell(pride.interpreter.Shell):
-    
-    def result(self, packet):
-            
-    
-    
+import pride.gui.widgetlibrary    
+        
 class Prompt(pride.gui.widgetlibrary.Text_Box):
     
     defaults = {"pack_mode" : "main", "prompt" : "\n>>> ", "program" : '',
@@ -28,12 +22,14 @@ class Prompt(pride.gui.widgetlibrary.Text_Box):
     text = property(pride.gui.widgetlibrary.Text_Box._get_text, _set_text)      
     
 
-class Terminal(pride.gui.gui.Application):
-       
-    required_attributes = ("program", )
-    
+class Python_Shell(pride.gui.gui.Application):
+               
     def __init__(self, **kwargs):
-        super(Terminal, self).__init__(**kwargs)
-        self.create("pride.gui.shell.Prompt", program=self.program)  
+        super(Python_Shell, self).__init__(**kwargs)
+        shell_program = self.create("pride.shell.Python_Shell")        
+        self._children.remove(shell_program) # don't try to pack/draw it
+        pride.objects[shell_program.shell].stdout = self
+        self.prompt = self.create("pride.gui.shell.Prompt", program=shell_program.reference).reference         
     
-    
+    def write(self, data):
+        pride.objects[self.prompt].text += data
