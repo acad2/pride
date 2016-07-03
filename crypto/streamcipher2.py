@@ -39,10 +39,17 @@ def prp(data, key, mask=255, rotation_amount=5, bit_width=8, key_slice=slice(16,
         
         data[index], data[index + 1] = left, right                 
 
-    key ^= data[0]
-    data[0] = (data[0] + key) & mask
-    key ^= data[0]
+    right = data[0]
+    key ^= right
+    right = (right + key) & mask
+    key ^= right
     
+    left = data[1]
+    key ^= left        
+    left = (left + (right >> (bit_width / 2))) & mask                
+    left ^= rotate_left(right, (index % bit_width) ^ rotation_amount)                    
+    key ^= left
+    data[1] = left
     return key
         
 def invert_prp(data, key, mask=255, rotation_amount=5, bit_width=8, transpose=False):           
