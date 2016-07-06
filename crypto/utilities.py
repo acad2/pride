@@ -138,13 +138,13 @@ def find_cycle_length_subroutine(function, data, output_size=1, *args, **kwargs)
             outputs.append(data[:output_size])
     return outputs
     
-def find_long_cycle_length(max_size, block_size, function, _input, *args, **kwargs):
+def find_long_cycle_length(max_size, chunk_size, function, _input, *args, **kwargs):
     outputs = set([bytes(_input)])
  
-    blocks, extra = divmod(max_size, block_size)
+    blocks, extra = divmod(max_size, chunk_size)
     exit_flag = False
     for block in xrange(blocks if not extra else blocks + 1):        
-        for counter in xrange(block_size):                           
+        for counter in xrange(chunk_size):                           
             _input = bytes(function(bytearray(_input), *args, **kwargs))          
             if _input in outputs:  
                 exit_flag = True
@@ -153,7 +153,28 @@ def find_long_cycle_length(max_size, block_size, function, _input, *args, **kwar
                 outputs.add(_input)
         if exit_flag:
             break                
-        yield block * block_size
+        yield block * chunk_size
+
+    yield outputs
+    
+def find_long_cycle_length_subroutine(max_size, chunk_size, function, _input, *args, **kwargs):
+    data_size = kwargs.pop("data_slice", slice(0, 3))
+    outputs = set([bytes(_input)][data_size])
+ 
+    blocks, extra = divmod(max_size, chunk_size)
+    exit_flag = False
+    for block in xrange(blocks if not extra else blocks + 1):        
+        for counter in xrange(chunk_size):                           
+            function(_input, *args, **kwargs)
+            output = bytes(_input)[data_size]
+            if output in outputs:  
+                exit_flag = True
+                break
+            else:
+                outputs.add(output)
+        if exit_flag:
+            break                
+        yield block * chunk_size
 
     yield outputs
     

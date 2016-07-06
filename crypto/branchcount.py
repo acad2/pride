@@ -59,13 +59,13 @@ def substitution_layer(data):
 def test_calculate_branch_number():    
     def test_method(data):
         for round in range(2):
-            #substitution_layer(data)        
-            #diffusion_layer(data)        
-            #substitution_layer(data)
+        #    substitution_layer(data)        
+        #    diffusion_layer(data)        
+        #    substitution_layer(data)
             subBytes(data)
             shiftRows(data)
             mixColumns(data)
-            
+            subBytes(data)
         #print data
     print calculate_branch_number(test_method, 16)
     

@@ -1,4 +1,4 @@
-from utilities import xor_subroutine, rotate_left, rotate_right
+from utilities import xor_subroutine, rotate_left, rotate_right, find_long_cycle_length, find_long_cycle_length_subroutine
 
 def n_byte_addition(amount, _bytes):
     last_byte = _bytes[-1] + amount
@@ -108,18 +108,34 @@ permute_hash = sponge_factory(lambda data: keyed_permute_diffusion(data, tweak),
 #   # print data
 #    return data
     
-def test_permute():
-    from utilities import find_long_cycle_length
+def test_permute():    
     data = bytearray("\x00" * 3)
-    for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, [17, 3, 251]):
-        if isinstance(progress, int):
-            print progress
-    print len(progress)
+    key = [17, 3, 251]
+    try:
+        for progress in find_long_cycle_length((2 ** (len(data) * 8)), 1024, keyed_permute_diffusion, data, key[:len(data)]):
+            print progress - 0
+    except TypeError:
+        print len(progress)
     #cycle = find_cycle_length(permute, data)
     #print len(cycle)
 
+def test_prp():
+    from streamcipher2 import prp, xor_sum
+    def test_prp(data):        
+        before = data[:]
+        prp(data, xor_sum(data))        
+        assert before != data
+    
+    data = bytearray("\x00" * 16)
+    try:
+        for progress in find_long_cycle_length_subroutine(2 ** (3 * 8), 1024, test_prp, data):
+            print progress - 0
+    except TypeError:
+        print len(progress)
+        
 if __name__ == "__main__":
     test_permute()
+    #test_prp()
     #from metrics import test_hash_function, test_collisions
     #test_collisions(lambda data: bytes(permute_hash(bytearray(data))))
     #test_hash_function(lambda data: bytes(permute_hash(bytearray(data))))#permute_hash, collision_test=False)

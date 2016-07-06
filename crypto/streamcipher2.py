@@ -22,7 +22,8 @@ def shuffle_bytes(_state, section, temp=list(range(16))):
            
 def prp(data, key, mask=255, rotation_amount=5, bit_width=8, key_slice=slice(16, 32), data_slice=slice(0, 16), transpose=True):     
     if transpose:
-        shuffle_bytes(data, key_slice)
+        if key_slice is not None:
+            shuffle_bytes(data, key_slice)
         shuffle_bytes(data, data_slice)       
     
     for index in reversed(range(len(data) - 1)):       
