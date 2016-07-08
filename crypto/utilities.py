@@ -1,5 +1,6 @@
 import os
 import struct
+import itertools
 from operator import xor as _operator_xor
 import binascii
 
@@ -257,3 +258,27 @@ def print_state_4x4(state, message=''):
         print ' '.join(format(byte, 'b').zfill(8) for byte in word)
         print
             
+def brute_force(output, function, test_bytes, prefix='', postfix='', joiner=''):
+    """ usage: brute_force(output, function, test_bytes, 
+                           prefix='', postfix='', 
+                           joiner='') => input where function(input) == output
+                           
+        Attempt to find an input for function that produces output.
+            - test_bytes should be an iterable of iterables which containing the symbols that 
+              are to be tested 
+                - i.e. [ASCII, ASCII], ['0123456789', 'abcdef']
+                - symbols can be strings of any size
+                    - [my_password_dictionary, my_password_dictionary], 
+                        - my_password_dictionary can be an iterable of common words
+            - prefix and postfix are any constant strings to prepend/append to each attempted input
+            - joiner is the symbol to use when joining symbols for a test input
+                - use '' (default) for test_bytes like [ASCII, ASCII]
+                - use ' ' to test word lists [dictionary, dictionary]
+                    - or have the word lists themselves include relevant spacing/punctuation
+        Raises ValueError if no input was found that produces output."""                    
+    for permutation in itertools.product(*test_bytes):          
+        if function(prefix + joiner.join(permutation) + postfix) == output:
+            return joiner.join(permutation)
+    else:           
+        raise ValueError("Unable to recover input for given output with supplied arguments")  
+        

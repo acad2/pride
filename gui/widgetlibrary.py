@@ -93,6 +93,7 @@ class Objects_Explorer(pride.gui.gui.Application):
 class Icon(pride.gui.gui.Button):
             
     defaults = {"h_range" : (0, 40), "w_range" : (0, 40), "pack_mode" : "grid"}
+    required_attributes = ("popup_type", )
     
     def left_click(self, mouse):
         if mouse.clicks == 2:
@@ -121,8 +122,9 @@ class Homescreen(gui.Application):
         self.application_window.create(Icon, popup_type=Objects_Explorer, text="Objects Explorer")
         self.application_window.create(Program_Icon, popup_type="pride.gui.shell.Python_Shell",
                                        program="/User/Command_Line/Python_Shell", text="Python")
-        
+        self.application_window.create("pride.gui.text_editor.Shortcut")
 
+        
 class Task_Bar(gui.Container):
 
     defaults = {"pack_mode" : "top"}

@@ -64,7 +64,11 @@ class Text_File(pride.gui.gui.Window):
     defaults = {"allow_text_edit" : True,
                 "pack_mode" : "top"}
     
-    
+    def text_entry(self, text):
+        print text
+        super(Text_File, self).text_entry(text)
+        
+        
 class Text_Editor(pride.gui.gui.Application):
     
     defaults = {"startup_components" : tuple()}
@@ -75,6 +79,13 @@ class Text_Editor(pride.gui.gui.Application):
                     startup_components=("pride.gui.text_editor.File_Button",
                                         "pride.gui.text_editor.Edit_Button",
                                         "pride.gui.text_editor.Options_Button"))
+        self.create("pride.gui.gui.Window")
        # self.create("pride.gui.Container", 
         #            startup_components=("
-        self.create("pride.gui.text_editor.Text_File", )
+        self.create("pride.gui.text_editor.Text_File")
+        
+        
+class Shortcut(pride.gui.widgetlibrary.Icon):
+            
+    defaults = {"popup_type" : "pride.gui.text_editor.Text_Editor", "text" : "Text Editor"}
+    

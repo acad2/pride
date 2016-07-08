@@ -258,6 +258,8 @@ class Minimal_Theme(Theme):
         self.draw("fill", area, color=self.background_color)
         self.draw("rect_width", area, color=self.color, width=self.outline_width)        
         if self.text:
+            width = self.w if self.wrap_text else None
+            assert width is not None, (self, width, self.w, self.wrap_text, self.text)
             self.draw("text", area, self.text, width=self.w if self.wrap_text else None,
                       bg_color=self.background_color, color=self.text_color)
 
@@ -304,7 +306,7 @@ class Window_Object(pride.gui.shapes.Bounded_Shape):
         self._text = value
         if value and self.scale_to_text:
             assert self.sdl_window
-            w, h = objects[self.sdl_window].renderer._get_text_size(self.area, value)
+            w, h = objects[self.sdl_window].renderer.get_text_size(self.area, value)
             w += 2
             self.w_range = (0, w)
             self.w = w            
@@ -612,8 +614,12 @@ class Application(Window):
                                         "pride.gui.gui.Window")}
     flags = {"transparency_enabled" : False}
     
-    def _get_application_window(self):        
-        return self.objects["Window"][0]
+    def _get_application_window(self):  
+        try:
+            return self.objects["Window"][0]
+        except KeyError:
+            print self, self.objects.keys()
+            raise
     application_window = property(_get_application_window)
     
     def draw_texture(self):

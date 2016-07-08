@@ -526,14 +526,11 @@ class Renderer(SDL_Component):
         return self.sprite_factory.from_text(text, fontmanager=self.font_manager,
                                              **kwargs).size
                                              
-    def draw_text(self, area, text, cache={}, **kwargs):
-        if (area, text, tuple(kwargs.items())) in cache:
-            _w, _h, texture = cache[texture]
-        else:            
-            x, y, w, h = area
-            texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, **kwargs)     
-            cache[texture] = texture
-            _w, _h = texture.size   
+    def draw_text(self, area, text, **kwargs):           
+        x, y, w, h = area
+        texture = self.sprite_factory.from_text(text, fontmanager=self.font_manager, **kwargs)             
+        _w, _h = texture.size   
+        assert kwargs.get("width", None) is not None, (area, text, kwargs)
         if kwargs.get("width", None) is None and _w > w:
             self.copy(texture, dstrect=(x + 2, y + 2, 
                                         w - 2, _h),
