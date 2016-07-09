@@ -32,6 +32,14 @@ def decrypt(ciphertext, key, iv, work_factor=1, decryption_factor=1, hash_functi
     return plaintext
   
 def slow_hash(data, iv, work_factor1=1, hash_function=tunable_hash):
+    """ usage: slow_hash(data, iv, work_factor1=1, 
+                         hash_function=tunable_hash) => digest
+                         
+        Produce a digest in a relatively slow and computationally expensive manner.
+        Digests may be verified in very little time by calling verify_digest."""
+    # current problems:
+    # doesn't use enough RAM
+   
     digest = b''
     state = b''
     _looking_for = list(iv)
@@ -40,23 +48,21 @@ def slow_hash(data, iv, work_factor1=1, hash_function=tunable_hash):
         current_hash = hash_function(iv + state + data_bytes)
         state += current_hash
         while current_hash[:work_factor1] != looking_for:
-            hash_input = current_hash + data_bytes
+            hash_input = current_hash
             current_hash = hash_function(hash_input)
             state += current_hash
-        digest += hash_input[:-work_factor1]
+        digest += hash_input
         looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))
     
     return digest
             
-def verify_digest(digest, data, iv, work_factor1=1, hash_function=tunable_hash):
-    digest_size = len(hash_function(''))
-    _data = list(data)
+def verify_digest(digest, iv, work_factor1=1, hash_function=tunable_hash):
+    digest_size = len(hash_function(''))    
     _looking_for = list(iv)
     looking_for = ''.join(_looking_for.pop(0) for count in range(work_factor1))
     failure = False    
-    for current_hash in slide(digest, digest_size):
-        data_bytes = ''.join(_data.pop(0) for count in range(work_factor1))
-        hash_input = current_hash + data_bytes
+    for current_hash in slide(digest, digest_size):        
+        hash_input = current_hash
         if hash_function(hash_input)[:work_factor1] != looking_for:
             failure = True
         else:
@@ -88,8 +94,8 @@ def test_encrypt_decrypt():
 def test_slow_hash():
     data = "Testing!"
     iv = "\x00" * 16
-    work_factor1 = 2
-    work_factor2 = 10
+    work_factor1 = 1
+    work_factor2 = 1
     hash_function = lambda data: tunable_hash(data, iv, work_factor2)
     start = timestamp()
     digest = slow_hash(data, iv, work_factor1, hash_function)
@@ -97,7 +103,7 @@ def test_slow_hash():
     print("Time taken to generate digest: {}".format(timestamp() - start))#, digest#, [byte for byte in bytearray(digest)]
     
     start = timestamp()
-    assert verify_digest(digest, data, iv, work_factor1, hash_function)
+    assert verify_digest(digest, iv, work_factor1, hash_function)
     print "Time taken to validate digest: {}".format(timestamp() - start)
         
 if __name__ == "__main__":
