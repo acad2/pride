@@ -258,7 +258,8 @@ def print_state_4x4(state, message=''):
         print ' '.join(format(byte, 'b').zfill(8) for byte in word)
         print
             
-def brute_force(output, function, test_bytes, prefix='', postfix='', joiner=''):
+def brute_force(output, function, test_bytes, prefix='', postfix='', joiner='',
+                string_slice=None):
     """ usage: brute_force(output, function, test_bytes, 
                            prefix='', postfix='', 
                            joiner='') => input where function(input) == output
@@ -275,10 +276,11 @@ def brute_force(output, function, test_bytes, prefix='', postfix='', joiner=''):
                 - use '' (default) for test_bytes like [ASCII, ASCII]
                 - use ' ' to test word lists [dictionary, dictionary]
                     - or have the word lists themselves include relevant spacing/punctuation
-        Raises ValueError if no input was found that produces output."""                    
-    for permutation in itertools.product(*test_bytes):          
-        if function(prefix + joiner.join(permutation) + postfix) == output:
-            return joiner.join(permutation)
-    else:           
+        Raises ValueError if no input was found that produces output."""  
+    string_slice = slice(0, None) if string_slice is None else string_slice
+    for permutation in itertools.product(*test_bytes):              
+        if function(prefix + joiner.join(permutation) + postfix)[string_slice] == output[string_slice]:            
+            return prefix + joiner.join(permutation) + postfix
+    else:                   
         raise ValueError("Unable to recover input for given output with supplied arguments")  
         
