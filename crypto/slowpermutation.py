@@ -98,14 +98,18 @@ def test_encrypt_decrypt():
 def test_slow_hash():
     data = "Testing!"
     iv = "\x00" * 16
-    work_factor1 = 1
+    work_factor1 = 2
     work_factor2 = 1
     hash_function = lambda data: tunable_hash(data, iv, work_factor2)
+    start = timestamp()
     digest = slow_hash(data, iv, work_factor1, hash_function)
-    print len(digest)#, digest#, [byte for byte in bytearray(digest)]
+    print("Digest size: {}".format(len(digest)))
+    print("Time taken to generate digest: {}".format(timestamp() - start))#, digest#, [byte for byte in bytearray(digest)]
     
+    start = timestamp()
     assert verify_digest(digest, data, iv, work_factor1, hash_function)
-    
+    print "Time taken to validate digest: {}".format(timestamp() - start)
+        
 if __name__ == "__main__":
     #test_encrypt_decrypt()
     test_slow_hash()
