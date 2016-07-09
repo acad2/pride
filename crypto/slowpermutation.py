@@ -30,17 +30,7 @@ def decrypt(ciphertext, key, iv, work_factor=1, decryption_factor=1, hash_functi
         plaintext += data_bytes        
     
     return plaintext
- 
-# input = pa | ss | wo | rd
-# input = hash(iv + pa) | (hash(iv + hash0 + output0 + ss) | hash(iv + hash0 + hash1 + wo) ...
-# output = brute_force(hash0[work_factor_slice]) | brute_force(hash1[work_factor_slice]) | brute_force(hash2[work_factor_slice]) ...
-
-# verification:
-# assert hash(output0) == hash(iv + pa)
-# assert hash(output1) == hash(iv + hash0 + output0 + ss)
-# assert hash(output2) == hash(iv + hash0 + hash1 + output0 + output1 + wa)
-# ...
- 
+  
 def slow_hash(data, iv, work_factor1=1, hash_function=tunable_hash):
     digest = b''
     state = b''
@@ -99,7 +89,7 @@ def test_slow_hash():
     data = "Testing!"
     iv = "\x00" * 16
     work_factor1 = 2
-    work_factor2 = 1
+    work_factor2 = 10
     hash_function = lambda data: tunable_hash(data, iv, work_factor2)
     start = timestamp()
     digest = slow_hash(data, iv, work_factor1, hash_function)
