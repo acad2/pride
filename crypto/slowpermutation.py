@@ -39,11 +39,12 @@ def slow_hash(data, iv, work_factor1=1, hash_function=tunable_hash):
         Digests may be verified in very little time by calling verify_digest."""
     # current problems:
     # doesn't use enough RAM
-   
+    # low diffusion
+    # search for the right hash is obviously not constant time
     digest = b''
     state = b''
     _looking_for = list(iv)
-    looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1)) # iv[:work_factor1]
+    looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))
     for data_bytes in slide(data, work_factor1):
         current_hash = hash_function(iv + state + data_bytes)
         state += current_hash
@@ -99,8 +100,10 @@ def test_slow_hash():
     hash_function = lambda data: tunable_hash(data, iv, work_factor2)
     start = timestamp()
     digest = slow_hash(data, iv, work_factor1, hash_function)
+    time_required = timestamp() - start
     print("Digest size: {}".format(len(digest)))
-    print("Time taken to generate digest: {}".format(timestamp() - start))#, digest#, [byte for byte in bytearray(digest)]
+    print("Digest:\n{}\n".format(digest))
+    print("Time taken to generate digest: {}".format(time_required))
     
     start = timestamp()
     assert verify_digest(digest, iv, work_factor1, hash_function)
