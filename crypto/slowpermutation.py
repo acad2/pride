@@ -5,111 +5,130 @@ from utilities import slide, brute_force
 def tunable_hash(data, key, work_factor, algorithm="sha224"):
     return hashlib.pbkdf2_hmac(algorithm, data, key, work_factor)
     
-def encrypt(data, key, iv, work_factor=1000, decryption_factor=1, hash_function=tunable_hash):
+def encrypt(data, key, iv, work_factor=1, hash_function=tunable_hash):
+    """ usage: encrypt(data, key, iv, work_factor=1, 
+                       hash_function=tunable_hash) => ciphertext
+                       
+        Encrypt data in a way that decryption takes significantly more computational
+        expense then encryption, based on work_factor. 
+            - Incrementing work factor increases decryption cost exponentially
+        
+        Ciphertext will be (len(data) / work_factor) * digest_size bytes in size. """
     ciphertext = b''
     cumulative_input = b''
     
-    for data_bytes in slide(data, decryption_factor):        
-        output = hash_function(iv + cumulative_input + data_bytes, key, work_factor)
+    for data_bytes in slide(data, work_factor):        
+        output = hash_function(key + iv + cumulative_input + data_bytes)
         ciphertext += output
         cumulative_input += data_bytes
     
     return ciphertext
     
-def decrypt(ciphertext, key, iv, work_factor=1, decryption_factor=1, hash_function=tunable_hash):
+def decrypt(ciphertext, key, iv, work_factor=1, hash_function=tunable_hash):
+    """ usage: decrypt(ciphertext, key, iv, work_factor,
+                       hash_function=tunable_hash) => plaintext
+                       
+        Slow decryption function for corresponding fast(er) encryption function.
+            - Incrementing work factor increases decryption cost exponentially"""
     plaintext = b''    
     
-    test_bytes = [bytes(bytearray(range(256))) for factor in range(decryption_factor)]
-    _hash_function = lambda data: hash_function(data, key, work_factor)
-    block_size = len(_hash_function(''))
+    test_bytes = [bytes(bytearray(range(256))) for factor in range(work_factor)]    
+    block_size = len(hash_function(''))
     
     for ciphertext_bytes in slide(ciphertext, block_size):        
-        data_bytes = brute_force(ciphertext_bytes, _hash_function, test_bytes, 
-                                 prefix=iv + plaintext)
-                                 
-        plaintext += data_bytes        
+        data_bytes = brute_force(ciphertext_bytes, hash_function, test_bytes, 
+                                 prefix=key + iv + plaintext)                                 
+        plaintext += data_bytes[-work_factor:]               
     
     return plaintext
   
-def slow_hash(data, iv, work_factor1=1, hash_function=tunable_hash):
-    """ usage: slow_hash(data, iv, work_factor1=1, 
-                         hash_function=tunable_hash) => digest
-                         
-        Produce a digest in a relatively slow and computationally expensive manner.
-        Digests may be verified in very little time by calling verify_digest."""
-    # current problems:
-    # doesn't use enough RAM
-    # low diffusion
-    # search for the right hash is obviously not constant time
-    digest = b''
-    state = b''
-    _looking_for = list(iv)
-    looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))
-    for data_bytes in slide(data, work_factor1):
-        current_hash = hash_function(iv + state + data_bytes)
+def encrypt2(data, iv, key, work_factor1=1, hash_function=tunable_hash):
+    """ usage: encrypt2(plaintext, iv, key, work_factor1=1, 
+                        hash_function=tunable_hash) => ciphertext
+        
+        Tunably slow encryption function, with corresponding decryption function.
+        This function is made exponentially slower via incrementing work_factor1:
+            - Small changes will increase time required to encrypt considerably
+            - Can use a slow hash such as pbkdf2_hmac for more fine grained tuning
+        
+        The corresponding decryption function is (relatively) fast
+            - decryption performance is effectively unmodified regardless of work factor.
+        
+        Ciphertext will be (len(data) / work_factor) * digest_size bytes in size"""
+    output = b''
+    state = iv
+    _looking_for = list(data)
+    looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))    
+    while True:        
+        current_hash = hash_function(key + state)
         state += current_hash
         while current_hash[:work_factor1] != looking_for:
             hash_input = current_hash
             current_hash = hash_function(hash_input)
             state += current_hash
-        digest += hash_input
-        looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))
+        output += hash_input
+        try:
+            looking_for = ''.join(_looking_for.pop(0) for factor in range(work_factor1))
+        except IndexError:
+            break
     
-    return digest
+    return output
             
-def verify_digest(digest, iv, work_factor1=1, hash_function=tunable_hash):
-    digest_size = len(hash_function(''))    
-    _looking_for = list(iv)
-    looking_for = ''.join(_looking_for.pop(0) for count in range(work_factor1))
-    failure = False    
-    for current_hash in slide(digest, digest_size):        
-        hash_input = current_hash
-        if hash_function(hash_input)[:work_factor1] != looking_for:
-            failure = True
-        else:
-            constant_time_operation = True
-        looking_for = ''.join(_looking_for.pop(0) for count in range(work_factor1))
-    return not failure                
+def decrypt2(ciphertext, iv, key, work_factor1=1, hash_function=tunable_hash):
+    """ usage: decrypt2(ciphertext, iv, key, work_factor1=1,
+                        hash_function=tunable_hash) => plaintext
+                        
+        Fast decryption function for corresponding slow encryption function. 
+        work_factor1 has effectively no influence on computation time."""
+    digest_size = len(hash_function(''))   
+    plaintext = b''
+    for hash_input in slide(ciphertext, digest_size):                
+        plaintext += hash_function(hash_input)[:work_factor1]
+    return plaintext               
                 
 def test_encrypt_decrypt():
     message = "Testing!"
     key = "\x00" * 16
     iv = "\x00" * 16    
-    work_factor = 1
-    decryption_factor = 1
+    work_factor = 1    
+    work_factor2 = 1
+    hash_function = lambda data: tunable_hash(data, key, work_factor2)
+    
     start = timestamp()
-    ciphertext = encrypt(message, key, iv, work_factor, decryption_factor)
+    ciphertext = encrypt(message, key, iv, work_factor, hash_function)
     encryption_time = timestamp() - start
     
     print "Plaintext size: ", len(message)
     print "Ciphertext size: ", len(ciphertext)
     
     start = timestamp()
-    plaintext = decrypt(ciphertext, key, iv, work_factor, decryption_factor)
+    plaintext = decrypt(ciphertext, key, iv, work_factor, hash_function)
     decryption_time = timestamp() - start
     assert plaintext == message
     
     print "Encryption time: ", encryption_time
     print "Decryption time: ", decryption_time
 
-def test_slow_hash():
+def test_encrypt_decrypt2():
     data = "Testing!"
     iv = "\x00" * 16
+    key = "\x00" * 16
     work_factor1 = 1
     work_factor2 = 1
-    hash_function = lambda data: tunable_hash(data, iv, work_factor2)
+    hash_function = lambda data: tunable_hash(data, key, work_factor2)
     start = timestamp()
-    digest = slow_hash(data, iv, work_factor1, hash_function)
+    ciphertext = encrypt2(data, iv, key, work_factor1, hash_function)
     time_required = timestamp() - start
-    print("Digest size: {}".format(len(digest)))
-    print("Digest:\n{}\n".format(digest))
-    print("Time taken to generate digest: {}".format(time_required))
+    print("Ciphertext size: {}".format(len(ciphertext)))
+    print("Ciphertext:\n{}\n".format(ciphertext))
+    print("Time taken to encrypt plaintext:  {}".format(time_required))
     
     start = timestamp()
-    assert verify_digest(digest, iv, work_factor1, hash_function)
-    print "Time taken to validate digest: {}".format(timestamp() - start)
+    plaintext = decrypt2(ciphertext, iv, key, work_factor1, hash_function)
+    print "Time taken to decrypt ciphertext: {}".format(timestamp() - start)    
+    assert plaintext == data
         
 if __name__ == "__main__":
-    #test_encrypt_decrypt()
-    test_slow_hash()
+    test_encrypt_decrypt()
+    test_encrypt_decrypt2()
     
