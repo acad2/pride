@@ -1,13 +1,13 @@
 """ pride.patch - utilities for patching python standard library modules
     Patches named in pride.patch.patches will automatically be instantiated
     when pride is imported. """
-import sys
-import importlib
-import contextlib
+import sys as sys_module
+import importlib as _importlib
+import contextlib as _contextlib
 
 import pride.base
 
-patches = ("Sys", )
+patches = ("sys", )
 
 class Patched_Module(pride.base.Wrapper):
     """ The base class for patching modules """
@@ -17,8 +17,8 @@ class Patched_Module(pride.base.Wrapper):
     
     def __init__(self, **kwargs):
         super(Patched_Module, self).__init__(**kwargs)
-        self.wraps(importlib.import_module(self.module_name))
-        sys.modules[self.module_name] = self
+        self.wraps(_importlib.import_module(self.module_name))
+        sys_module.modules[self.module_name] = self
         globals()[self.module_name] = self
             
  
@@ -43,17 +43,17 @@ class Stdout(pride.base.Base):
     def flush(self):
         self.file.flush()
         
-    @contextlib.contextmanager
+    @_contextlib.contextmanager
     def switched(self, _file):
         backup = self.file
-        sys.stdout = _file        
+        sys_module.stdout = _file        
         try:
             yield self
         finally: 
-            sys.stdout = backup        
+            sys_module.stdout = backup        
         
         
-class Sys(Patched_Module):
+class sys(Patched_Module):
             
     defaults = {"module_name" : "sys"}
     
@@ -66,8 +66,14 @@ class Sys(Patched_Module):
     stdout = property(_get_stdout, _set_stdout)               
     
     def __init__(self, **kwargs):
-        super(Sys, self).__init__(**kwargs)
+        super(sys, self).__init__(**kwargs)
         self._logger = self.create(Stdout, file=self.wrapped_object.__stdout__)
         self.stdout_log = self._logger.log            
         self.wrapped_object.stdout = self._logger
         
+        
+class inspect(Patched_Module):
+            
+    defaults = {"module_name" : "inspect"}
+    
+    #def get_source(

@@ -90,7 +90,7 @@ def test_encrypt_decrypt():
     message = "Testing!"
     key = "\x00" * 16
     iv = "\x00" * 16    
-    work_factor = 1    
+    work_factor = 2 
     work_factor2 = 1
     hash_function = lambda data: tunable_hash(data, key, work_factor2)
     
@@ -98,6 +98,7 @@ def test_encrypt_decrypt():
     ciphertext = encrypt(message, key, iv, work_factor, hash_function)
     encryption_time = timestamp() - start
     
+    print "Testing fast encrypt/slow decrypt: "
     print "Plaintext size: ", len(message)
     print "Ciphertext size: ", len(ciphertext)
     
@@ -113,14 +114,15 @@ def test_encrypt_decrypt2():
     data = "Testing!"
     iv = "\x00" * 16
     key = "\x00" * 16
-    work_factor1 = 1
+    work_factor1 = 2
     work_factor2 = 1
     hash_function = lambda data: tunable_hash(data, key, work_factor2)
     start = timestamp()
     ciphertext = encrypt2(data, iv, key, work_factor1, hash_function)
     time_required = timestamp() - start
-    print("Ciphertext size: {}".format(len(ciphertext)))
-    print("Ciphertext:\n{}\n".format(ciphertext))
+    print("Testing slow encrypt/fast decrypt: ")
+    print( "Plaintext size: {}".format(len(data)))
+    print("Ciphertext size: {}".format(len(ciphertext)))    
     print("Time taken to encrypt plaintext:  {}".format(time_required))
     
     start = timestamp()

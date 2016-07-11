@@ -131,11 +131,11 @@ class Compiler(object):
     
     def load_module(self, module_name):
         if module_name not in sys.modules:
-            source, path = self.module_source[module_name]
+            source, path = self.module_source[module_name]            
             #module_code = self.compile(source, path)
             self.compile_module(module_name, source, path)        
         return sys.modules[module_name]
-           
+    
     def reload_module(self, module_name):
         del sys.modules[module_name]
         return importlib.import_module(module_name)
@@ -177,7 +177,7 @@ class Compiler(object):
     def compile(self, source, filename=''):        
         return compile(self.preprocess(source), filename, 'exec')  
         
-
+        
 class Parser(object):
     
     @staticmethod

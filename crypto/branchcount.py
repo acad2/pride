@@ -1,11 +1,11 @@
 from utilities import hamming_weight, xor_sum, rotate_right
 
 def calculate_branch_number(substitution_diffusion_substitution_layer, datasize):
-    min_branch_number = 0xFFFFFFFF
+    min_branch_number = 0xFFFFFFFF            
     for difference in range(1, 256):
         data = bytearray(datasize)
-        data2 = data[:]
-        data2[0] = difference
+        data2 = bytearray(datasize)        
+        data2[0] = data[0] ^ difference
         substitution_diffusion_substitution_layer(data)
         substitution_diffusion_substitution_layer(data2)   
         
@@ -57,15 +57,14 @@ def substitution_layer(data):
         data[index] = S_BOX[byte]
        
 def test_calculate_branch_number():    
-    def test_method(data):
-        for round in range(2):
+    def test_method(data):        
         #    substitution_layer(data)        
         #    diffusion_layer(data)        
         #    substitution_layer(data)
-            subBytes(data)
-            shiftRows(data)
-            mixColumns(data)
-            subBytes(data)
+        subBytes(data)
+        shiftRows(data)
+        mixColumns(data)
+        subBytes(data)
         #print data
     print calculate_branch_number(test_method, 16)
     

@@ -37,7 +37,9 @@ history from storing hashes of shared secrets?
                 attribute)
   
 
- 
+# expect keyword
+# switches except and else statements
+
 # recursive sort? 
 
 deter — detect — alarm — delay — respond
