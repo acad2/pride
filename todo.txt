@@ -37,7 +37,7 @@ history from storing hashes of shared secrets?
                 attribute)
   
 
-# expect keyword
+# expect keyword (it's a joke)
 # switches except and else statements
 
 # recursive sort? 

@@ -12,7 +12,8 @@ def _export(*args):
     """ Usage: export module_name for fqdn as module_name
         
         Executes the module on the host named by fqdn.
-        Requires shell credentials and a running instance of pride on the target machine. """
+        Requires shell credentials and a running instance of pride on the target machine.
+        The as clause is optional"""
     try:
         module_name, for_fqdn, as_name = args
     except ValueError:

@@ -76,4 +76,12 @@ class inspect(Patched_Module):
             
     defaults = {"module_name" : "inspect"}
     
-    #def get_source(
+    def get_source(_object):
+        try:
+            return pride.compiler.module_source[_object.__name__][0]
+        except KeyError:
+            return inspect.getsource(_object)
+            
+            
+            
+        
