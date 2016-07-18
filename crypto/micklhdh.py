@@ -49,6 +49,28 @@ def test_authenticated_key_exchange():
     secret2 = generate_shared_secret(r_a, k_b, P)
     assert secret1 == secret2
     
+def test_exchange_with_mick():        
+    k_e = 591811839 # generate_k(Q)
+    private_e = 1094098618 # generate_private(Q)
+    public_e = generate_public(G, private_e, P)
+    
+    with open("public_key.pub", 'w') as _file:
+        _file.write(str(public_e))
+        
+    public_key_mick = 95446980204587512202682632596933263866
+    
+    r_e = generate_r(public_key_mick, private_e, k_e, P)
+    with open("r.pub", 'w') as _file:
+        _file.write(str(r_e))
+        
+    micks_r_value = 2811421988471764669621240900445131463
+    
+    secret = generate_shared_secret(micks_r_value, k_e, P)
+    with open("shared_secret.txt", 'w') as _file:
+        _file.write(str(secret))
+        
+    
 if __name__ == "__main__":
     test_authenticated_key_exchange()
+    test_exchange_with_mick()
     
