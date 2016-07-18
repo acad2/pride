@@ -1,5 +1,5 @@
 import os
-from utilities import bytes_to_integer
+from utilities import bytes_to_integer, integer_to_bytes
 
 Q = 4294967291
 P = 340282366524797650892052919558537740179
@@ -7,11 +7,17 @@ G = 54521249035780310435070665414012456167
 
 random_number = lambda size : bytes_to_integer(bytearray(os.urandom(size)))
 
-SIZE = 4
-
-def generate_k(q):
-    size = SIZE # todo: figure out how to generate appropriately sized numbers based on size of Q
-    k = random_number(size)
+def random_number(q):
+    in_bytes = integer_to_bytes(q)
+    k = bytearray(os.urandom(len(in_bytes)))
+    k_int = bytes_to_integer(k)
+    while k_int > q:
+        k.pop(-1)
+        k_int = bytes_to_integer(k)
+    return k_int
+   
+def generate_k(q):    
+    k = random_number(q)
     assert 1 < k < q
     return k
     
