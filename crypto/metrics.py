@@ -24,7 +24,9 @@ def _hash_prng(hash_function, digest_size, output_size):
     hash_input = "\x01" * digest_size    
     chunks, extra = divmod(output_size, digest_size)
     chunks += 1 if extra else 0      
-    for chunk in range(chunks):                                 
+    for chunk in range(chunks):                
+        #print "Hashing: ", [byte for byte in bytearray(hash_input)]
+        #print "Hashed : ", hash_function(hash_input)
         output += hash_function(hash_input)    
         hash_input = output[-digest_size:]
     
@@ -150,7 +152,7 @@ def test_bias(hash_function, byte_range=slice(0, 16)):
     outputs2 = []   
     print "Testing for byte bias..."
     for byte1 in range(256):
-        for byte2 in range(256):
+        for byte2 in range(len(hash_function(''))):
             output = hash_function(chr(byte1) + chr(byte2))
             for index, byte in enumerate(output[byte_range]):
                 biases[index].append(ord(byte))            

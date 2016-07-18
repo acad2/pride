@@ -6,7 +6,7 @@ def rotate_right(x, r, bit_width=8, _mask=dict((bit_width, ((2 ** bit_width) - 1
     r %= bit_width
     return ((x >> r) | (x << (bit_width - r))) & _mask[bit_width]
     
-def round(left, right, key, index, mask=255, rotation_amount=5, bit_width=8):
+def round_function(left, right, key, index, mask=255, rotation_amount=5, bit_width=8):
     key ^= right                 
     right = rotate_left((right + key + index) & mask, rotation_amount, bit_width)                
     key ^= right
@@ -43,14 +43,14 @@ def prp(data, data_xor, data_size=16, turn_into_prf=False):
     for index in range(data_size):
         left, right = data[index - 1], data[index]        
         if turn_into_prf:
-            data_xor ^= right # remove so that the first key ^ right inside round puts it back into the sum
-        left, right, data_xor = round(left, right, data_xor, index)    
+            data_xor ^= right # remove so that the first key ^ right inside round_function puts it back into the sum
+        left, right, data_xor = round_function(left, right, data_xor, index)    
         data[index - 1], data[index] = left, right   
         
     left, right = data[15], data[0]
     if turn_into_prf:
         data_xor ^= right 
-    left, right, data_xor = round(left, right, data_xor, 0)
+    left, right, data_xor = round_function(left, right, data_xor, 0)
     data[15], data[0] = left, right
     return data_xor
            

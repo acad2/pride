@@ -11,16 +11,20 @@ def example_mixing_subroutine(_bytes):
                                                        257) % 256)
     return _bytes
     
-def variable_length_hash(state, rate, output_size, mixing_subroutine, absorb_mode):    
-    output = state[:rate]
+def variable_length_hash(state, rate, output_size, mixing_subroutine, absorb_mode): 
+    if isinstance(rate, int):
+        rate = slice(0, rate)
+    output = state[rate]    
     while len(output) < output_size:
+        #print "\nSqueezing additional bytes: ", [byte for byte in state]
         mixing_subroutine(state)        
-        output += state[:rate]      
+        output += state[rate]      
+    
     return bytes(output[:output_size])
     
 def prng_generator(state, rate, output_size, mixing_subroutine, absorb_mode):    
     while True:
-        yield state[:rate]
+        yield state[rate]
         mixing_subroutine(state)    
     
 def encryption_mode(state, rate, output_size, mixing_subroutine, absorb_mode):    
@@ -29,7 +33,7 @@ def encryption_mode(state, rate, output_size, mixing_subroutine, absorb_mode):
         xor_subroutine(state, bytearray(input_block))
         input_block = yield bytes(state[:len(input_block)])
         mixing_subroutine(state)        
-    yield bytes(state[:rate])
+    yield bytes(state[rate])
     
 def decryption_mode(state, rate, output_size, mode_of_operation, absorb_mode):    
     input_block = yield None       
@@ -40,12 +44,12 @@ def decryption_mode(state, rate, output_size, mode_of_operation, absorb_mode):
         input_block = yield bytes(state[:len(input_block)])
         xor_subroutine(state, last_block)       
         mixing_subroutine(state)    
-    authentication_code = yield bytes(state[:rate])
-    if authentication_code != state[:rate]:
+    authentication_code = yield bytes(state[rate])
+    if authentication_code != state[rate]:
         raise ValueError("Invalid tag")
         
 def absorb(data, state, rate, mixing_subroutine, replacement_subroutine): 
-    for block in slide(bytearray(data), rate):
+    for block in slide(bytearray(data), rate.stop - rate.start):
         replacement_subroutine(state, block)
         mixing_subroutine(state)
        
@@ -54,16 +58,26 @@ def sponge_function(hash_input, key='', output_size=32, capacity=32, rate=32,
                     mode_of_operation=variable_length_hash,
                     absorb_mode=xor_subroutine): 
     assert mixing_subroutine is not None
-    state_size = capacity + rate
+    #print "Hashing: ", [byte for byte in hash_input]
+    if isinstance(rate, int):
+        rate = slice(0, rate)
+    if isinstance(capacity, int):
+        end_of_rate = rate.stop
+        capacity = slice(end_of_rate, end_of_rate + capacity)
+    state_size = capacity.stop
     state = bytearray(state_size)
     if key:
         absorb(key, state, rate, mixing_subroutine, absorb_mode)      
     
-    hash_input = pad_input(hash_input, rate)
+    rate_in_bytes = rate.stop - rate.start
+    hash_input = pad_input(bytearray(hash_input), rate_in_bytes)
         
-    for _bytes in slide(hash_input, rate):
+    #print "\nBeginning absorption", [byte for byte in hash_input]
+    for _bytes in slide(hash_input, rate_in_bytes):
+        #print "Absorbing: ", [byte for byte in _bytes]
         absorb(_bytes, state, rate, mixing_subroutine, absorb_mode)
     
+    #print "\nBeginning final mix before mode of operation: ", [byte for byte in state]
     mixing_subroutine(state)
     return mode_of_operation(state, rate, output_size, mixing_subroutine, absorb_mode)                
     
