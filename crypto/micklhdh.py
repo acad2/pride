@@ -9,21 +9,40 @@ random_number = lambda size : bytes_to_integer(bytearray(os.urandom(size)))
 
 SIZE = 4
 
-K_a = random_number(SIZE)
-Private_a = random_number(SIZE)
-
-K_b = random_number(SIZE)
-Private_b = random_number(SIZE)
-
-assert 1 < K_a < Q
-assert 1 < K_b < Q
-
-Public_a = pow(G, Private_a, P)
-#Public_b = pow(G, Private_b, P)
-Public_b = 95446980204587512202682632596933263866
-
-R_a = pow(Public_b, Private_a * K_a, P)
-R_b = pow(Public_a, Private_b * K_b, P)
-
-print pow(R_a, K_b, P)
-print pow(R_b, K_a, P)
+def generate_k(q):
+    size = SIZE # todo: figure out how to generate appropriately sized numbers based on size of Q
+    k = random_number(size)
+    assert 1 < k < q
+    return k
+    
+def generate_private(Q):
+    return generate_k(Q)
+    
+def generate_public(g, private, p):
+    return pow(g, private, p)
+    
+def generate_r(public_b, private_a, k_a, p):
+    return pow(public_b, private_a * k_a, p)
+    
+def generate_shared_secret(r_b, k_a, p):
+    return pow(r_b, k_a, p)
+    
+def test_authenticated_key_exchange():
+    k_a = generate_k(Q)
+    private_a = generate_private(Q)
+    public_a = generate_public(G, private_a, P)
+    
+    k_b = generate_k(Q)
+    private_b = generate_private(Q)
+    public_b = generate_public(G, private_b, P)
+    
+    r_a = generate_r(public_b, private_a, k_a, P)
+    r_b = generate_r(public_a, private_b, k_b, P)
+    
+    secret1 = generate_shared_secret(r_b, k_a, P)
+    secret2 = generate_shared_secret(r_a, k_b, P)
+    assert secret1 == secret2
+    
+if __name__ == "__main__":
+    test_authenticated_key_exchange()
+    
