@@ -48,8 +48,8 @@ def generate_key(q):
 def generate_private_key(q):
     return generate_key(q)
     
-def generate_public_key(g, private, p):
-    return pow(g, private, p)
+def generate_public_key(g, private_key, p):
+    return pow(g, private_key, p)
     
 def generate_token(public_b, private_a, key_a, p):
     return pow(public_b, private_a * key_a, p)
@@ -57,11 +57,12 @@ def generate_token(public_b, private_a, key_a, p):
 def generate_shared_secret(token_b, key_a, p):
     return pow(token_b, key_a, p)
     
+def generate_keypair(q=Q_128, p=P_128, g=G_128):
+    private_key = generate_private_key(q)
+    return (private_key, generate_public_key(g, private_key, p))
+        
 def initiate_key_exchange(q=Q_128, p=P_128, g=G_128):
-    key = generate_key(q)
-    private = generate_private_key(q)
-    public = generate_public_key(g, private, p)
-    return (private, key, public)
+    return generate_key(q) 
     
 def advance_key_exchange(public_key_b, private_a, key_a, p=P_128):
     return generate_token(public_key_b, private_a, key_a, p)
@@ -86,12 +87,14 @@ def test_authenticated_key_exchange():
     assert secret1 == secret2
     
 def test_initiate_advance_finish():
-    for size in (128, 256, 320):
-        parameters = globals()["system_parameters_{}".format(size)]
-        private_a, key_a, public_a = initiate_key_exchange(*parameters)    
-        private_b, key_b, public_b = initiate_key_exchange(*parameters)
+    for size in (128, 256, 320):        
+        q, p, g = parameters = globals()["system_parameters_{}".format(size)]
+        private_a, public_a = generate_keypair(*parameters)
+        private_b, public_b = generate_keypair(*parameters)
         
-        p = parameters[-2]
+        key_a = initiate_key_exchange(*parameters)    
+        key_b = initiate_key_exchange(*parameters)
+                
         token_a = advance_key_exchange(public_b, private_a, key_a, p)
         token_b = advance_key_exchange(public_a, private_b, key_b, p)
         
