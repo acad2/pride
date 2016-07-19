@@ -33,6 +33,18 @@ def generate_r(public_b, private_a, k_a, p):
 def generate_shared_secret(r_b, k_a, p):
     return pow(r_b, k_a, p)
     
+def initiate_key_exchange(q=Q, g=G, p=P):
+    k = generate_k(q)
+    private = generate_private(q)
+    public = generate_public(g, private, p)
+    return (private, k, public)
+    
+def advance_key_exchange(public_key_b, private_a, k_a, p=P):
+    return generate_r(public_key_b, private_a, k_a, p)
+        
+def finish_key_exchange(r_b, k_a, p=P):
+    return generate_shared_secret(r_b, k_a, p)
+        
 def test_authenticated_key_exchange():
     k_a = generate_k(Q)
     private_a = generate_private(Q)
@@ -49,28 +61,18 @@ def test_authenticated_key_exchange():
     secret2 = generate_shared_secret(r_a, k_b, P)
     assert secret1 == secret2
     
-def test_exchange_with_mick():        
-    k_e = 591811839 # generate_k(Q)
-    private_e = 1094098618 # generate_private(Q)
-    public_e = generate_public(G, private_e, P)
+def test_initiate_advance_finish():
+    private_a, k_a, public_a = initiate_key_exchange()
+    private_b, k_b, public_b = initiate_key_exchange()
     
-    with open("public_key.pub", 'w') as _file:
-        _file.write(str(public_e))
-        
-    public_key_mick = 95446980204587512202682632596933263866
+    r_a = advance_key_exchange(public_b, private_a, k_a)
+    r_b = advance_key_exchange(public_a, private_b, k_b)
     
-    r_e = generate_r(public_key_mick, private_e, k_e, P)
-    with open("r.pub", 'w') as _file:
-        _file.write(str(r_e))
-        
-    micks_r_value = 2811421988471764669621240900445131463
-    
-    secret = generate_shared_secret(micks_r_value, k_e, P)
-    with open("shared_secret.txt", 'w') as _file:
-        _file.write(str(secret))
-        
+    secret1 = finish_key_exchange(r_b, k_a)
+    secret2 = finish_key_exchange(r_a, k_b)
+    assert secret1 == secret2
     
 if __name__ == "__main__":
     test_authenticated_key_exchange()
-    test_exchange_with_mick()
+    test_initiate_advance_finish()
     
