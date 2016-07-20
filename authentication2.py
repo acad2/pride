@@ -414,6 +414,8 @@ class Authenticated_Client(pride.base.Base):
         self.password_prompt = self.password_prompt.format(self.reference, self.ip, self.target_service)
         self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
+        if module == "__main__":
+            module = __loader__.fullname
         name = ((self._user_database or module + '.' + type(self).__name__)
                 + ":{}".format(self.username))
         

@@ -271,6 +271,7 @@ class Parser(object):
                 else:
                     is_keyword_argument = True
         Parser.sys_argv = sys.argv     
+        sys.argv = Parser.sys_argv_backup#print sys.argv # this might cause a bug? it consumes sys.argv otherwise
         return arguments
 
     def get_options(self):

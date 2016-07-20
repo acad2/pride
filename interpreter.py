@@ -179,13 +179,13 @@ class Python(base.Base):
         super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
 
-        if self.startup_definitions:
-            self.interpreter._exec_command(self.startup_definitions)           
+      #  if self.startup_definitions:
+      #      self.interpreter._exec_command(self.startup_definitions)           
         
         if not self.command:
             command = os.path.join((os.getcwd() if "__file__" 
                                     not in globals() else 
-                                    os.path.split(__file__)[0]), 
+                                    pride.site_config.PRIDE_DIRECTORY, 
                                     "shell_launcher.py")
         else:
             try:
@@ -203,9 +203,11 @@ class Python(base.Base):
             user = pride.user.User(username=machine_id, encryption_key=key1, mac_key=key2, 
                                    file_system_key=key3, salt=salt, open_command_line=False)                    
             command = self.command  
-            
+        source = ''    
+        if self.startup_definitions:
+            source += self.startup_definitions + "\n"        
         with open(command, 'r') as module_file:
-            source = module_file.read()            
+            source += module_file.read()            
         pride.Instruction(self.interpreter, "_exec_command", source).execute()
              
     def setup_os_environ(self):

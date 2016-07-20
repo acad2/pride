@@ -78,7 +78,7 @@ class Compiler(object):
             
         self.preprocessors = tuple(_preprocessors + keyword_preprocessors)        
             
-    def find_module(self, module_name, path):
+    def find_module(self, module_name, path):        
         if module_name == self._loading:
             return None
             
@@ -123,17 +123,22 @@ class Compiler(object):
                             print "Source cache corrupted; Please restart pride."
                     else:
                         preprocessed_source = old_entry[64:]
-                    self.module_source[module_name] = (preprocessed_source, _path)
-                    
+                    self.module_source[module_name] = (preprocessed_source, _path)                                    
+                        
                     if count == end_of_modules:
-                        loader = self
+                        loader = self 
         return loader    
     
     def load_module(self, module_name):
         if module_name not in sys.modules:
-            source, path = self.module_source[module_name]            
+            source, path = self.module_source[module_name]    
+          #  print os.path.split(path)[-1]
+          #  if os.path.split(path)[-1] == sys.argv[1]:
+          #      self.fullname = module_name
+
             #module_code = self.compile(source, path)
-            self.compile_module(module_name, source, path)        
+            self.compile_module(module_name, source, path)   
+            sys.modules[module_name].__loader__ = self
         return sys.modules[module_name]
     
     def reload_module(self, module_name):

@@ -1,3 +1,4 @@
+import pprint
 from utilities import hamming_weight
 
 #def build_test(sbox):
@@ -54,7 +55,12 @@ def calculate_linearity(sbox, bits=8, max_key_max_value=None):
     if not max_key_max_value:
         max_key_max_value = find_best_linear_approximation(sbox)
     return max_key_max_value[0], abs(max_key_max_value[1] - (2 ** 8) / 2)
-    
+
+def dump_linear_approximation_table(sbox, filename, exhaustive=True):
+    table = build_linear_approximation_table(sbox, exhaustive)
+    with open(filename, 'w') as _file:
+        _file.write(pprint.pformat(table))
+        
 def test_build_linear_approximation_table():
     from blockcipher import S_BOX as sbox
     approximations = build_linear_approximation_table(sbox)
