@@ -127,10 +127,10 @@ class AES(object):
         return column
         
     def print_state(self, state, message):
-        print message
+        print(message)
         for word in slide(state, 4):
-            print ' '.join(format(byte, 'b').zfill(8) for byte in word)
-            print
+            print(' '.join(format(byte, 'b').zfill(8) for byte in word))
+            print('')
     
     def shuffle(self, state, next_index=[7, 12, 14, 9, 2, 1, 5, 15, 11, 6, 13, 0, 4, 8, 10, 3]):        
         temp = bytearray(16)
