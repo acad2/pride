@@ -415,7 +415,7 @@ class Authenticated_Client(pride.base.Base):
         self.session = self.create("pride.rpc.Session", session_id='0', host_info=self.host_info)
         module = self.__module__
         if module == "__main__":
-            module = __loader__.fullname
+            self.alert("Using __main__ as module", level=0)
         name = ((self._user_database or module + '.' + type(self).__name__)
                 + ":{}".format(self.username))
         

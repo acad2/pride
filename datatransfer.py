@@ -5,6 +5,7 @@
 import pride.authentication2
 import pride.shell
 import pride.utilities
+import pride.vmlibrary
 
 def file_operation(filename, mode, method, file_type="open", offset=None, data=None):
     with invoke(file_type, filename, mode) as _file:
@@ -19,12 +20,25 @@ def file_operation(filename, mode, method, file_type="open", offset=None, data=N
             assert method == "read"
             return _file.read(data)            
             
+class Background_Refresh(pride.vmlibrary.Process):
+                
+    defaults = {"priority" : .5}
+    
+    def run(self):
+        for client in self.children:
+            client.refresh()
+        
+        
 class Data_Transfer_Client(pride.authentication2.Authenticated_Client):
     """ Client program for sending data securely to a party registered
         with the target service. """
     defaults = {"target_service" : "/Python/Data_Transfer_Service"}
     verbosity = {"send_to" : "vv"}
     
+    def __init__(self, **kwargs):
+        super(Data_Transfer_Client, self).__init__(**kwargs)
+        pride.objects["/Python/Background_Refresh"].add(self)
+        
     @pride.authentication2.remote_procedure_call(callback_name="receive")
     def send_to(self, receiver, message): 
         """ Sends message to receiver via remote procedure call through 
@@ -50,7 +64,7 @@ class Data_Transfer_Service(pride.authentication2.Authenticated_Service):
     """ Service for transferring arbitrary data from one registered client to another """        
     mutable_defaults = {"messages" : dict}
     remotely_available_procedures = ("send_to", )
-    verbosity = {"refresh" : 'v', "data_transfer" : 'v'}
+    verbosity = {"refresh" : 0, "data_transfer" : 0}
     
     def send_to(self, receiver, message):        
         sender = self.session_id[self.current_session[0]]

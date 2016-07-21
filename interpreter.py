@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-""" Provides classes for the launcher class and parts for an interpreter."""
+""" Provides an entry point to the environment and a shell connection for interacting with it. """
 import sys
 import codeop
 import os
@@ -21,7 +20,7 @@ import pride.site_config
 @contextlib.contextmanager
 def main_as_name():
     backup = globals()["__name__"]        
-    globals()["__name__"] = "__main__"
+    globals()["__name__"] = "__main__"    
     try:
         yield
     finally:
@@ -158,7 +157,8 @@ class Python(base.Base):
                                         "pride.rpc.Rpc_Connection_Manager",
                                         "pride.rpc.Rpc_Server",
                                         "pride.rpc.Rpc_Worker",
-                                        "pride.datatransfer.Data_Transfer_Service"),
+                                        "pride.datatransfer.Data_Transfer_Service",
+                                        "pride.datatransfer.Background_Refresh"),
                 "startup_definitions" : '',
                 "interpreter_type" : "pride.interpreter.Interpreter"}
                      
@@ -179,13 +179,10 @@ class Python(base.Base):
         super(Python, self).__init__(**kwargs)
         self.setup_os_environ()
 
-      #  if self.startup_definitions:
-      #      self.interpreter._exec_command(self.startup_definitions)           
-        
         if not self.command:
             command = os.path.join((os.getcwd() if "__file__" 
                                     not in globals() else 
-                                    pride.site_config.PRIDE_DIRECTORY, 
+                                    pride.site_config.PRIDE_DIRECTORY), 
                                     "shell_launcher.py")
         else:
             try:
