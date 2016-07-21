@@ -29,7 +29,7 @@ class Secure_Data_Transfer_Client(pride.datatransfer.Data_Transfer_Client):
                 self.alert("Beginning exchange with: {}".format(sender), level=self.verbosity["begin_exchange"])
                 public_key = self.deserialize(arguments)
                 
-                ephemeral_key, token = self.begin_exchange(self.deserialize(arguments))
+                ephemeral_key, token = self.begin_exchange(public_key)
                 self.send_to(sender, "continue_exchange " + self.serialize(self.public_key) + self.serialize(token))
                 self.ephemeral_key_for[sender] = ephemeral_key
                 
@@ -52,7 +52,7 @@ class Secure_Data_Transfer_Client(pride.datatransfer.Data_Transfer_Client):
                 sender_token = self.deserialize(arguments[end_of_public_key:])
                 
                 ephemeral_key = self.ephemeral_key_for[sender]
-                self.secret_for[sender] = self.generate_shared_secret(ephemeral_key, sender_token)
+                self.secret_for[sender] = self.generate_shared_secret(sender_token, ephemeral_key)
                 del self.ephemeral_key_for[sender]
                 print("Established secret: {}".format(self.secret_for[sender]))
             else:
@@ -64,6 +64,12 @@ class Secure_Data_Transfer_Client(pride.datatransfer.Data_Transfer_Client):
     def serialize(self, key_or_token):
         return bytes(integer_to_bytes(key_or_token))
         
+    def create_token(self, ephemeral_key, public_key):
+        return micklhdh.advance_key_exchange(public_key, self.private_key, ephemeral_key, self.p)
+        
+    def create_ephemeral_key(self):
+        return micklhdh.initiate_key_exchange(*self.parameters)
+        
     def secure_channel_to(self, sender):        
         self.alert("Securing channel to: {}".format(sender), level=self.verbosity["secure_channel_to"])
         self.send_to(sender, "begin_exchange " + self.serialize(self.public_key))
@@ -71,21 +77,14 @@ class Secure_Data_Transfer_Client(pride.datatransfer.Data_Transfer_Client):
     def begin_exchange(self, other_public_key):
         ephemeral_key = self.create_ephemeral_key()        
         token = self.create_token(ephemeral_key, other_public_key)
-        return (ephemeral_key, token)
-        
-    def create_token(self, ephemeral_key, public_key):
-        return micklhdh.advance_key_exchange(public_key, self.private_key, ephemeral_key, self.p)
-        
-    def create_ephemeral_key(self):
-        return micklhdh.initiate_key_exchange(*self.parameters)
-        
+        return (ephemeral_key, token)              
         
     def continue_exchange(self, others_public_key, token):
         ephemeral_key, self_token = self.begin_exchange(others_public_key)
         shared_secret = self.generate_shared_secret(token, ephemeral_key)
         return (self_token, shared_secret)        
      
-    def generate_shared_secret(self, ephemeral_key, others_token):
+    def generate_shared_secret(self, others_token, ephemeral_key):
         return micklhdh.generate_shared_secret(others_token, ephemeral_key, self.p)
         
 def test_secure_data_transfer_client():

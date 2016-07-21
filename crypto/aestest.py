@@ -152,14 +152,25 @@ class AES(object):
    #             cipher.print_state(state, "Subbed: ")
                 #state = cipher.shiftRows(state, False)
                 #cipher.print_state(state, "Shifted:")
-                cipher.shuffle(state)
+          #      cipher.shuffle(state)
                 #cipher.print_state(state, "Shuffled:")
                 state = cipher.mixColumns(state, False)
                 cipher.print_state(state, "Mixed  :")
             state[index] = 0
             raw_input("Waiting...")
             
+    @classmethod
+    def visualize_mixColumns(cls):
+        cipher = cls()
+        state = bytearray(16)
+        state[-1] = 1
+        while not raw_input("enter to continue, any key + enter to finish..."):
+            cipher.print_state(state, "State: ")
+            state = cipher.mixColumns(state, False)
             
+        
+        
 if __name__ == "__main__":
-    AES.test_round_diffusion()
+    #AES.test_round_diffusion()
+    AES.visualize_mixColumns()
     
