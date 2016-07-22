@@ -26,7 +26,7 @@ def get_module_source(module):
         from the compilers cache. Otherwise, the inspect module is used. """
     try:
         return pride.compiler.module_source[module.__name__]
-    except KeyError:        
+    except (KeyError, NameError):        
         return inspect.getsource(module)
     
 def reload_module(module_name):
@@ -81,7 +81,7 @@ def get_required_modules(module):
                 try:
                     package = value.__package__
                 except AttributeError:
-                    print "module '{}' has no package attribute".format(name)
+                    #print "module '{}' has no package attribute".format(name) # is this bad or ?
                     continue
                     
                 if name == package:

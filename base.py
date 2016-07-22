@@ -384,7 +384,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
             If overloading the add method, ensure super is called to invoke the
             ancestor version that performs bookkeeping.
             
-            Make sure to overload remove if you modify add (if necessary)"""    
+            Make sure to overload remove if you modify add (if necessary)"""   
         self.alert("Adding: {}", (instance, ), level=self.verbosity["add"])
         self_objects = self.objects
         instance_class = type(instance).__name__
@@ -435,7 +435,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
                 [code]
                 message = 'string stuff {} and more string stuff {}'.format(variable1, variable2)
                 my_object.alert(message, level=level)[/code]""" 
-        alert_handler = objects["/Alert_Handler"]               
+        alert_handler = objects["/Alert_Handler"]          
         message = "{}: ".format(self.reference) + (message.format(*format_args) if format_args else message)
         if level in alert_handler._print_level or level is 0:                    
             sys.stdout.write(message + "\n")
@@ -451,6 +451,7 @@ class Base(with_metaclass(pride.metaclass.Metaclass, object)):
         self.on_load(state)
               
     def __str__(self):
+        assert self.reference is not None
         return self.reference
         
     def save(self, _file=None):

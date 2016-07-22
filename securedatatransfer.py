@@ -14,12 +14,23 @@ class Secure_Data_Transfer_Client(pride.datatransfer.Data_Transfer_Client):
     p = property(_get_p)
     
     def _get_public_key_size(self):
-        return len(self.serialize(self.public_key))
+        return len(self.serialize(self.parameters[0]))
     public_key_size = property(_get_public_key_size)
     
     def __init__(self, **kwargs):
         super(Secure_Data_Transfer_Client, self).__init__(**kwargs)
-        self.public_key, self.private_key = micklhdh.generate_keypair(*self.parameters)        
+        with open("{}_keypair.key".format(self.reference.replace('/', '_')), 'a+b') as _file:
+            _file.seek(0)
+            serialized_keys = _file.read()
+            if not serialized_keys:
+                public_key, private_key = micklhdh.generate_keypair(*self.parameters)
+                _file.write(self.serialize(public_key))
+                _file.write(self.serialize(private_key))
+            else:
+                keysize = self.public_key_size
+                public_key = self.deserialize(serialized_keys[:keysize])
+                private_key = self.deserialize(serialized_keys[keysize:])
+        self.public_key, self.private_key = public_key, private_key      
         
     def receive(self, messages):
         for sender, message in messages:            

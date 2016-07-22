@@ -9,5 +9,5 @@ constructor = base.Base()
 
 if __name__ == "__main__":
     wav_file = constructor.create(audiolibrary.Wav_File, parse_args=True, mode='rb')
-    pride.audio.enable())
+    pride.audio.enable()
     Instruction("/Python/Audio_Input", "play_file", wav_file).execute()
