@@ -51,7 +51,7 @@ def write_to(entry, **values):
         file_data = "\n{}.update({})\n"
     else:        
         file_data = "\n{} = {}\n"
-    file_data.format(entry, str(value))
+    file_data = file_data.format(entry, str(values))    
     with open(SITE_CONFIG_FILE, 'a') as _file:
         _file.write(file_data)
         _file.flush()
@@ -93,8 +93,4 @@ import pride.gui
 #visualized_list = objects[window].create("pride.gui.datatypes.List")
 """}
 
-
-pride_rpc_Rpc_Server_defaults = {'keyfile': 'c:\\users\\_\\pythonbs\\pride\\ssl_server.key', 'certfile': 'c:\\users\\_\\pythonbs\\pride\\ssl_server.crt'}
-
-pride_user_User_defaults = {'username': 'localhost'}
-pride_interpreter_Shell_defaults.update({'username': 'localhost'})
+pride_rpc_Rpc_Server_defaults = {'keyfile': 'c:\\users\\_\\pythonbs\\pride\\rpc_server.key', 'certfile': 'c:\\users\\_\\pythonbs\\pride\\rpc_server.crt'}
