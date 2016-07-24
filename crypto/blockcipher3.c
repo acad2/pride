@@ -105,7 +105,7 @@ void shuffle_bytes(unsigned char* _state)
 
 int prp(unsigned char* data, unsigned char key, unsigned char data_size)
 {
-    unsigned char index, data_byte;
+    unsigned char index;
     shuffle_bytes(data);
     
     for (index = data_size - 1; index != 0; index--)
@@ -115,19 +115,15 @@ int prp(unsigned char* data, unsigned char key, unsigned char data_size)
     return key;
 }
         
-int prf(unsigned char* data, unsigned char key, unsigned char data_size)
+void prf(unsigned char* data, unsigned char key, unsigned char data_size)
 {
-    unsigned char index;
-    printf("Shuffling: %s\n", data_size);
+    unsigned char index;    
     shuffle_bytes(data);
     
     for (index = data_size - 1; index != 0; index--)
-    {
-        printf("Index: %s\n", index);
-        key ^= data[index]; // remove so that the first right ^ key in round_function will reinsert it
-        printf("Before round function: %s\n", index);
-        key = round_function(data, key, index);
-        printf("After round function: %s\n", index);
+    {        
+        key ^= data[index]; // remove so that the first right ^ key in round_function will reinsert it        
+        key = round_function(data, key, index);        
     }
 }
     
@@ -158,12 +154,11 @@ void encrypt(unsigned char* data, unsigned char* _key, int rounds)
     for (index = 0; index < rounds + 1; index++) // key schedule
     {          
         key_xor = prp(key, key_xor, 16);        
-        memcpy_s(round_key, key, 16);        
-        printf("Prf\n");
+        memcpy_s(round_key, key, 16);                
         prf(round_key, key_xor, 16);
         memcpy_s(round_keys + (index * 16), round_key, 16);                
     }
-    printf("Beginning rounds\n");
+    
     for (index = 0; index < rounds; index++) // iterated even-mansour construction
     {            
         memcpy_s(round_key, round_keys + (index * 16), 16);    
@@ -202,8 +197,7 @@ void invert_shuffle_bytes(unsigned char* state)
 }
             
 unsigned char invert_prp(unsigned char* data, unsigned char key, int data_size)
-{   
-    unsigned char data_byte;
+{       
     int index;    
     
     for (index = 1; index < data_size; index++)
@@ -251,7 +245,7 @@ void decrypt(unsigned char* data, unsigned char* _key, int rounds)
 void test_encrypt_decrypt()
 {    
     unsigned char data[16], key[16], plaintext[16], null_string[16];
-    int rounds = 16, index;
+    int rounds = 2;
     
     memset(null_string, 0, 16);
     memcpy_s(data, null_string, 16);       
@@ -269,7 +263,8 @@ void test_encrypt_decrypt()
     print_data(data);
 }
 
-void main()
+int main()
 {
-    test_encrypt_decrypt();    
+    test_encrypt_decrypt();
+    return 0;
 }
