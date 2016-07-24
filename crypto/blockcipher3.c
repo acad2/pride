@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <windows.h>
+#include <cutilities.hpp>
 
 #ifndef memcpy_s
 
@@ -296,15 +297,7 @@ void test_encrypt_decrypt()
 
 
 void test_encrypt_performance()
-{
-    LARGE_INTEGER ticksPerSecond = 0, ticksLastTime = 0, ticksThisTime = 0;
-    QueryPerformanceFrequency(&ticksPerSecond);
-    
-    //QueryPerformanceCounter(&ticksLastTime);        
-    //QueryPerformanceCounter(&ticksThisTime);
-    //long long seconds = (ticksThisTime - ticksLastTime) / ticksPerSecond;
-
-        
+{        
     int rounds = 1, blocks = 1, index ;    
     unsigned char key[16], round_keys[rounds * 16];
     
@@ -317,15 +310,15 @@ void test_encrypt_performance()
 	memset(key, 1, sizeof(key));
 	
 	key_schedule(round_keys, key, rounds);    
-    QueryPerformanceCounter(&ticksLastTime);
+    
     for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
     {
         encrypt_cached_keyschedule(data, round_keys, rounds);
     }
-    QueryPerformanceCounter(&ticksLastTime);
     
-    unsigned long long microseconds = (1000000ULL * (ticksThisTime - ticksLastTime)) / ticksPerSecond;
-    printf("Time in microseconds: %5.2f", microseconds);
+    
+    unsigned long long microseconds = (1000000ULL * (ticksThisTime.QuadPart - ticksLastTime.QuadPart)) / ticksPerSecond.QuadPart;
+    printf("Time in microseconds: %5.2f\n", microseconds);
     
 }   
 
