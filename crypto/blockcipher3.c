@@ -130,6 +130,9 @@ void prf(unsigned char* data, unsigned char key, unsigned char data_size)
 unsigned char xor_with_key(unsigned char* data, unsigned char* key)
 {
     unsigned char data_xor = 0, index;
+    printf("Xor with key:\n");
+    print_data(key);
+    
     for (index = 0; index < 16; index++)
     {           
         data[index] ^= key[index];
@@ -156,16 +159,17 @@ void encrypt(unsigned char* data, unsigned char* _key, int rounds)
         key_xor = prp(key, key_xor, 16);        
         memcpy_s(round_key, key, 16);                
         prf(round_key, key_xor, 16);
-        memcpy_s(round_keys + (index * 16), round_key, 16);                
+        memcpy_s(round_keys + (index * 16), round_key, 16); 
+        printf("Generated round key:\n");
+        print_data(round_key);
     }
     
     for (index = 0; index < rounds; index++) // iterated even-mansour construction
     {            
         memcpy_s(round_key, round_keys + (index * 16), 16);    
-        printf("Xor with key\n");
-        data_xor = xor_with_key(data, round_key);
-        printf("Prp\n");
-        data_xor = prp(data, data_xor, 16);
+                
+        data_xor = xor_with_key(data, round_key);        
+        prp(data, data_xor, 16);
         
     memcpy_s(round_key, round_keys + 1 + (index * 16), 16);    
     xor_with_key(data, round_key);
@@ -227,25 +231,25 @@ void decrypt(unsigned char* data, unsigned char* _key, int rounds)
         memcpy_s(round_key, key, 16);
                 
         prf(round_key, key_xor, 16);
-        memcpy_s(round_keys + (index * 16), round_key, 16);                
+        memcpy_s(round_keys + (index * 16), round_key, 16);                        
     }
     
-    memcpy_s(round_key, round_keys + 1 + (index * 16), 16);    
+    memcpy_s(round_key, round_keys + 1 + (index * 16), 16);            
     data_xor = xor_with_key(data, round_key);         
     
     for (index = rounds; index--;)
     {                                        
-        data_xor = invert_prp(data, data_xor, 16);
+        invert_prp(data, data_xor, 16);
         
-        memcpy_s(round_key, round_keys + (index * 16), 16);    
-        xor_with_key(data, round_key);
+        memcpy_s(round_key, round_keys + (index * 16), 16);                    
+        data_xor = xor_with_key(data, round_key);
     }
 }
   
 void test_encrypt_decrypt()
 {    
     unsigned char data[16], key[16], plaintext[16], null_string[16];
-    int rounds = 2;
+    int rounds = 1;
     
     memset(null_string, 0, 16);
     memcpy_s(data, null_string, 16);       
@@ -256,11 +260,11 @@ void test_encrypt_decrypt()
     printf("Encrypting...\n");
     encrypt(data, key, rounds);
     
-    printf("Data:\n %s\n", data);    
-    print_data(data);
+    //printf("Data:\n %s\n", data);    
+    //print_data(data);
  //       
     decrypt(data, key, rounds);
-    print_data(data);
+ //   print_data(data);
 }
 
 int main()
