@@ -173,7 +173,7 @@ void key_schedule(unsigned char* round_keys, unsigned char* _key, int rounds)
 void encrypt(unsigned char* data, unsigned char* key, int rounds)
 {    
     unsigned char round_keys[16 * (rounds + 1)];
-    unsigned char round_key[16], key_xor = 0, data_xor = 0, key_byte;
+    unsigned char round_key[16], data_xor = 0;
     int index;
     
     key_schedule(round_keys, key, rounds);
@@ -306,7 +306,7 @@ void test_encrypt_performance()
 
         
     int rounds = 1, blocks = 1, index ;    
-    unsigned char key[16], round_keys[rounds * 16], round_key[16];
+    unsigned char key[16], round_keys[rounds * 16];
     
 	WORD_TYPE* data = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
 	WORD_TYPE* plaintext = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
@@ -325,7 +325,7 @@ void test_encrypt_performance()
     QueryPerformanceCounter(&ticksLastTime);
     
     unsigned long long microseconds = (1000000ULL * (ticksThisTime - ticksLastTime)) / ticksPerSecond;
-    printf("Timein microseconds: %ull", microseconds);
+    printf("Time in microseconds: %5.2f", microseconds);
     
 }   
 
