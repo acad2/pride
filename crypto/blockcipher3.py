@@ -53,7 +53,7 @@ def prp(data, data_xor, data_size=16, turn_into_prf=False):
     left, right, data_xor = round_function(left, right, data_xor, 0)
     data[15], data[0] = left, right
     return data_xor
-           
+    
 def prf(data, data_xor, data_size=16):
     prp(data, data_xor, data_size, turn_into_prf=True)
     
@@ -64,9 +64,14 @@ def xor_sum(data):
     return result
     
 def xor_subroutine(data, key):
-    for index, byte in enumerate(key):
-        data[index] ^= byte
+    data_xor = 0
+    for index, key_byte in enumerate(key):
+        new_byte = data[index] ^ key_byte
         
+        data[index] = new_byte
+        data_xor ^= new_byte
+    return data_xor
+    
 def generate_round_key(key, round):
     key_xor_sum = prp(key, xor_sum(key))
     round_key = key[:]
@@ -76,18 +81,17 @@ def generate_round_key(key, round):
     
 def encrypt(data, key, rounds=1, bit_width=8):
     key = key[:]
-    round_keys = [generate_round_key(key, round) for round in range(rounds)]
+    round_keys = [generate_round_key(key, round) for round in range(rounds + 1)] # + 1 is for output key
     
     # less pythonic, but translates easier to C
     # round_keys = []
     # key_xor_sum = xor_sum(key)
     # for round in range(rounds):        
-    #     round_keys.append(generate_round_key(key, round))
-        
-    for round_key in round_keys:
-        xor_subroutine(data, round_key)
-        prp(data, xor_sum(data))
-        xor_subroutine(data, round_key)
+    #     round_keys.append(generate_round_key(key, round))    
+    for round_key in round_keys[:-1]:
+        data_xor = xor_subroutine(data, round_key)
+        prp(data, data_xor)
+    xor_subroutine(data, round_keys[-1])
    
 def invert_round(left, right, key, index, mask=255, rotation_amount=5, bit_width=8):
     key ^= left    
@@ -135,12 +139,12 @@ def invert_prp(data, data_xor, data_size=16):
     
 def decrypt(data, key, rounds=1, bit_width=8):
     key = key[:]
-    round_keys = reversed([generate_round_key(key, round) for round in range(rounds)])
+    round_keys = reversed([generate_round_key(key, round) for round in range(rounds + 1)])
     
-    for round_key in round_keys:
-        xor_subroutine(data, round_key)
-        invert_prp(data, xor_sum(data))
-        xor_subroutine(data, round_key)
+    data_xor = xor_subroutine(data, next(round_keys))
+    for round_key in round_keys:        
+        invert_prp(data, data_xor)
+        data_xor = xor_subroutine(data, round_key)
     
 def test_encrypt_decrypt():
     plaintext = bytearray("Testing!" * 2)
@@ -171,7 +175,7 @@ else:
 if __name__ == "__main__":
     test_encrypt_decrypt()
     try:
-        Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16)
+        Test_Cipher.test_metrics("\x00" * 16, "\x00" * 16, avalanche_test=False, randmoness_test=False)
     except NameError:
         pass
         
