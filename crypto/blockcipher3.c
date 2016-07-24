@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include <windows.h>
-#include <cutilities.hpp>
+#include <Stopwatch.hpp>
 
 #ifndef memcpy_s
 
@@ -311,14 +311,14 @@ void test_encrypt_performance()
 	
 	key_schedule(round_keys, key, rounds);    
     
+    Stopwatch s;    
     for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
     {
         encrypt_cached_keyschedule(data, round_keys, rounds);
     }
-    
-    
-    unsigned long long microseconds = (1000000ULL * (ticksThisTime.QuadPart - ticksLastTime.QuadPart)) / ticksPerSecond.QuadPart;
-    printf("Time in microseconds: %5.2f\n", microseconds);
+    double timee = s.Lap();
+        
+    printf("Time taken: %5.2f\n", timee);
     
 }   
 
