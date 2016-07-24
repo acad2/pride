@@ -9,6 +9,7 @@
 #define ROTATION_AMOUNT 5
 #define BIT_WIDTH 8
 #define DATA_SIZE 16
+typedef unsigned char WORD_TYPE;
 
 void memcpy_s(unsigned char* s1, unsigned char* s2, size_t n)
 {
@@ -294,31 +295,39 @@ void test_encrypt_decrypt()
 }
 
 
-//void test_encrypt_performance()
-//{
-//    LARGE_INTEGER ticksPerSecond = 0, ticksLastTime = 0, ticksThisTime = 0;
-//    QueryPerformanceFrequency(&ticksPerSecond);
-//    
-//    //QueryPerformanceCounter(&ticksLastTime);        
-//    //QueryPerformanceCounter(&ticksThisTime);
-//    //long long seconds = (ticksThisTime - ticksLastTime) / ticksPerSecond;
-//
-//        
-//    int rounds = 1;
-//    int blocks = 1;    
-//    unsigned char key[16], round_keys[rounds * 16], round_key[16];
-//    
-//	WORD* data = (WORD*)malloc(DATA_SIZE * blocks * sizeof(WORD));
-//	WORD* plaintext = (WORD*)malloc(DATA_SIZE * blocks * sizeof(WORD));
-//
-//	// setup test data
-//	memset(data, 16, DATA_SIZE * blocks * sizeof(WORD));
-//	memcpy(plaintext, data, sizeof(data));
-//	memset(key, 1, sizeof(key));
-//	
-//	key_schedule(round_keys, key, rounds);    
-//    encrypt_cached_keyschedule(round_keys)
-//}   
+void test_encrypt_performance()
+{
+    LARGE_INTEGER ticksPerSecond = 0, ticksLastTime = 0, ticksThisTime = 0;
+    QueryPerformanceFrequency(&ticksPerSecond);
+    
+    //QueryPerformanceCounter(&ticksLastTime);        
+    //QueryPerformanceCounter(&ticksThisTime);
+    //long long seconds = (ticksThisTime - ticksLastTime) / ticksPerSecond;
+
+        
+    int rounds = 1, blocks = 1, index ;    
+    unsigned char key[16], round_keys[rounds * 16], round_key[16];
+    
+	WORD_TYPE* data = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
+	WORD_TYPE* plaintext = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
+
+	// setup test data
+	memset(data, 16, DATA_SIZE * blocks * sizeof(WORD_TYPE));
+	memcpy(plaintext, data, sizeof(data));
+	memset(key, 1, sizeof(key));
+	
+	key_schedule(round_keys, key, rounds);    
+    QueryPerformanceCounter(&ticksLastTime);
+    for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
+    {
+        encrypt_cached_keyschedule(data, round_keys, rounds);
+    }
+    QueryPerformanceCounter(&ticksLastTime);
+    
+    unsigned long long microseconds = (1000000ULL * (ticksThisTime - ticksLastTime)) / ticksPerSecond;
+    printf("Timein microseconds: %ull", microseconds);
+    
+}   
 
 
         
@@ -330,5 +339,6 @@ void test_encrypt_decrypt()
 int main()
 {
     test_encrypt_decrypt();
+    test_encrypt_performance();
     return 0;
 }
