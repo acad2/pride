@@ -94,3 +94,5 @@ import pride.gui
 """}
 
 pride_rpc_Rpc_Server_defaults = {'keyfile': 'c:\\users\\_\\pythonbs\\pride\\rpc_server.key', 'certfile': 'c:\\users\\_\\pythonbs\\pride\\rpc_server.crt'}
+
+pride_user_User_defaults = {'username': 'localhost'}

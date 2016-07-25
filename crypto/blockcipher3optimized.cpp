@@ -326,7 +326,7 @@ void test_encrypt_performance() {
     
     double timee = s.Lap();
     
-    long long mega_bytes_of_data = measurements;
+    long long mega_bytes_of_data = (measurements * blocks * DATA_SIZE * WORD_SIZE) / (1024.0 * 1024.0);
     printf("%.2f MB/s\n", (mega_bytes_of_data / timee));
     //double bps = 100.0 * (blocks * DATA_SIZE * WORD_SIZE) / timee;
 	//printf("%.2f MB/s\n", bps / 1024.0 / 1024.0);

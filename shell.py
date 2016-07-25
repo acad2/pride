@@ -306,7 +306,7 @@ class Messenger_Program(Program):
     def handle_input(self, user_input):
         destination, message = user_input.split(':', 1)
         objects["/Messenger_Client"].send_message(destination, message, 
-                                                   self.reference)
+                                                  self.reference)
         
         
 class Terminal_Screensaver(pride.vmlibrary.Process):
