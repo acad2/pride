@@ -302,7 +302,7 @@ void test_encrypt_decrypt() {
 
 
 void test_encrypt_performance() {
-	const int rounds = 8, blocks = 65536, measurements = 100;
+	const int rounds = 8, blocks = 65536, measurements = 10;
 	int index, index2;
 	WORD_TYPE key[DATA_SIZE], round_keys[(rounds + 1) * DATA_SIZE];
 
@@ -317,14 +317,19 @@ void test_encrypt_performance() {
 	key_schedule(round_keys, key, rounds);
 
 	Stopwatch s;
+    
 	for (index2 = 0; index2 < measurements; index2++) {
 		for (index = 0; index < blocks; index++) {
 			encrypt_cached_keyschedule(data + (index * DATA_SIZE), round_keys, rounds);
-		}
+		}        
 	}
-	double timee = s.Lap();
-	double bps = (100.0 * (blocks * DATA_SIZE * WORD_SIZE) / timee) / measurements;
-	printf("%.2f MB/s\n", bps / 1024.0 / 1024.0);
+    
+    double timee = s.Lap();
+    
+    long long mega_bytes_of_data = measurements;
+    printf("%.2f MB/s\n", (mega_bytes_of_data / timee));
+    //double bps = 100.0 * (blocks * DATA_SIZE * WORD_SIZE) / timee;
+	//printf("%.2f MB/s\n", bps / 1024.0 / 1024.0);
 }
 
 int main() {
