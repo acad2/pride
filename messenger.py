@@ -8,16 +8,15 @@ class Messenger(pride.datatransfer.Data_Transfer_Client):
                 
     mutable_defaults = {"send_audio_to" : list}
      
-    verbosity = {"failed_to_enable_microphone" : 0, "failed_to_disable_microphone" : 0}
+    verbosity = {"failed_to_enable_microphone" : 0, "failed_to_disable_microphone" : 0,
+                 "receive_text" : 0}
     
     def receive(self, messages):
         for sender, packet in messages:
-            request_type, data = packet.split(' ', 1)
-            if request_type == "audio":
+            if packet[:5] == "audio":
                 self.handle_incoming_audio(data)
-            else:
-                assert request_type == "text"
-                self.handle_text(data)
+            else:                
+                self.handle_text(sender, packet)
                 
     def handle_incoming_audio(self, data):
         self.alert("Received audio data", level=0)
@@ -44,3 +43,7 @@ class Messenger(pride.datatransfer.Data_Transfer_Client):
         for receiver in self.send_audio_to:
             self.send_to(receiver, "audio " + audio_data)
             
+    def handle_text(self, sender, packet):
+        self.alert("{}: {}".format(sender, packet), 
+                   level=self.verbosity.get("{}_text".format(sender), self.verbosity["receive_text"]))
+                   
