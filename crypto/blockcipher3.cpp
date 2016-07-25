@@ -298,7 +298,7 @@ void test_encrypt_decrypt()
 
 void test_encrypt_performance()
 {        
-    int rounds = 1, blocks = 1, index ;    
+    int rounds = 8, blocks = 65536, index, index2;    
     unsigned char key[16], round_keys[rounds * 16];
     
 	WORD_TYPE* data = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
@@ -312,16 +312,17 @@ void test_encrypt_performance()
 	key_schedule(round_keys, key, rounds);    
     
     Stopwatch s;    
-    printf("Amount: %i", DATA_SIZE * blocks * sizeof(WORD_TYPE));
-    for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
+    double timee = 0;
+    for (index2 = 0; index2 < 10; index2++)
     {
-        printf("Block: %i\n", index);
-        encrypt_cached_keyschedule(data + (index * 16), round_keys, rounds);
+        for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
+        {        
+            encrypt_cached_keyschedule(data + (index * 16), round_keys, rounds);
+        }
+        timee += s.Lap();
+                    
     }
-    double timee = s.Lap();
-        
-    printf("Time taken: %5.2f\n", timee);
-    
+    printf("Time taken: %5.2f\n", timee / 10);
 }   
 
 
@@ -333,7 +334,7 @@ void test_encrypt_performance()
     
 int main()
 {
-    //test_encrypt_decrypt();
+   // test_encrypt_decrypt();
     test_encrypt_performance();
     return 0;
 }
