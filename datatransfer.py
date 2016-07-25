@@ -33,7 +33,7 @@ class Data_Transfer_Client(pride.authentication2.Authenticated_Client):
     """ Client program for sending data securely to a party registered
         with the target service. """
     defaults = {"target_service" : "/Python/Data_Transfer_Service"}
-    verbosity = {"send_to" : "vv"}
+    verbosity = {"send_to" : "vvv"}
     
     def __init__(self, **kwargs):
         super(Data_Transfer_Client, self).__init__(**kwargs)
@@ -64,7 +64,7 @@ class Data_Transfer_Service(pride.authentication2.Authenticated_Service):
     """ Service for transferring arbitrary data from one registered client to another """        
     mutable_defaults = {"messages" : dict}
     remotely_available_procedures = ("send_to", )
-    verbosity = {"refresh" : "vv", "data_transfer" : "vv"}
+    verbosity = {"refresh" : "vvv", "data_transfer" : "vvv"}
     
     def send_to(self, receiver, message):        
         sender = self.session_id[self.current_session[0]]

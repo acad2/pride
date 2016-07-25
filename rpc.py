@@ -151,8 +151,8 @@ class Rpc_Server(pride.networkssl.SSL_Server):
         
 class Rpc_Client(Packet_Client):
     """ Client socket for making rpc requests using packetized tcp stream. """  
-    verbosity = {"delayed_request_sent" : "vv", "request_delayed" : "vv",
-                 "request_sent" : "vv", "unresolved_callback" : 0, "handle_exception" : 0}
+    verbosity = {"delayed_request_sent" : "vvv", "request_delayed" : "vvv",
+                 "request_sent" : "vvv", "unresolved_callback" : 0, "handle_exception" : 0}
     
     mutable_defaults = {"_requests" : list, "_callbacks" : list}
     
@@ -214,7 +214,7 @@ class Rpc_Socket(Packet_Socket):
     """ Packetized tcp socket for receiving and delegating rpc requests """
     
     defaults = {"idle_after" : 600}
-    verbosity = {"request_exception" : 0, "request_result" : "vv"}
+    verbosity = {"request_exception" : 0, "request_result" : "vvv"}
         
     def __init__(self, **kwargs):
         super(Rpc_Socket, self).__init__(**kwargs)

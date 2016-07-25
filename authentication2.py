@@ -131,9 +131,9 @@ class Authenticated_Service(pride.base.Base):
                 "allow_login" : True, "allow_registration" : True,
                 "login_message" : "Welcome to the {}, {} from {}"}              
     
-    verbosity = {"register" : "vv", "login_stage_two" : "vv", "validate_success" : 'vv',
+    verbosity = {"register" : "vv", "login_stage_two" : "vv", "validate_success" : 'vvv',
                  "on_login" : "vv", "login" : "vv", "authentication_success" : "vv",
-                 "authentication_failure" : "v", "validate_failure" : "validate_failure",
+                 "authentication_failure" : "v", "validate_failure" : "vvv",
                  "login_stage_two_hash_not_found" : "v",
                  "authentication_failure_already_logged_in" : 'v'}
     

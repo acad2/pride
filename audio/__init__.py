@@ -32,7 +32,9 @@ def enable():
         one does not already exist. """
     if "/Python/Audio_Manager" not in pride.objects:
         pride.objects["/Python"].create("pride.audio.audiolibrary.Audio_Manager")
-                    
+    else:
+        raise ValueError("/Python/Audio_Manager already exists")
+        
 def mix_signals(audio_data, bit_width):
     _data = []
     size = max(len(data) for data in audio_data)
