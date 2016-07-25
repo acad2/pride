@@ -299,7 +299,7 @@ void test_encrypt_decrypt()
 void test_encrypt_performance()
 {        
     int rounds = 8, blocks = 65536, index, index2;    
-    unsigned char key[16], round_keys[rounds * 16];
+    unsigned char key[16], round_keys[(rounds + 1) * 16];
     
 	WORD_TYPE* data = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
 	WORD_TYPE* plaintext = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
@@ -322,7 +322,13 @@ void test_encrypt_performance()
         timee += s.Lap();
                     
     }
-    printf("Time taken: %5.2f\n", timee / 10);
+    timee /= 10;
+    printf("Time taken: %5.2f\n", timee);
+    //double bps = (16.0 * 65536.0) / timee;
+    //printf("mbps: %5.2f\n", bps / 1024.0 / 1024.0);
+    double mbps = 1.0 / timee;
+	printf("mbps: %5.2f\n", mbps);
+    
 }   
 
 
