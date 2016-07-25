@@ -14,6 +14,9 @@ double ProcessDuration1 = s.Lap();
 double ProcessDuration2 = s.Lap();
 */
 
+#include <time.h>
+#include <windows.h>
+
 class Stopwatch {
 public:
 	Stopwatch() {

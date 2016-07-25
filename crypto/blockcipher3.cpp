@@ -10,9 +10,10 @@
 #define ROTATION_AMOUNT 5
 #define BIT_WIDTH 8
 #define DATA_SIZE 16
+
 typedef unsigned char WORD_TYPE;
 
-void memcpy_s(unsigned char* s1, unsigned char* s2, size_t n)
+void memcpy_s(WORD_TYPE* s1, WORD_TYPE* s2, size_t n)
 {
     int index;
     for (index = 0; index < n; index++)
@@ -22,7 +23,7 @@ void memcpy_s(unsigned char* s1, unsigned char* s2, size_t n)
 }
 #endif
 
-void print_data(unsigned char* data)
+void print_data(WORD_TYPE* data)
 {
     int index;
     printf("\n");
@@ -32,19 +33,19 @@ void print_data(unsigned char* data)
     }
 } 
 
-unsigned char rotate_left(unsigned char word8, int amount)
+WORD_TYPE rotate_left(WORD_TYPE word8, int amount)
 {    
     return ((word8 << amount) | (word8 >> (8 - amount)));
 }
 
-unsigned char rotate_right(unsigned char word8, int amount)
+WORD_TYPE rotate_right(WORD_TYPE word8, int amount)
 {              
     return ((word8 >> amount) | (word8 << (8 - amount)));
 }
 
-unsigned char round_function(unsigned char* state, unsigned char key, int left_index, int right_index)
+WORD_TYPE round_function(WORD_TYPE* state, WORD_TYPE key, int left_index, int right_index)
 {
-    unsigned char left, right;
+    WORD_TYPE left, right;
     left = state[left_index];
     right = state[right_index];
     
@@ -62,9 +63,9 @@ unsigned char round_function(unsigned char* state, unsigned char key, int left_i
     return key;    
 }
     
-unsigned char invert_round_function(unsigned char* state, unsigned char key, int left_index, int right_index)
+WORD_TYPE invert_round_function(WORD_TYPE* state, WORD_TYPE key, int left_index, int right_index)
 {
-    unsigned char left, right;
+    WORD_TYPE left, right;
     left = state[left_index];
     right = state[right_index];
     
@@ -83,9 +84,9 @@ unsigned char invert_round_function(unsigned char* state, unsigned char key, int
 }
         
         
-void shuffle_bytes(unsigned char* _state)
+void shuffle_bytes(WORD_TYPE* _state)
 {
-    unsigned char temp[16];
+    WORD_TYPE temp[16];
     
     temp[7]  = _state[0];
     temp[12] = _state[1];
@@ -108,9 +109,9 @@ void shuffle_bytes(unsigned char* _state)
 }    
 
 
-int prp(unsigned char* data, unsigned char key, unsigned char data_size)
+int prp(WORD_TYPE* data, WORD_TYPE key, WORD_TYPE data_size)
 {
-    unsigned char index;
+    WORD_TYPE index;
     shuffle_bytes(data);
     
     for (index = data_size - 1; index != 0; index--)
@@ -122,9 +123,9 @@ int prp(unsigned char* data, unsigned char key, unsigned char data_size)
     return key;
 }
         
-void prf(unsigned char* data, unsigned char key, unsigned char data_size)
+void prf(WORD_TYPE* data, WORD_TYPE key, WORD_TYPE data_size)
 {
-    unsigned char index;    
+    WORD_TYPE index;    
     shuffle_bytes(data);
     
     for (index = data_size - 1; index != 0; index--)
@@ -135,9 +136,9 @@ void prf(unsigned char* data, unsigned char key, unsigned char data_size)
     key = round_function(data, key, data_size - 1, 0);
 }
     
-unsigned char xor_with_key(unsigned char* data, unsigned char* key)
+WORD_TYPE xor_with_key(WORD_TYPE* data, WORD_TYPE* key)
 {
-    unsigned char data_xor = 0, index;    
+    WORD_TYPE data_xor = 0, index;    
     //printf("Xor with key\n");
     //print_data(key);
     for (index = 0; index < 16; index++)
@@ -148,11 +149,11 @@ unsigned char xor_with_key(unsigned char* data, unsigned char* key)
     return data_xor;
 }
 
-void key_schedule(unsigned char* round_keys, unsigned char* _key, int rounds)
+void key_schedule(WORD_TYPE* round_keys, WORD_TYPE* _key, int rounds)
 {
     int index;
-    unsigned char key_byte, key_xor = 0;
-    unsigned char key[16], round_key[16];
+    WORD_TYPE key_byte, key_xor = 0;
+    WORD_TYPE key[16], round_key[16];
             
     for (index = 0; index < 16; index++) // create working copy of the key
     {
@@ -171,10 +172,10 @@ void key_schedule(unsigned char* round_keys, unsigned char* _key, int rounds)
     }
 }
     
-void encrypt(unsigned char* data, unsigned char* key, int rounds)
+void encrypt(WORD_TYPE* data, WORD_TYPE* key, int rounds)
 {    
-    unsigned char round_keys[16 * (rounds + 1)];
-    unsigned char round_key[16], data_xor = 0;
+    WORD_TYPE round_keys[16 * (rounds + 1)];
+    WORD_TYPE round_key[16], data_xor = 0;
     int index;
     
     key_schedule(round_keys, key, rounds);
@@ -191,9 +192,9 @@ void encrypt(unsigned char* data, unsigned char* key, int rounds)
     
 }
 
-void encrypt_cached_keyschedule(unsigned char* data, unsigned char* round_keys, int rounds)
+void encrypt_cached_keyschedule(WORD_TYPE* data, WORD_TYPE* round_keys, int rounds)
 {        
-    unsigned char round_key[16], data_xor = 0;
+    WORD_TYPE round_key[16], data_xor = 0;
     int index;
             
     for (index = 0; index < rounds; index++) // iterated even-mansour construction
@@ -208,7 +209,7 @@ void encrypt_cached_keyschedule(unsigned char* data, unsigned char* round_keys, 
 }
 
 
-void invert_shuffle_bytes(unsigned char* state)
+void invert_shuffle_bytes(WORD_TYPE* state)
 {
     unsigned char temp[16];
     
@@ -298,22 +299,20 @@ void test_encrypt_decrypt()
 
 void test_encrypt_performance()
 {        
-    int rounds = 8, blocks = 65536, index, index2;    
+    int rounds = 8, blocks = 65536, index, index2, test_count=100;    
     unsigned char key[16], round_keys[(rounds + 1) * 16];
     
 	WORD_TYPE* data = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
-	WORD_TYPE* plaintext = (WORD_TYPE*)malloc(DATA_SIZE * blocks * sizeof(WORD_TYPE));
-
+	
 	// setup test data
-	memset(data, 16, DATA_SIZE * blocks * sizeof(WORD_TYPE));
-	memcpy(plaintext, data, sizeof(data));
+	memset(data, 16, DATA_SIZE * blocks * sizeof(WORD_TYPE));	
 	memset(key, 1, sizeof(key));
 	
 	key_schedule(round_keys, key, rounds);    
     
     Stopwatch s;    
     double timee = 0;
-    for (index2 = 0; index2 < 10; index2++)
+    for (index2 = 0; index2 < test_count; index2++)
     {
         for (index = 0; (index * 16) < DATA_SIZE * blocks * sizeof(WORD_TYPE); index++)
         {        
@@ -322,10 +321,8 @@ void test_encrypt_performance()
         timee += s.Lap();
                     
     }
-    timee /= 10;
+    timee /= test_count;
     printf("Time taken: %5.2f\n", timee);
-    //double bps = (16.0 * 65536.0) / timee;
-    //printf("mbps: %5.2f\n", bps / 1024.0 / 1024.0);
     double mbps = 1.0 / timee;
 	printf("mbps: %5.2f\n", mbps);
     
