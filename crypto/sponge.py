@@ -22,7 +22,7 @@ def variable_length_hash(state, rate, output_size, mixing_subroutine, absorb_mod
     
     return bytes(output[:output_size])
     
-def prng_generator(state, rate, output_size, mixing_subroutine, absorb_mode):    
+def prng_mode(state, rate, output_size, mixing_subroutine, absorb_mode):    
     while True:
         yield state[rate]
         mixing_subroutine(state)    
@@ -103,6 +103,29 @@ def sponge_factory(mixing_subroutine,
                    key='', output_size=32, capacity=32, rate=32,                    
                    mode_of_operation=variable_length_hash,
                    absorb_mode=xor_subroutine):
+    """ usage: sponge_factory(mixing_subroutine, key='', output_size=32,
+                              capacity=32, rate=32, 
+                              mode_of_operation=variable_length_hash,
+                              absorb_mode=xor_subroutine) => sponge function
+                              
+        Returns a sponge function that uses the supplied mixing subroutine as
+        the permutation that mixes the internal state.
+        
+        mixing_subroutine should accept one required argument, an bytearray of 
+        capacity + rate length, and should return nothing.
+        
+        key is an optional argument that will be absorbed into the state before
+        any data is absorbed
+        
+        output_size, capacity, and rate should be integers. 
+        
+        mode_of_operation should be one of: variable_length_hash, prng_mode,
+        encryption_mode, or decryption_mode. 
+        
+            - Note: it is simplest to use the encrypt/decrypt/psuedorandom_data 
+                    helper functions for when something other then a hash is desired
+                    
+        absorb_mode should be either xor_subroutine or replacement_subroutine """        
     return functools.partial(sponge_function, key=key, output_size=output_size, 
                                               capacity=capacity, rate=rate,
                                               mixing_subroutine=mixing_subroutine,

@@ -1,24 +1,25 @@
 from utilities import xor_sum, rotate_left, rotate_right, slide, xor_subroutine, integer_to_bytes, bytes_to_words, words_to_bytes
+    
+def shuffle_bytes(_state):
 
-def shuffle_bytes(_state, temp=list(range(16))):          
-    temp[7] = _state[0] 
-    temp[12] = _state[1]
-    temp[14] = _state[2]
-    temp[9] = _state[3]
-    temp[2] = _state[4]
-    temp[1] = _state[5]
-    temp[5] = _state[6]
-    temp[15] = _state[7]
-    temp[11] = _state[8]
-    temp[6] = _state[9]
-    temp[13] = _state[10]
-    temp[0] = _state[11]
-    temp[4] = _state[12]
-    temp[8] = _state[13]
-    temp[10] = _state[14]
-    temp[3] = _state[15]
-            
-    _state[:] = temp[:]
+    temp = _state[0]
+
+    _state[0] = _state[11]
+    _state[11] = _state[8]
+    _state[8] = _state[13]
+    _state[13] = _state[10]
+    _state[10] = _state[14]
+    _state[14] = _state[2]
+    _state[2] = _state[4]
+    _state[4] = _state[12]
+    _state[12] = _state[1]
+    _state[1] = _state[5]
+    _state[5] = _state[6]
+    _state[6] = _state[9]
+    _state[9] = _state[3]
+    _state[3] = _state[15]
+    _state[15] = _state[7]
+    _state[7] = temp
     
 def invert_shuffle_bytes(state, temp=list(range(16))):       
     temp[11] = state[0]

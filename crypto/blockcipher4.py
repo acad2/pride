@@ -114,50 +114,50 @@ def encrypt(data, key, rounds=1, bit_width=8):
         data_xor = xor_subroutine(data, round_key)
         prp(data, data_xor)
     xor_subroutine(data, round_keys[-1])
-   
-def invert_round(left, right, key, index, mask=255, rotation_amount=5, bit_width=8):
-    key ^= left    
-    left ^= rotate_left(right, (index % bit_width) ^ rotation_amount)         
-    left = (256 + (left - (right >> bit_width / 2))) & mask
-    key ^= left;
     
-    key ^= right        
-    right = (256 + (rotate_right(right, rotation_amount, bit_width) - key - index)) & mask 
-    key ^= right
-    return left, right, key
-    
-def invert_shuffle_bytes(state, temp=list(range(16))):       
-    temp[11] = state[0]
-    temp[5] = state[1]
-    temp[4] = state[2]
-    temp[15] = state[3]
-    temp[12] = state[4]
-    temp[6] = state[5]
-    temp[9] = state[6]
-    temp[0] = state[7]
-    temp[13] = state[8]
-    temp[3] = state[9]
-    temp[14] = state[10]
-    temp[8] = state[11]
-    temp[1] = state[12]
-    temp[10] = state[13]
-    temp[2] = state[14]
-    temp[7] = state[15]
-    
-    state[:] = temp[:]
-    
-def invert_prp(data, data_xor, data_size=16):
-    left, right = data[15], data[0]
-    left, right, data_xor = invert_round(left, right, data_xor, 0)
-    data[15], data[0] = left, right
-    
-    for index in reversed(range(data_size)):
-        left, right = data[index - 1], data[index]
-        left, right, data_xor = invert_round(left, right, data_xor, index)
-        data[index - 1], data[index] = left, right
-        
-    invert_shuffle_bytes(data)
-    return data_xor
+#def invert_round(left, right, key, index, mask=255, rotation_amount=5, bit_width=8):
+#    key ^= left    
+#    left ^= rotate_left(right, (index % bit_width) ^ rotation_amount)         
+#    left = (256 + (left - (right >> bit_width / 2))) & mask
+#    key ^= left;
+#    
+#    key ^= right        
+#    right = (256 + (rotate_right(right, rotation_amount, bit_width) - key - index)) & mask 
+#    key ^= right
+#    return left, right, key
+#    
+#def invert_shuffle_bytes(state, temp=list(range(16))):       
+#    temp[11] = state[0]
+#    temp[5] = state[1]
+#    temp[4] = state[2]
+#    temp[15] = state[3]
+#    temp[12] = state[4]
+#    temp[6] = state[5]
+#    temp[9] = state[6]
+#    temp[0] = state[7]
+#    temp[13] = state[8]
+#    temp[3] = state[9]
+#    temp[14] = state[10]
+#    temp[8] = state[11]
+#    temp[1] = state[12]
+#    temp[10] = state[13]
+#    temp[2] = state[14]
+#    temp[7] = state[15]
+#    
+#    state[:] = temp[:]
+#    
+#def invert_prp(data, data_xor, data_size=16):
+#    left, right = data[15], data[0]
+#    left, right, data_xor = invert_round(left, right, data_xor, 0)
+#    data[15], data[0] = left, right
+#    
+#    for index in reversed(range(data_size)):
+#        left, right = data[index - 1], data[index]
+#        left, right, data_xor = invert_round(left, right, data_xor, index)
+#        data[index - 1], data[index] = left, right
+#        
+#    invert_shuffle_bytes(data)
+#    return data_xor
     
 def decrypt(data, key, rounds=1, bit_width=8):
     key = key[:]

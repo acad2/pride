@@ -8,9 +8,15 @@
 
 
 #define ROTATION_AMOUNT 41
-#define BIT_WIDTH 8
+#define BIT_WIDTH 64
 #define DATA_SIZE 16
 typedef unsigned long long WORD_TYPE;
+
+//#define ROTATION_AMOUNT 5
+//#define BIT_WIDTH 8
+//#define DATA_SIZE 16
+//typedef unsigned char WORD_TYPE;
+
 #define WORD_SIZE sizeof(WORD_TYPE)
 
 #ifndef memcpy_s
@@ -21,7 +27,7 @@ void print_data(WORD_TYPE* data) {
 	int index;
 	printf("\n");
 	for (index = 0; index < DATA_SIZE; index++) {
-		printf("%i: %i\n", index, data[index]);
+		printf("%i: %llu\n", index, data[index]);
 	}
 }
 
@@ -94,7 +100,28 @@ void shuffle_bytes(WORD_TYPE* _state) {
 
 	memcpy_s(_state, temp, DATA_SIZE * WORD_SIZE);
 }
-
+//void shuffle_bytes(WORD_TYPE* _state) {
+//    //WORD_TYPE temp[DATA_SIZE];
+//    
+//    WORD_TYPE temp = _state[0];
+//    
+//    _state[0] = _state[11];
+//    _state[11] = _state[8];
+//    _state[8] = _state[13];
+//    _state[13] = _state[10];
+//    _state[10] = _state[14];
+//    _state[14] = _state[2];
+//    _state[2] = _state[4];
+//    _state[4] = _state[12];
+//    _state[12] = _state[1];
+//    _state[1] = _state[5];
+//    _state[5] = _state[6];
+//    _state[6] = _state[9];
+//    _state[9] = _state[3];
+//    _state[3] = _state[15];
+//    _state[15] = _state[7];
+//    _state[7] = temp;
+//}
 
 int prp(WORD_TYPE* data, WORD_TYPE key) {
 	shuffle_bytes(data);
@@ -236,7 +263,7 @@ void invert_shuffle_bytes(WORD_TYPE* state) {
 }
 
 WORD_TYPE invert_prp(WORD_TYPE* data, WORD_TYPE key) {
-	key = invert_round_function<DATA_SIZE - 1, 0>(data, key);
+	key = invert_round_function<15, 0>(data, key);
 	key = invert_round_function<0, 1>(data, key);
 	key = invert_round_function<1, 2>(data, key);
 	key = invert_round_function<2, 3>(data, key);
@@ -332,8 +359,38 @@ void test_encrypt_performance() {
 	//printf("%.2f MB/s\n", bps / 1024.0 / 1024.0);
 }
 
+void test_input_output()
+{    
+    WORD_TYPE data[16];
+    int rounds = 1;
+    int index;    
+    for (index = 0; index < 16; index++)
+    {        
+        data[index] = 0;
+    }    
+    print_data(data);
+    prp(data, 0);
+    print_data(data);
+    
+    FILE *f = fopen("sampleoutput.txt", "w");
+    if (f == NULL)
+    {
+        exit(1);
+    }
+    
+    for (index = 0; index < 16; index++)
+    {
+        fprintf(f, "%llu\n", data[index]);
+    }
+    fclose(f);
+} 
+    
+    
+    
+    
 int main() {
-	// test_encrypt_decrypt();
-	test_encrypt_performance();
+	 test_encrypt_decrypt();
+	//test_encrypt_performance();
+    //test_input_output();
 	return 0;
 }
